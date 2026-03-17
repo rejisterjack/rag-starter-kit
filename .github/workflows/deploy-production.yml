@@ -1,0 +1,82 @@
+name: Deploy Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Deploy to Vercel
+        id: deploy
+        uses: vercel/action-deploy@v1
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+
+      - name: Run Database Migrations
+        run: pnpm db:migrate:prod
+        env:
+          POSTGRES_URL_NON_POOLING: ${{ secrets.DATABASE_URL }}
+
+      - name: Verify Deployment Health
+        run: |
+          echo "Waiting for deployment to be ready..."
+          sleep 30
+          
+          HEALTH_URL="${{ steps.deploy.outputs.url }}/api/health"
+          echo "Checking health at: $HEALTH_URL"
+          
+          for i in {1..10}; do
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
+            if [ "$RESPONSE" = "200" ]; then
+              echo "✅ Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i: Health check returned $RESPONSE, retrying..."
+            sleep 10
+          done
+          
+          echo "❌ Health check failed after 10 attempts"
+          exit 1
+
+      - name: Notify on Success
+        if: success()
+        run: |
+          echo "🚀 Production deployment successful!"
+          echo "URL: ${{ steps.deploy.outputs.url }}"
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "❌ Production deployment failed!"
+          # Add notification integration here (Slack, Discord, etc.)

@@ -1,0 +1,773 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+// ============================================================================
+// Authentication Models
+// ============================================================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String? // For credentials provider (hashed with bcrypt)
+  role          UserRole  @default(USER)
+  accounts      Account[]
+  sessions      Session[]
+
+  // Relations
+  chats             Chat[]
+  documents         Document[]
+  workspaceMembers  WorkspaceMember[]
+  ownedWorkspaces   Workspace[]        @relation("WorkspaceOwner")
+  createdApiKeys    ApiKey[]
+  auditLogs         AuditLog[]
+  rateLimits        RateLimit[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+// ============================================================================
+// Workspace & Multi-tenancy Models
+// ============================================================================
+
+model Workspace {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  description String?
+  avatar      String? // URL to workspace avatar
+  ownerId     String
+  owner       User          @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members     WorkspaceMember[]
+  apiKeys     ApiKey[]
+  auditLogs   AuditLog[]
+  rateLimits  RateLimit[]
+  
+  // Settings
+  settings    Json?         @db.JsonB // Workspace-specific settings
+  
+  // Billing
+  plan        WorkspacePlan @default(FREE)
+  
+  // Relations to existing models (for row-level security)
+  chats       Chat[]
+  documents   Document[]
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([ownerId])
+  @@index([slug])
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String      @id @default(cuid())
+  workspaceId String
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        MemberRole  @default(MEMBER)
+  permissions Json?       @db.JsonB // Custom permissions override
+  
+  // Invitations
+  invitedBy   String?
+  invitedAt   DateTime?
+  joinedAt    DateTime    @default(now())
+  
+  // Status
+  status      MemberStatus @default(ACTIVE)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+  SUSPENDED
+}
+
+enum WorkspacePlan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+// ============================================================================
+// API Key Management
+// ============================================================================
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  prefix      String    @unique // First 8 characters of the key (for display)
+  hashedKey   String    @unique // Full key hash (Argon2)
+  
+  // Relations
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  
+  // Permissions
+  permissions Json      @db.JsonB // Array of permission strings
+  scopes      Json?     @db.JsonB // Allowed endpoints, IP restrictions, etc.
+  
+  // Usage tracking
+  lastUsedAt  DateTime?
+  usageCount  Int       @default(0)
+  
+  // Expiration
+  expiresAt   DateTime?
+  
+  // Status
+  isRevoked   Boolean   @default(false)
+  revokedAt   DateTime?
+  revokedBy   String?
+  
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId])
+  @@index([createdById])
+  @@index([hashedKey])
+  @@index([prefix])
+  @@map("api_keys")
+}
+
+// ============================================================================
+// Rate Limiting
+// ============================================================================
+
+model RateLimit {
+  id          String   @id @default(cuid())
+  
+  // Identifier can be userId, apiKeyId, or IP address
+  identifier  String
+  type        RateLimitType
+  
+  // Relations (optional - for tracking)
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  // Limits
+  endpoint    String   // API endpoint or action
+  count       Int      @default(0) // Current count in window
+  resetAt     DateTime // When the window resets
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([identifier, endpoint])
+  @@index([identifier])
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([resetAt])
+  @@map("rate_limits")
+}
+
+enum RateLimitType {
+  USER
+  API_KEY
+  IP
+  WORKSPACE
+}
+
+// ============================================================================
+// Audit Logging
+// ============================================================================
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  
+  // Event details
+  event       AuditEvent
+  severity    AuditSeverity @default(INFO)
+  
+  // Relations
+  workspaceId String?
+  workspace   Workspace?  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKeyId    String?     // If action was performed via API key
+  
+  // Request details
+  ipAddress   String?
+  userAgent   String?
+  
+  // Event data
+  metadata    Json?       @db.JsonB
+  resource    Json?       @db.JsonB // Resource affected (documentId, etc.)
+  changes     Json?       @db.JsonB // Before/after for updates
+  
+  // Error info
+  error       String?
+  
+  createdAt   DateTime    @default(now())
+
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([event])
+  @@index([createdAt])
+  @@index([severity])
+  @@map("audit_logs")
+}
+
+enum AuditEvent {
+  // Authentication
+  USER_LOGIN
+  USER_LOGOUT
+  USER_REGISTERED
+  PASSWORD_CHANGED
+  PASSWORD_RESET_REQUESTED
+  
+  // Workspace
+  WORKSPACE_CREATED
+  WORKSPACE_UPDATED
+  WORKSPACE_DELETED
+  WORKSPACE_SETTINGS_CHANGED
+  
+  // Members
+  MEMBER_INVITED
+  MEMBER_JOINED
+  MEMBER_REMOVED
+  MEMBER_ROLE_CHANGED
+  
+  // Documents
+  DOCUMENT_UPLOADED
+  DOCUMENT_DELETED
+  DOCUMENT_UPDATED
+  DOCUMENT_PROCESSED
+  DOCUMENT_PROCESSING_FAILED
+  
+  // Chat
+  CHAT_CREATED
+  CHAT_DELETED
+  CHAT_MESSAGE_SENT
+  
+  // API Keys
+  API_KEY_CREATED
+  API_KEY_REVOKED
+  API_KEY_USED
+  
+  // Rate Limiting
+  RATE_LIMIT_HIT
+  
+  // Security
+  SUSPICIOUS_ACTIVITY
+  PERMISSION_DENIED
+}
+
+enum AuditSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+// ============================================================================
+// Chat Models
+// ============================================================================
+
+model Chat {
+  id          String    @id @default(cuid())
+  title       String    @default("New Chat")
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  messages Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([updatedAt])
+  @@map("chats")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  role      MessageRole
+  chatId    String
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  // Sources used for RAG (stored as JSON)
+  sources   Json?    @db.JsonB
+
+  // Token usage metadata
+  tokensUsed Json?   @db.JsonB
+
+  createdAt DateTime @default(now())
+
+  @@index([chatId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+// ============================================================================
+// Document Models
+// ============================================================================
+
+model Document {
+  id          String         @id @default(cuid())
+  name        String
+  contentType DocumentType
+  size        Int            // Size in bytes
+  status      DocumentStatus @default(PENDING)
+
+  // Storage
+  storageKey  String?        // S3/Storage key if using external storage
+  content     String?        @db.Text // Plain text content
+
+  // Metadata
+  metadata    Json?          @db.JsonB
+
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String?
+  workspace   Workspace?     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  chunks      DocumentChunk[]
+  ingestionJobs IngestionJob[]
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("documents")
+}
+
+enum DocumentType {
+  PDF
+  DOCX
+  TXT
+  MD
+  HTML
+}
+
+enum DocumentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  content   String   @db.Text
+  embedding Unsupported("vector(1536)")? // pgvector extension
+
+  // Chunk metadata
+  index     Int // Position in the document
+  start     Int // Character start position in original document
+  end       Int // Character end position in original document
+  page      Int? // Page number (for PDFs)
+  section   String? // Section/chapter identifier
+
+  createdAt DateTime @default(now())
+
+  @@index([documentId])
+  @@index([index])
+  // Vector similarity search index (managed separately via migration)
+  @@map("document_chunks")
+}
+
+// ============================================================================
+// Ingestion Job Tracking
+// ============================================================================
+
+model IngestionJob {
+  id          String    @id @default(cuid())
+  documentId  String    @unique
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  status      JobStatus @default(QUEUED)
+  progress    Int       @default(0) // 0-100
+  error       String?   @db.Text
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([documentId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("ingestion_jobs")
+}
+
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ============================================================================
+// API Usage Tracking
+// ============================================================================
+
+model ApiUsage {
+  id        String   @id @default(cuid())
+  userId    String?
+  workspaceId String?
+
+  // Request details
+  endpoint  String
+  method    String
+
+  // Token usage (for OpenAI/LangChain calls)
+  tokensPrompt     Int     @default(0)
+  tokensCompletion Int     @default(0)
+  tokensTotal      Int     @default(0)
+
+  // Cost tracking (in USD * 10000 for precision)
+  costCents Int     @default(0)
+
+  // Response time in ms
+  latencyMs Int?
+
+  // Error tracking
+  error     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([createdAt])
+  @@index([endpoint])
+  @@map("api_usage")
+}
+
+
+// ============================================================================
+// RAG Analytics & Metrics
+// ============================================================================
+
+model RAGEvent {
+  id              String   @id @default(cuid())
+  query           String   @db.Text
+  conversationId  String
+  workspaceId     String
+  userId          String
+  
+  // Response details
+  responseLength  Int
+  latencyMs       Int
+  promptTokens    Int
+  completionTokens Int
+  totalTokens     Int
+  model           String
+  
+  // Query classification
+  queryType       String   @default("retrieve") // direct_answer, retrieve, calculate, web_search, clarify
+  confidence      Float?
+  reranked        Boolean  @default(false)
+  
+  // Relations
+  retrievedChunks RetrievedChunk[]
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([queryType])
+  @@map("rag_events")
+}
+
+model RetrievedChunk {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       RAGEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  chunkId     String
+  documentId  String
+  similarity  Float
+  rank        Int
+  
+  @@index([eventId])
+  @@index([documentId])
+  @@map("retrieved_chunks")
+}
+
+model TokenUsage {
+  id               String   @id @default(cuid())
+  workspaceId      String
+  userId           String
+  conversationId   String
+  
+  model            String
+  promptTokens     Int
+  completionTokens Int
+  totalTokens      Int
+  estimatedCost    Float    @default(0) // USD
+  
+  createdAt        DateTime @default(now())
+  
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([model])
+  @@map("token_usage")
+}
+
+model WorkspaceBudget {
+  id                String   @id @default(cuid())
+  workspaceId       String   @unique
+  
+  monthlyBudget     Float    @default(100) // USD
+  warningThreshold  Float    @default(0.8) // 80%
+  criticalThreshold Float    @default(0.95) // 95%
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@map("workspace_budgets")
+}
+
+// ============================================================================
+// Experiment Tracking
+// ============================================================================
+
+model ExperimentResult {
+  id                String   @id @default(cuid())
+  experimentId      String
+  variantId         String
+  
+  // Metrics
+  responseQuality   Float?
+  latency           Int?
+  tokenUsage        Int?
+  retrievalAccuracy Float?
+  userSatisfaction  Float?
+  customMetrics     Json?    @db.JsonB
+  
+  // Context
+  userId            String?
+  conversationId    String?
+  query             String?  @db.Text
+  
+  createdAt         DateTime @default(now())
+  
+  @@index([experimentId])
+  @@index([variantId])
+  @@index([createdAt])
+  @@map("experiment_results")
+}
+
+// ============================================================================
+// Collaboration Features
+// ============================================================================
+
+model ShareLink {
+  id              String   @id @default(cuid())
+  conversationId  String
+  token           String   @unique
+  
+  // Permissions stored as JSON
+  permissions     Json     @db.JsonB // { canView: boolean, canComment: boolean, canFork: boolean }
+  
+  accessCount     Int      @default(0)
+  createdBy       String
+  expiresAt       DateTime?
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([conversationId])
+  @@index([token])
+  @@map("share_links")
+}
+
+model Comment {
+  id             String   @id @default(cuid())
+  messageId      String
+  conversationId String
+  userId         String
+  
+  content        String   @db.Text
+  parentId       String?  // For threaded comments
+  resolved       Boolean  @default(false)
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  @@index([messageId])
+  @@index([conversationId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model Annotation {
+  id              String   @id @default(cuid())
+  messageId       String
+  conversationId  String
+  userId          String
+  
+  content         String   @db.Text
+  highlightedText String?  @db.Text
+  position        Json?    @db.JsonB // { start: number, end: number }
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([messageId])
+  @@index([conversationId])
+  @@map("annotations")
+}
+
+model Mention {
+  id                String   @id @default(cuid())
+  messageId         String
+  conversationId    String
+  mentionedUserId   String
+  mentionedByUserId String
+  
+  content           String   @db.Text // Context around the mention
+  read              Boolean  @default(false)
+  
+  createdAt         DateTime @default(now())
+  
+  @@index([mentionedUserId])
+  @@index([read])
+  @@index([createdAt])
+  @@map("mentions")
+}
+
+// ============================================================================
+// Conversation Branching
+// ============================================================================
+
+// Note: Branches are implemented using the Chat model with metadata
+// The metadata field stores: { parentId, forkMessageId, rootId, isBranch }
+
+// ============================================================================
+// Observability (Langfuse Integration)
+// ============================================================================
+
+model ObservabilityTrace {
+  id          String   @id @default(cuid())
+  traceId     String   @unique // External trace ID from Langfuse
+  
+  // Context
+  userId      String?
+  workspaceId String?
+  sessionId   String?
+  
+  name        String
+  metadata    Json?    @db.JsonB
+  
+  createdAt   DateTime @default(now())
+  
+  spans       ObservabilitySpan[]
+  
+  @@index([traceId])
+  @@index([userId])
+  @@index([workspaceId])
+  @@map("observability_traces")
+}
+
+model ObservabilitySpan {
+  id          String   @id @default(cuid())
+  traceId     String
+  trace       ObservabilityTrace @relation(fields: [traceId], references: [id], onDelete: Cascade)
+  
+  parentId    String?
+  name        String
+  startTime   DateTime
+  endTime     DateTime?
+  
+  metadata    Json?    @db.JsonB
+  level       String   @default("DEFAULT") // DEBUG, DEFAULT, WARNING, ERROR
+  
+  @@index([traceId])
+  @@index([name])
+  @@map("observability_spans")
+}

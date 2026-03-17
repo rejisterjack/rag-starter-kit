@@ -1,0 +1,409 @@
+/**
+ * Advanced Chunking Strategies for RAG
+ * 
+ * This module provides multiple chunking strategies for different document types:
+ * - Fixed: Classic character/token-based splitting
+ * - Semantic: Embedding-based boundary detection
+ * - Hierarchical: Parent-child chunk relationships
+ * - Late: Context-aware embeddings via token-level processing
+ * 
+ * @example
+ * ```typescript
+ * import { ChunkingEngine, ChunkingStrategy } from '@/lib/rag/chunking';
+ * 
+ * const chunks = await ChunkingEngine.chunk(document, {
+ *   strategy: 'semantic',
+ *   chunkSize: 1000,
+ *   embeddingFunction: async (text) => {
+ *     // Your embedding logic
+ *     return embedding;
+ *   }
+ * });
+ * ```
+ */
+
+import { FixedChunker } from './fixed';
+import { SemanticChunker } from './semantic';
+import { HierarchicalChunker } from './hierarchical';
+import { LateChunker } from './late';
+import { DocumentAnalyzer } from './analyzer';
+import type {
+  Chunk,
+  ChunkingOptions,
+  ChunkingStrategy,
+  Chunker,
+  ChunkStats,
+  DocumentProfile,
+} from './types';
+
+
+// Re-export all types
+export type {
+  Chunk,
+  ChunkMetadata,
+  ChunkingOptions,
+  ChunkingStrategy,
+  Chunker,
+  ChunkStats,
+  DocumentProfile,
+  DocumentStructure,
+  TokenCount,
+  SizeDistribution,
+  SemanticChunkingOptions,
+  HierarchicalChunkingOptions,
+  LateChunkingOptions,
+  FixedChunkingOptions,
+  ChunkingErrorCode,
+} from './types';
+
+export { ChunkingError } from './types';
+
+// Re-export chunking implementations
+export { FixedChunker } from './fixed';
+export { SemanticChunker } from './semantic';
+export { HierarchicalChunker } from './hierarchical';
+export { LateChunker } from './late';
+
+// Re-export analyzer
+export { DocumentAnalyzer, createDocumentAnalyzer, analyzeDocuments } from './analyzer';
+
+// Re-export token utilities
+export {
+  countTokens,
+  countTokensForChunks,
+  estimateTokenCount,
+  estimateTokensForChunks,
+  fitsInTokenBudget,
+  truncateToTokenLimit,
+  TokenBudgetManager,
+  MODEL_TOKEN_LIMITS,
+  getModelTokenLimit,
+  calculateOptimalChunkSize as calculateTokenBasedChunkSize,
+} from './tokens';
+
+// Re-export hierarchical utilities
+export {
+  getParentChunk,
+  getChildChunks,
+  getChunkContextPath,
+  buildEnrichedContext,
+} from './hierarchical';
+
+// Re-export late chunking utilities
+export {
+  createLateChunkingEmbedder,
+  isLateChunkingSuitable,
+} from './late';
+
+/**
+ * Chunking Engine - Factory for creating and using chunkers
+ */
+export class ChunkingEngine {
+  private static chunkerCache: Map<ChunkingStrategy, Chunker> = new Map();
+
+  /**
+   * Create a chunker instance for the given strategy
+   */
+  static create(strategy: ChunkingStrategy): Chunker {
+    // Check cache first
+    const cached = this.chunkerCache.get(strategy);
+    if (cached) {
+      return cached;
+    }
+
+    let chunker: Chunker;
+
+    switch (strategy) {
+      case 'semantic':
+        chunker = new SemanticChunker();
+        break;
+
+      case 'hierarchical':
+        chunker = new HierarchicalChunker();
+        break;
+
+      case 'late':
+        chunker = new LateChunker();
+        break;
+
+      case 'fixed':
+      default:
+        chunker = new FixedChunker();
+        break;
+    }
+
+    // Cache the chunker
+    this.chunkerCache.set(strategy, chunker);
+
+    return chunker;
+  }
+
+  /**
+   * Chunk a document using the specified strategy
+   */
+  static async chunk(
+    document: string,
+    options: ChunkingOptions
+  ): Promise<Chunk[]> {
+    const chunker = this.create(options.strategy);
+    return chunker.chunk(document, options);
+  }
+
+  /**
+   * Chunk multiple documents
+   */
+  static async chunkBatch(
+    documents: Array<{ id: string; content: string }>,
+    options: ChunkingOptions
+  ): Promise<Array<{ documentId: string; chunks: Chunk[] }>> {
+    const chunker = this.create(options.strategy);
+
+    const results = await Promise.all(
+      documents.map(async (doc) => {
+        const chunks = await chunker.chunk(doc.content, {
+          ...options,
+          documentId: doc.id,
+        });
+        return { documentId: doc.id, chunks };
+      })
+    );
+
+    return results;
+  }
+
+  /**
+   * Analyze document and recommend best strategy
+   */
+  static analyze(document: string): DocumentProfile {
+    const analyzer = new DocumentAnalyzer();
+    return analyzer.analyze(document);
+  }
+
+  /**
+   * Smart chunk - analyzes document and uses recommended strategy
+   */
+  static async smartChunk(
+    document: string,
+    overrides?: Partial<ChunkingOptions>
+  ): Promise<{ chunks: Chunk[]; profile: DocumentProfile }> {
+    const profile = this.analyze(document);
+    const strategy = overrides?.strategy ?? profile.recommendedStrategy;
+
+    const options: ChunkingOptions = {
+      strategy,
+      chunkSize: overrides?.chunkSize,
+      chunkOverlap: overrides?.chunkOverlap,
+      ...overrides,
+    };
+
+    const chunks = await this.chunk(document, options);
+
+    return { chunks, profile };
+  }
+
+  /**
+   * Get statistics for chunks
+   */
+  static async getStats(chunks: Chunk[]): Promise<ChunkStats> {
+    if (chunks.length === 0) {
+      return {
+        totalChunks: 0,
+        avgChunkSize: 0,
+        minChunkSize: 0,
+        maxChunkSize: 0,
+        estimatedTokens: 0,
+        avgTokensPerChunk: 0,
+        sizeDistribution: { small: 0, medium: 0, large: 0, extraLarge: 0 },
+      };
+    }
+
+    const sizes = chunks.map((c) => c.content.length);
+    const totalSize = sizes.reduce((a, b) => a + b, 0);
+    const minSize = Math.min(...sizes);
+    const maxSize = Math.max(...sizes);
+    const avgSize = Math.round(totalSize / chunks.length);
+
+    // Import token utilities
+    const { estimateTokensForChunks } = await import('./tokens');
+    const tokenCounts = estimateTokensForChunks(chunks.map((c) => c.content));
+
+    // Calculate size distribution
+    const distribution = {
+      small: sizes.filter((s) => s < 100).length,
+      medium: sizes.filter((s) => s >= 100 && s < 500).length,
+      large: sizes.filter((s) => s >= 500 && s < 1000).length,
+      extraLarge: sizes.filter((s) => s >= 1000).length,
+    };
+
+    return {
+      totalChunks: chunks.length,
+      avgChunkSize: avgSize,
+      minChunkSize: minSize,
+      maxChunkSize: maxSize,
+      estimatedTokens: tokenCounts.total,
+      avgTokensPerChunk: Math.round(tokenCounts.total / chunks.length),
+      sizeDistribution: distribution,
+    };
+  }
+
+  /**
+   * Clear chunker cache
+   */
+  static clearCache(): void {
+    this.chunkerCache.clear();
+  }
+}
+
+/**
+ * Convenience function for fixed-size chunking
+ */
+export async function chunkFixed(
+  document: string,
+  options?: Omit<ChunkingOptions, 'strategy'>
+): Promise<Chunk[]> {
+  return ChunkingEngine.chunk(document, {
+    ...options,
+    strategy: 'fixed',
+  });
+}
+
+/**
+ * Convenience function for semantic chunking
+ */
+export async function chunkSemantic(
+  document: string,
+  options: Omit<ChunkingOptions, 'strategy'> & {
+    embeddingFunction: (text: string) => Promise<number[]> | number[];
+    similarityThreshold?: number;
+  }
+): Promise<Chunk[]> {
+  return ChunkingEngine.chunk(document, {
+    ...options,
+    strategy: 'semantic',
+  });
+}
+
+/**
+ * Convenience function for hierarchical chunking
+ */
+export async function chunkHierarchical(
+  document: string,
+  options?: Omit<ChunkingOptions, 'strategy'> & {
+    hierarchicalLevels?: number;
+  }
+): Promise<Chunk[]> {
+  return ChunkingEngine.chunk(document, {
+    ...options,
+    strategy: 'hierarchical',
+  });
+}
+
+/**
+ * Utility functions
+ */
+export { generateId, cosineSimilarity, splitIntoSentences } from './utils';
+
+/**
+ * Backward compatibility: Create document chunks with metadata
+ * This function provides compatibility with the old chunking API
+ */
+export async function createChunks(
+  documentId: string,
+  content: string,
+  options?: {
+    chunkSize?: number;
+    chunkOverlap?: number;
+  }
+): Promise<Array<{
+  documentId: string;
+  content: string;
+  index: number;
+  metadata: {
+    start: number;
+    end: number;
+    chunkIndex: number;
+    totalChunks: number;
+  };
+}>> {
+  const chunks = await chunkFixed(content, {
+    chunkSize: options?.chunkSize ?? 1000,
+    chunkOverlap: options?.chunkOverlap ?? 200,
+  });
+
+  return chunks.map((chunk) => ({
+    documentId,
+    content: chunk.content,
+    index: chunk.metadata.index,
+    metadata: {
+      start: chunk.metadata.start,
+      end: chunk.metadata.end,
+      chunkIndex: chunk.metadata.index,
+      totalChunks: chunks.length,
+    },
+  }));
+}
+
+/**
+ * Split text into chunks
+ * Backward compatibility function
+ */
+export async function splitText(
+  text: string,
+  options?: {
+    chunkSize?: number;
+    chunkOverlap?: number;
+  }
+): Promise<string[]> {
+  const chunks = await chunkFixed(text, options);
+  return chunks.map((c) => c.content);
+}
+
+/**
+ * Calculate optimal chunk size based on document type
+ * Backward compatibility function
+ */
+export function calculateOptimalChunkSize(
+  content: string,
+  _documentType: string
+): { chunkSize: number; chunkOverlap: number } {
+  const contentLength = content.length;
+
+  let chunkSize = 1000;
+  let chunkOverlap = 200;
+
+  // Adjust for very small documents
+  if (contentLength < chunkSize * 2) {
+    chunkSize = Math.floor(contentLength / 2);
+    chunkOverlap = Math.floor(chunkSize * 0.1);
+  }
+
+  return { chunkSize, chunkOverlap };
+}
+
+/**
+ * Convenience function for late chunking
+ */
+export async function chunkLate(
+  document: string,
+  options: Omit<ChunkingOptions, 'strategy'> & {
+    getTokenEmbeddings: (text: string) => Promise<number[][]>;
+  }
+): Promise<Chunk[]> {
+  return ChunkingEngine.chunk(document, {
+    ...options,
+    strategy: 'late',
+  });
+}
+
+/**
+ * Smart chunk with automatic strategy selection
+ */
+export async function smartChunk(
+  document: string,
+  overrides?: Partial<ChunkingOptions>
+): Promise<{ chunks: Chunk[]; profile: DocumentProfile }> {
+  return ChunkingEngine.smartChunk(document, overrides);
+}
+
+// Default export
+export default ChunkingEngine;

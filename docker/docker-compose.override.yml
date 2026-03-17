@@ -1,0 +1,59 @@
+# Docker Compose Override for Local Development
+# This file is automatically loaded by docker-compose when present
+# Use it to customize services for your local environment without modifying the main compose file
+
+version: '3.8'
+
+services:
+  postgres:
+    # Uncomment to use a different port if 5432 is already in use
+    # ports:
+    #   - "5433:5432"
+    
+    # Uncomment to change default credentials for local development
+    # environment:
+    #   POSTGRES_USER: devuser
+    #   POSTGRES_PASSWORD: devpassword
+    #   POSTGRES_DB: devdb
+    
+    # Development logging - show all queries
+    # command: >
+    #   postgres
+    #   -c log_statement=all
+    #   -c log_destination=stderr
+
+  redis:
+    # Uncomment to use a different port if 6379 is already in use
+    # ports:
+    #   - "6380:6379"
+    
+    # Development: Disable persistence for faster restarts
+    # command: redis-server --save "" --appendonly no
+
+  # Uncomment to enable the app service for local Docker development
+  # app:
+  #   build:
+  #     context: ..
+  #     dockerfile: docker/Dockerfile
+  #   container_name: rag-app-dev
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NODE_ENV=development
+  #     - DATABASE_URL=postgresql://raguser:ragpassword@postgres:5432/ragdb
+  #     - REDIS_URL=redis://redis:6379
+  #   env_file:
+  #     - ../.env.docker.local
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   volumes:
+  #     # Mount source code for hot reload (development only)
+  #     - ../:/app
+  #     - /app/node_modules
+  #     - /app/.next
+  #   networks:
+  #     - rag-network
+  #   command: npm run dev
