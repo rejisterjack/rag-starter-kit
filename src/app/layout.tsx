@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 
 import { Providers } from '@/components/providers';
 import { Toaster } from '@/components/ui/toaster';
+import { PWAScripts } from '@/components/pwa/pwa-scripts';
 import '@/styles/globals.css';
 
 const geistSans = Geist({
@@ -56,15 +57,36 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  // PWA manifest
+  manifest: '/manifest.json',
+  // Apple specific PWA tags
+  appleWebApp: {
+    capable: true,
+    title: 'RAG Chatbot',
+    statusBarStyle: 'default',
+  },
+  // Application icons
+  icons: {
+    icon: [
+      { url: '/icons/icon-192x192.png', sizes: '192x192' },
+      { url: '/icons/icon-512x512.png', sizes: '512x512' },
+    ],
+    apple: [
+      { url: '/icons/icon-192x192.png', sizes: '192x192' },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' },
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#18181b' },
   ],
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: 'cover',
 };
 
 interface RootLayoutProps {
@@ -74,6 +96,29 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps): JSX.Element {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* PWA meta tags for iOS */}
+        <meta name="application-name" content="RAG Chatbot" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="RAG Chat" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="msapplication-TileColor" content="#18181b" />
+        <meta name="msapplication-tap-highlight" content="no" />
+        
+        {/* PWA icons for iOS */}
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-152x152.png" />
+        
+        {/* Splash screen images for iOS */}
+        <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png" />
+        
+        {/* Prefetch offline page */}
+        <link rel="prefetch" href="/offline" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background font-sans antialiased`}
       >
@@ -83,6 +128,8 @@ export default function RootLayout({ children }: RootLayoutProps): JSX.Element {
           </div>
           <Toaster />
         </Providers>
+        {/* PWA Scripts - Service Worker Registration */}
+        <PWAScripts />
       </body>
     </html>
   );

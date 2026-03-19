@@ -64,3 +64,5 @@ export {
   type ToastActionElement,
 } from "./toast";
 export { Progress } from "./progress";
+export { RadioGroup, RadioGroupItem } from "./radio-group";
+export { Alert, AlertTitle, AlertDescription } from "./alert";

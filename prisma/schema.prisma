@@ -55,6 +55,10 @@ model User {
   image         String?
   password      String? // For credentials provider (hashed with bcrypt)
   role          UserRole  @default(USER)
+  
+  // SSO fields
+  samlId        String?   @unique // SAML NameID for account linking
+  
   accounts      Account[]
   sessions      Session[]
 
@@ -70,6 +74,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([samlId])
   @@map("users")
 }
 
@@ -104,6 +109,10 @@ model Workspace {
   auditLogs   AuditLog[]
   rateLimits  RateLimit[]
   
+  // SSO Configuration
+  ssoEnabled  Boolean       @default(false)
+  ssoDomain   String?       @unique // Email domain for auto-routing
+  
   // Settings
   settings    Json?         @db.JsonB // Workspace-specific settings
   
@@ -113,12 +122,17 @@ model Workspace {
   // Relations to existing models (for row-level security)
   chats       Chat[]
   documents   Document[]
+  
+  // SSO Relations
+  samlConnection   SamlConnection?
+  oauthConnections OAuthConnection[]
 
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
   @@index([ownerId])
   @@index([slug])
+  @@index([ssoDomain])
   @@map("workspaces")
 }
 
@@ -163,6 +177,87 @@ enum WorkspacePlan {
   FREE
   PRO
   ENTERPRISE
+}
+
+// ============================================================================
+// SSO/SAML Models
+// ============================================================================
+
+model SamlConnection {
+  id                String   @id @default(cuid())
+  workspaceId       String   @unique
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  // Service Provider (SP) Configuration
+  spEntityId        String   // Entity ID of this application
+  
+  // Identity Provider (IdP) Configuration
+  idpEntityId       String   // Entity ID of the IdP
+  entryPoint        String   // SSO URL for the IdP
+  callbackUrl       String   // ACS URL (Assertion Consumer Service)
+  logoutUrl         String?  // SLO URL for single logout
+  
+  // Security Configuration
+  certificate       String   @db.Text // X.509 certificate for verifying IdP signatures
+  privateKey        String?  @db.Text // Private key for signing SAML requests
+  previousCertificate String? @db.Text // Previous certificate for graceful rotation
+  
+  // Signature Settings
+  wantAssertionsSigned Boolean @default(true)
+  wantResponseSigned   Boolean @default(true)
+  signatureAlgorithm   String  @default("rsa-sha256")
+  digestAlgorithm      String  @default("sha256")
+  
+  // SAML Settings
+  nameIdFormat      String   @default("urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress")
+  attributeMapping  Json     @db.JsonB // Maps SAML attributes to user fields
+  
+  // Status
+  active            Boolean  @default(true)
+  certRotatedAt     DateTime?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([active])
+  @@map("saml_connections")
+}
+
+model OAuthConnection {
+  id                String   @id @default(cuid())
+  workspaceId       String
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  // Provider Configuration
+  provider          String   // google_workspace, azure_ad, okta, onelogin, auth0, generic_oidc
+  name              String   // Display name for this configuration
+  
+  // OAuth Credentials
+  clientId          String
+  clientSecret      String
+  
+  // Endpoints (for generic OIDC)
+  authorizationUrl  String
+  tokenUrl          String
+  userInfoUrl       String?
+  jwksUrl           String?
+  issuer            String?
+  
+  // Configuration
+  scopes            Json     @db.JsonB // Array of requested scopes
+  attributeMapping  Json     @db.JsonB // Maps OAuth claims to user fields
+  
+  // Status
+  active            Boolean  @default(true)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([workspaceId, provider])
+  @@index([workspaceId])
+  @@index([active])
+  @@map("oauth_connections")
 }
 
 // ============================================================================
@@ -318,6 +413,12 @@ enum AuditEvent {
   CHAT_DELETED
   CHAT_MESSAGE_SENT
   
+  // Agentic Features
+  AGENT_QUERY_CLASSIFIED
+  AGENT_TOOL_CALLED
+  MULTI_STEP_REASONING_STARTED
+  CONVERSATION_BRANCHED
+  
   // API Keys
   API_KEY_CREATED
   API_KEY_REVOKED
@@ -329,6 +430,9 @@ enum AuditEvent {
   // Security
   SUSPICIOUS_ACTIVITY
   PERMISSION_DENIED
+  
+  // Voice
+  VOICE_TRANSCRIPTION
 }
 
 enum AuditSeverity {

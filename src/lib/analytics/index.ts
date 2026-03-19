@@ -37,3 +37,21 @@ export {
   type BudgetAlert,
   type BudgetConfig,
 } from './token-tracking';
+
+// Dashboard Service
+export {
+  DashboardService,
+  getDashboardService,
+  getTimeSeriesData,
+  getUsageStats,
+  getQualityMetrics,
+  getCostAnalysis,
+  getRealtimeMetrics,
+  type Granularity,
+  type TimeSeriesPoint,
+  type TimeSeriesData,
+  type UsageStats,
+  type QualityMetrics,
+  type CostBreakdown,
+  type RealtimeMetrics,
+} from './dashboard-service';

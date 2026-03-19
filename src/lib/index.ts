@@ -26,6 +26,9 @@ export * from './export';
 // Collaboration
 export * from './collaboration';
 
+// Real-time (WebSocket/SSE)
+export * from './realtime';
+
 // Security
 export * from './security';
 

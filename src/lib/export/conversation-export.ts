@@ -140,9 +140,6 @@ export async function exportConversationToPDF(
   conversationId: string,
   options: ExportOptions = {}
 ): Promise<Buffer> {
-  // First, generate HTML from the conversation
-  const html = await exportConversationToHTML(conversationId, options);
-
   // For now, we'll create a simple text-based PDF
   // In production, you'd use a proper PDF library
   const markdown = await exportConversationToMarkdown(conversationId, options);
@@ -354,7 +351,7 @@ export async function exportConversationToJSON(
   const exportData: ExportedConversation = {
     id: conversation.id,
     title: conversation.title,
-    messages: conversation.messages.map((msg) => ({
+    messages: conversation.messages.map((msg: { id: string; content: string; role: string; createdAt: Date; chatId: string; sources?: unknown }) => ({
       id: msg.id,
       content: msg.content,
       role: msg.role as 'user' | 'assistant' | 'system',
@@ -378,7 +375,7 @@ export async function exportConversationToJSON(
  */
 export async function exportConversationToCSV(
   conversationId: string,
-  options: ExportOptions = {}
+  _options: ExportOptions = {}
 ): Promise<string> {
   const conversation = await prisma.chat.findUnique({
     where: { id: conversationId },

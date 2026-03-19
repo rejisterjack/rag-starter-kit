@@ -6,7 +6,7 @@
  */
 
 import { prisma } from '@/lib/db';
-import type { Message, Chat } from '@/types';
+import type { Message } from '@/types';
 
 // ============================================================================
 // Types

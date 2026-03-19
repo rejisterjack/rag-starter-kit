@@ -40,6 +40,9 @@ export const rateLimits = {
   
   // Admin endpoints
   admin: { limit: 100, window: '1 m', prefix: 'admin' },
+  
+  // Voice endpoints
+  voice: { limit: 30, window: '1 h', prefix: 'voice' },
 } as const;
 
 export type RateLimitType = keyof typeof rateLimits;
