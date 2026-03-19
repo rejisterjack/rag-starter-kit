@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="styles/popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <img src="icons/icon32.png" alt="Logo" class="logo">
+      <h1 class="title">RAG Assistant</h1>
+    </header>
+
+    <div class="quick-actions">
+      <button id="btn-new-chat" class="btn btn-primary">
+        <span>+</span> New Chat
+      </button>
+      <button id="btn-open-app" class="btn btn-secondary">
+        Open App
+      </button>
+    </div>
+
+    <div class="recent-chats">
+      <h3>Recent Chats</h3>
+      <ul id="recent-list" class="chat-list">
+        <li class="loading">Loading...</li>
+      </ul>
+    </div>
+
+    <div class="settings">
+      <label class="setting-row">
+        <span>Side Panel</span>
+        <input type="checkbox" id="toggle-sidepanel">
+      </label>
+      <label class="setting-row">
+        <span>Auto-save pages</span>
+        <input type="checkbox" id="toggle-autosave">
+      </label>
+    </div>
+
+    <div class="footer">
+      <button id="btn-settings" class="btn-icon">⚙️</button>
+      <span class="version">v1.0.0</span>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
