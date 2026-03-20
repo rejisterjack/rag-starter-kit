@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { type ReactNode, useState } from 'react';
 
+import { PostHogProvider } from './providers/posthog-provider';
+
 /**
  * Props for the Providers component
  */
@@ -13,7 +15,7 @@ interface ProvidersProps {
 
 /**
  * Root providers component that wraps the application with all necessary context providers
- * Includes: React Query, Theme Provider
+ * Includes: React Query, Theme Provider, PostHog Analytics
  */
 export function Providers({ children }: ProvidersProps): React.ReactElement {
   // Ensure QueryClient is only created once per component lifecycle
@@ -41,7 +43,7 @@ export function Providers({ children }: ProvidersProps): React.ReactElement {
         enableSystem
         disableTransitionOnChange={false}
       >
-        {children}
+        <PostHogProvider>{children}</PostHogProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

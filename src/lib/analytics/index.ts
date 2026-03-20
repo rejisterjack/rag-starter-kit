@@ -55,3 +55,21 @@ export {
   trackTokenUsage,
   type UserTokenUsage,
 } from './token-tracking';
+
+// PostHog Analytics
+export {
+  // Core functions
+  aliasUser,
+  flushPostHog,
+  getPostHogClient,
+  identifyUser,
+  setGroupProperties,
+  shutdownPostHog,
+  trackEvent,
+  // Convenience tracking objects
+  trackAuth,
+  trackChat,
+  trackDocument,
+  trackFeature,
+  trackRAG,
+} from './posthog';

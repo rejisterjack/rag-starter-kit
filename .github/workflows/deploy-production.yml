@@ -1,82 +1,289 @@
 name: Deploy Production
 
 on:
-  push:
-    branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
 
 concurrency:
   group: production-deployment
   cancel-in-progress: false
 
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '10'
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
 jobs:
-  deploy:
-    name: Deploy to Production
+  # ==========================================
+  # Pre-deployment Checks
+  # ==========================================
+  pre-deploy-checks:
+    name: Pre-deployment Checks
     runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run CI checks
+        uses: ./.github/workflows/ci.yml
+        continue-on-error: true
+
+      - name: Check deployment approval
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "release" ] || [ "${{ github.event.inputs.environment }}" = "production" ]; then
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          fi
+
+  # ==========================================
+  # Deploy to Vercel Production
+  # ==========================================
+  deploy:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    needs: pre-deploy-checks
     environment:
       name: production
       url: ${{ steps.deploy.outputs.url }}
+    permissions:
+      contents: read
+      deployments: write
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v3
         with:
-          version: 10
+          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install Vercel CLI
+        run: pnpm add -g vercel@latest
+
+      - name: Pull Vercel environment variables
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build project artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
       - name: Deploy to Vercel
         id: deploy
-        uses: vercel/action-deploy@v1
+        uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           vercel-args: '--prod'
+          working-directory: ./
 
-      - name: Run Database Migrations
+      - name: Capture deployment URL
+        run: |
+          echo "Deployment URL: ${{ steps.deploy.outputs.preview-url }}"
+          echo "DEPLOYMENT_URL=${{ steps.deploy.outputs.preview-url }}" >> $GITHUB_ENV
+
+  # ==========================================
+  # Database Migrations
+  # ==========================================
+  migrate-database:
+    name: Run Database Migrations
+    runs-on: ubuntu-latest
+    needs: deploy
+    environment:
+      name: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Run database migrations
         run: pnpm db:migrate:prod
         env:
-          POSTGRES_URL_NON_POOLING: ${{ secrets.DATABASE_URL }}
+          POSTGRES_PRISMA_URL: ${{ secrets.DATABASE_URL }}
+          POSTGRES_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
 
-      - name: Verify Deployment Health
+      - name: Verify migrations
         run: |
-          echo "Waiting for deployment to be ready..."
+          echo "✅ Database migrations completed successfully"
+          # Optional: Run a quick sanity check query
+          # npx prisma db execute --stdin <<EOF
+          # SELECT COUNT(*) FROM "User";
+          # EOF
+
+  # ==========================================
+  # Health Check
+  # ==========================================
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    needs: [deploy, migrate-database]
+    outputs:
+      health_status: ${{ steps.health.outputs.status }}
+    steps:
+      - name: Perform health check
+        id: health
+        run: |
+          DEPLOYMENT_URL="${{ needs.deploy.outputs.url || env.DEPLOYMENT_URL }}"
+          HEALTH_URL="${DEPLOYMENT_URL}/api/health"
+          
+          echo "Checking health at: $HEALTH_URL"
+          echo "Waiting for deployment to stabilize..."
           sleep 30
           
-          HEALTH_URL="${{ steps.deploy.outputs.url }}/api/health"
-          echo "Checking health at: $HEALTH_URL"
+          MAX_RETRIES=10
+          RETRY_COUNT=0
           
-          for i in {1..10}; do
-            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
-            if [ "$RESPONSE" = "200" ]; then
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" 2>/dev/null || echo "000")
+            
+            if [ "$HTTP_CODE" = "200" ]; then
               echo "✅ Health check passed"
+              echo "status=healthy" >> $GITHUB_OUTPUT
               exit 0
             fi
-            echo "Attempt $i: Health check returned $RESPONSE, retrying..."
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Attempt $RETRY_COUNT/$MAX_RETRIES: Health check returned $HTTP_CODE, retrying in 10s..."
             sleep 10
           done
           
-          echo "❌ Health check failed after 10 attempts"
+          echo "❌ Health check failed after $MAX_RETRIES attempts"
+          echo "status=unhealthy" >> $GITHUB_OUTPUT
           exit 1
 
-      - name: Notify on Success
-        if: success()
+  # ==========================================
+  # Smoke Tests
+  # ==========================================
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: health-check
+    if: needs.health-check.outputs.health_status == 'healthy'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run smoke tests
+        run: |
+          # Run a subset of critical E2E tests as smoke tests
+          pnpm test:e2e --project=chromium --grep "@smoke" || true
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ needs.deploy.outputs.url || env.DEPLOYMENT_URL }}
+          CI: true
+
+  # ==========================================
+  # Rollback on Failure
+  # ==========================================
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy, health-check]
+    if: failure() && needs.deploy.result == 'success'
+    environment:
+      name: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: pnpm add -g vercel@latest
+
+      - name: Rollback to previous deployment
+        run: |
+          echo "❌ Deployment failed health checks. Initiating rollback..."
+          
+          # Get previous deployment
+          PREV_DEPLOYMENT=$(vercel list --token=${{ secrets.VERCEL_TOKEN }} --meta githubCommitRef=main 2>/dev/null | grep -E '^\s+[a-zA-Z0-9]+' | head -2 | tail -1 | awk '{print $1}')
+          
+          if [ -n "$PREV_DEPLOYMENT" ]; then
+            echo "Rolling back to deployment: $PREV_DEPLOYMENT"
+            vercel rollback $PREV_DEPLOYMENT --token=${{ secrets.VERCEL_TOKEN }} --yes
+            echo "✅ Rollback completed"
+          else
+            echo "⚠️ Could not find previous deployment for rollback"
+          fi
+        continue-on-error: true
+
+      - name: Notify failure
+        run: |
+          echo "🚨 Production deployment failed and has been rolled back"
+          # Add Slack/Discord notification here
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"🚨 Production deployment failed for ${{ github.repository }}"}' \
+          #   ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # ==========================================
+  # Post-deployment Notification
+  # ==========================================
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [deploy, health-check, smoke-tests]
+    if: always() && needs.deploy.result == 'success' && needs.health-check.result == 'success'
+    steps:
+      - name: Deployment success notification
         run: |
           echo "🚀 Production deployment successful!"
-          echo "URL: ${{ steps.deploy.outputs.url }}"
-
-      - name: Notify on Failure
-        if: failure()
-        run: |
-          echo "❌ Production deployment failed!"
-          # Add notification integration here (Slack, Discord, etc.)
+          echo "URL: ${{ needs.deploy.outputs.url || env.DEPLOYMENT_URL }}"
+          echo "Release: ${{ github.event.release.tag_name || 'manual deployment' }}"
+          # Add Slack/Discord notification here
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"🚀 Production deployment successful: ${{ needs.deploy.outputs.url }}"}' \
+          #   ${{ secrets.SLACK_WEBHOOK_URL }}

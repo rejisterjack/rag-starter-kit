@@ -20,16 +20,45 @@
 
 ## ✨ Features
 
+### Core RAG Features
 - **🎨 Modern UI/UX**: Clean, responsive chat interface built with Next.js 15 and Tailwind CSS 4
 - **🔍 Intelligent RAG Pipeline**: Context-aware responses using LangChain + pgvector
 - **📄 Document Ingestion**: Upload and process PDFs, Word docs, text files, and web content
 - **💾 Persistent Vector Storage**: PostgreSQL with pgvector extension for efficient similarity search
 - **⚡ Real-time Streaming**: Lightning-fast token streaming using Vercel AI SDK
 - **🔐 Authentication Ready**: NextAuth.js v5 integration with GitHub OAuth
-- **🚀 Production Deploy**: Docker support and one-click Vercel deploy
 - **📊 Background Jobs**: Inngest integration for document processing
-- **🧪 Testing Setup**: Vitest + React Testing Library configured
+
+### Infrastructure & Storage
+- **🗄️ S3-Compatible Storage**: AWS S3, Cloudflare R2, or self-hosted MinIO
+- **🐳 Docker Support**: Complete Docker Compose setup for development and production
+- **🚀 Production Deploy**: One-click Vercel deploy with CI/CD workflows
+- **📈 CI/CD Pipelines**: GitHub Actions for testing, building, and deployment
+
+### Real-Time & Collaboration
+- **💬 Real-time Collaboration**: WebSocket/SSE with typing indicators and presence
+- **👥 Multi-user Rooms**: Workspaces and conversation rooms
+- **🖱️ Cursor Sync**: Collaborative cursor positions
+- **🔄 Background Sync**: Queue actions when offline, sync when reconnected
+
+### Voice & PWA
+- **🎙️ Voice Input/Output**: Speech-to-text and text-to-speech
+- **🗣️ Voice Activity Detection**: Smart speech detection with configurable thresholds
+- **👋 Wake Word Detection**: "Hey RAG", "OK Assistant" with custom wake words
+- **📱 PWA Support**: Offline-capable with service workers and background sync
+- **📲 Install Prompt**: Native app installation on mobile and desktop
+
+### Monitoring & Analytics
+- **🐛 Error Tracking**: Sentry integration with session replay
+- **📊 Product Analytics**: PostHog for event tracking and session recording
+- **🔍 Audit Logging**: Comprehensive security audit trail
+- **⚠️ Rate Limiting**: Redis-based rate limiting
+
+### Developer Experience
+- **🧪 Testing Setup**: Vitest + React Testing Library + Playwright E2E
 - **🔒 Type-Safe**: Strict TypeScript configuration throughout
+- **📝 Comprehensive Docs**: Architecture guides and API documentation
+- **🎭 Feature Flags**: Runtime feature toggles via PostHog
 
 ## 🛠️ Tech Stack
 

@@ -2,7 +2,7 @@
 
 /**
  * Voice React Hooks
- * Provides useVoiceInput, useVoiceOutput, and useVoiceCommands hooks
+ * Provides useVoiceInput, useVoiceOutput, useVoiceCommands, useVoiceActivity, and useWakeWord hooks
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -21,6 +21,21 @@ import {
   type UseVoiceOutputReturn,
   type VoiceCommand,
 } from '@/lib/voice';
+import {
+  createVAD,
+  type VADOptions,
+  type VADEvent,
+  type VADState,
+  VoiceActivityDetector,
+} from '@/lib/voice/vad';
+import {
+  createWakeWordDetector,
+  type WakeWordOptions,
+  type WakeWordEvent,
+  type WakeWordState,
+  WakeWordDetector,
+  WAKE_WORD_SETS,
+} from '@/lib/voice/wake-word';
 
 // =============================================================================
 // useVoiceInput Hook
@@ -553,3 +568,344 @@ export function useAudioLevel(enabled: boolean = true): UseAudioLevelReturn {
     frequencyData,
   };
 }
+
+// =============================================================================
+// useVoiceActivity Hook
+// =============================================================================
+
+export interface UseVoiceActivityOptions extends VADOptions {
+  /** Auto-start VAD on mount */
+  autoStart?: boolean;
+  /** Callback when voice activity starts */
+  onVoiceStart?: (event: VADEvent) => void;
+  /** Callback when voice activity ends */
+  onVoiceEnd?: (event: VADEvent) => void;
+  /** Callback when noise is detected */
+  onNoise?: (event: VADEvent) => void;
+  /** Callback on volume change */
+  onVolumeChange?: (volume: number, event: VADEvent) => void;
+}
+
+export interface UseVoiceActivityReturn {
+  /** Whether VAD is currently listening */
+  isListening: boolean;
+  /** Whether voice is currently detected */
+  isVoiceDetected: boolean;
+  /** Current volume level (0-1) */
+  volume: number;
+  /** Duration of current voice activity in ms */
+  voiceDuration: number;
+  /** Duration of current silence in ms */
+  silenceDuration: number;
+  /** Frequency data for visualization */
+  frequencyData: Uint8Array | null;
+  /** Whether VAD is supported */
+  isSupported: boolean;
+  /** Start VAD listening */
+  start: () => Promise<boolean>;
+  /** Stop VAD listening */
+  stop: () => void;
+  /** Update VAD options */
+  updateOptions: (options: Partial<VADOptions>) => void;
+}
+
+export function useVoiceActivity(options: UseVoiceActivityOptions = {}): UseVoiceActivityReturn {
+  const {
+    autoStart = false,
+    onVoiceStart,
+    onVoiceEnd,
+    onNoise,
+    onVolumeChange,
+    ...vadOptions
+  } = options;
+
+  const [state, setState] = useState<VADState>({
+    isVoiceDetected: false,
+    isListening: false,
+    volume: 0,
+    voiceDuration: 0,
+    silenceDuration: 0,
+  });
+  const [frequencyData, setFrequencyData] = useState<Uint8Array | null>(null);
+
+  const vadRef = useRef<VoiceActivityDetector | null>(null);
+  const unsubRef = useRef<(() => void)[]>([]);
+
+  const isSupported = useMemo(() => VoiceActivityDetector.isSupported(), []);
+
+  // Initialize VAD
+  useEffect(() => {
+    if (!isSupported) return;
+
+    const vad = createVAD(vadOptions);
+    vadRef.current = vad;
+
+    // Subscribe to state changes
+    const unsubState = vad.onStateChange((newState) => {
+      setState(newState);
+    });
+
+    // Subscribe to events
+    const unsubVoiceStart = vad.on('voice-start', (event) => {
+      setFrequencyData(event.frequencyData || null);
+      onVoiceStart?.(event);
+    });
+
+    const unsubVoiceEnd = vad.on('voice-end', (event) => {
+      setFrequencyData(event.frequencyData || null);
+      onVoiceEnd?.(event);
+    });
+
+    const unsubNoise = onNoise ? vad.on('noise', onNoise) : () => {};
+
+    const unsubVolume = onVolumeChange
+      ? vad.on('volume', (event) => {
+          setFrequencyData(event.frequencyData || null);
+          onVolumeChange(event.volume, event);
+        })
+      : () => {};
+
+    unsubRef.current = [unsubState, unsubVoiceStart, unsubVoiceEnd, unsubNoise, unsubVolume];
+
+    // Auto-start if enabled
+    if (autoStart) {
+      void vad.start();
+    }
+
+    return () => {
+      unsubRef.current.forEach((unsub) => unsub());
+      vad.destroy();
+      vadRef.current = null;
+    };
+  }, [isSupported, autoStart]);
+
+  // Update options when they change
+  useEffect(() => {
+    if (vadRef.current) {
+      vadRef.current.updateOptions(vadOptions);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vadOptions]);
+
+  const start = useCallback(async () => {
+    if (vadRef.current) {
+      return await vadRef.current.start();
+    }
+    return false;
+  }, []);
+
+  const stop = useCallback(() => {
+    if (vadRef.current) {
+      vadRef.current.stop();
+    }
+  }, []);
+
+  const updateOptions = useCallback((newOptions: Partial<VADOptions>) => {
+    if (vadRef.current) {
+      vadRef.current.updateOptions(newOptions);
+    }
+  }, []);
+
+  return {
+    isListening: state.isListening,
+    isVoiceDetected: state.isVoiceDetected,
+    volume: state.volume,
+    voiceDuration: state.voiceDuration,
+    silenceDuration: state.silenceDuration,
+    frequencyData,
+    isSupported,
+    start,
+    stop,
+    updateOptions,
+  };
+}
+
+// =============================================================================
+// useWakeWord Hook
+// =============================================================================
+
+export interface UseWakeWordOptions extends WakeWordOptions {
+  /** Auto-start wake word detection on mount */
+  autoStart?: boolean;
+  /** Callback when wake word is detected */
+  onWake?: (event: WakeWordEvent) => void;
+  /** Callback when listening starts */
+  onListening?: () => void;
+  /** Callback on error */
+  onError?: (error: string) => void;
+}
+
+export interface UseWakeWordReturn {
+  /** Whether wake word detection is active */
+  isListening: boolean;
+  /** Whether in low-power mode */
+  isLowPowerMode: boolean;
+  /** Number of wake words detected */
+  wakeCount: number;
+  /** Last detected wake word */
+  lastWakeWord: string | null;
+  /** Time of last wake word detection */
+  lastWakeTime: number | null;
+  /** Whether wake word detection is supported */
+  isSupported: boolean;
+  /** Whether low-power mode is supported */
+  isLowPowerSupported: boolean;
+  /** Start detection */
+  start: () => Promise<boolean>;
+  /** Stop detection */
+  stop: () => void;
+  /** Pause detection temporarily */
+  pause: () => void;
+  /** Resume detection after pause */
+  resume: () => void;
+  /** Add a wake word */
+  addWakeWord: (wakeWord: string) => void;
+  /** Remove a wake word */
+  removeWakeWord: (wakeWord: string) => void;
+  /** Get current wake words */
+  getWakeWords: () => string[];
+  /** Set wake words */
+  setWakeWords: (wakeWords: string[]) => void;
+}
+
+export function useWakeWord(options: UseWakeWordOptions = {}): UseWakeWordReturn {
+  const {
+    autoStart = false,
+    onWake,
+    onListening,
+    onError,
+    ...wakeWordOptions
+  } = options;
+
+  const [state, setState] = useState<WakeWordState>({
+    isListening: false,
+    isLowPowerMode: false,
+    wakeCount: 0,
+    lastWakeWord: null,
+    lastWakeTime: null,
+  });
+
+  const detectorRef = useRef<WakeWordDetector | null>(null);
+  const unsubRef = useRef<(() => void)[]>([]);
+
+  const isSupported = useMemo(() => WakeWordDetector.isSupported(), []);
+  const isLowPowerSupported = useMemo(() => WakeWordDetector.isLowPowerModeSupported(), []);
+
+  // Initialize detector
+  useEffect(() => {
+    if (!isSupported) return;
+
+    const detector = createWakeWordDetector(wakeWordOptions);
+    detectorRef.current = detector;
+
+    // Subscribe to state changes
+    const unsubState = detector.onStateChange((newState) => {
+      setState(newState);
+    });
+
+    // Subscribe to events
+    const unsubWake = onWake ? detector.onWake(onWake) : () => {};
+
+    const unsubListening = onListening
+      ? detector.on('listening', onListening)
+      : () => {};
+
+    const unsubError = onError
+      ? detector.on('error', (event) => {
+          if (event.error) onError(event.error);
+        })
+      : () => {};
+
+    unsubRef.current = [unsubState, unsubWake, unsubListening, unsubError];
+
+    // Auto-start if enabled
+    if (autoStart) {
+      void detector.start();
+    }
+
+    return () => {
+      unsubRef.current.forEach((unsub) => unsub());
+      detector.destroy();
+      detectorRef.current = null;
+    };
+  }, [isSupported, autoStart]);
+
+  // Update options when they change (excluding callback-related options)
+  useEffect(() => {
+    if (detectorRef.current) {
+      detectorRef.current.updateOptions(wakeWordOptions);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wakeWordOptions]);
+
+  const start = useCallback(async () => {
+    if (detectorRef.current) {
+      return await detectorRef.current.start();
+    }
+    return false;
+  }, []);
+
+  const stop = useCallback(() => {
+    if (detectorRef.current) {
+      detectorRef.current.stop();
+    }
+  }, []);
+
+  const pause = useCallback(() => {
+    if (detectorRef.current) {
+      detectorRef.current.pause();
+    }
+  }, []);
+
+  const resume = useCallback(() => {
+    if (detectorRef.current) {
+      detectorRef.current.resume();
+    }
+  }, []);
+
+  const addWakeWord = useCallback((wakeWord: string) => {
+    if (detectorRef.current) {
+      detectorRef.current.addWakeWord(wakeWord);
+    }
+  }, []);
+
+  const removeWakeWord = useCallback((wakeWord: string) => {
+    if (detectorRef.current) {
+      detectorRef.current.removeWakeWord(wakeWord);
+    }
+  }, []);
+
+  const getWakeWords = useCallback(() => {
+    if (detectorRef.current) {
+      return detectorRef.current.getWakeWords();
+    }
+    return [];
+  }, []);
+
+  const setWakeWords = useCallback((wakeWords: string[]) => {
+    if (detectorRef.current) {
+      detectorRef.current.setWakeWords(wakeWords);
+    }
+  }, []);
+
+  return {
+    isListening: state.isListening,
+    isLowPowerMode: state.isLowPowerMode,
+    wakeCount: state.wakeCount,
+    lastWakeWord: state.lastWakeWord,
+    lastWakeTime: state.lastWakeTime,
+    isSupported,
+    isLowPowerSupported,
+    start,
+    stop,
+    pause,
+    resume,
+    addWakeWord,
+    removeWakeWord,
+    getWakeWords,
+    setWakeWords,
+  };
+}
+
+// Export wake word sets for convenience
+export { WAKE_WORD_SETS };

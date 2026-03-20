@@ -26,6 +26,22 @@ export {
   resetSpeechService,
   SpeechService,
 } from './speech-service';
+// VAD (Voice Activity Detection)
+export {
+  createVAD,
+  detectAudioActivity,
+  VoiceActivityDetector,
+  waitForVoice,
+} from './vad';
+// Wake Word Detection
+export {
+  checkWakeWordSupport,
+  createWakeWordDetector,
+  getDefaultWakeWords,
+  WakeWordDetector,
+  waitForWakeWord,
+  WAKE_WORD_SETS,
+} from './wake-word';
 // Types
 export type {
   AudioLevelData,
@@ -60,5 +76,23 @@ export type {
   WhisperTranscriptionRequest,
   WhisperTranscriptionResponse,
 } from './types';
+// VAD Types
+export type {
+  VADEvent,
+  VADEventHandler,
+  VADEventType,
+  VADOptions,
+  VADState,
+  VADStateChangeHandler,
+} from './vad';
+// Wake Word Types
+export type {
+  WakeWordEvent,
+  WakeWordEventHandler,
+  WakeWordEventType,
+  WakeWordOptions,
+  WakeWordState,
+  WakeWordStateChangeHandler,
+} from './wake-word';
 // Values
 export { DEFAULT_VOICE_SETTINGS } from './types';
