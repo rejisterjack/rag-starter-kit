@@ -3,8 +3,8 @@ version: '3.8'
 services:
   app:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: .
+      dockerfile: Dockerfile
       target: runner
     ports:
       - "3000:3000"
@@ -42,6 +42,13 @@ services:
       retries: 5
     networks:
       - rag-network
+    command: >
+      sh -c "
+        docker-entrypoint.sh postgres &
+        sleep 5 &&
+        psql -U postgres -d ragdb -c 'CREATE EXTENSION IF NOT EXISTS vector;' || true &&
+        wait
+      "
 
   inngest:
     image: inngest/inngest:latest

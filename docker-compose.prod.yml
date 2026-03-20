@@ -24,7 +24,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-ragdb}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
@@ -40,7 +39,13 @@ services:
     image: redis:7-alpine
     container_name: rag-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    command: >
+      sh -c "
+        echo 'maxmemory 256mb' > /usr/local/etc/redis/redis.conf &&
+        echo 'maxmemory-policy allkeys-lru' >> /usr/local/etc/redis/redis.conf &&
+        echo 'appendonly yes' >> /usr/local/etc/redis/redis.conf &&
+        redis-server /usr/local/etc/redis/redis.conf
+      "
     volumes:
       - redis_data:/data
     ports:
@@ -56,8 +61,8 @@ services:
   # Next.js Application
   app:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: .
+      dockerfile: Dockerfile
       secrets:
         - NEXTAUTH_SECRET
         - DATABASE_URL
@@ -137,9 +142,14 @@ services:
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
     volumes:
       - ./backups:/backups
-      - ./scripts/backup.sh:/backup.sh:ro
     command: >
       sh -c "
+        mkdir -p /backups &&
+        echo '#!/bin/sh' > /backup.sh &&
+        echo 'export PGPASSWORD=\$$POSTGRES_PASSWORD' >> /backup.sh &&
+        echo 'pg_dump -h db -U \$$POSTGRES_USER -d \$$POSTGRES_DB | gzip > /backups/backup-\$$(date +%Y%m%d-%H%M%S).sql.gz' >> /backup.sh &&
+        echo 'find /backups -name \"backup-*.sql.gz\" -mtime +\$$BACKUP_RETENTION_DAYS -delete' >> /backup.sh &&
+        chmod +x /backup.sh &&
         echo '0 2 * * * /backup.sh >> /var/log/cron.log 2>&1' | crontab - &&
         crond -f
       "

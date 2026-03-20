@@ -3,7 +3,7 @@
 # =============================================================================
 # This Dockerfile creates an optimized production build
 # Usage:
-#   docker build -f docker/Dockerfile -t rag-starter-kit .
+#   docker build -t rag-starter-kit .
 #   docker run -p 3000:3000 --env-file .env.production rag-starter-kit
 # =============================================================================
 

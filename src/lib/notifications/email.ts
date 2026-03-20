@@ -5,22 +5,24 @@
  * Falls back to console logging in development if not configured.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface NodemailerLike {
+// Type definitions for nodemailer (used with dynamic import)
+interface NodemailerTransport {
+  sendMail(options: {
+    from: string;
+    to: string;
+    subject: string;
+    html: string;
+    text: string;
+  }): Promise<unknown>;
+}
+
+interface NodemailerModule {
   createTransport(options: {
     host?: string;
     port?: number;
     secure?: boolean;
     auth?: { user?: string; pass?: string };
-  }): {
-    sendMail(options: {
-      from: string;
-      to: string;
-      subject: string;
-      html: string;
-      text: string;
-    }): Promise<unknown>;
-  };
+  }): NodemailerTransport;
 }
 
 export interface EmailTemplate {
@@ -231,7 +233,8 @@ export class EmailService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Dynamic import for optional nodemailer dependency
-      const nodemailer = (await eval("import('nodemailer')")) as unknown as NodemailerLike;
+      // @ts-expect-error - nodemailer is an optional dependency
+      const nodemailer = (await import('nodemailer')) as NodemailerModule;
 
       const transporter = nodemailer.createTransport({
         host: this.config.smtpHost,

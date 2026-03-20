@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth';
+import { getToken } from 'next-auth/jwt';
 import { NextResponse } from 'next/server';
 
-// import type { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 // =============================================================================
 // Route Configuration
@@ -47,11 +47,14 @@ const corsHeaders = {
 // Middleware
 // =============================================================================
 
-export default auth((req) => {
+export async function middleware(req: NextRequest) {
   const { nextUrl } = req;
   const { pathname } = nextUrl;
-  const isLoggedIn = !!req.auth;
-  const user = req.auth?.user;
+  
+  // Get token from session
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const isLoggedIn = !!token;
+  const user = token ? { id: token.sub, role: token.role, workspaceId: token.workspaceId } : null;
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -131,10 +134,10 @@ export default auth((req) => {
   const requestHeaders = new Headers(req.headers);
   
   if (isLoggedIn && user) {
-    requestHeaders.set('x-user-id', user.id);
+    requestHeaders.set('x-user-id', user.id as string);
     requestHeaders.set('x-user-role', user.role ?? 'USER');
     if (user.workspaceId) {
-      requestHeaders.set('x-workspace-id', user.workspaceId);
+      requestHeaders.set('x-workspace-id', user.workspaceId as string);
     }
   }
 
@@ -156,7 +159,7 @@ export default auth((req) => {
   }
 
   return response;
-});
+}
 
 // =============================================================================
 // Security Headers

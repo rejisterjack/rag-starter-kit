@@ -1,5 +1,3 @@
-import crypto from 'node:crypto';
-
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
@@ -554,7 +552,7 @@ export async function inviteMember(
     }
 
     // User doesn't exist - create invitation
-    const inviteToken = crypto.randomUUID();
+    const inviteToken = globalThis.crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     // Store invitation in database
