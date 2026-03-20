@@ -39,7 +39,14 @@ export async function parsePDF(buffer: Buffer): Promise<ParsedPDF> {
     // Dynamic import to handle module format issues
     const pdfModule = await import('pdf-parse');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parseFn = (pdfModule as unknown as { default: (buffer: Buffer, opts?: { max?: number }) => Promise<{ text: string; numpages: number; info: Record<string, unknown> }> }).default;
+    const parseFn = (
+      pdfModule as unknown as {
+        default: (
+          buffer: Buffer,
+          opts?: { max?: number }
+        ) => Promise<{ text: string; numpages: number; info: Record<string, unknown> }>;
+      }
+    ).default;
     const data = await parseFn(buffer, {
       // Enable max pages limit if needed for very large PDFs
       max: 0, // 0 = no limit
@@ -47,14 +54,14 @@ export async function parsePDF(buffer: Buffer): Promise<ParsedPDF> {
 
     const text = data.text;
     const pageCount = data.numpages;
-    
+
     // Parse page-level content if available
     // pdf-parse doesn't give us direct page mapping, so we estimate
     const pages = extractPages(text, pageCount);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const info = data.info as Record<string, any>;
-    
+    const info = data.info as Record<string, unknown>;
+
     const metadata: PDFMetadata = {
       title: info?.Title ? String(info.Title) : undefined,
       author: info?.Author ? String(info.Author) : undefined,
@@ -75,7 +82,6 @@ export async function parsePDF(buffer: Buffer): Promise<ParsedPDF> {
       totalCharacters: text.length,
     };
   } catch (error) {
-    console.error('PDF parsing error:', error);
     throw new IngestionParserError(
       'parse',
       `Failed to parse PDF: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -90,11 +96,13 @@ export async function parsePDF(buffer: Buffer): Promise<ParsedPDF> {
  */
 function extractPages(fullText: string, pageCount: number): PDFPage[] {
   if (pageCount <= 1) {
-    return [{
-      pageNumber: 1,
-      text: fullText.trim(),
-      characterCount: fullText.length,
-    }];
+    return [
+      {
+        pageNumber: 1,
+        text: fullText.trim(),
+        characterCount: fullText.length,
+      },
+    ];
   }
 
   // Common page break patterns in extracted text
@@ -104,12 +112,12 @@ function extractPages(fullText: string, pageCount: number): PDFPage[] {
   //   /\n-{3,}\s*\n/, // Horizontal rule separators
   // ];
 
-  let pages: PDFPage[] = [];
+  const pages: PDFPage[] = [];
   let currentPosition = 0;
-  
+
   // Try to find natural page breaks
   const estimatedPageLength = Math.ceil(fullText.length / pageCount);
-  
+
   for (let i = 0; i < pageCount; i++) {
     const start = currentPosition;
     let end: number;
@@ -123,14 +131,14 @@ function extractPages(fullText: string, pageCount: number): PDFPage[] {
         start + estimatedPageLength + 1000, // Add buffer for variation
         fullText.length
       );
-      
+
       // Try to find a natural break (paragraph end)
       const searchStart = Math.max(start + estimatedPageLength * 0.8, start);
       end = findNaturalBreak(fullText, searchStart, estimatedEnd);
     }
 
     const pageText = fullText.slice(start, end).trim();
-    
+
     pages.push({
       pageNumber: i + 1,
       text: pageText,
@@ -140,7 +148,7 @@ function extractPages(fullText: string, pageCount: number): PDFPage[] {
     currentPosition = end;
   }
 
-  return pages.filter(p => p.text.length > 0);
+  return pages.filter((p) => p.text.length > 0);
 }
 
 /**
@@ -148,7 +156,7 @@ function extractPages(fullText: string, pageCount: number): PDFPage[] {
  */
 function findNaturalBreak(text: string, searchStart: number, searchEnd: number): number {
   const searchText = text.slice(searchStart, searchEnd);
-  
+
   // Look for paragraph breaks
   const paragraphBreaks = searchText.match(/\n\s*\n/g);
   if (paragraphBreaks) {
@@ -178,11 +186,11 @@ function findNaturalBreak(text: string, searchStart: number, searchEnd: number):
  */
 function parsePDFDate(dateString: string): Date | undefined {
   if (!dateString) return undefined;
-  
+
   try {
     // Remove 'D:' prefix if present
     const cleanDate = dateString.replace(/^D:/, '');
-    
+
     // Extract components: YYYYMMDDHHmmSS
     const year = parseInt(cleanDate.slice(0, 4), 10);
     const month = parseInt(cleanDate.slice(4, 6), 10) - 1; // 0-indexed
@@ -214,7 +222,7 @@ function parsePDFDate(dateString: string): Date | undefined {
 export function isScannedPDF(parsedPDF: ParsedPDF): boolean {
   // Heuristic: Scanned PDFs have very low text density
   const avgCharsPerPage = parsedPDF.totalCharacters / parsedPDF.metadata.pageCount;
-  
+
   // Normal PDFs typically have 1000+ characters per page
   // Scanned PDFs without OCR have very few or no extractable characters
   return avgCharsPerPage < 100;
@@ -222,22 +230,59 @@ export function isScannedPDF(parsedPDF: ParsedPDF): boolean {
 
 /**
  * OCR fallback using pdf2pic + Tesseract
- * This is a placeholder - requires additional setup
+ * Automatically detects scanned PDFs and extracts text using OCR
  */
-export async function performOCR(_buffer: Buffer): Promise<string> {
-  // Note: This requires installing:
-  // - pdf2pic for PDF to image conversion
-  // - tesseract.js or Tesseract OCR for text extraction
-  // 
-  // Implementation would:
-  // 1. Convert PDF pages to images using pdf2pic
-  // 2. Run OCR on each image using Tesseract
-  // 3. Combine extracted text
-  
-  throw new IngestionParserError(
-    'parse',
-    'OCR fallback not implemented. Install pdf2pic and tesseract for scanned PDF support.'
-  );
+export async function performOCR(buffer: Buffer): Promise<string> {
+  const { parsePDFWithOCRFallback } = await import('./ocr');
+
+  const result = await parsePDFWithOCRFallback(buffer, {
+    engine: 'tesseract',
+    autoDetect: true,
+  });
+
+  return result.text;
+}
+
+/**
+ * Parse PDF with automatic OCR detection
+ * Uses OCR for scanned/image-based PDFs automatically
+ */
+export async function parsePDFWithOCR(buffer: Buffer): Promise<ParsedPDF> {
+  const { parsePDFWithOCRFallback } = await import('./ocr');
+
+  try {
+    const ocrResult = await parsePDFWithOCRFallback(buffer, {
+      engine: 'tesseract',
+      autoDetect: true,
+    });
+
+    return {
+      text: ocrResult.text,
+      pages: ocrResult.pages.map((p) => ({
+        pageNumber: p.pageNumber,
+        text: p.text,
+        characterCount: p.text.length,
+      })),
+      metadata: {
+        pageCount: ocrResult.metadata.pageCount,
+        title: undefined,
+        author: undefined,
+        subject: undefined,
+        keywords: undefined,
+        creator: undefined,
+        producer: undefined,
+        creationDate: undefined,
+        modificationDate: undefined,
+        encrypted: false,
+      },
+      totalCharacters: ocrResult.text.length,
+    };
+  } catch (error) {
+    throw new IngestionParserError(
+      'parse',
+      `OCR processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
 }
 
 /**
@@ -260,23 +305,26 @@ export class IngestionParserError extends Error {
 export function extractPageRange(pages: PDFPage[], startPage: number, endPage: number): string {
   const startIndex = Math.max(0, startPage - 1);
   const endIndex = Math.min(pages.length, endPage);
-  
+
   return pages
     .slice(startIndex, endIndex)
-    .map(p => p.text)
+    .map((p) => p.text)
     .join('\n\n');
 }
 
 /**
  * Search for text within PDF pages
  */
-export function searchInPDF(pages: PDFPage[], query: string): Array<{ pageNumber: number; matches: number }> {
+export function searchInPDF(
+  pages: PDFPage[],
+  query: string
+): Array<{ pageNumber: number; matches: number }> {
   const lowerQuery = query.toLowerCase();
-  
+
   return pages
-    .map(page => ({
+    .map((page) => ({
       pageNumber: page.pageNumber,
       matches: (page.text.toLowerCase().match(new RegExp(lowerQuery, 'g')) || []).length,
     }))
-    .filter(result => result.matches > 0);
+    .filter((result) => result.matches > 0);
 }

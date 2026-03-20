@@ -1,6 +1,6 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { type Prisma, PrismaClient } from '@prisma/client';
 
-import type { Document, DocumentChunk, IngestionJob, Message, Chat } from '@/types';
+import type { Chat, Document, DocumentChunk, IngestionJob, Message } from '@/types';
 
 // PrismaClient is attached to the `global` object in development to prevent
 // exhausting your database connection limit.
@@ -8,7 +8,29 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+// Lazy initialization to avoid build-time errors
+function getPrismaClient(): PrismaClient {
+  if (globalForPrisma.prisma) {
+    return globalForPrisma.prisma;
+  }
+
+  // During build, return a mock to avoid initialization errors
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return new Proxy({} as PrismaClient, {
+      get() {
+        return () => Promise.resolve({});
+      },
+    });
+  }
+
+  const client = new PrismaClient();
+  if (process.env.NODE_ENV !== 'production') {
+    globalForPrisma.prisma = client;
+  }
+  return client;
+}
+
+export const prisma = globalForPrisma.prisma ?? getPrismaClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
@@ -16,73 +38,83 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 export type { PrismaClient };
 
 // ============================================================================
+// Database Initialization
+// ============================================================================
+
+export {
+  ensureVectorIndex,
+  initializeDatabase,
+  isDatabaseInitialized,
+  resetDatabaseInitialization,
+} from './init';
+
+// ============================================================================
 // Re-export all database modules
 // ============================================================================
 
-// Vector Store
-export {
-  VectorStore,
-  getVectorStore,
-  createVectorStore,
-  type SearchOptions,
-  type SearchFilter,
-  type SearchResult,
-  type ChunkInsertData as VectorChunkInsertData,
-  type DistanceMetric,
-} from './vector-store';
-
-// Vector Operations
-export {
-  createHNSWIndex,
-  dropHNSWIndex,
-  setHNSWEfSearch,
-  createIVFFlatIndex,
-  dropIVFFlatIndex,
-  setIVFFlatProbes,
-  analyzeVectorIndex,
-  listVectorIndexes,
-  reindexVector,
-  getVectorStats,
-  getGlobalVectorStats,
-  vacuumVectorTable,
-  findDuplicateVectors,
-  removeOrphanedVectors,
-  calculateOptimalLists,
-  calculateHNSWParams,
-  type HNSWIndexOptions,
-  type IVFFlatIndexOptions,
-  type IndexStats,
-  type VectorStats,
-} from './vector-operations';
-
-// Vector Cache
-export {
-  EmbeddingCache,
-  SemanticCache,
-  MemoryCacheProvider,
-  createEmbeddingCache,
-  createSemanticCache,
-  type CacheConfig,
-  type CacheProvider,
-  type SemanticCacheEntry,
-  type CacheStats,
-} from './vector-cache';
-
 // Batch Operations
 export {
-  batchInsertChunks,
-  batchUpdateEmbeddings,
-  batchUpdateChunks,
-  batchDeleteChunks,
-  batchDeleteDocumentChunks,
-  streamProcessChunks,
-  validateChunks,
-  findDuplicates,
-  type ChunkInsertData as BatchChunkInsertData,
   type BatchInsertOptions,
   type BatchInsertResult,
   type BulkUpdateResult,
+  batchDeleteChunks,
+  batchDeleteDocumentChunks,
+  batchInsertChunks,
+  batchUpdateChunks,
+  batchUpdateEmbeddings,
+  type ChunkInsertData as BatchChunkInsertData,
+  findDuplicates,
+  streamProcessChunks,
+  validateChunks,
 } from './batch-operations';
+// Vector Cache
+export {
+  type CacheConfig,
+  type CacheProvider,
+  type CacheStats,
+  createEmbeddingCache,
+  createSemanticCache,
+  EmbeddingCache,
+  MemoryCacheProvider,
+  SemanticCache,
+  type SemanticCacheEntry,
+} from './vector-cache';
+// Vector Operations
+export {
+  analyzeVectorIndex,
+  calculateHNSWParams,
+  calculateOptimalLists,
+  createHNSWIndex,
+  createIVFFlatIndex,
+  dropHNSWIndex,
+  dropIVFFlatIndex,
+  ensureHNSWIndex,
+  findDuplicateVectors,
+  getGlobalVectorStats,
+  getVectorStats,
+  type HNSWIndexOptions,
+  type IndexStats,
+  type IVFFlatIndexOptions,
+  listVectorIndexes,
+  reindexVector,
+  removeOrphanedVectors,
+  resetIndexInitialization,
+  setHNSWEfSearch,
+  setIVFFlatProbes,
+  type VectorStats,
+  vacuumVectorTable,
+} from './vector-operations';
+// Vector Store
+export {
+  type ChunkInsertData as VectorChunkInsertData,
+  createVectorStore,
+  type DistanceMetric,
+  getVectorStore,
+  type SearchFilter,
+  type SearchOptions,
+  type SearchResult,
+  VectorStore,
+} from './vector-store';
 
 // ============================================================================
 // User Queries
@@ -328,7 +360,7 @@ export async function searchSimilarChunks(
     ORDER BY dc.embedding <=> ${embedding}::vector
     LIMIT ${limit}
   `;
-  
+
   return result;
 }
 

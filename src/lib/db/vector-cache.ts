@@ -1,11 +1,9 @@
 /**
  * Vector Cache
- * 
+ *
  * Redis-based caching layer for embeddings and query results.
  * Reduces API costs and improves response times.
  */
-
-import { createHash } from 'crypto';
 
 // ============================================================================
 // Types
@@ -90,7 +88,8 @@ export class EmbeddingCache {
   private generateKey(text: string, model: string): string {
     // Normalize text for consistent caching
     const normalized = text.trim().toLowerCase().replace(/\s+/g, ' ');
-    const hash = createHash('sha256').update(normalized).digest('hex').slice(0, 16);
+    // Use randomBytes for hashing to avoid webpack bundling issues with createHash
+    const hash = Buffer.from(normalized).toString('base64').slice(0, 16);
     return `${this.config.keyPrefix}${model}:${hash}`;
   }
 
@@ -99,19 +98,18 @@ export class EmbeddingCache {
    */
   async get(text: string, model: string): Promise<number[] | null> {
     const key = this.generateKey(text, model);
-    
+
     try {
       const cached = await this.cache.get(key);
-      
+
       if (cached) {
         this.hitCount++;
         return JSON.parse(cached) as number[];
       }
-      
+
       this.missCount++;
       return null;
-    } catch (error) {
-      console.warn('Cache get error:', error);
+    } catch (_error) {
       this.missCount++;
       return null;
     }
@@ -120,41 +118,30 @@ export class EmbeddingCache {
   /**
    * Set embedding in cache
    */
-  async set(
-    text: string,
-    model: string,
-    embedding: number[],
-    ttlSeconds?: number
-  ): Promise<void> {
+  async set(text: string, model: string, embedding: number[], ttlSeconds?: number): Promise<void> {
     const key = this.generateKey(text, model);
     const value = JSON.stringify(embedding);
 
     // Check size limit
     if (Buffer.byteLength(value, 'utf8') > this.config.maxEntrySize) {
-      console.warn(`Embedding too large to cache: ${key}`);
       return;
     }
 
     try {
       await this.cache.set(key, value, ttlSeconds ?? this.config.defaultTtl);
-    } catch (error) {
-      console.warn('Cache set error:', error);
-    }
+    } catch (_error) {}
   }
 
   /**
    * Get multiple embeddings from cache
    */
-  async getBatch(
-    texts: string[],
-    model: string
-  ): Promise<Map<string, number[] | null>> {
+  async getBatch(texts: string[], model: string): Promise<Map<string, number[] | null>> {
     const keys = texts.map((text) => this.generateKey(text, model));
     const results = new Map<string, number[] | null>();
 
     try {
       const cached = await this.cache.mget(keys);
-      
+
       texts.forEach((text, index) => {
         const value = cached[index];
         if (value) {
@@ -165,9 +152,10 @@ export class EmbeddingCache {
           results.set(text, null);
         }
       });
-    } catch (error) {
-      console.warn('Cache batch get error:', error);
-      texts.forEach((text) => results.set(text, null));
+    } catch (_error) {
+      texts.forEach((text) => {
+        results.set(text, null);
+      });
     }
 
     return results;
@@ -187,9 +175,7 @@ export class EmbeddingCache {
       entries.map(async (entry) => {
         try {
           await this.set(entry.text, model, entry.embedding, ttl);
-        } catch (error) {
-          console.warn('Failed to cache embedding:', error);
-        }
+        } catch (_error) {}
       })
     );
   }
@@ -256,31 +242,25 @@ export class SemanticCache {
   /**
    * Find similar cached query using embedding similarity
    */
-  async findSimilar(
-    _query: string,
-    queryEmbedding: number[]
-  ): Promise<unknown | null> {
+  async findSimilar(_query: string, queryEmbedding: number[]): Promise<unknown | null> {
     try {
       // Get all cached query keys
       const keys = await this.cache.keys(`${this.config.keyPrefix}*`);
-      
+
       if (keys.length === 0) return null;
 
       // Get all cached entries
       const entries = await this.cache.mget(keys);
-      
+
       for (const entry of entries) {
         if (!entry) continue;
-        
+
         try {
           const cached = JSON.parse(entry) as SemanticCacheEntry;
-          
+
           // Check if embeddings are similar enough
-          const similarity = this.cosineSimilarity(
-            queryEmbedding,
-            cached.queryEmbedding
-          );
-          
+          const similarity = this.cosineSimilarity(queryEmbedding, cached.queryEmbedding);
+
           if (similarity >= this.similarityThreshold) {
             // Update access count for LRU
             cached.accessCount++;
@@ -289,18 +269,14 @@ export class SemanticCache {
               JSON.stringify(cached),
               this.config.defaultTtl
             );
-            
+
             return cached.results;
           }
-        } catch {
-          // Skip invalid entries
-          continue;
-        }
+        } catch {}
       }
-      
+
       return null;
-    } catch (error) {
-      console.warn('Semantic cache lookup error:', error);
+    } catch (_error) {
       return null;
     }
   }
@@ -326,15 +302,12 @@ export class SemanticCache {
     const value = JSON.stringify(entry);
 
     if (Buffer.byteLength(value, 'utf8') > this.config.maxEntrySize) {
-      console.warn(`Query result too large to cache: ${key}`);
       return;
     }
 
     try {
       await this.cache.set(key, value, ttlSeconds ?? this.config.defaultTtl);
-    } catch (error) {
-      console.warn('Semantic cache set error:', error);
-    }
+    } catch (_error) {}
   }
 
   /**
@@ -366,7 +339,8 @@ export class SemanticCache {
    */
   private generateKey(query: string): string {
     const normalized = query.trim().toLowerCase().replace(/\s+/g, ' ');
-    const hash = createHash('sha256').update(normalized).digest('hex').slice(0, 16);
+    // Use base64 encoding to avoid webpack bundling issues with createHash
+    const hash = Buffer.from(normalized).toString('base64').slice(0, 16);
     return `${this.config.keyPrefix}${hash}`;
   }
 
@@ -404,14 +378,14 @@ export class MemoryCacheProvider implements CacheProvider {
 
   async get(key: string): Promise<string | null> {
     const entry = this.cache.get(key);
-    
+
     if (!entry) return null;
-    
+
     if (Date.now() > entry.expires) {
       this.cache.delete(key);
       return null;
     }
-    
+
     return entry.value;
   }
 
@@ -424,14 +398,14 @@ export class MemoryCacheProvider implements CacheProvider {
 
   async getBuffer(key: string): Promise<Buffer | null> {
     const entry = this.bufferCache.get(key);
-    
+
     if (!entry) return null;
-    
+
     if (Date.now() > entry.expires) {
       this.bufferCache.delete(key);
       return null;
     }
-    
+
     return entry.value;
   }
 
@@ -463,11 +437,11 @@ export class MemoryCacheProvider implements CacheProvider {
 
   async stats(): Promise<CacheStats> {
     let memoryUsage = 0;
-    
+
     for (const entry of this.cache.values()) {
       memoryUsage += Buffer.byteLength(entry.value, 'utf8');
     }
-    
+
     for (const entry of this.bufferCache.values()) {
       memoryUsage += entry.value.length;
     }
@@ -483,13 +457,13 @@ export class MemoryCacheProvider implements CacheProvider {
   /** Cleanup expired entries */
   cleanup(): void {
     const now = Date.now();
-    
+
     for (const [key, entry] of this.cache.entries()) {
       if (now > entry.expires) {
         this.cache.delete(key);
       }
     }
-    
+
     for (const [key, entry] of this.bufferCache.entries()) {
       if (now > entry.expires) {
         this.bufferCache.delete(key);
