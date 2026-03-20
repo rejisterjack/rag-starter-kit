@@ -1,15 +1,13 @@
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import { compare, hash } from 'bcryptjs';
+import type { DefaultSession } from 'next-auth';
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import GitHub from 'next-auth/providers/github';
 import Google from 'next-auth/providers/google';
-
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
 import { createDefaultWorkspace, getUserWorkspaces } from '@/lib/workspace/workspace';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
-
-import type { DefaultSession } from 'next-auth';
 
 // =============================================================================
 // Type Extensions
@@ -66,14 +64,16 @@ export const {
     GitHub({
       clientId: process.env.AUTH_GITHUB_ID!,
       clientSecret: process.env.AUTH_GITHUB_SECRET!,
-      allowDangerousEmailAccountLinking: true,
+      // allowDangerousEmailAccountLinking is intentionally NOT enabled
+      // to prevent OAuth account takeover attacks
     }),
 
     // Google OAuth Provider
     Google({
       clientId: process.env.AUTH_GOOGLE_ID!,
       clientSecret: process.env.AUTH_GOOGLE_SECRET!,
-      allowDangerousEmailAccountLinking: true,
+      // allowDangerousEmailAccountLinking is intentionally NOT enabled
+      // to prevent OAuth account takeover attacks
       authorization: {
         params: {
           prompt: 'consent',
@@ -145,12 +145,12 @@ export const {
       if (user) {
         token.id = user.id;
         token.role = user.role ?? 'USER';
-        
+
         // Get user's first workspace for default
         const workspaces = await getUserWorkspaces(user.id!);
         if (workspaces.length > 0) {
           token.workspaceId = workspaces[0].id;
-          const member = workspaces[0].members.find(m => m.userId === user.id);
+          const member = workspaces[0].members.find((m) => m.userId === user.id);
           token.workspaceRole = member?.role ?? 'MEMBER';
         }
       }
@@ -188,7 +188,7 @@ export const {
       if (account?.provider === 'github' || account?.provider === 'google') {
         return true;
       }
-      
+
       // Allow credentials sign-in (already validated in authorize)
       if (account?.provider === 'credentials') {
         return true;
@@ -209,7 +209,7 @@ export const {
           await createDefaultWorkspace(user.id, {
             name: user.name ? `${user.name}'s Workspace` : 'My Workspace',
           });
-          
+
           await logAuditEvent({
             event: AuditEvent.USER_REGISTERED,
             userId: user.id,
@@ -224,7 +224,7 @@ export const {
     // Handle successful sign-in
     async signIn({ user, account }) {
       console.log('User signed in:', user.email, 'via', account?.provider);
-      
+
       // Log OAuth sign-ins
       if (account?.provider !== 'credentials' && user.id) {
         await logAuditEvent({

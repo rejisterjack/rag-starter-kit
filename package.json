@@ -9,11 +9,13 @@
     "start": "next start",
     "start:ws": "NODE_ENV=production tsx server.ts",
     "ws:server": "tsx scripts/websocket-server.ts",
-    "lint": "next lint",
-    "lint:fix": "next lint --fix",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
     "type-check": "tsc --noEmit",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:prod": "prisma migrate deploy",
@@ -153,11 +155,10 @@
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
+      "biome check --write"
     ],
     "*.{json,md,yml,yaml}": [
-      "prettier --write"
+      "biome format --write"
     ]
   },
   "prisma": {

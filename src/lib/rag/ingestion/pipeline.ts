@@ -1,6 +1,6 @@
 /**
  * Document Ingestion Pipeline
- * 
+ *
  * Orchestrates the full document processing workflow:
  * 1. Validate - Check file size, type, virus scan placeholder
  * 2. Parse - Extract text based on document type
@@ -9,14 +9,14 @@
  * 5. Store - Save to database with vector insertion
  */
 
+import { prisma } from '@/lib/db';
 import { ChunkingEngine } from '@/lib/rag/chunking';
 import { createEmbeddings } from '@/lib/rag/engine';
-import { prisma } from '@/lib/db';
-
-import { parsePDF } from './parsers/pdf';
+import { virusScanner } from '@/lib/security/virus-scanner';
 import { parseDOCX } from './parsers/docx';
-import { parseText } from './parsers/txt';
 import { parseHTML } from './parsers/html';
+import { parsePDF } from './parsers/pdf';
+import { parseText } from './parsers/txt';
 import { scrapeURL } from './parsers/url';
 
 // =============================================================================
@@ -103,14 +103,176 @@ const MIME_TYPE_MAP: Record<string, DocumentType> = {
 
 // File extension to DocumentType mapping
 const EXTENSION_MAP: Record<string, DocumentType> = {
-  'pdf': 'PDF',
-  'docx': 'DOCX',
-  'txt': 'TXT',
-  'md': 'MD',
-  'markdown': 'MD',
-  'html': 'HTML',
-  'htm': 'HTML',
+  pdf: 'PDF',
+  docx: 'DOCX',
+  txt: 'TXT',
+  md: 'MD',
+  markdown: 'MD',
+  html: 'HTML',
+  htm: 'HTML',
 };
+
+// =============================================================================
+// Magic Bytes Validation
+// =============================================================================
+
+interface FileSignature {
+  type: DocumentType;
+  mimeType: string;
+  signatures: number[][];
+  ext: string[];
+}
+
+// File signatures (magic bytes) for validation
+const FILE_SIGNATURES: FileSignature[] = [
+  {
+    type: 'PDF',
+    mimeType: 'application/pdf',
+    signatures: [[0x25, 0x50, 0x44, 0x46]], // %PDF
+    ext: ['pdf'],
+  },
+  {
+    type: 'DOCX',
+    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    signatures: [[0x50, 0x4b, 0x03, 0x04]], // PK (ZIP format)
+    ext: ['docx'],
+  },
+  {
+    type: 'TXT',
+    mimeType: 'text/plain',
+    signatures: [], // Plain text has no signature - validated by content analysis
+    ext: ['txt'],
+  },
+  {
+    type: 'MD',
+    mimeType: 'text/markdown',
+    signatures: [], // Markdown is plain text
+    ext: ['md', 'markdown'],
+  },
+  {
+    type: 'HTML',
+    mimeType: 'text/html',
+    signatures: [], // HTML starts with <!DOCTYPE or <html
+    ext: ['html', 'htm'],
+  },
+];
+
+/**
+ * Validate file content using magic bytes
+ * Returns the detected file type or null if validation fails
+ */
+function validateMagicBytes(
+  buffer: Buffer,
+  expectedType: DocumentType
+): {
+  valid: boolean;
+  detectedType?: DocumentType;
+  detectedMimeType?: string;
+  error?: string;
+} {
+  // URL type doesn't need magic bytes validation
+  if (expectedType === 'URL') {
+    return { valid: true, detectedType: 'URL', detectedMimeType: 'text/uri-list' };
+  }
+
+  // Text-based files need content analysis
+  if (expectedType === 'TXT' || expectedType === 'MD') {
+    // Check if content is valid UTF-8 text (not binary)
+    const isText = isValidTextContent(buffer);
+    if (!isText) {
+      return {
+        valid: false,
+        error: `File content does not appear to be valid ${expectedType} text`,
+      };
+    }
+    return {
+      valid: true,
+      detectedType: expectedType,
+      detectedMimeType: expectedType === 'MD' ? 'text/markdown' : 'text/plain',
+    };
+  }
+
+  // HTML validation
+  if (expectedType === 'HTML') {
+    const content = buffer.slice(0, 1024).toString('utf-8').toLowerCase().trim();
+    const hasHtmlSignature =
+      content.startsWith('<!doctype') || content.startsWith('<html') || content.startsWith('<?xml');
+    if (!hasHtmlSignature && !isValidTextContent(buffer)) {
+      return {
+        valid: false,
+        error: 'File content does not appear to be valid HTML',
+      };
+    }
+    return {
+      valid: true,
+      detectedType: 'HTML',
+      detectedMimeType: 'text/html',
+    };
+  }
+
+  // Binary file validation using magic bytes
+  const signature = FILE_SIGNATURES.find((s) => s.type === expectedType);
+  if (!signature || signature.signatures.length === 0) {
+    // No signature defined for this type, skip validation
+    return { valid: true, detectedType: expectedType };
+  }
+
+  // Check if buffer matches any of the valid signatures
+  for (const sig of signature.signatures) {
+    if (buffer.length >= sig.length) {
+      const matches = sig.every((byte, index) => buffer[index] === byte);
+      if (matches) {
+        return {
+          valid: true,
+          detectedType: signature.type,
+          detectedMimeType: signature.mimeType,
+        };
+      }
+    }
+  }
+
+  // For DOCX, also check if it's a valid ZIP with specific content
+  if (expectedType === 'DOCX') {
+    const isZip = buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4b; // PK
+    if (isZip) {
+      // Additional check: DOCX should contain [Content_Types].xml
+      const contentPreview = buffer.slice(0, Math.min(4096, buffer.length)).toString('utf-8');
+      if (contentPreview.includes('[Content_Types]') || contentPreview.includes('word/')) {
+        return {
+          valid: true,
+          detectedType: 'DOCX',
+          detectedMimeType:
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        };
+      }
+    }
+  }
+
+  return {
+    valid: false,
+    error: `File signature does not match expected type: ${expectedType}`,
+  };
+}
+
+/**
+ * Check if buffer contains valid text content (UTF-8)
+ */
+function isValidTextContent(buffer: Buffer): boolean {
+  // Check for null bytes (indicates binary content)
+  for (let i = 0; i < Math.min(buffer.length, 8192); i++) {
+    if (buffer[i] === 0x00) {
+      return false;
+    }
+  }
+
+  // Try to decode as UTF-8
+  try {
+    buffer.toString('utf-8');
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // =============================================================================
 // Ingestion Pipeline Class
@@ -129,7 +291,6 @@ export class IngestionPipeline {
    */
   async process(input: IngestionInput): Promise<IngestionResult> {
     const startTime = Date.now();
-
 
     try {
       // Stage 1: Validate
@@ -166,12 +327,12 @@ export class IngestionPipeline {
       return {
         documentId,
         chunkCount: chunks.length,
-        tokenCount: this.estimateTokens(chunks.map(c => c.content)),
+        tokenCount: this.estimateTokens(chunks.map((c) => c.content)),
         processingTimeMs: Date.now() - startTime,
       };
     } catch (error) {
       const ingestionError = this.normalizeError(error);
-      
+
       // Add to dead letter queue if not recoverable
       if (!ingestionError.recoverable) {
         this.deadLetterQueue.push({ input, error: ingestionError });
@@ -184,7 +345,9 @@ export class IngestionPipeline {
   /**
    * Stage 1: Validate input
    */
-  private async validate(input: IngestionInput): Promise<{ buffer: Buffer; type: DocumentType; filename?: string }> {
+  private async validate(
+    input: IngestionInput
+  ): Promise<{ buffer: Buffer; type: DocumentType; filename?: string }> {
     // Validate document type
     if (!this.options.allowedTypes.includes(input.type)) {
       throw this.createError('validate', `Document type '${input.type}' not allowed`, false);
@@ -220,15 +383,47 @@ export class IngestionPipeline {
       );
     }
 
-    // Virus scan placeholder
-    if (this.options.enableVirusScan) {
-      // TODO: Implement virus scanning
-      console.log('Virus scan placeholder - would scan file here');
-    }
-
-    // Convert to buffer
+    // Convert to buffer first for virus scanning
     const bytes = await input.file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+
+    // Virus scan
+    if (this.options.enableVirusScan || virusScanner.isEnabled()) {
+      await this.reportProgress('validate', 40, 'Scanning for viruses...');
+
+      const scanResult = await virusScanner.scanFile(buffer, input.file.name, {
+        workspaceId: input.workspaceId,
+      });
+
+      if (!scanResult.clean) {
+        throw this.createError(
+          'validate',
+          scanResult.threatName
+            ? `Virus detected: ${scanResult.threatName}`
+            : scanResult.error || 'File failed virus scan',
+          false
+        );
+      }
+    }
+
+    // Magic bytes validation
+    await this.reportProgress('validate', 70, 'Validating file content...');
+    const magicBytesResult = validateMagicBytes(buffer, input.type);
+
+    if (!magicBytesResult.valid) {
+      throw this.createError(
+        'validate',
+        magicBytesResult.error || 'File content validation failed',
+        false
+      );
+    }
+
+    // Log if detected type differs from declared (but still valid)
+    if (magicBytesResult.detectedType && magicBytesResult.detectedType !== input.type) {
+      console.warn(
+        `File type mismatch: declared ${input.type}, detected ${magicBytesResult.detectedType}`
+      );
+    }
 
     return { buffer, type: input.type, filename: input.file.name };
   }
@@ -236,7 +431,11 @@ export class IngestionPipeline {
   /**
    * Stage 2: Parse document
    */
-  private async parse(validated: { buffer: Buffer; type: DocumentType; filename?: string }): Promise<ParsedDocument> {
+  private async parse(validated: {
+    buffer: Buffer;
+    type: DocumentType;
+    filename?: string;
+  }): Promise<ParsedDocument> {
     const { buffer, type, filename } = validated;
 
     switch (type) {
@@ -265,7 +464,7 @@ export class IngestionPipeline {
             wordCount: parsed.wordCount,
             characterCount: parsed.characterCount,
           },
-          paragraphs: parsed.paragraphs.map(p => ({
+          paragraphs: parsed.paragraphs.map((p) => ({
             text: p.text,
             isHeading: p.isHeading,
             headingLevel: p.headingLevel,
@@ -388,16 +587,28 @@ export class IngestionPipeline {
    */
   private async embed(
     chunks: Array<{ content: string; metadata: Record<string, unknown>; workspaceId: string }>
-  ): Promise<Array<{ content: string; metadata: Record<string, unknown>; embedding: number[]; workspaceId: string }>> {
+  ): Promise<
+    Array<{
+      content: string;
+      metadata: Record<string, unknown>;
+      embedding: number[];
+      workspaceId: string;
+    }>
+  > {
     const embeddings = createEmbeddings();
 
     // Process in batches to avoid rate limits
     const batchSize = 20;
-    const results: Array<{ content: string; metadata: Record<string, unknown>; embedding: number[]; workspaceId: string }> = [];
+    const results: Array<{
+      content: string;
+      metadata: Record<string, unknown>;
+      embedding: number[];
+      workspaceId: string;
+    }> = [];
 
     for (let i = 0; i < chunks.length; i += batchSize) {
       const batch = chunks.slice(i, i + batchSize);
-      const contents = batch.map(c => c.content);
+      const contents = batch.map((c) => c.content);
 
       // Generate embeddings for batch
       const vectors = await embeddings.embedDocuments(contents);
@@ -412,7 +623,11 @@ export class IngestionPipeline {
 
       // Report progress
       const progress = Math.round(((i + batch.length) / chunks.length) * 100);
-      await this.reportProgress('embed', progress, `Embedded ${i + batch.length}/${chunks.length} chunks`);
+      await this.reportProgress(
+        'embed',
+        progress,
+        `Embedded ${i + batch.length}/${chunks.length} chunks`
+      );
     }
 
     return results;
@@ -422,7 +637,12 @@ export class IngestionPipeline {
    * Stage 5: Store in database
    */
   private async store(
-    chunks: Array<{ content: string; metadata: Record<string, unknown>; embedding: number[]; workspaceId: string }>,
+    chunks: Array<{
+      content: string;
+      metadata: Record<string, unknown>;
+      embedding: number[];
+      workspaceId: string;
+    }>,
     parsed: ParsedDocument,
     input: IngestionInput
   ): Promise<string> {
@@ -468,7 +688,11 @@ export class IngestionPipeline {
 
       // Report progress
       const progress = Math.round(((i + batch.length) / chunks.length) * 100);
-      await this.reportProgress('store', progress, `Stored ${i + batch.length}/${chunks.length} chunks`);
+      await this.reportProgress(
+        'store',
+        progress,
+        `Stored ${i + batch.length}/${chunks.length} chunks`
+      );
     }
 
     // Update document status
@@ -486,10 +710,7 @@ export class IngestionPipeline {
   /**
    * Retry logic with exponential backoff
    */
-  private async withRetry<T>(
-    fn: () => Promise<T>,
-    stage: IngestionError['stage']
-  ): Promise<T> {
+  private async withRetry<T>(fn: () => Promise<T>, stage: IngestionError['stage']): Promise<T> {
     let lastError: Error | undefined;
 
     for (let attempt = 0; attempt < this.options.retryAttempts; attempt++) {
@@ -497,7 +718,7 @@ export class IngestionPipeline {
         return await fn();
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        
+
         // Check if error is recoverable
         if (!this.isRecoverableError(lastError, stage)) {
           throw this.createError(stage, lastError.message, false, lastError);
@@ -505,7 +726,7 @@ export class IngestionPipeline {
 
         // Wait before retry with exponential backoff
         if (attempt < this.options.retryAttempts - 1) {
-          const delay = this.options.retryDelay * Math.pow(2, attempt);
+          const delay = this.options.retryDelay * 2 ** attempt;
           await sleep(delay);
         }
       }
@@ -524,9 +745,11 @@ export class IngestionPipeline {
    */
   private isRecoverableError(error: Error, stage: IngestionError['stage']): boolean {
     // Network errors are typically recoverable
-    if (error.message.includes('ECONNREFUSED') || 
-        error.message.includes('ETIMEDOUT') ||
-        error.message.includes('ENOTFOUND')) {
+    if (
+      error.message.includes('ECONNREFUSED') ||
+      error.message.includes('ETIMEDOUT') ||
+      error.message.includes('ENOTFOUND')
+    ) {
       return true;
     }
 
@@ -641,14 +864,14 @@ export class IngestionPipeline {
     charPosition: number
   ): { pageNumber: number } | null {
     let cumulativeLength = 0;
-    
+
     for (const page of pages) {
       cumulativeLength += page.text.length + 2; // +2 for \n\n separator
       if (charPosition < cumulativeLength) {
         return { pageNumber: page.pageNumber };
       }
     }
-    
+
     return null;
   }
 
@@ -685,7 +908,7 @@ export class IngestionPipeline {
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+    return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   }
 
   /**
@@ -708,7 +931,7 @@ export class IngestionPipeline {
 // =============================================================================
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // =============================================================================
@@ -742,7 +965,7 @@ export async function processURL(
 ): Promise<IngestionResult> {
   const pipeline = new IngestionPipeline(options);
   const parsed = await pipeline.parseURL(url);
-  
+
   return pipeline.process({
     type: 'URL',
     url,
@@ -761,7 +984,7 @@ export function detectDocumentType(source: string | File): DocumentType {
     if (MIME_TYPE_MAP[mimeType]) {
       return MIME_TYPE_MAP[mimeType];
     }
-    
+
     // Fall back to extension
     return EXTENSION_MAP[source.name.split('.').pop()?.toLowerCase() || ''] || 'TXT';
   }

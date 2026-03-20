@@ -4,28 +4,28 @@
  * authentication, and rate limiting
  */
 
-import { Server as NetServer } from 'http';
-import { Server as SocketIOServer, Socket } from 'socket.io';
-
-import { auth } from '@/lib/auth';
+import type { Server as NetServer } from 'http';
+import { type Socket, Server as SocketIOServer } from 'socket.io';
 // Rate limiter imported dynamically when needed
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { auth } from '@/lib/auth';
+import { validateApiKey } from '@/lib/security/api-keys';
 
 import {
-  SocketEvent,
-  Room,
-  RoomType,
-  RoomMember,
-  UserInfo,
-  CursorPosition,
-  RealtimeServerConfig,
+  type CursorPosition,
   DEFAULT_SERVER_CONFIG,
-  RateLimitState,
-  TypingEvent,
-  RealtimeMessage,
-  PresenceEvent,
+  type NotificationEvent,
+  type PresenceEvent,
   PresenceStatus,
-  NotificationEvent,
+  type RateLimitState,
+  type RealtimeMessage,
+  type RealtimeServerConfig,
+  type Room,
+  type RoomMember,
+  type RoomType,
+  SocketEvent,
+  type TypingEvent,
+  type UserInfo,
 } from './types';
 
 // =============================================================================
@@ -53,7 +53,7 @@ export class WebSocketServer {
 
   constructor(server: NetServer, config: Partial<RealtimeServerConfig> = {}) {
     this.config = { ...DEFAULT_SERVER_CONFIG, ...config };
-    
+
     this.io = new SocketIOServer(server, {
       path: '/api/socket/io',
       addTrailingSlash: false,
@@ -85,21 +85,45 @@ export class WebSocketServer {
         const token = socket.handshake.auth.token as string | undefined;
         const session = await auth();
 
-        if (!session?.user?.id) {
-          // Check if token is provided for API key auth
-          if (!token) {
-            return next(new Error('Authentication required'));
-          }
-          // TODO: Validate API key token
+        // If session exists, use session-based auth
+        if (session?.user?.id) {
+          socket.data.user = {
+            id: session.user.id,
+            name: session.user.name || 'User',
+            email: session.user.email || '',
+            image: session.user.image,
+            role: session.user.role || 'USER',
+          } as UserInfo;
+          return next();
         }
 
-        // Attach user info to socket
+        // Check if API key token is provided for API key auth
+        if (!token) {
+          return next(new Error('Authentication required'));
+        }
+
+        // Validate API key
+        const apiKeyResult = await validateApiKey(token);
+        if (!apiKeyResult.valid) {
+          await logAuditEvent({
+            event: AuditEvent.SUSPICIOUS_ACTIVITY,
+            metadata: {
+              activity: 'websocket_invalid_api_key',
+              socketId: socket.id,
+            },
+            severity: 'WARNING',
+          });
+          return next(new Error(`Authentication failed: ${apiKeyResult.error}`));
+        }
+
+        // Attach API key user info to socket
         socket.data.user = {
-          id: session?.user?.id || 'anonymous',
-          name: session?.user?.name || 'Anonymous',
-          email: session?.user?.email || '',
-          image: session?.user?.image,
-          role: session?.user?.role || 'USER',
+          id: apiKeyResult.keyId || 'api-key-user',
+          name: 'API Key User',
+          email: '',
+          role: 'USER',
+          apiKeyId: apiKeyResult.keyId,
+          workspaceId: apiKeyResult.workspaceId,
         } as UserInfo;
 
         next();
@@ -111,7 +135,7 @@ export class WebSocketServer {
     // Rate limiting middleware
     this.io.use((socket: Socket, next) => {
       const clientId = socket.data.user?.id || socket.id;
-      
+
       if (this.isRateLimited(clientId)) {
         logAuditEvent({
           event: AuditEvent.RATE_LIMIT_HIT,
@@ -158,102 +182,104 @@ export class WebSocketServer {
   // ===========================================================================
 
   private handleJoinRoom(socket: Socket): void {
-    socket.on(SocketEvent.JOIN_ROOM, async (data: { 
-      roomId: string; 
-      type: RoomType;
-      workspaceId?: string;
-      conversationId?: string;
-    }) => {
-      try {
-        const { roomId, type, workspaceId, conversationId } = data;
-        const user = socket.data.user as UserInfo;
+    socket.on(
+      SocketEvent.JOIN_ROOM,
+      async (data: {
+        roomId: string;
+        type: RoomType;
+        workspaceId?: string;
+        conversationId?: string;
+      }) => {
+        try {
+          const { roomId, type, workspaceId, conversationId } = data;
+          const user = socket.data.user as UserInfo;
 
-        // Check rate limit for room joins
-        if (this.isRateLimited(user.id, 'join')) {
-          socket.emit(SocketEvent.RATE_LIMITED, {
-            event: SocketEvent.JOIN_ROOM,
-            retryAfter: this.getRateLimitReset(user.id),
-          });
-          return;
-        }
+          // Check rate limit for room joins
+          if (this.isRateLimited(user.id, 'join')) {
+            socket.emit(SocketEvent.RATE_LIMITED, {
+              event: SocketEvent.JOIN_ROOM,
+              retryAfter: this.getRateLimitReset(user.id),
+            });
+            return;
+          }
 
-        // Get or create room
-        let room = rooms.get(roomId);
-        if (!room) {
-          room = {
-            id: roomId,
-            type,
-            workspaceId,
-            conversationId,
-            members: new Map(),
-            createdAt: new Date(),
+          // Get or create room
+          let room = rooms.get(roomId);
+          if (!room) {
+            room = {
+              id: roomId,
+              type,
+              workspaceId,
+              conversationId,
+              members: new Map(),
+              createdAt: new Date(),
+            };
+            rooms.set(roomId, room);
+          }
+
+          // Check room capacity
+          if (room.members.size >= this.config.maxClientsPerRoom) {
+            socket.emit(SocketEvent.ERROR, {
+              code: 'ROOM_FULL',
+              message: 'Room has reached maximum capacity',
+            });
+            return;
+          }
+
+          // Leave previous rooms of the same type
+          this.leaveRoomsOfType(socket, type);
+
+          // Join the room
+          await socket.join(roomId);
+
+          // Add member to room
+          const member: RoomMember = {
+            socketId: socket.id,
+            user,
+            joinedAt: new Date(),
+            isTyping: false,
+            lastActivity: new Date(),
           };
-          rooms.set(roomId, room);
-        }
+          room.members.set(socket.id, member);
 
-        // Check room capacity
-        if (room.members.size >= this.config.maxClientsPerRoom) {
-          socket.emit(SocketEvent.ERROR, {
-            code: 'ROOM_FULL',
-            message: 'Room has reached maximum capacity',
-          });
-          return;
-        }
-
-        // Leave previous rooms of the same type
-        this.leaveRoomsOfType(socket, type);
-
-        // Join the room
-        await socket.join(roomId);
-
-        // Add member to room
-        const member: RoomMember = {
-          socketId: socket.id,
-          user,
-          joinedAt: new Date(),
-          isTyping: false,
-          lastActivity: new Date(),
-        };
-        room.members.set(socket.id, member);
-
-        // Notify socket of successful join
-        socket.emit(SocketEvent.ROOM_JOINED, {
-          roomId,
-          members: Array.from(room.members.values()).map(m => ({
-            user: m.user,
-            joinedAt: m.joinedAt,
-            isTyping: m.isTyping,
-          })),
-        });
-
-        // Notify other members
-        socket.to(roomId).emit(SocketEvent.PRESENCE_JOIN, {
-          user,
-          roomId,
-          status: PresenceStatus.ONLINE,
-          timestamp: Date.now(),
-        } as PresenceEvent);
-
-        // Log join event
-        await logAuditEvent({
-          event: AuditEvent.CHAT_CREATED,
-          userId: user.id,
-          workspaceId,
-          metadata: {
+          // Notify socket of successful join
+          socket.emit(SocketEvent.ROOM_JOINED, {
             roomId,
-            type,
-            conversationId,
-          },
-        });
+            members: Array.from(room.members.values()).map((m) => ({
+              user: m.user,
+              joinedAt: m.joinedAt,
+              isTyping: m.isTyping,
+            })),
+          });
 
-      } catch (error) {
-        console.error('Error joining room:', error);
-        socket.emit(SocketEvent.ERROR, {
-          code: 'JOIN_FAILED',
-          message: 'Failed to join room',
-        });
+          // Notify other members
+          socket.to(roomId).emit(SocketEvent.PRESENCE_JOIN, {
+            user,
+            roomId,
+            status: PresenceStatus.ONLINE,
+            timestamp: Date.now(),
+          } as PresenceEvent);
+
+          // Log join event
+          await logAuditEvent({
+            event: AuditEvent.CHAT_CREATED,
+            userId: user.id,
+            workspaceId,
+            metadata: {
+              roomId,
+              type,
+              conversationId,
+            },
+          });
+        } catch (error) {
+          console.error('Error joining room:', error);
+          socket.emit(SocketEvent.ERROR, {
+            code: 'JOIN_FAILED',
+            message: 'Failed to join room',
+          });
+        }
       }
-    });
+    );
   }
 
   private handleLeaveRoom(socket: Socket): void {
@@ -279,13 +305,13 @@ export class WebSocketServer {
     const room = rooms.get(roomId);
     if (room) {
       room.members.delete(socket.id);
-      
+
       // Clean up empty rooms
       if (room.members.size === 0) {
         rooms.delete(roomId);
       }
     }
-    
+
     socket.leave(roomId);
   }
 
@@ -341,13 +367,13 @@ export class WebSocketServer {
       const timeout = setTimeout(() => {
         this.stopTyping(socket, roomId);
       }, 5000);
-      
+
       typingTimeouts.set(socket.id, timeout);
     });
 
     socket.on(SocketEvent.TYPING_STOP, (data: { roomId: string }) => {
       const { roomId } = data;
-      
+
       const existingTimeout = typingTimeouts.get(socket.id);
       if (existingTimeout) {
         clearTimeout(existingTimeout);
@@ -392,10 +418,7 @@ export class WebSocketServer {
   private handleCursor(socket: Socket): void {
     if (!this.config.enableCursors) return;
 
-    socket.on(SocketEvent.CURSOR_MOVE, (data: { 
-      roomId: string; 
-      position: CursorPosition;
-    }) => {
+    socket.on(SocketEvent.CURSOR_MOVE, (data: { roomId: string; position: CursorPosition }) => {
       const { roomId, position } = data;
       const user = socket.data.user as UserInfo;
 
@@ -426,73 +449,68 @@ export class WebSocketServer {
   // ===========================================================================
 
   private handleMessage(socket: Socket): void {
-    socket.on(SocketEvent.MESSAGE_SEND, async (data: {
-      roomId: string;
-      content: string;
-      parentId?: string;
-    }) => {
-      const { roomId, content, parentId } = data;
-      const user = socket.data.user as UserInfo;
+    socket.on(
+      SocketEvent.MESSAGE_SEND,
+      async (data: { roomId: string; content: string; parentId?: string }) => {
+        const { roomId, content, parentId } = data;
+        const user = socket.data.user as UserInfo;
 
-      if (this.isRateLimited(`${user.id}:message`, 'message')) {
-        socket.emit(SocketEvent.RATE_LIMITED, {
-          event: SocketEvent.MESSAGE_SEND,
-          retryAfter: this.getRateLimitReset(user.id),
+        if (this.isRateLimited(`${user.id}:message`, 'message')) {
+          socket.emit(SocketEvent.RATE_LIMITED, {
+            event: SocketEvent.MESSAGE_SEND,
+            retryAfter: this.getRateLimitReset(user.id),
+          });
+          return;
+        }
+
+        const room = rooms.get(roomId);
+        if (!room) {
+          socket.emit(SocketEvent.ERROR, {
+            code: 'ROOM_NOT_FOUND',
+            message: 'Room not found',
+          });
+          return;
+        }
+
+        // Create message
+        const message: RealtimeMessage = {
+          id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          content,
+          user,
+          roomId,
+          parentId,
+          timestamp: Date.now(),
+        };
+
+        // Broadcast to room
+        this.io.to(roomId).emit(SocketEvent.MESSAGE_RECEIVE, message);
+
+        // Update member activity
+        const member = room.members.get(socket.id);
+        if (member) {
+          member.lastActivity = new Date();
+          member.isTyping = false;
+        }
+      }
+    );
+
+    socket.on(
+      SocketEvent.MESSAGE_EDIT,
+      (data: { roomId: string; messageId: string; content: string }) => {
+        const { roomId, messageId, content } = data;
+
+        this.io.to(roomId).emit(SocketEvent.MESSAGE_EDIT, {
+          messageId,
+          content,
+          userId: socket.data.user?.id,
+          timestamp: Date.now(),
         });
-        return;
       }
+    );
 
-      const room = rooms.get(roomId);
-      if (!room) {
-        socket.emit(SocketEvent.ERROR, {
-          code: 'ROOM_NOT_FOUND',
-          message: 'Room not found',
-        });
-        return;
-      }
-
-      // Create message
-      const message: RealtimeMessage = {
-        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        content,
-        user,
-        roomId,
-        parentId,
-        timestamp: Date.now(),
-      };
-
-      // Broadcast to room
-      this.io.to(roomId).emit(SocketEvent.MESSAGE_RECEIVE, message);
-
-      // Update member activity
-      const member = room.members.get(socket.id);
-      if (member) {
-        member.lastActivity = new Date();
-        member.isTyping = false;
-      }
-    });
-
-    socket.on(SocketEvent.MESSAGE_EDIT, (data: {
-      roomId: string;
-      messageId: string;
-      content: string;
-    }) => {
-      const { roomId, messageId, content } = data;
-      
-      this.io.to(roomId).emit(SocketEvent.MESSAGE_EDIT, {
-        messageId,
-        content,
-        userId: socket.data.user?.id,
-        timestamp: Date.now(),
-      });
-    });
-
-    socket.on(SocketEvent.MESSAGE_DELETE, (data: {
-      roomId: string;
-      messageId: string;
-    }) => {
+    socket.on(SocketEvent.MESSAGE_DELETE, (data: { roomId: string; messageId: string }) => {
       const { roomId, messageId } = data;
-      
+
       this.io.to(roomId).emit(SocketEvent.MESSAGE_DELETE, {
         messageId,
         userId: socket.data.user?.id,
@@ -536,10 +554,13 @@ export class WebSocketServer {
   // Rate Limiting
   // ===========================================================================
 
-  private isRateLimited(identifier: string, type: 'join' | 'typing' | 'cursor' | 'message' | 'default' = 'default'): boolean {
+  private isRateLimited(
+    identifier: string,
+    type: 'join' | 'typing' | 'cursor' | 'message' | 'default' = 'default'
+  ): boolean {
     const now = Date.now();
     const key = `${identifier}:${type}`;
-    
+
     let state = rateLimits.get(key);
     if (!state) {
       state = {
@@ -568,9 +589,10 @@ export class WebSocketServer {
     state.eventCount++;
 
     // Check limit
-    const limit = type === 'typing' || type === 'cursor' 
-      ? this.config.rateLimit.maxEventsPerSecond 
-      : this.config.rateLimit.burstSize;
+    const limit =
+      type === 'typing' || type === 'cursor'
+        ? this.config.rateLimit.maxEventsPerSecond
+        : this.config.rateLimit.burstSize;
 
     if (state.eventCount > limit) {
       state.isLimited = true;
@@ -664,13 +686,13 @@ export function getRoomMembers(roomId: string): RoomMember[] {
 }
 
 export function getOnlineUsersInRoom(roomId: string): UserInfo[] {
-  return getRoomMembers(roomId).map(m => m.user);
+  return getRoomMembers(roomId).map((m) => m.user);
 }
 
 export function isUserInRoom(roomId: string, userId: string): boolean {
   const room = rooms.get(roomId);
   if (!room) return false;
-  
+
   for (const member of room.members.values()) {
     if (member.user.id === userId) return true;
   }

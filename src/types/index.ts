@@ -135,7 +135,9 @@ export interface RAGQuery {
   query: string;
   chatId?: string;
   userId?: string;
+  workspaceId?: string;
   config?: Partial<RAGConfig>;
+  history?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
 export interface RAGResponse {
