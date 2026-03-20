@@ -8,6 +8,26 @@ import { emailService } from '@/lib/notifications/email';
 import type { MemberRole, Workspace, WorkspaceMember } from './types';
 
 // =============================================================================
+// Configuration
+// =============================================================================
+
+/**
+ * Get the application URL
+ * Throws error in production if not configured
+ */
+function getAppUrl(): string {
+  const url = process.env.NEXT_PUBLIC_APP_URL;
+  if (url) return url;
+  
+  // Allow localhost fallback only in development
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3000';
+  }
+  
+  throw new Error('NEXT_PUBLIC_APP_URL environment variable is required in production');
+}
+
+// =============================================================================
 // Types
 // =============================================================================
 
@@ -511,7 +531,7 @@ export async function inviteMember(
       });
 
       // Send notification email to existing user
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const appUrl = getAppUrl();
       await emailService.sendEmail({
         to: email,
         template: emailService.invitationEmail({
@@ -550,7 +570,7 @@ export async function inviteMember(
     });
 
     // Send invitation email
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appUrl = getAppUrl();
     const inviteUrl = `${appUrl}/invite/accept?token=${inviteToken}`;
 
     const emailResult = await emailService.sendEmail({

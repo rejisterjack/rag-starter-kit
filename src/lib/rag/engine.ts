@@ -5,6 +5,8 @@
  * Coordinates embedding generation, retrieval, and response generation.
  */
 
+import type { UIMessage } from 'ai';
+import { logger } from '@/lib/logger';
 import type { RAGConfig, RAGQuery, RAGResponse, Source } from '@/types';
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
 
@@ -71,22 +73,29 @@ export async function generateRAGResponse(
       { role: 'user', content: query.query },
     ];
 
-    const response = await generateChatCompletion(messages as unknown as Parameters<typeof generateChatCompletion>[0], config);
+    const response = await generateChatCompletion(
+      messages as unknown as UIMessage[],
+      config
+    );
     
     const latency = Date.now() - startTime;
+    
+    // Extract token usage from response
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const usage = response.usage as any;
     
     return {
       answer: response.text,
       sources,
       tokensUsed: {
-        prompt: (response.usage as unknown as { promptTokens?: number })?.promptTokens ?? 0,
-        completion: (response.usage as unknown as { completionTokens?: number })?.completionTokens ?? 0,
-        total: (response.usage as unknown as { totalTokens?: number })?.totalTokens ?? 0,
+        prompt: usage?.promptTokens ?? 0,
+        completion: usage?.completionTokens ?? 0,
+        total: usage?.totalTokens ?? 0,
       },
       latency,
     };
   } catch (error) {
-    console.error('RAG pipeline error:', error);
+    logger.error('RAG pipeline error', { error: error instanceof Error ? error.message : 'Unknown' });
     throw new Error(`Failed to generate response: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -131,7 +140,10 @@ export async function* streamRAGResponse(
       { role: 'user', content: query.query },
     ];
 
-    const stream = await streamChatCompletion(messages as unknown as Parameters<typeof streamChatCompletion>[0], config);
+    const stream = await streamChatCompletion(
+      messages as unknown as UIMessage[],
+      config
+    );
     
     for await (const chunk of stream.textStream) {
       yield { type: 'content', content: chunk };
@@ -139,7 +151,7 @@ export async function* streamRAGResponse(
     
     yield { type: 'done' };
   } catch (error) {
-    console.error('RAG streaming error:', error);
+    logger.error('RAG streaming error', { error: error instanceof Error ? error.message : 'Unknown' });
     yield {
       type: 'error',
       error: error instanceof Error ? error.message : 'Unknown error',

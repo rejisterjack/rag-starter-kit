@@ -464,21 +464,59 @@ export async function requireApiKey(
 }
 
 /**
+ * In-memory rate limit store for API keys
+ * Note: In a multi-instance deployment, use Redis instead
+ */
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+/**
  * Check API rate limit
+ * Uses in-memory store with database fallback tracking
  */
 export async function checkApiRateLimit(
   keyId: string,
   limit: number,
   windowMs: number
 ): Promise<{ allowed: boolean; remaining: number; resetAt: Date }> {
-  // This is a stub implementation
-  // In a real implementation, this would use Redis or a database
-  void keyId;
-  void windowMs;
+  const now = Date.now();
+  const windowStart = now - windowMs;
+  const resetAt = new Date(now + windowMs);
 
-  return {
-    allowed: true,
-    remaining: limit - 1,
-    resetAt: new Date(Date.now() + windowMs),
-  };
+  try {
+    // Try in-memory rate limiting first (fast path)
+    const cacheKey = `ratelimit:${keyId}`;
+    const cached = rateLimitStore.get(cacheKey);
+
+    if (cached && cached.resetAt > now) {
+      // Window still active
+      if (cached.count >= limit) {
+        return { allowed: false, remaining: 0, resetAt: new Date(cached.resetAt) };
+      }
+      cached.count++;
+      return { allowed: true, remaining: limit - cached.count, resetAt: new Date(cached.resetAt) };
+    }
+
+    // New window or expired - use database for accurate count
+    const recentRequests = await prisma.apiUsage.count({
+      where: {
+        apiKeyId: keyId,
+        createdAt: { gte: new Date(windowStart) },
+      },
+    });
+
+    if (recentRequests >= limit) {
+      // Update cache to prevent repeated DB queries
+      rateLimitStore.set(cacheKey, { count: recentRequests, resetAt: now + windowMs });
+      return { allowed: false, remaining: 0, resetAt };
+    }
+
+    // Set new window in cache
+    rateLimitStore.set(cacheKey, { count: recentRequests + 1, resetAt: now + windowMs });
+
+    return { allowed: true, remaining: limit - recentRequests - 1, resetAt };
+  } catch (error) {
+    logger.error('Rate limit check failed', { keyId, error: error instanceof Error ? error.message : 'Unknown' });
+    // Fail open to avoid blocking legitimate requests on DB errors
+    return { allowed: true, remaining: 1, resetAt };
+  }
 }

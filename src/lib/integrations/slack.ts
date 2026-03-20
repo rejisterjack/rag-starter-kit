@@ -2,7 +2,10 @@
  * Slack Bot Integration
  */
 
+import crypto from 'node:crypto';
+
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 export interface SlackCommand {
   token: string;
@@ -207,27 +210,33 @@ export class SlackIntegration {
 
   private async getUserApiKey(userId: string): Promise<string> {
     // Get or create API key for user
-    const apiKey = await prisma.apiKey.findFirst({
+    const existingKey = await prisma.apiKey.findFirst({
       where: { userId, status: 'ACTIVE' },
     });
 
-    if (apiKey) {
-      return apiKey.keyPreview; // In real implementation, would decrypt full key
+    if (existingKey) {
+      return existingKey.keyPreview; // In real implementation, would decrypt full key
     }
 
+    // Generate a proper API key
+    const newApiKey = `sk_slack_${crypto.randomBytes(32).toString('hex')}`;
+    const keyHash = crypto.createHash('sha256').update(newApiKey).digest('hex');
+    const keyPreview = `${newApiKey.slice(0, 8)}...${newApiKey.slice(-4)}`;
+
     // Create new API key
-    const newKey = await prisma.apiKey.create({
+    await prisma.apiKey.create({
       data: {
         userId,
         name: 'Slack Integration',
-        keyHash: 'placeholder',
-        keyPreview: 'placeholder',
+        keyHash,
+        keyPreview,
         permissions: ['chat:read', 'chat:write', 'documents:read'],
         status: 'ACTIVE',
       },
     });
 
-    return newKey.keyPreview;
+    logger.info('Created Slack integration API key', { userId, keyPreview });
+    return newApiKey;
   }
 
   /**

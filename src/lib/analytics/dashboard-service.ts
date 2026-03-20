@@ -179,8 +179,15 @@ export class DashboardService {
       orderBy: { createdAt: 'asc' },
     });
 
-    // Get errors in the range (using empty array as placeholder since error field not in schema)
-    const errors: Array<{ createdAt: Date }> = [];
+    // Get errors from audit logs (filter by severity instead of event type)
+    const errors = await prisma.auditLog.findMany({
+      where: {
+        severity: 'ERROR',
+        createdAt: { gte: from, lte: to },
+        ...(workspaceId && { workspaceId }),
+      },
+      select: { createdAt: true },
+    });
 
     // Group by time buckets
     const buckets = this.createTimeBuckets(from, to, granularity);
@@ -661,8 +668,17 @@ export class DashboardService {
       where: activeChatsWhere,
     });
 
-    // Get recent errors (placeholder - error field not in schema)
-    const recentErrors: Array<{ id: string; createdAt: Date; endpoint: string }> = [];
+    // Get recent errors from audit logs
+    const recentErrors = await prisma.auditLog.findMany({
+      where: {
+        severity: 'ERROR',
+        createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
+        ...(workspaceId && { workspaceId }),
+      },
+      select: { id: true, createdAt: true, event: true, metadata: true },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
 
     // Get live token usage - using apiUsage instead of tokenUsage
     const minuteUsage = await prisma.apiUsage.aggregate({
@@ -693,7 +709,7 @@ export class DashboardService {
         id: e.id,
         timestamp: e.createdAt,
         error: 'Unknown error',
-        endpoint: e.endpoint,
+        endpoint: (e.metadata as { endpoint?: string })?.endpoint ?? 'unknown',
       })),
       liveTokenUsage: {
         tokensThisMinute,

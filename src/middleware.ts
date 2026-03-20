@@ -94,9 +94,10 @@ export default auth((req) => {
   }
 
   // Check if route requires authentication
+  // Note: Route groups like (chat) are not part of the URL path
   const requiresAuth = PROTECTED_API_ROUTES.some(
     (route) => pathname.startsWith(route)
-  ) || pathname.startsWith('/chat') || pathname.startsWith('/(chat)');
+  ) || pathname.startsWith('/chat');
 
   // Redirect unauthenticated users to login
   if (!isLoggedIn && requiresAuth) {
