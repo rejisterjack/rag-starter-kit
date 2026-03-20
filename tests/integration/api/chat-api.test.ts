@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST } from '@/app/api/chat/route';
-import { mockPrisma } from '@/tests/utils/mocks/prisma';
 import { mockNextAuthSession } from '@/tests/utils/helpers/setup';
+import { mockPrisma } from '@/tests/utils/mocks/prisma';
 
 vi.mock('@/lib/db', () => ({
   prisma: mockPrisma,

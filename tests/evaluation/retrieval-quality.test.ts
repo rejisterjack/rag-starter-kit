@@ -1,14 +1,14 @@
 /**
  * RAG Evaluation Tests
- * 
+ *
  * Evaluates the quality of the RAG pipeline using RAGAS-inspired metrics.
  * These tests measure retrieval accuracy, answer relevance, and faithfulness.
  */
 
-import { describe, it, expect, vi, beforeAll } from 'vitest';
-import { evaluateRetrieval, evaluateAnswer } from './utils';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { runRAGPipeline } from '@/lib/rag/engine';
 import { mockPrisma } from '@/tests/utils/mocks/prisma';
+import { evaluateAnswer, evaluateRetrieval } from './utils';
 
 vi.mock('@/lib/db', () => ({
   prisma: mockPrisma,
@@ -64,8 +64,8 @@ describe('Retrieval Quality', () => {
           });
 
           const retrievedDocIds = [...new Set(context.map((c: any) => c.documentId))];
-          const relevantRetrieved = testCase.expectedDocs.filter(doc =>
-            retrievedDocIds.some(id => id.includes(doc.replace('.pdf', '')))
+          const relevantRetrieved = testCase.expectedDocs.filter((doc) =>
+            retrievedDocIds.some((id) => id.includes(doc.replace('.pdf', '')))
           );
 
           return {
@@ -92,13 +92,12 @@ describe('Retrieval Quality', () => {
           });
 
           const retrievedDocIds = [...new Set(context.map((c: any) => c.documentId))];
-          const relevantRetrieved = retrievedDocIds.filter(id =>
-            testCase.expectedDocs.some(doc => id.includes(doc.replace('.pdf', '')))
+          const relevantRetrieved = retrievedDocIds.filter((id) =>
+            testCase.expectedDocs.some((doc) => id.includes(doc.replace('.pdf', '')))
           );
 
-          const precision = retrievedDocIds.length > 0
-            ? relevantRetrieved.length / retrievedDocIds.length
-            : 0;
+          const precision =
+            retrievedDocIds.length > 0 ? relevantRetrieved.length / retrievedDocIds.length : 0;
 
           return {
             query: testCase.query,
@@ -125,9 +124,7 @@ describe('Retrieval Quality', () => {
 
           // Find rank of first relevant document
           const firstRelevantIndex = context.findIndex((c: any) =>
-            testCase.expectedDocs.some(doc =>
-              c.documentId.includes(doc.replace('.pdf', ''))
-            )
+            testCase.expectedDocs.some((doc) => c.documentId.includes(doc.replace('.pdf', '')))
           );
 
           const mrr = firstRelevantIndex >= 0 ? 1 / (firstRelevantIndex + 1) : 0;
@@ -154,9 +151,9 @@ describe('Retrieval Quality', () => {
 
           // Assign relevance scores (1 if in expected docs, 0 otherwise)
           const relevanceScores = context.map((c: any) =>
-            testCase.expectedDocs.some(doc =>
-              c.documentId.includes(doc.replace('.pdf', ''))
-            ) ? 1 : 0
+            testCase.expectedDocs.some((doc) => c.documentId.includes(doc.replace('.pdf', '')))
+              ? 1
+              : 0
           );
 
           const ndcg = calculateNDCG(relevanceScores);
@@ -186,7 +183,7 @@ describe('Retrieval Quality', () => {
           const containsExpectedInfo = testCase.expectedAnswer
             .toLowerCase()
             .split(', ')
-            .some(part => content.toLowerCase().includes(part.toLowerCase()));
+            .some((part) => content.toLowerCase().includes(part.toLowerCase()));
 
           return {
             query: testCase.query,
@@ -195,7 +192,7 @@ describe('Retrieval Quality', () => {
         })
       );
 
-      const relevanceScore = results.filter(r => r.relevant).length / results.length;
+      const relevanceScore = results.filter((r) => r.relevant).length / results.length;
       console.log('Answer relevance results:', results);
       console.log('Relevance Score:', relevanceScore);
 
@@ -213,15 +210,11 @@ describe('Retrieval Quality', () => {
 
           // Check if answer claims are supported by context
           const claims = extractClaims(content);
-          const supportedClaims = claims.filter(claim =>
-            context.some((c: any) =>
-              c.content.toLowerCase().includes(claim.toLowerCase())
-            )
+          const supportedClaims = claims.filter((claim) =>
+            context.some((c: any) => c.content.toLowerCase().includes(claim.toLowerCase()))
           );
 
-          const faithfulness = claims.length > 0
-            ? supportedClaims.length / claims.length
-            : 1;
+          const faithfulness = claims.length > 0 ? supportedClaims.length / claims.length : 1;
 
           return { query: testCase.query, faithfulness };
         })
@@ -261,7 +254,7 @@ describe('Retrieval Quality', () => {
 
     it('measures time to first token', async () => {
       const testQuery = testDataset[0].query;
-      
+
       const start = Date.now();
       const stream = await runRAGPipeline({
         query: testQuery,
@@ -303,7 +296,8 @@ describe('Retrieval Quality', () => {
         })
       );
 
-      const avgOverallScore = evaluations.reduce((sum, e) => sum + e.overallScore, 0) / evaluations.length;
+      const avgOverallScore =
+        evaluations.reduce((sum, e) => sum + e.overallScore, 0) / evaluations.length;
       console.log('End-to-end evaluations:', evaluations);
       console.log('Average Overall Score:', avgOverallScore);
 
@@ -330,11 +324,14 @@ function calculateNDCG(relevanceScores: number[]): number {
 
 function extractClaims(answer: string): string[] {
   // Simple claim extraction based on sentences with numbers or key facts
-  const sentences = answer.split(/[.!?]+/).filter(s => s.trim());
-  return sentences.filter(s => 
-    /\d/.test(s) || // Contains number
-    s.includes('$') || // Contains currency
-    s.includes('%') || // Contains percentage
-    s.split(' ').length > 5 // Substantial claim
-  ).map(s => s.trim());
+  const sentences = answer.split(/[.!?]+/).filter((s) => s.trim());
+  return sentences
+    .filter(
+      (s) =>
+        /\d/.test(s) || // Contains number
+        s.includes('$') || // Contains currency
+        s.includes('%') || // Contains percentage
+        s.split(' ').length > 5 // Substantial claim
+    )
+    .map((s) => s.trim());
 }
