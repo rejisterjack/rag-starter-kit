@@ -3,12 +3,10 @@
  * Uses embeddings to detect natural boundaries between semantically different content
  */
 
-import { generateId, cosineSimilarity } from './utils';
-import type { Chunk, ChunkingOptions, Chunker } from './types';
-import { ChunkingError } from './types';
 import { estimateTokenCount } from './tokens';
-
-
+import type { Chunk, Chunker, ChunkingOptions } from './types';
+import { ChunkingError } from './types';
+import { cosineSimilarity, generateId } from './utils';
 
 /**
  * Split text into sentences
@@ -53,11 +51,9 @@ export class SemanticChunker implements Chunker {
   validateOptions(options: ChunkingOptions): boolean {
     if (options.similarityThreshold !== undefined) {
       if (options.similarityThreshold < 0 || options.similarityThreshold > 1) {
-        throw new ChunkingError(
-          'similarityThreshold must be between 0 and 1',
-          'INVALID_OPTIONS',
-          { similarityThreshold: options.similarityThreshold }
-        );
+        throw new ChunkingError('similarityThreshold must be between 0 and 1', 'INVALID_OPTIONS', {
+          similarityThreshold: options.similarityThreshold,
+        });
       }
     }
 
@@ -79,10 +75,7 @@ export class SemanticChunker implements Chunker {
     this.validateOptions(options);
 
     if (!document || document.trim().length === 0) {
-      throw new ChunkingError(
-        'Document is empty',
-        'EMPTY_DOCUMENT'
-      );
+      throw new ChunkingError('Document is empty', 'EMPTY_DOCUMENT');
     }
 
     // Get embedding function
@@ -153,11 +146,10 @@ export class SemanticChunker implements Chunker {
         );
         embeddings.push(...batchEmbeddings);
       } catch (error) {
-        throw new ChunkingError(
-          'Failed to generate embeddings',
-          'EMBEDDING_FAILED',
-          { error, batchIndex: i }
-        );
+        throw new ChunkingError('Failed to generate embeddings', 'EMBEDDING_FAILED', {
+          error,
+          batchIndex: i,
+        });
       }
     }
 
@@ -167,23 +159,14 @@ export class SemanticChunker implements Chunker {
   /**
    * Calculate similarities between consecutive sentences using sliding window
    */
-  private calculateSimilarities(
-    embeddings: number[][],
-    windowSize: number
-  ): number[] {
+  private calculateSimilarities(embeddings: number[][], windowSize: number): number[] {
     const similarities: number[] = [];
 
     for (let i = 0; i < embeddings.length - 1; i++) {
       // Calculate similarity between current sentence and next
       // Using windowed average for smoother transitions
-      const currentWindow = embeddings.slice(
-        Math.max(0, i - windowSize + 1),
-        i + 1
-      );
-      const nextWindow = embeddings.slice(
-        i + 1,
-        Math.min(embeddings.length, i + 1 + windowSize)
-      );
+      const currentWindow = embeddings.slice(Math.max(0, i - windowSize + 1), i + 1);
+      const nextWindow = embeddings.slice(i + 1, Math.min(embeddings.length, i + 1 + windowSize));
 
       const currentAvg = this.averageVectors(currentWindow);
       const nextAvg = this.averageVectors(nextWindow);
@@ -393,9 +376,11 @@ export async function analyzeSemanticStructure(
   }
 
   const chunker = new SemanticChunker({ embeddingFunction });
-  const embeddings = await (chunker as unknown as {
-    generateEmbeddings: (s: string[], fn: typeof embeddingFunction) => Promise<number[][]>;
-  }).generateEmbeddings(sentences, embeddingFunction);
+  const embeddings = await (
+    chunker as unknown as {
+      generateEmbeddings: (s: string[], fn: typeof embeddingFunction) => Promise<number[][]>;
+    }
+  ).generateEmbeddings(sentences, embeddingFunction);
 
   const similarities: number[] = [];
   for (let i = 0; i < embeddings.length - 1; i++) {

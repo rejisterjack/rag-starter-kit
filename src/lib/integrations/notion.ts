@@ -109,11 +109,14 @@ class NotionClient {
     this.auth = options.auth;
   }
 
-  private async request<T>(endpoint: string, options?: { method?: string; body?: unknown }): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    options?: { method?: string; body?: unknown }
+  ): Promise<T> {
     const response = await fetch(`https://api.notion.com/v1${endpoint}`, {
       method: options?.method ?? 'GET',
       headers: {
-        'Authorization': `Bearer ${this.auth}`,
+        Authorization: `Bearer ${this.auth}`,
         'Notion-Version': '2022-06-28',
         'Content-Type': 'application/json',
       },
@@ -128,7 +131,10 @@ class NotionClient {
   }
 
   search = {
-    list: async (params?: { filter?: { value: string; property: string }; query?: string }): Promise<{ results: NotionSearchResult[] }> => {
+    list: async (params?: {
+      filter?: { value: string; property: string };
+      query?: string;
+    }): Promise<{ results: NotionSearchResult[] }> => {
       return this.request<{ results: NotionSearchResult[] }>('/search', {
         method: 'POST',
         body: params,
@@ -161,7 +167,9 @@ export class NotionIntegration {
   /**
    * List available pages
    */
-  async listPages(): Promise<Array<{ id: string; title: string; url: string; lastEdited: string }>> {
+  async listPages(): Promise<
+    Array<{ id: string; title: string; url: string; lastEdited: string }>
+  > {
     const response = await this.client.search.list({
       filter: { value: 'page', property: 'object' },
     });
@@ -196,43 +204,43 @@ export class NotionIntegration {
    */
   private blockToMarkdown(block: NotionBlock): string {
     const blockType = block.type;
-    
+
     switch (blockType) {
       case 'paragraph':
         return this.richTextToMarkdown(block.paragraph.rich_text) + '\n\n';
-      
+
       case 'heading_1':
         return '# ' + this.richTextToMarkdown(block.heading_1.rich_text) + '\n\n';
-      
+
       case 'heading_2':
         return '## ' + this.richTextToMarkdown(block.heading_2.rich_text) + '\n\n';
-      
+
       case 'heading_3':
         return '### ' + this.richTextToMarkdown(block.heading_3.rich_text) + '\n\n';
-      
+
       case 'bulleted_list_item':
         return '- ' + this.richTextToMarkdown(block.bulleted_list_item.rich_text) + '\n';
-      
+
       case 'numbered_list_item':
         return '1. ' + this.richTextToMarkdown(block.numbered_list_item.rich_text) + '\n';
-      
+
       case 'code': {
         const code = this.richTextToMarkdown(block.code.rich_text);
         const language = block.code.language ?? '';
         return '```' + language + '\n' + code + '\n```\n\n';
       }
-      
+
       case 'quote':
         return '> ' + this.richTextToMarkdown(block.quote.rich_text) + '\n\n';
-      
+
       case 'divider':
         return '---\n\n';
-      
+
       case 'callout': {
         const calloutText = this.richTextToMarkdown(block.callout.rich_text);
         return '> 💡 ' + calloutText + '\n\n';
       }
-      
+
       default:
         return '';
     }
@@ -244,16 +252,18 @@ export class NotionIntegration {
   private richTextToMarkdown(richText: NotionText[]): string {
     if (richText === undefined || richText.length === 0) return '';
 
-    return richText.map((text) => {
-      let content = text.plain_text;
+    return richText
+      .map((text) => {
+        let content = text.plain_text;
 
-      if (text.annotations.bold) content = `**${content}**`;
-      if (text.annotations.italic) content = `*${content}*`;
-      if (text.annotations.code) content = `\`${content}\``;
-      if (text.href !== null) content = `[${content}](${text.href})`;
+        if (text.annotations.bold) content = `**${content}**`;
+        if (text.annotations.italic) content = `*${content}*`;
+        if (text.annotations.code) content = `\`${content}\``;
+        if (text.href !== null) content = `[${content}](${text.href})`;
 
-      return content;
-    }).join('');
+        return content;
+      })
+      .join('');
   }
 
   /**

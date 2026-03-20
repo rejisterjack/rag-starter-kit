@@ -1,6 +1,6 @@
 /**
  * Token Tracking & Cost Management
- * 
+ *
  * Tracks token usage per workspace/user, estimates costs,
  * and provides budget alerts.
  */
@@ -71,7 +71,7 @@ const MODEL_PRICING: Record<string, { prompt: number; completion: number }> = {
   'text-embedding-3-small': { prompt: 0.00002, completion: 0 },
   'text-embedding-3-large': { prompt: 0.00013, completion: 0 },
   // Default fallback
-  'default': { prompt: 0.001, completion: 0.003 },
+  default: { prompt: 0.001, completion: 0.003 },
 };
 
 // ============================================================================
@@ -90,7 +90,7 @@ export async function trackTokenUsage(data: {
   completionTokens: number;
 }): Promise<TokenUsageRecord> {
   const { workspaceId, userId, conversationId, model, promptTokens, completionTokens } = data;
-  
+
   const totalTokens = promptTokens + completionTokens;
   const estimatedCost = estimateCost(model, promptTokens, completionTokens);
 
@@ -133,10 +133,10 @@ export function estimateCost(
   completionTokens: number
 ): number {
   const pricing = MODEL_PRICING[model] ?? MODEL_PRICING['default'];
-  
+
   const promptCost = (promptTokens / 1000) * pricing.prompt;
   const completionCost = (completionTokens / 1000) * pricing.completion;
-  
+
   return Math.round((promptCost + completionCost) * 10000) / 10000; // Round to 4 decimals
 }
 
@@ -176,7 +176,7 @@ export async function getWorkspaceTokenUsage(
   const totalTokens = usages.reduce((sum, u) => sum + u.tokensTotal, 0);
   const promptTokens = usages.reduce((sum, u) => sum + u.tokensPrompt, 0);
   const completionTokens = usages.reduce((sum, u) => sum + u.tokensCompletion, 0);
-  const estimatedCost = usages.reduce((sum, u) => sum + (u.tokensTotal * 0.000001), 0);
+  const estimatedCost = usages.reduce((sum, u) => sum + u.tokensTotal * 0.000001, 0);
 
   return {
     workspaceId,
@@ -237,12 +237,14 @@ export async function getModelUsage(
   workspaceId: string,
   startDate?: Date,
   endDate?: Date
-): Promise<Array<{
-  model: string;
-  totalTokens: number;
-  estimatedCost: number;
-  requestCount: number;
-}>> {
+): Promise<
+  Array<{
+    model: string;
+    totalTokens: number;
+    estimatedCost: number;
+    requestCount: number;
+  }>
+> {
   const where: {
     workspaceId: string;
     createdAt?: { gte?: Date; lte?: Date };

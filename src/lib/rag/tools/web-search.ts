@@ -5,9 +5,8 @@
  */
 
 import { z } from 'zod';
-
-import { createTool, createSuccessResult, createErrorResult } from './types';
 import type { Source } from '@/types';
+import { createErrorResult, createSuccessResult, createTool } from './types';
 
 // ============================================================================
 // Types
@@ -146,7 +145,7 @@ export class DuckDuckGoProvider implements WebSearchProvider {
   async search(query: string, options: WebSearchOptions = {}): Promise<WebSearchResult[]> {
     // Use DuckDuckGo's HTML interface for web results
     const maxResults = options.maxResults ?? 5;
-    
+
     try {
       // Fetch DuckDuckGo HTML results page
       const params = new URLSearchParams({
@@ -154,11 +153,11 @@ export class DuckDuckGoProvider implements WebSearchProvider {
         kl: 'us-en', // Region
         safe: 'off',
       });
-      
+
       const response = await fetch(`https://html.duckduckgo.com/html/?${params}`, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'text/html',
+          Accept: 'text/html',
         },
       });
 
@@ -168,7 +167,7 @@ export class DuckDuckGoProvider implements WebSearchProvider {
 
       const html = await response.text();
       const results = this.parseDuckDuckGoResults(html);
-      
+
       return results.slice(0, maxResults);
     } catch (error) {
       // Fallback to instant answers API if HTML parsing fails
@@ -178,26 +177,27 @@ export class DuckDuckGoProvider implements WebSearchProvider {
 
   private parseDuckDuckGoResults(html: string): WebSearchResult[] {
     const results: WebSearchResult[] = [];
-    
+
     // Parse DuckDuckGo HTML results
     // Result format: <div class="result">...</div>
-    const resultRegex = /<div class="result[^"]*"[^>]*>[\s\S]*?<\/div>\s*(?=<div class="result"|<div id="links")/gi;
+    const resultRegex =
+      /<div class="result[^"]*"[^>]*>[\s\S]*?<\/div>\s*(?=<div class="result"|<div id="links")/gi;
     const titleRegex = /<a[^>]*class="result__a"[^>]*>([\s\S]*?)<\/a>/i;
     const urlRegex = /<a[^>]*href="([^"]+)"/i;
     const snippetRegex = /<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/i;
-    
+
     const matches = html.match(resultRegex) || [];
-    
+
     for (const resultHtml of matches.slice(0, 10)) {
       const titleMatch = resultHtml.match(titleRegex);
       const urlMatch = resultHtml.match(urlRegex);
       const snippetMatch = resultHtml.match(snippetRegex);
-      
+
       if (titleMatch && urlMatch) {
         const title = this.cleanHtml(titleMatch[1]);
         let url = urlMatch[1];
         const snippet = snippetMatch ? this.cleanHtml(snippetMatch[1]) : '';
-        
+
         // Handle DuckDuckGo redirect URLs
         if (url.startsWith('//')) {
           url = 'https:' + url;
@@ -208,7 +208,7 @@ export class DuckDuckGoProvider implements WebSearchProvider {
             url = decodeURIComponent(uddgMatch[1]);
           }
         }
-        
+
         results.push({
           title,
           url,
@@ -217,7 +217,7 @@ export class DuckDuckGoProvider implements WebSearchProvider {
         });
       }
     }
-    
+
     return results;
   }
 
@@ -241,11 +241,11 @@ export class DuckDuckGoProvider implements WebSearchProvider {
         no_html: '1',
         skip_disambig: '1',
       });
-      
+
       const response = await fetch(`https://api.duckduckgo.com/?${params}`, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; RAGBot/1.0)',
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
       });
 
@@ -268,7 +268,9 @@ export class DuckDuckGoProvider implements WebSearchProvider {
 
       // Add related topics
       if (data.RelatedTopics) {
-        const topics = Array.isArray(data.RelatedTopics) ? data.RelatedTopics : [data.RelatedTopics];
+        const topics = Array.isArray(data.RelatedTopics)
+          ? data.RelatedTopics
+          : [data.RelatedTopics];
         for (const topic of topics.slice(0, maxResults - 1)) {
           if (topic.Text && topic.FirstURL) {
             results.push({

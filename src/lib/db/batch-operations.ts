@@ -1,12 +1,12 @@
 /**
  * Batch Operations
- * 
+ *
  * Efficient bulk insert operations for vector data.
  * Optimized for high-throughput scenarios.
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
 import type { DocumentChunk } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 
 // Type for transaction client
 type PrismaTransactionClient = Omit<
@@ -71,7 +71,7 @@ export interface BulkUpdateResult {
 
 /**
  * Insert document chunks in batches
- * 
+ *
  * This is the recommended way to insert large numbers of chunks as it:
  * - Prevents memory issues
  * - Handles partial failures gracefully
@@ -181,7 +181,7 @@ async function insertBatch(
       ${Prisma.raw(`ARRAY[${values.map((v) => v.start).join(',')}]::int[]`)},
       ${Prisma.raw(`ARRAY[${values.map((v) => v.end).join(',')}]::int[]`)},
       ${Prisma.raw(`ARRAY[${values.map((v) => v.page ?? 'NULL').join(',')}]::int[]`)},
-      ${Prisma.raw(`ARRAY[${values.map((v) => v.section ? `'${v.section.replace(/'/g, "''")}'` : 'NULL').join(',')}]::text[]`)}
+      ${Prisma.raw(`ARRAY[${values.map((v) => (v.section ? `'${v.section.replace(/'/g, "''")}'` : 'NULL')).join(',')}]::text[]`)}
     ) AS v(id, document_id, content, embedding, index, start, "end", page, section)
   `;
 
@@ -225,11 +225,7 @@ export async function batchUpdateEmbeddings(
   updates: Array<{ chunkId: string; embedding: number[] }>,
   options: BatchInsertOptions = {}
 ): Promise<BulkUpdateResult> {
-  const {
-    batchSize = 100,
-    batchDelayMs = 0,
-    continueOnError = true,
-  } = options;
+  const { batchSize = 100, batchDelayMs = 0, continueOnError = true } = options;
 
   const errors: Array<{ chunkId: string; error: string }> = [];
   let successCount = 0;
@@ -296,7 +292,7 @@ export async function batchUpdateChunks(
       for (const update of batch) {
         try {
           const sets: string[] = [];
-          
+
           if (update.content !== undefined) {
             sets.push(`content = '${update.content.replace(/'/g, "''")}'`);
           }
@@ -317,7 +313,7 @@ export async function batchUpdateChunks(
               WHERE id = '${update.chunkId}'
             `);
           }
-          
+
           successCount++;
         } catch (error) {
           failureCount++;

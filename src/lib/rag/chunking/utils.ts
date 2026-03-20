@@ -16,7 +16,7 @@ export function simpleHash(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32bit integer
   }
   return Math.abs(hash);
@@ -57,7 +57,11 @@ export function getOverlap(str1: string, str2: string, maxLength: number = 100):
  * Find the best insertion point for a needle in a haystack
  * Returns the index where the needle is found, or -1
  */
-export function findInsertionPoint(haystack: string, needle: string, startIndex: number = 0): number {
+export function findInsertionPoint(
+  haystack: string,
+  needle: string,
+  startIndex: number = 0
+): number {
   // Try exact match first
   const exactIndex = haystack.indexOf(needle, startIndex);
   if (exactIndex !== -1) {

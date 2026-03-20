@@ -1,62 +1,59 @@
 /**
  * Tools System
- * 
+ *
  * Exports all tools for use by agents and other components.
  */
 
 import { z } from 'zod';
 
-// Core types
-export {
-  type Tool,
-  type ToolResult,
-  ToolRegistry,
-  createTool,
-  createSuccessResult,
-  createErrorResult,
-} from './types';
-
 // Calculator tool
 export {
-  calculatorTool,
   calculate,
-  convert,
   calculateBatch,
+  calculatorTool,
+  convert,
 } from './calculator';
-
+// Document tools
+export {
+  compareDocumentsTool,
+  documentMetadataTool,
+  documentSummaryTool,
+  documentTools,
+  searchDocumentsTool,
+  semanticSearchTool,
+} from './document-tools';
+// Core types
+export {
+  createErrorResult,
+  createSuccessResult,
+  createTool,
+  type Tool,
+  ToolRegistry,
+  type ToolResult,
+} from './types';
 // Web search tool
 export {
   createWebSearchTool,
+  DuckDuckGoProvider,
   getDefaultWebSearchProvider,
+  SerpAPIProvider,
+  TavilyProvider,
+  type WebSearchOptions,
   type WebSearchProvider,
   type WebSearchResult,
-  type WebSearchOptions,
-  TavilyProvider,
-  SerpAPIProvider,
-  DuckDuckGoProvider,
 } from './web-search';
-
-// Document tools
-export {
-  searchDocumentsTool,
-  documentSummaryTool,
-  documentMetadataTool,
-  semanticSearchTool,
-  compareDocumentsTool,
-  documentTools,
-} from './document-tools';
 
 // Re-import for use in this file
 import { calculatorTool } from './calculator';
-import { getDefaultWebSearchProvider, createWebSearchTool } from './web-search';
 import {
-  searchDocumentsTool,
-  documentSummaryTool,
-  documentMetadataTool,
-  semanticSearchTool,
   compareDocumentsTool,
+  documentMetadataTool,
+  documentSummaryTool,
+  searchDocumentsTool,
+  semanticSearchTool,
 } from './document-tools';
 import { ToolRegistry } from './types';
+import { createWebSearchTool, getDefaultWebSearchProvider } from './web-search';
 
 // Current time tool (simple utility)
 export const currentTimeTool = {

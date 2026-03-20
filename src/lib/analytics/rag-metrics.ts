@@ -1,6 +1,6 @@
 /**
  * RAG Metrics & Analytics
- * 
+ *
  * Tracks and analyzes RAG pipeline performance, retrieval accuracy,
  * and user engagement metrics.
  */
@@ -407,9 +407,7 @@ function calculateRetrievalAccuracy(
   let totalAccuracy = 0;
   for (const event of events) {
     if (event.retrievedChunks.length === 0) continue;
-    const topSimilarities = event.retrievedChunks
-      .slice(0, 3)
-      .map((c) => c.similarity);
+    const topSimilarities = event.retrievedChunks.slice(0, 3).map((c) => c.similarity);
     totalAccuracy += avg(topSimilarities);
   }
 
@@ -441,9 +439,7 @@ async function calculateUserSatisfaction(
   return Math.round(latencyScore * 100) / 100;
 }
 
-function calculateTopKAccuracy(
-  chunks: Array<{ similarity: number; rank: number }>
-): number {
+function calculateTopKAccuracy(chunks: Array<{ similarity: number; rank: number }>): number {
   if (chunks.length === 0) return 0;
 
   // Consider top-3 chunks with similarity > 0.7 as accurate
@@ -459,16 +455,14 @@ function calculateMRR(ranks: number[]): number {
   return ranks.reduce((sum, r) => sum + 1 / r, 0) / ranks.length;
 }
 
-function calculateNDCG(
-  chunks: Array<{ similarity: number; rank: number }>
-): number {
+function calculateNDCG(chunks: Array<{ similarity: number; rank: number }>): number {
   if (chunks.length === 0) return 0;
 
   // Simplified NDCG calculation
-  const dcgs = chunks.map((c) => (Math.pow(2, c.similarity) - 1) / Math.log2(c.rank + 1));
+  const dcgs = chunks.map((c) => (2 ** c.similarity - 1) / Math.log2(c.rank + 1));
   const idcgs = chunks
     .sort((a, b) => b.similarity - a.similarity)
-    .map((c, i) => (Math.pow(2, c.similarity) - 1) / Math.log2(i + 2));
+    .map((c, i) => (2 ** c.similarity - 1) / Math.log2(i + 2));
 
   const dcg = dcgs.reduce((sum, v) => sum + v, 0);
   const idcg = idcgs.reduce((sum, v) => sum + v, 0);

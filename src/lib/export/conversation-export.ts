@@ -379,7 +379,7 @@ export async function exportConversationToCSV(
     const timestamp = message.createdAt.toISOString();
     const role = message.role;
     const content = escapeCsv(message.content);
-    const sourceCount = message.sources ? ((message.sources as unknown) as Source[]).length : 0;
+    const sourceCount = message.sources ? (message.sources as unknown as Source[]).length : 0;
 
     lines.push(`${timestamp},${role},"${content}",${sourceCount}`);
   }

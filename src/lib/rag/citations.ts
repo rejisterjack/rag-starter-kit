@@ -108,10 +108,7 @@ export class CitationHandler {
   /**
    * Extract citations from LLM response text
    */
-  extractCitations(
-    response: string,
-    citationMap: Map<string, Citation>
-  ): Citation[] {
+  extractCitations(response: string, citationMap: Map<string, Citation>): Citation[] {
     const citations: Citation[] = [];
     const seenIds = new Set<string>();
 
@@ -121,7 +118,7 @@ export class CitationHandler {
 
     while ((patternMatch = citationPattern.exec(response)) !== null) {
       const citationId = `[${patternMatch[1]}]`;
-      
+
       if (!seenIds.has(citationId)) {
         seenIds.add(citationId);
         const citation = citationMap.get(citationId);
@@ -169,12 +166,12 @@ export class CitationHandler {
       // Try to find and highlight the specific portion that was cited
       const term = searchTerm.trim();
       const termIndex = chunk.content.toLowerCase().indexOf(term.toLowerCase());
-      
+
       if (termIndex !== -1) {
         const before = chunk.content.slice(0, termIndex);
         const highlighted = chunk.content.slice(termIndex, termIndex + term.length);
         const after = chunk.content.slice(termIndex + term.length);
-        
+
         highlightedContent = `${before}**${highlighted}**${after}`;
       }
     }
@@ -215,7 +212,7 @@ export class CitationHandler {
 
     const footnotes = citations.map((c) => {
       const pageInfo = c.page ? `, p.${c.page}` : '';
-      return `[^${c.id.replace(/[\[\]]/g, '')}]: ${c.documentName}${pageInfo}`;
+      return `[^${c.id.replace(/[[\]]/g, '')}]: ${c.documentName}${pageInfo}`;
     });
 
     return '\n\n' + footnotes.join('\n');
@@ -226,10 +223,10 @@ export class CitationHandler {
    */
   convertToFootnotes(response: string, citations: Citation[]): string {
     let converted = response;
-    
+
     for (const c of citations) {
       const bracketId = c.id;
-      const footnoteId = `[^${c.id.replace(/[\[\]]/g, '')}]`;
+      const footnoteId = `[^${c.id.replace(/[[\]]/g, '')}]`;
       converted = converted.replace(new RegExp(`\\${bracketId}`, 'g'), footnoteId);
     }
 
@@ -247,10 +244,8 @@ export class CitationHandler {
     missingCitations: string[];
     usedCitations: Citation[];
   } {
-    const usedCitationIds = this.extractCitationsWithPositions(response).map(
-      (m) => m.citationId
-    );
-    
+    const usedCitationIds = this.extractCitationsWithPositions(response).map((m) => m.citationId);
+
     const missingCitations: string[] = [];
     const usedCitations: Citation[] = [];
 
@@ -294,7 +289,7 @@ export class CitationHandler {
     citations: Citation[];
   }> {
     const grouped = this.groupByDocument(citations);
-    
+
     return Array.from(grouped.entries()).map(([documentId, citationsList]) => ({
       documentId,
       documentName: citationsList[0]?.documentName ?? 'Unknown',
@@ -399,10 +394,8 @@ export function formatCitationForDisplay(
   options: { showScore?: boolean; showContent?: boolean } = {}
 ): string {
   const { showScore = true, showContent = false } = options;
-  
-  const parts: string[] = [
-    `${citation.id} ${citation.documentName}`,
-  ];
+
+  const parts: string[] = [`${citation.id} ${citation.documentName}`];
 
   if (citation.page) {
     parts.push(`Page ${citation.page}`);

@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   fixedSizeChunking,
-  semanticChunking,
   hierarchicalChunking,
   recursiveChunking,
+  semanticChunking,
 } from '@/lib/rag/chunking';
 
 describe('Chunking', () => {
@@ -79,8 +79,9 @@ describe('Chunking', () => {
 
   describe('Semantic Chunking', () => {
     it('finds semantic boundaries', () => {
-      const text = 'First paragraph about topic A.\n\nSecond paragraph about topic B.\n\nThird paragraph about topic C.';
-      
+      const text =
+        'First paragraph about topic A.\n\nSecond paragraph about topic B.\n\nThird paragraph about topic C.';
+
       const chunks = semanticChunking(text, {
         minChunkSize: 50,
         maxChunkSize: 300,
@@ -128,7 +129,7 @@ describe('Chunking', () => {
       });
 
       // Code block should not be split
-      chunks.forEach(chunk => {
+      chunks.forEach((chunk) => {
         const codeStarts = (chunk.content.match(/```/g) || []).length;
         expect(codeStarts % 2).toBe(0); // Balanced code fences
       });
@@ -136,14 +137,14 @@ describe('Chunking', () => {
 
     it('respects sentence boundaries', () => {
       const text = 'First sentence. Second sentence. Third sentence.';
-      
+
       const chunks = semanticChunking(text, {
         minChunkSize: 30,
         maxChunkSize: 50,
       });
 
       // Should not split mid-sentence
-      chunks.forEach(chunk => {
+      chunks.forEach((chunk) => {
         expect(chunk.content.trim().endsWith('.') || chunk.content.includes('. ')).toBeTruthy();
       });
     });
@@ -169,7 +170,7 @@ describe('Chunking', () => {
       });
 
       // Should have hierarchical structure
-      expect(chunks.some(c => c.metadata.level === 1)).toBe(true);
+      expect(chunks.some((c) => c.metadata.level === 1)).toBe(true);
     });
 
     it('preserves document structure', () => {
@@ -179,7 +180,7 @@ describe('Chunking', () => {
       });
 
       // Check that parent chunks contain child content
-      chunks.forEach(chunk => {
+      chunks.forEach((chunk) => {
         if (chunk.metadata.children) {
           expect(Array.isArray(chunk.metadata.children)).toBe(true);
         }
@@ -207,20 +208,20 @@ describe('Chunking', () => {
   describe('Recursive Chunking', () => {
     it('recursively splits oversized chunks', () => {
       const longText = 'word '.repeat(1000);
-      
+
       const chunks = recursiveChunking(longText, {
         chunkSize: 200,
         separators: ['\n\n', '\n', '. ', ' '],
       });
 
-      chunks.forEach(chunk => {
+      chunks.forEach((chunk) => {
         expect(chunk.content.length).toBeLessThanOrEqual(200);
       });
     });
 
     it('tries multiple separators in order', () => {
       const text = 'Para1.\n\nPara2.\nPara3. Sentence1. Sentence2';
-      
+
       const chunks = recursiveChunking(text, {
         chunkSize: 50,
         separators: ['\n\n', '\n', '. '],
@@ -232,13 +233,13 @@ describe('Chunking', () => {
 
     it('falls back to character split if necessary', () => {
       const noSeparatorText = 'a'.repeat(1000);
-      
+
       const chunks = recursiveChunking(noSeparatorText, {
         chunkSize: 200,
         separators: ['\n\n', '\n'],
       });
 
-      chunks.forEach(chunk => {
+      chunks.forEach((chunk) => {
         expect(chunk.content.length).toBeLessThanOrEqual(200);
       });
     });
@@ -247,14 +248,14 @@ describe('Chunking', () => {
   describe('Edge Cases', () => {
     it('handles text with only whitespace', () => {
       const whitespace = '   \n\n   \t   ';
-      
+
       const chunks = fixedSizeChunking(whitespace, { chunkSize: 100 });
       expect(chunks.length).toBe(0);
     });
 
     it('handles text with special characters', () => {
       const special = 'Special chars: 🎉 émojis «quotes» ≠≠≠ \x00\x01\x02';
-      
+
       const chunks = fixedSizeChunking(special, { chunkSize: 100 });
       expect(chunks).toHaveLength(1);
       expect(chunks[0].content).toContain('🎉');
@@ -263,7 +264,7 @@ describe('Chunking', () => {
     it('handles very long words', () => {
       const longWord = 'a'.repeat(1000);
       const text = `Start ${longWord} end`;
-      
+
       const chunks = fixedSizeChunking(text, { chunkSize: 100 });
       expect(chunks.length).toBeGreaterThan(0);
     });
@@ -282,11 +283,11 @@ describe('Chunking', () => {
       });
 
       // Table should not be split mid-row
-      chunks.forEach(chunk => {
-        const rows = chunk.content.split('\n').filter(r => r.includes('|'));
+      chunks.forEach((chunk) => {
+        const rows = chunk.content.split('\n').filter((r) => r.includes('|'));
         if (rows.length > 1) {
           // All rows should have same column count
-          const colCounts = rows.map(r => r.split('|').length);
+          const colCounts = rows.map((r) => r.split('|').length);
           expect(new Set(colCounts).size).toBe(1);
         }
       });

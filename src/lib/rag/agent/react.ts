@@ -1,19 +1,19 @@
 /**
  * ReAct (Reasoning + Acting) Pattern Implementation
- * 
+ *
  * Implements the ReAct pattern where the agent:
  * 1. Thinks: Reasons about what to do
  * 2. Acts: Executes a tool/action
  * 3. Observes: Processes the result
  * 4. Repeats until an answer is found
- * 
+ *
  * Reference: https://arxiv.org/abs/2210.03629
  */
 
+import { createProviderFromEnv } from '@/lib/ai/llm';
 // import { z } from 'zod';
 import type { Message, Source } from '@/types';
 import type { Tool } from '../tools/types';
-import { createProviderFromEnv } from '@/lib/ai/llm';
 
 // ============================================================================
 // Types
@@ -133,7 +133,7 @@ export class ReActAgent {
 
     const llm = createProviderFromEnv();
     const maxSteps = context.maxSteps ?? this.config.maxSteps;
-    
+
     // Build the conversation
     const messages = this.buildMessages(query, context);
 
@@ -149,7 +149,7 @@ export class ReActAgent {
       totalCompletionTokens += response.usage.completionTokens;
 
       const content = response.content;
-      
+
       // Parse the response
       const parsed = this.parseResponse(content);
 
@@ -179,7 +179,7 @@ export class ReActAgent {
 
       // Execute the tool
       const toolResult = await this.executeTool(parsed.action, parsed.actionInput);
-      
+
       // Collect sources from tool results
       if (toolResult.sources) {
         sources.push(...toolResult.sources);
@@ -208,7 +208,8 @@ export class ReActAgent {
 
     // Max steps reached without final answer
     return {
-      answer: 'I apologize, but I was unable to complete the task within the allowed number of steps. Please try rephrasing your question or breaking it into smaller parts.',
+      answer:
+        'I apologize, but I was unable to complete the task within the allowed number of steps. Please try rephrasing your question or breaking it into smaller parts.',
       steps,
       sources: this.deduplicateSources(sources),
       tokensUsed: {
@@ -313,7 +314,10 @@ export class ReActAgent {
       .map((t) => `- ${t.name}: ${t.description}`)
       .join('\n');
 
-    const systemPrompt = REACT_SYSTEM_PROMPT.replace('{tools}', toolDescriptions || 'No tools available');
+    const systemPrompt = REACT_SYSTEM_PROMPT.replace(
+      '{tools}',
+      toolDescriptions || 'No tools available'
+    );
 
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       {
@@ -403,7 +407,7 @@ export class ReActAgent {
     input: Record<string, unknown>
   ): Promise<{ output: string; success: boolean; sources?: Source[] }> {
     const tool = this.tools.get(name);
-    
+
     if (!tool) {
       return {
         output: `Error: Tool "${name}" not found. Available tools: ${Array.from(this.tools.keys()).join(', ')}`,
@@ -413,11 +417,9 @@ export class ReActAgent {
 
     try {
       const result = await tool.execute(input);
-      
+
       return {
-        output: result.success
-          ? this.formatToolOutput(result.data)
-          : `Error: ${result.error}`,
+        output: result.success ? this.formatToolOutput(result.data) : `Error: ${result.error}`,
         success: result.success,
         sources: result.sources,
       };

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 test.describe('Workspaces', () => {
   test.beforeEach(async ({ page }) => {
@@ -24,7 +24,9 @@ test.describe('Workspaces', () => {
 
     // Should redirect to new workspace
     await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.locator('[data-testid="workspace-name-display"]')).toContainText('New Test Workspace');
+    await expect(page.locator('[data-testid="workspace-name-display"]')).toContainText(
+      'New Test Workspace'
+    );
   });
 
   test('user can switch between workspaces', async ({ page }) => {
@@ -39,7 +41,9 @@ test.describe('Workspaces', () => {
     await page.click('[data-testid="workspace-item"].nth(1)');
 
     // Should switch to selected workspace
-    await expect(page.locator('[data-testid="workspace-name-display"]')).toContainText(workspaceName || '');
+    await expect(page.locator('[data-testid="workspace-name-display"]')).toContainText(
+      workspaceName || ''
+    );
   });
 
   test('user can invite members to workspace', async ({ page }) => {
@@ -59,7 +63,9 @@ test.describe('Workspaces', () => {
     await expect(page.locator('[data-testid="invite-success"]')).toBeVisible();
 
     // Invited member should appear in pending list
-    await expect(page.locator('[data-testid="pending-invites"]')).toContainText('newmember@example.com');
+    await expect(page.locator('[data-testid="pending-invites"]')).toContainText(
+      'newmember@example.com'
+    );
   });
 
   test('user can update member roles', async ({ page }) => {
@@ -109,7 +115,9 @@ test.describe('Workspaces', () => {
     await expect(page.locator('[data-testid="settings-saved"]')).toBeVisible();
 
     // Name should be updated in header
-    await expect(page.locator('[data-testid="workspace-name-display"]')).toContainText('Updated Workspace Name');
+    await expect(page.locator('[data-testid="workspace-name-display"]')).toContainText(
+      'Updated Workspace Name'
+    );
   });
 
   test('user can delete workspace', async ({ page }) => {
@@ -122,7 +130,9 @@ test.describe('Workspaces', () => {
     await expect(page.locator('[data-testid="delete-confirmation"]')).toBeVisible();
 
     // Type workspace name to confirm
-    const workspaceName = await page.locator('[data-testid="workspace-name-display"]').textContent();
+    const workspaceName = await page
+      .locator('[data-testid="workspace-name-display"]')
+      .textContent();
     await page.fill('[data-testid="delete-confirm-input"]', workspaceName || '');
 
     // Confirm deletion
@@ -183,7 +193,9 @@ test.describe('Workspaces', () => {
 
     // Document counts should be different (assuming test data)
     // Or at least the workspace context should be different
-    const currentWorkspace = await page.locator('[data-testid="workspace-name-display"]').textContent();
+    const currentWorkspace = await page
+      .locator('[data-testid="workspace-name-display"]')
+      .textContent();
     expect(currentWorkspace).toBeTruthy();
   });
 

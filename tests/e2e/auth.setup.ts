@@ -1,11 +1,11 @@
 /**
  * Auth Setup for Playwright
- * 
+ *
  * This file authenticates a user and saves the storage state,
  * which can be reused by other tests to avoid logging in repeatedly.
  */
 
-import { test as setup, expect } from '@playwright/test';
+import { expect, test as setup } from '@playwright/test';
 import path from 'path';
 
 const authFile = path.join(__dirname, '../playwright/.auth/user.json');

@@ -1,11 +1,11 @@
 /**
  * Vector Operations
- * 
+ *
  * Advanced vector database operations including index management,
  * optimization, and statistics.
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 
 // ============================================================================
 // Types
@@ -72,10 +72,10 @@ export interface VectorStats {
 
 /**
  * Create HNSW index for fast approximate search
- * 
+ *
  * HNSW (Hierarchical Navigable Small World) is the recommended index for pgvector
  * as it provides the best query performance with reasonable build time.
- * 
+ *
  * @param prisma - PrismaClient instance
  * @param options - Index configuration options
  */
@@ -83,13 +83,7 @@ export async function createHNSWIndex(
   prisma: PrismaClient,
   options: HNSWIndexOptions
 ): Promise<void> {
-  const {
-    tableName,
-    columnName,
-    m = 16,
-    efConstruction = 64,
-    distanceMetric = 'cosine',
-  } = options;
+  const { tableName, columnName, m = 16, efConstruction = 64, distanceMetric = 'cosine' } = options;
 
   const indexName = `${tableName}_${columnName}_hnsw_idx`;
 
@@ -99,9 +93,7 @@ export async function createHNSWIndex(
   }
 
   // Drop existing index if exists
-  await prisma.$executeRawUnsafe(
-    `DROP INDEX IF EXISTS ${indexName}`
-  );
+  await prisma.$executeRawUnsafe(`DROP INDEX IF EXISTS ${indexName}`);
 
   // Create HNSW index
   // Note: Using raw query with proper escaping for identifiers
@@ -133,10 +125,7 @@ export async function dropHNSWIndex(
  * Update HNSW search parameters for a query
  * Higher ef = more accurate but slower
  */
-export async function setHNSWEfSearch(
-  prisma: PrismaClient,
-  ef: number
-): Promise<void> {
+export async function setHNSWEfSearch(prisma: PrismaClient, ef: number): Promise<void> {
   await prisma.$executeRaw`SET hnsw.ef_search = ${ef}`;
 }
 
@@ -146,10 +135,10 @@ export async function setHNSWEfSearch(
 
 /**
  * Create IVFFlat index (alternative to HNSW)
- * 
+ *
  * IVFFlat is good for large datasets where index build time is a concern.
  * However, HNSW generally provides better query performance.
- * 
+ *
  * @param prisma - PrismaClient instance
  * @param options - Index configuration options
  */
@@ -157,19 +146,12 @@ export async function createIVFFlatIndex(
   prisma: PrismaClient,
   options: IVFFlatIndexOptions
 ): Promise<void> {
-  const {
-    tableName,
-    columnName,
-    lists,
-    distanceMetric = 'cosine',
-  } = options;
+  const { tableName, columnName, lists, distanceMetric = 'cosine' } = options;
 
   const indexName = `${tableName}_${columnName}_ivfflat_idx`;
 
   // Drop existing index if exists
-  await prisma.$executeRawUnsafe(
-    `DROP INDEX IF EXISTS ${indexName}`
-  );
+  await prisma.$executeRawUnsafe(`DROP INDEX IF EXISTS ${indexName}`);
 
   // Create IVFFlat index
   const createIndexSQL = `
@@ -200,10 +182,7 @@ export async function dropIVFFlatIndex(
  * Update IVFFlat probe count for a query
  * Higher probes = more accurate but slower
  */
-export async function setIVFFlatProbes(
-  prisma: PrismaClient,
-  probes: number
-): Promise<void> {
+export async function setIVFFlatProbes(prisma: PrismaClient, probes: number): Promise<void> {
   await prisma.$executeRaw`SET ivfflat.probes = ${probes}`;
 }
 
@@ -223,14 +202,16 @@ export async function analyzeVectorIndex(
   await prisma.$executeRawUnsafe(`ANALYZE ${tableName}`);
 
   // Get index statistics
-  const stats = await prisma.$queryRaw<Array<{
-    indexname: string;
-    indextype: string;
-    tablename: string;
-    columnname: string;
-    size: string;
-    rows: bigint;
-  }>>`
+  const stats = await prisma.$queryRaw<
+    Array<{
+      indexname: string;
+      indextype: string;
+      tablename: string;
+      columnname: string;
+      size: string;
+      rows: bigint;
+    }>
+  >`
     SELECT 
       i.relname as indexname,
       am.amname as indextype,
@@ -261,17 +242,17 @@ export async function analyzeVectorIndex(
 /**
  * Get all vector indexes in the database
  */
-export async function listVectorIndexes(
-  prisma: PrismaClient
-): Promise<IndexStats[]> {
-  const stats = await prisma.$queryRaw<Array<{
-    indexname: string;
-    indextype: string;
-    tablename: string;
-    columnname: string;
-    size: string;
-    rows: bigint;
-  }>>`
+export async function listVectorIndexes(prisma: PrismaClient): Promise<IndexStats[]> {
+  const stats = await prisma.$queryRaw<
+    Array<{
+      indexname: string;
+      indextype: string;
+      tablename: string;
+      columnname: string;
+      size: string;
+      rows: bigint;
+    }>
+  >`
     SELECT 
       i.relname as indexname,
       am.amname as indextype,
@@ -303,10 +284,7 @@ export async function listVectorIndexes(
  * Reindex a vector index
  * Use when index becomes fragmented
  */
-export async function reindexVector(
-  prisma: PrismaClient,
-  indexName: string
-): Promise<void> {
+export async function reindexVector(prisma: PrismaClient, indexName: string): Promise<void> {
   await prisma.$executeRawUnsafe(`REINDEX INDEX ${indexName}`);
 }
 
@@ -317,19 +295,18 @@ export async function reindexVector(
 /**
  * Get vector statistics for a user's workspace
  */
-export async function getVectorStats(
-  prisma: PrismaClient,
-  userId: string
-): Promise<VectorStats> {
+export async function getVectorStats(prisma: PrismaClient, userId: string): Promise<VectorStats> {
   // Get overall statistics
-  const stats = await prisma.$queryRaw<[
-    {
-      total_vectors: bigint;
-      avg_vector_size: number;
-      index_size: string;
-      table_size: string;
-    },
-  ]>`
+  const stats = await prisma.$queryRaw<
+    [
+      {
+        total_vectors: bigint;
+        avg_vector_size: number;
+        index_size: string;
+        table_size: string;
+      },
+    ]
+  >`
     SELECT 
       COUNT(*) as total_vectors,
       AVG(pg_column_size(embedding)) as avg_vector_size,
@@ -347,12 +324,14 @@ export async function getVectorStats(
   `;
 
   // Get per-document statistics
-  const documentStats = await prisma.$queryRaw<Array<{
-    document_id: string;
-    document_name: string;
-    chunk_count: bigint;
-    has_embeddings: boolean;
-  }>>`
+  const documentStats = await prisma.$queryRaw<
+    Array<{
+      document_id: string;
+      document_name: string;
+      chunk_count: bigint;
+      has_embeddings: boolean;
+    }>
+  >`
     SELECT 
       d.id as document_id,
       d.name as document_name,
@@ -392,17 +371,19 @@ export async function getGlobalVectorStats(prisma: PrismaClient): Promise<{
   indexSize: string;
   tableSize: string;
 }> {
-  const stats = await prisma.$queryRaw<[
-    {
-      total_vectors: bigint;
-      total_documents: bigint;
-      docs_with_embeddings: bigint;
-      docs_without_embeddings: bigint;
-      avg_chunks: number;
-      index_size: string;
-      table_size: string;
-    },
-  ]>`
+  const stats = await prisma.$queryRaw<
+    [
+      {
+        total_vectors: bigint;
+        total_documents: bigint;
+        docs_with_embeddings: bigint;
+        docs_without_embeddings: bigint;
+        avg_chunks: number;
+        index_size: string;
+        table_size: string;
+      },
+    ]
+  >`
     WITH doc_stats AS (
       SELECT 
         d.id,
@@ -446,9 +427,7 @@ export async function getGlobalVectorStats(prisma: PrismaClient): Promise<{
  * Vacuum and analyze vector table
  * Run periodically for optimal performance
  */
-export async function vacuumVectorTable(
-  prisma: PrismaClient
-): Promise<void> {
+export async function vacuumVectorTable(prisma: PrismaClient): Promise<void> {
   // Note: VACUUM cannot run inside a transaction
   // This needs to be run outside of Prisma's transaction
   await prisma.$executeRaw`VACUUM ANALYZE document_chunks`;
@@ -460,14 +439,14 @@ export async function vacuumVectorTable(
 export async function findDuplicateVectors(
   prisma: PrismaClient,
   documentId?: string
-): Promise<Array<{
-  content: string;
-  count: number;
-  ids: string[];
-}>> {
-  const whereClause = documentId 
-    ? Prisma.sql`WHERE document_id = ${documentId}` 
-    : Prisma.sql``;
+): Promise<
+  Array<{
+    content: string;
+    count: number;
+    ids: string[];
+  }>
+> {
+  const whereClause = documentId ? Prisma.sql`WHERE document_id = ${documentId}` : Prisma.sql``;
 
   return prisma.$queryRaw`
     SELECT 
@@ -525,7 +504,7 @@ function getDistanceOperator(metric: 'l2' | 'ip' | 'cosine'): string {
 export function calculateOptimalLists(rowCount: number): number {
   // Rule of thumb: sqrt of row count, rounded to nearest power of 2
   const sqrt = Math.sqrt(rowCount);
-  return Math.pow(2, Math.round(Math.log2(sqrt)));
+  return 2 ** Math.round(Math.log2(sqrt));
 }
 
 /**

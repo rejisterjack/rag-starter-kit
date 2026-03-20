@@ -3,7 +3,7 @@
  * Handles SW registration, updates, and lifecycle events
  */
 
-import { SW_CONFIG, STORAGE_KEYS } from "./pwa-config";
+import { STORAGE_KEYS, SW_CONFIG } from './pwa-config';
 
 // ============================================================================
 // Types
@@ -44,23 +44,24 @@ export async function registerServiceWorker(
 ): Promise<ServiceWorkerRegistration | null> {
   const { scope = SW_CONFIG.scope, onUpdate, onSuccess, onError } = options;
 
-  if (!("serviceWorker" in navigator)) {
-    console.log("[SW] Service workers not supported");
+  if (!('serviceWorker' in navigator)) {
+    console.log('[SW] Service workers not supported');
     return null;
   }
 
   try {
     const registration = await navigator.serviceWorker.register(SW_CONFIG.swPath, {
       scope,
-      updateViaCache: "imports",
+      updateViaCache: 'imports',
     });
 
-    console.log("[SW] Service Worker registered with scope:", registration.scope);
+    console.log('[SW] Service Worker registered with scope:', registration.scope);
 
     // Store registration globally for access
-    if (typeof window !== "undefined") {
-      (window as unknown as { __SW_REGISTRATION__?: ServiceWorkerRegistration }).__SW_REGISTRATION__ =
-        registration;
+    if (typeof window !== 'undefined') {
+      (
+        window as unknown as { __SW_REGISTRATION__?: ServiceWorkerRegistration }
+      ).__SW_REGISTRATION__ = registration;
     }
 
     // Handle updates
@@ -68,7 +69,7 @@ export async function registerServiceWorker(
 
     // Wait for service worker to be ready
     navigator.serviceWorker.ready.then(() => {
-      console.log("[SW] Service Worker is active");
+      console.log('[SW] Service Worker is active');
       onSuccess?.(registration);
     });
 
@@ -78,7 +79,7 @@ export async function registerServiceWorker(
     return registration;
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    console.error("[SW] Registration failed:", err);
+    console.error('[SW] Registration failed:', err);
     onError?.(err);
     return null;
   }
@@ -92,20 +93,20 @@ function handleServiceWorkerUpdates(
   onUpdate?: (registration: ServiceWorkerRegistration) => void
 ): void {
   // Listen for new service worker installation
-  registration.addEventListener("updatefound", () => {
+  registration.addEventListener('updatefound', () => {
     const newWorker = registration.installing;
 
     if (!newWorker) return;
 
-    newWorker.addEventListener("statechange", () => {
+    newWorker.addEventListener('statechange', () => {
       // A new service worker has been installed and is waiting
-      if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-        console.log("[SW] New version available");
+      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+        console.log('[SW] New version available');
         onUpdate?.(registration);
 
         // Dispatch custom event for components to listen to
         window.dispatchEvent(
-          new CustomEvent("sw-update-available", {
+          new CustomEvent('sw-update-available', {
             detail: { registration },
           })
         );
@@ -114,13 +115,13 @@ function handleServiceWorkerUpdates(
   });
 
   // Listen for controller changes (new SW activated)
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    console.log("[SW] Service Worker controller changed");
-    window.dispatchEvent(new CustomEvent("sw-controller-changed"));
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    console.log('[SW] Service Worker controller changed');
+    window.dispatchEvent(new CustomEvent('sw-controller-changed'));
   });
 
   // Listen for messages from service worker
-  navigator.serviceWorker.addEventListener("message", (event) => {
+  navigator.serviceWorker.addEventListener('message', (event) => {
     if (event.data?.type) {
       handleServiceWorkerMessage(event.data);
     }
@@ -132,47 +133,38 @@ function handleServiceWorkerUpdates(
  */
 function handleServiceWorkerMessage(data: { type: string; payload?: unknown }): void {
   switch (data.type) {
-    case "UPDATE_AVAILABLE":
-      window.dispatchEvent(
-        new CustomEvent("sw-update-available", { detail: data })
-      );
+    case 'UPDATE_AVAILABLE':
+      window.dispatchEvent(new CustomEvent('sw-update-available', { detail: data }));
       break;
-    case "SYNC_COMPLETE":
-      window.dispatchEvent(
-        new CustomEvent("sw-sync-complete", { detail: data })
-      );
+    case 'SYNC_COMPLETE':
+      window.dispatchEvent(new CustomEvent('sw-sync-complete', { detail: data }));
       break;
-    case "CACHE_UPDATED":
-      window.dispatchEvent(
-        new CustomEvent("sw-cache-updated", { detail: data })
-      );
+    case 'CACHE_UPDATED':
+      window.dispatchEvent(new CustomEvent('sw-cache-updated', { detail: data }));
       break;
     default:
-      console.log("[SW] Message from service worker:", data);
+      console.log('[SW] Message from service worker:', data);
   }
 }
 
 /**
  * Set up online/offline event handlers
  */
-function setupNetworkHandlers(
-  onOffline?: () => void,
-  onOnline?: () => void
-): void {
+function setupNetworkHandlers(onOffline?: () => void, onOnline?: () => void): void {
   const handleOnline = () => {
-    console.log("[SW] App is online");
-    document.body.classList.remove("offline");
+    console.log('[SW] App is online');
+    document.body.classList.remove('offline');
     onOnline?.();
   };
 
   const handleOffline = () => {
-    console.log("[SW] App is offline");
-    document.body.classList.add("offline");
+    console.log('[SW] App is offline');
+    document.body.classList.add('offline');
     onOffline?.();
   };
 
-  window.addEventListener("online", handleOnline);
-  window.addEventListener("offline", handleOffline);
+  window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
 
   // Set initial state
   if (!navigator.onLine) {
@@ -189,7 +181,7 @@ function setupNetworkHandlers(
  * @returns Promise resolving to update check result
  */
 export async function checkForUpdates(): Promise<UpdateCheckResult> {
-  if (!("serviceWorker" in navigator)) {
+  if (!('serviceWorker' in navigator)) {
     return { updateAvailable: false };
   }
 
@@ -199,7 +191,7 @@ export async function checkForUpdates(): Promise<UpdateCheckResult> {
     return { updateAvailable: !!registration.waiting };
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    console.error("[SW] Update check failed:", err);
+    console.error('[SW] Update check failed:', err);
     return { updateAvailable: false, error: err };
   }
 }
@@ -209,7 +201,7 @@ export async function checkForUpdates(): Promise<UpdateCheckResult> {
  * Reloads the page to apply the update
  */
 export async function applyUpdate(): Promise<void> {
-  if (!("serviceWorker" in navigator)) {
+  if (!('serviceWorker' in navigator)) {
     return;
   }
 
@@ -217,11 +209,11 @@ export async function applyUpdate(): Promise<void> {
 
   if (registration.waiting) {
     // Send message to skip waiting
-    registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
 
     // Wait for controller change then reload
     await new Promise<void>((resolve) => {
-      navigator.serviceWorker.addEventListener("controllerchange", () => {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
         resolve();
       });
     });
@@ -238,7 +230,7 @@ export async function applyUpdate(): Promise<void> {
  * Get the current service worker registration
  */
 export async function getRegistration(): Promise<ServiceWorkerRegistration | null> {
-  if (!("serviceWorker" in navigator)) {
+  if (!('serviceWorker' in navigator)) {
     return null;
   }
 
@@ -253,17 +245,17 @@ export async function getRegistration(): Promise<ServiceWorkerRegistration | nul
  * Unregister the service worker
  */
 export async function unregisterServiceWorker(): Promise<boolean> {
-  if (!("serviceWorker" in navigator)) {
+  if (!('serviceWorker' in navigator)) {
     return false;
   }
 
   try {
     const registration = await navigator.serviceWorker.ready;
     const result = await registration.unregister();
-    console.log("[SW] Unregistered:", result);
+    console.log('[SW] Unregistered:', result);
     return result;
   } catch (error) {
-    console.error("[SW] Unregister failed:", error);
+    console.error('[SW] Unregister failed:', error);
     return false;
   }
 }
@@ -275,10 +267,8 @@ export async function unregisterServiceWorker(): Promise<boolean> {
 /**
  * Send a message to the service worker
  */
-export async function sendMessageToSW(
-  message: { type: string; payload?: unknown }
-): Promise<void> {
-  if (!("serviceWorker" in navigator)) {
+export async function sendMessageToSW(message: { type: string; payload?: unknown }): Promise<void> {
+  if (!('serviceWorker' in navigator)) {
     return;
   }
 
@@ -291,8 +281,8 @@ export async function sendMessageToSW(
 /**
  * Request background sync
  */
-export async function requestBackgroundSync(tag: string = "sync-messages"): Promise<boolean> {
-  if (!("serviceWorker" in navigator) || !("sync" in ServiceWorkerRegistration.prototype)) {
+export async function requestBackgroundSync(tag: string = 'sync-messages'): Promise<boolean> {
+  if (!('serviceWorker' in navigator) || !('sync' in ServiceWorkerRegistration.prototype)) {
     return false;
   }
 
@@ -302,7 +292,7 @@ export async function requestBackgroundSync(tag: string = "sync-messages"): Prom
     await (registration as any).sync.register(tag);
     return true;
   } catch (error) {
-    console.error("[SW] Background sync registration failed:", error);
+    console.error('[SW] Background sync registration failed:', error);
     return false;
   }
 }
@@ -317,20 +307,18 @@ export async function requestBackgroundSync(tag: string = "sync-messages"): Prom
 export async function clearAllCaches(): Promise<boolean> {
   try {
     // Send message to service worker to clear caches
-    sendMessageToSW({ type: "CLEAR_CACHE" });
+    sendMessageToSW({ type: 'CLEAR_CACHE' });
 
     // Also clear from main thread
     const cacheNames = await caches.keys();
     await Promise.all(
-      cacheNames
-        .filter((name) => name.startsWith("rag-"))
-        .map((name) => caches.delete(name))
+      cacheNames.filter((name) => name.startsWith('rag-')).map((name) => caches.delete(name))
     );
 
-    console.log("[SW] All caches cleared");
+    console.log('[SW] All caches cleared');
     return true;
   } catch (error) {
-    console.error("[SW] Failed to clear caches:", error);
+    console.error('[SW] Failed to clear caches:', error);
     return false;
   }
 }
@@ -345,11 +333,11 @@ export async function getCacheStats(): Promise<{
 }> {
   try {
     const cacheNames = await caches.keys();
-    const ragCaches = cacheNames.filter((name) => name.startsWith("rag-"));
+    const ragCaches = cacheNames.filter((name) => name.startsWith('rag-'));
 
     // Try to get storage estimate
     let estimatedSize: string | undefined;
-    if ("storage" in navigator) {
+    if ('storage' in navigator) {
       const estimate = await navigator.storage.estimate();
       if (estimate.usage) {
         estimatedSize = `${(estimate.usage / 1024 / 1024).toFixed(2)} MB`;
@@ -362,7 +350,7 @@ export async function getCacheStats(): Promise<{
       estimatedSize,
     };
   } catch (error) {
-    console.error("[SW] Failed to get cache stats:", error);
+    console.error('[SW] Failed to get cache stats:', error);
     return {
       totalCaches: 0,
       cacheNames: [],

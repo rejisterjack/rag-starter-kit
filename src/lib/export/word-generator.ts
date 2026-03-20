@@ -4,29 +4,29 @@
  */
 
 import {
-  Document,
-  Paragraph,
-  TextRun,
-  HeadingLevel,
   AlignmentType,
   BorderStyle,
+  convertInchesToTwip,
+  Document,
   Footer,
   Header,
+  HeadingLevel,
   Packer,
-  TableOfContents,
-  convertInchesToTwip,
+  Paragraph,
   Table,
   TableCell,
+  TableOfContents,
   TableRow,
-  WidthType,
+  TextRun,
   VerticalAlign,
+  WidthType,
 } from 'docx';
 
 import type {
-  ExportConversation,
-  ExportOptions,
   ExportCitation,
+  ExportConversation,
   ExportMessage,
+  ExportOptions,
   ExportProgress,
 } from './types';
 
@@ -132,10 +132,7 @@ export class WordGenerator {
     conversations: ExportConversation[],
     allCitations: ExportCitation[][] = []
   ): Promise<Buffer> {
-    const totalMessages = conversations.reduce(
-      (sum, c) => sum + c.messages.length,
-      0
-    );
+    const totalMessages = conversations.reduce((sum, c) => sum + c.messages.length, 0);
 
     this.reportProgress({
       status: 'processing',
@@ -153,18 +150,9 @@ export class WordGenerator {
       const conversation = conversations[i];
       const citations = allCitations[i] ?? [];
 
-      sections.push(
-        this.createSectionHeader(
-          conversation.title,
-          i + 1,
-          conversations.length
-        )
-      );
+      sections.push(this.createSectionHeader(conversation.title, i + 1, conversations.length));
 
-      const messageSections = this.createMessageSections(
-        conversation.messages,
-        citations
-      );
+      const messageSections = this.createMessageSections(conversation.messages, citations);
       sections.push(...messageSections);
 
       if (i < conversations.length - 1) {
@@ -279,10 +267,7 @@ export class WordGenerator {
       })
     );
 
-    const messageSections = this.createMessageSections(
-      conversation.messages,
-      citations
-    );
+    const messageSections = this.createMessageSections(conversation.messages, citations);
     sections.push(...messageSections);
 
     // Citations
@@ -308,9 +293,7 @@ export class WordGenerator {
               new TextRun({
                 text: citation.documentName,
               }),
-              ...(citation.page
-                ? [new TextRun({ text: `, Page ${citation.page}` })]
-                : []),
+              ...(citation.page ? [new TextRun({ text: `, Page ${citation.page}` })] : []),
             ],
           })
         );
@@ -346,20 +329,14 @@ export class WordGenerator {
     });
   }
 
-  private createMetadataTable(
-    conversation: ExportConversation
-  ): Table {
+  private createMetadataTable(conversation: ExportConversation): Table {
     const rows = [
       ['Conversation ID', conversation.id],
       ['Created', conversation.createdAt.toLocaleString()],
       ['Updated', conversation.updatedAt.toLocaleString()],
       ['Messages', conversation.messages.length.toString()],
-      ...(conversation.userName
-        ? [['Exported by', conversation.userName]]
-        : []),
-      ...(conversation.workspaceName
-        ? [['Workspace', conversation.workspaceName]]
-        : []),
+      ...(conversation.userName ? [['Exported by', conversation.userName]] : []),
+      ...(conversation.workspaceName ? [['Workspace', conversation.workspaceName]] : []),
     ];
 
     return new Table({
@@ -436,11 +413,7 @@ export class WordGenerator {
       sections.push(...contentParagraphs);
 
       // Sources/Citations
-      if (
-        message.sources &&
-        message.sources.length > 0 &&
-        this.options.includeSources !== false
-      ) {
+      if (message.sources && message.sources.length > 0 && this.options.includeSources !== false) {
         sections.push(
           new Paragraph({
             text: 'Sources:',
@@ -459,9 +432,7 @@ export class WordGenerator {
 
         message.sources.forEach((source, sourceIndex) => {
           const citationRef = this.findCitationForSource(source, citations);
-          const citationNum = citationRef
-            ? citations.indexOf(citationRef) + 1
-            : sourceIndex + 1;
+          const citationNum = citationRef ? citations.indexOf(citationRef) + 1 : sourceIndex + 1;
 
           sections.push(
             new Paragraph({
@@ -679,11 +650,7 @@ export class WordGenerator {
     return runs;
   }
 
-  private createSectionHeader(
-    title: string,
-    index: number,
-    total: number
-  ): Paragraph {
+  private createSectionHeader(title: string, index: number, total: number): Paragraph {
     return new Paragraph({
       text: `${title} (${index} of ${total})`,
       heading: HeadingLevel.HEADING_1,
@@ -754,9 +721,7 @@ export class WordGenerator {
     source: { documentId: string; page?: number },
     citations: ExportCitation[]
   ): ExportCitation | undefined {
-    return citations.find(
-      (c) => c.documentId === source.documentId && c.page === source.page
-    );
+    return citations.find((c) => c.documentId === source.documentId && c.page === source.page);
   }
 
   private getRoleLabel(role: string): string {

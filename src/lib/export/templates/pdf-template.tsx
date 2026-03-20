@@ -5,21 +5,13 @@
 
 'use client';
 
-import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  Font,
-  Image,
-} from '@react-pdf/renderer';
+import { Document, Font, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
 // Extract types from @react-pdf/renderer components
 type PDFPageProps = React.ComponentProps<typeof Page>;
 type PDFPageSize = PDFPageProps['size'];
 
-import type { ExportConversation, ExportOptions, ExportCitation } from '../types';
+import type { ExportCitation, ExportConversation, ExportOptions } from '../types';
 
 // =============================================================================
 // Font Registration
@@ -28,10 +20,7 @@ import type { ExportConversation, ExportOptions, ExportCitation } from '../types
 // Register fonts for RTL support
 Font.register({
   family: 'Helvetica',
-  fonts: [
-    { src: 'Helvetica' },
-    { src: 'Helvetica-Bold', fontWeight: 'bold' },
-  ],
+  fonts: [{ src: 'Helvetica' }, { src: 'Helvetica-Bold', fontWeight: 'bold' }],
 });
 
 // =============================================================================
@@ -317,9 +306,7 @@ function MessageContent({ content, isRTL }: MessageContentProps) {
           );
         } else {
           // Regular text with bold formatting
-          const textWithBold = part
-            .replace(/\*\*(.+?)\*\*/g, '$1')
-            .replace(/\*(.+?)\*/g, '$1');
+          const textWithBold = part.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
           return <Text key={index}>{textWithBold}</Text>;
         }
       })}
@@ -354,10 +341,11 @@ export function PDFTemplate({ conversation, options, citations }: PDFTemplatePro
     switch (dateFormat) {
       case 'iso':
         return date.toISOString();
-      case 'relative':
+      case 'relative': {
         const diff = Date.now() - date.getTime();
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         return days === 0 ? 'Today' : `${days} days ago`;
+      }
       case 'locale':
       default:
         return date.toLocaleString();
@@ -400,7 +388,10 @@ export function PDFTemplate({ conversation, options, citations }: PDFTemplatePro
   return (
     <Document>
       {/* Cover Page */}
-      <Page size={(options.pageSize ?? 'A4') as PDFPageSize} style={styles.page as PDFPageProps['style']}>
+      <Page
+        size={(options.pageSize ?? 'A4') as PDFPageSize}
+        style={styles.page as PDFPageProps['style']}
+      >
         {watermark && (
           <View style={styles.watermark}>
             <Text>CONFIDENTIAL</Text>
@@ -413,9 +404,7 @@ export function PDFTemplate({ conversation, options, citations }: PDFTemplatePro
             {workspaceName && <Text style={styles.workspaceName}>{workspaceName}</Text>}
           </View>
           <Text style={styles.title}>{conversation.title}</Text>
-          <Text style={styles.subtitle}>
-            Exported on {formatDate(new Date())}
-          </Text>
+          <Text style={styles.subtitle}>Exported on {formatDate(new Date())}</Text>
         </View>
 
         {includeMetadata && (
@@ -490,9 +479,7 @@ export function PDFTemplate({ conversation, options, citations }: PDFTemplatePro
                       <Text style={styles.sourceNumber}>[{sourceIndex + 1}]</Text>
                       <Text style={styles.sourceName}>{source.documentName}</Text>
                     </View>
-                    {source.page && (
-                      <Text style={styles.sourceMeta}>Page {source.page}</Text>
-                    )}
+                    {source.page && <Text style={styles.sourceMeta}>Page {source.page}</Text>}
                     <Text style={styles.sourceContent}>
                       &ldquo;{source.content.substring(0, 150)}
                       {source.content.length > 150 ? '...' : ''}&rdquo;

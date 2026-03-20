@@ -1,13 +1,12 @@
 /**
  * Contextual Compression Module
- * 
+ *
  * Compresses retrieved chunks to fit more relevant context into limited window.
  * Uses LLM to extract the most relevant sentences from each chunk.
  */
 
-import { generateChatCompletion } from '@/lib/ai';
-import { estimateTokens } from '@/lib/ai';
-import type { RetrievedChunk, CompressionConfig } from './types';
+import { estimateTokens, generateChatCompletion } from '@/lib/ai';
+import type { CompressionConfig, RetrievedChunk } from './types';
 
 // Message type for AI completions
 interface ChatMessage {
@@ -79,15 +78,12 @@ export class ContextualCompressor {
 
   /**
    * Compress chunks based on relevance to query
-   * 
+   *
    * @param query - User query
    * @param chunks - Retrieved chunks to compress
    * @returns Compressed chunks
    */
-  async compress(
-    query: string,
-    chunks: RetrievedChunk[]
-  ): Promise<RetrievedChunk[]> {
+  async compress(query: string, chunks: RetrievedChunk[]): Promise<RetrievedChunk[]> {
     if (chunks.length === 0) {
       return chunks;
     }
@@ -115,10 +111,7 @@ export class ContextualCompressor {
   /**
    * Compress a single chunk
    */
-  private async compressChunk(
-    query: string,
-    chunk: RetrievedChunk
-  ): Promise<RetrievedChunk> {
+  private async compressChunk(query: string, chunk: RetrievedChunk): Promise<RetrievedChunk> {
     // Skip short chunks that don't need compression
     const originalTokens = estimateTokens(chunk.content);
     if (originalTokens <= this.config.maxTokensPerChunk) {
@@ -146,7 +139,7 @@ export class ContextualCompressor {
 
     // Fallback to heuristic compression
     const heuristicResult = this.heuristicCompression(query, chunk.content);
-    
+
     return {
       ...chunk,
       content: heuristicResult.compressedContent,
@@ -157,13 +150,8 @@ export class ContextualCompressor {
   /**
    * LLM-based compression using relevant sentence extraction
    */
-  private async llmBasedCompression(
-    query: string,
-    content: string
-  ): Promise<CompressionResult> {
-    const prompt = COMPRESSION_PROMPT
-      .replace('{query}', query)
-      .replace('{chunk}', content);
+  private async llmBasedCompression(query: string, content: string): Promise<CompressionResult> {
+    const prompt = COMPRESSION_PROMPT.replace('{query}', query).replace('{chunk}', content);
 
     const messages: ChatMessage[] = [
       {
@@ -172,7 +160,7 @@ export class ContextualCompressor {
       },
       { role: 'user', content: prompt },
     ];
-    
+
     const { text } = await generateChatCompletion(
       messages as unknown as Parameters<typeof generateChatCompletion>[0],
       { temperature: 0.3, maxTokens: this.config.maxTokensPerChunk * 2 }
@@ -203,13 +191,8 @@ export class ContextualCompressor {
   /**
    * Map-reduce style compression (for very long chunks)
    */
-  async mapReduceCompress(
-    query: string,
-    content: string
-  ): Promise<string> {
-    const prompt = MAP_REDUCE_PROMPT
-      .replace('{query}', query)
-      .replace('{chunk}', content);
+  async mapReduceCompress(query: string, content: string): Promise<string> {
+    const prompt = MAP_REDUCE_PROMPT.replace('{query}', query).replace('{chunk}', content);
 
     const messages: ChatMessage[] = [
       {
@@ -218,7 +201,7 @@ export class ContextualCompressor {
       },
       { role: 'user', content: prompt },
     ];
-    
+
     const { text } = await generateChatCompletion(
       messages as unknown as Parameters<typeof generateChatCompletion>[0],
       { temperature: 0.3, maxTokens: this.config.maxTokensPerChunk }
@@ -234,7 +217,10 @@ export class ContextualCompressor {
   private heuristicCompression(query: string, content: string): CompressionResult {
     const sentences = this.splitIntoSentences(content);
     const queryTerms = new Set(
-      query.toLowerCase().split(/\s+/).filter((t) => t.length > 3)
+      query
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((t) => t.length > 3)
     );
 
     // Score each sentence
@@ -253,21 +239,19 @@ export class ContextualCompressor {
 
     for (const { sentence, score } of scoredSentences) {
       if (score === 0) continue;
-      
+
       const sentenceTokens = estimateTokens(sentence);
       if (currentTokens + sentenceTokens > targetTokens && selectedSentences.length > 0) {
         break;
       }
-      
+
       selectedSentences.push(sentence);
       currentTokens += sentenceTokens;
     }
 
     // Sort back to original order
     const sentenceOrder = new Map(sentences.map((s, i) => [s, i]));
-    selectedSentences.sort((a, b) => 
-      (sentenceOrder.get(a) ?? 0) - (sentenceOrder.get(b) ?? 0)
-    );
+    selectedSentences.sort((a, b) => (sentenceOrder.get(a) ?? 0) - (sentenceOrder.get(b) ?? 0));
 
     const compressedContent = selectedSentences.join('. ');
     const originalLength = content.length;
@@ -299,9 +283,7 @@ export class ContextualCompressor {
    */
   private scoreSentence(sentence: string, queryTerms: Set<string>): number {
     const sentenceLower = sentence.toLowerCase();
-    const sentenceTerms = new Set(
-      sentenceLower.split(/\s+/).filter((t) => t.length > 3)
-    );
+    const sentenceTerms = new Set(sentenceLower.split(/\s+/).filter((t) => t.length > 3));
 
     // Keyword overlap score
     let score = 0;
@@ -353,12 +335,10 @@ export class ContextualCompressor {
       // Truncate to target tokens (approximately)
       const targetChars = targetTokens * 4; // Rough estimate
       const truncated = chunk.content.slice(0, targetChars);
-      
+
       // Try to end at sentence boundary
       const lastSentence = truncated.lastIndexOf('.');
-      const finalContent = lastSentence > 0 
-        ? truncated.slice(0, lastSentence + 1)
-        : truncated;
+      const finalContent = lastSentence > 0 ? truncated.slice(0, lastSentence + 1) : truncated;
 
       return {
         ...chunk,
@@ -435,9 +415,7 @@ export function truncateChunks(
 
     return {
       ...chunk,
-      content: lastPeriod > 0 
-        ? truncated.slice(0, lastPeriod + 1) + '...'
-        : truncated + '...',
+      content: lastPeriod > 0 ? truncated.slice(0, lastPeriod + 1) + '...' : truncated + '...',
       retrievalMethod: `${chunk.retrievalMethod}-truncated`,
     };
   });

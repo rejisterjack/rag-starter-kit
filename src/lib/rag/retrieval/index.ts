@@ -1,12 +1,12 @@
 /**
  * RAG Retrieval Module
- * 
+ *
  * Handles vector search, reranking, and source retrieval.
  * Now uses the new VectorStore for efficient similarity search.
  */
 
-import { prisma, createVectorStore, type SearchOptions } from '@/lib/db';
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
+import { createVectorStore, prisma, type SearchOptions } from '@/lib/db';
 import type { RAGConfig, Source, VectorSearchResult } from '@/types';
 
 /**
@@ -26,7 +26,7 @@ export async function searchSimilarChunks(
   config: Partial<RAGConfig> = {}
 ): Promise<VectorSearchResult[]> {
   const vectorStore = createVectorStore(prisma);
-  
+
   const searchOptions: SearchOptions = {
     userId,
     topK: config.topK ?? 5,
@@ -63,7 +63,7 @@ export async function searchSimilarChunksByDocuments(
   config: Partial<RAGConfig> = {}
 ): Promise<VectorSearchResult[]> {
   const vectorStore = createVectorStore(prisma);
-  
+
   const searchOptions: SearchOptions = {
     userId,
     topK: config.topK ?? 5,
@@ -74,11 +74,7 @@ export async function searchSimilarChunksByDocuments(
     },
   };
 
-  const results = await vectorStore.similaritySearch(
-    '',
-    queryEmbedding,
-    searchOptions
-  );
+  const results = await vectorStore.similaritySearch('', queryEmbedding, searchOptions);
 
   return results.map((r) => ({
     id: r.chunkId,
@@ -102,10 +98,10 @@ export async function retrieveSources(
 ): Promise<Source[]> {
   // Generate query embedding
   const queryEmbedding = await generateQueryEmbedding(query);
-  
+
   // Search for similar chunks
   const results = await searchSimilarChunks(queryEmbedding, userId, config);
-  
+
   // Map to Source type
   const sources = results.map((result) => ({
     id: result.id,
@@ -166,16 +162,16 @@ export function buildContext(sources: Source[], maxLength = 4000): string {
   if (sources.length === 0) {
     return '';
   }
-  
+
   let context = '';
   let currentLength = 0;
-  
+
   for (let i = 0; i < sources.length; i++) {
     const source = sources[i];
     if (!source) continue;
 
     const sourceText = `[${i + 1}] Source: ${source.metadata.documentName}${source.metadata.page ? `, Page ${source.metadata.page}` : ''}\n${source.content}\n\n`;
-    
+
     // Check if adding this source would exceed max length
     if (currentLength + sourceText.length > maxLength) {
       // Try to add a truncated version
@@ -185,11 +181,11 @@ export function buildContext(sources: Source[], maxLength = 4000): string {
       }
       break;
     }
-    
+
     context += sourceText;
     currentLength += sourceText.length;
   }
-  
+
   return context.trim();
 }
 
@@ -200,7 +196,7 @@ export function formatSourceCitations(sources: Source[]): string {
   if (sources.length === 0) {
     return '';
   }
-  
+
   return sources
     .map((source, index) => {
       const meta = source.metadata;
@@ -218,18 +214,21 @@ export function rerankSources(sources: Source[], query: string): Source[] {
   // 1. Original similarity score (40%)
   // 2. Keyword overlap (30%)
   // 3. Source recency/diversity (30%)
-  
-  const queryTerms = query.toLowerCase().split(/\s+/).filter((t) => t.length > 2);
-  
+
+  const queryTerms = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length > 2);
+
   return sources
     .map((source) => {
       const contentTerms = source.content.toLowerCase().split(/\s+/);
       const overlap = queryTerms.filter((term) => contentTerms.includes(term)).length;
       const keywordScore = queryTerms.length > 0 ? overlap / queryTerms.length : 0;
-      
+
       // Combined score
       const score = (source.similarity ?? 0) * 0.4 + keywordScore * 0.3 + 0.3; // diversity bonus
-      
+
       return { ...source, score };
     })
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
@@ -238,23 +237,20 @@ export function rerankSources(sources: Source[], query: string): Source[] {
 /**
  * Deduplicate sources from the same document section
  */
-export function deduplicateSources(
-  sources: Source[],
-  maxPerDocument = 3
-): Source[] {
+export function deduplicateSources(sources: Source[], maxPerDocument = 3): Source[] {
   const documentCounts = new Map<string, number>();
   const deduplicated: Source[] = [];
-  
+
   for (const source of sources) {
     const docId = source.metadata.documentId;
     const count = documentCounts.get(docId) ?? 0;
-    
+
     if (count < maxPerDocument) {
       deduplicated.push(source);
       documentCounts.set(docId, count + 1);
     }
   }
-  
+
   return deduplicated;
 }
 
@@ -294,14 +290,14 @@ export function aggregateByDocument(sources: Source[]): Array<{
 /**
  * Get document statistics for retrieved sources
  */
-export async function getSourceDocumentStats(
-  sources: Source[]
-): Promise<Array<{
-  documentId: string;
-  documentName: string;
-  totalChunks: number;
-  matchedChunks: number;
-}>> {
+export async function getSourceDocumentStats(sources: Source[]): Promise<
+  Array<{
+    documentId: string;
+    documentName: string;
+    totalChunks: number;
+    matchedChunks: number;
+  }>
+> {
   const documentIds = [...new Set(sources.map((s) => s.metadata.documentId))];
 
   const stats = await prisma.document.findMany({
@@ -344,16 +340,18 @@ export async function hybridSearch(
   });
 
   // Get full-text search results using Prisma
-  const textResults = await prisma.$queryRaw<Array<{
-    id: string;
-    documentId: string;
-    content: string;
-    index: number;
-    page: number | null;
-    section: string | null;
-    documentName: string;
-    textScore: number;
-  }>>`
+  const textResults = await prisma.$queryRaw<
+    Array<{
+      id: string;
+      documentId: string;
+      content: string;
+      index: number;
+      page: number | null;
+      section: string | null;
+      documentName: string;
+      textScore: number;
+    }>
+  >`
     SELECT 
       dc.id,
       dc.document_id as "documentId",

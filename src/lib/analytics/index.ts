@@ -1,59 +1,57 @@
 /**
  * Analytics Module
- * 
+ *
  * Exports all analytics and observability features.
  */
 
+// Dashboard Service
+export {
+  type CostBreakdown,
+  DashboardService,
+  type Granularity,
+  getCostAnalysis,
+  getDashboardService,
+  getQualityMetrics,
+  getRealtimeMetrics,
+  getTimeSeriesData,
+  getUsageStats,
+  type QualityMetrics,
+  type RealtimeMetrics,
+  type TimeSeriesData,
+  type TimeSeriesPoint,
+  type UsageStats,
+} from './dashboard-service';
 // RAG Metrics
 export {
-  trackRAGMetrics,
-  trackSimpleRAGEvent,
-  getRAGMetrics,
-  getRetrievalQuality,
-  getRetrievalAccuracy,
+  type DateRange,
   getDashboardMetrics,
-  recordMetric,
+  getRAGMetrics,
+  getRetrievalAccuracy,
+  getRetrievalQuality,
   MetricType,
   type RAGEvent,
   type RAGMetrics,
-  type DateRange,
   type RetrievalQualityMetrics,
+  recordMetric,
+  trackRAGMetrics,
+  trackSimpleRAGEvent,
 } from './rag-metrics';
-
 // Token Tracking
 export {
-  trackTokenUsage,
-  estimateCost,
-  getModelPricing,
-  getWorkspaceTokenUsage,
-  getUserTokenUsages,
-  getModelUsage,
-  setBudgetConfig,
-  getBudgetConfig,
-  checkBudgetAlert,
-  getAllBudgetAlerts,
-  projectMonthlyCost,
-  type TokenUsageRecord,
-  type TokenUsageSummary,
-  type UserTokenUsage,
   type BudgetAlert,
   type BudgetConfig,
+  checkBudgetAlert,
+  estimateCost,
+  getAllBudgetAlerts,
+  getBudgetConfig,
+  getModelPricing,
+  getModelUsage,
+  getUserTokenUsages,
+  getWorkspaceTokenUsage,
+  projectMonthlyCost,
+  setBudgetConfig,
+  type TokenUsageRecord,
+  type TokenUsageSummary,
+  trackTokenUsage,
+  type UserTokenUsage,
 } from './token-tracking';
-
-// Dashboard Service
-export {
-  DashboardService,
-  getDashboardService,
-  getTimeSeriesData,
-  getUsageStats,
-  getQualityMetrics,
-  getCostAnalysis,
-  getRealtimeMetrics,
-  type Granularity,
-  type TimeSeriesPoint,
-  type TimeSeriesData,
-  type UsageStats,
-  type QualityMetrics,
-  type CostBreakdown,
-  type RealtimeMetrics,
-} from './dashboard-service';

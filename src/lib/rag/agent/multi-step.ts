@@ -1,19 +1,19 @@
 /**
  * Multi-Step Reasoning for Complex Queries
- * 
+ *
  * Breaks complex queries into sub-queries, executes each step sequentially,
  * and combines results for a comprehensive final answer.
- * 
+ *
  * Example: "Compare Q1 and Q2 revenue from the financial report"
  * 1. Retrieve Q1 revenue
- * 2. Retrieve Q2 revenue  
+ * 2. Retrieve Q2 revenue
  * 3. Calculate difference
  * 4. Generate comparison
  */
 
+import { createProviderFromEnv } from '@/lib/ai/llm';
 // import { z } from 'zod';
 import type { Message, Source } from '@/types';
-import { createProviderFromEnv } from '@/lib/ai/llm';
 import type { Tool } from '../tools/types';
 // import type { ReActStep } from './react';
 
@@ -104,7 +104,7 @@ export class MultiStepReasoner {
 
     // Step 2: Execute sub-queries
     const results: SubQueryResult[] = [];
-    
+
     if (this.config.parallelExecution) {
       // Execute independent sub-queries in parallel
       const executed = new Set<string>();
@@ -184,7 +184,7 @@ export class MultiStepReasoner {
 
       // Execute sub-queries
       const results: SubQueryResult[] = [];
-      
+
       for (const subQuery of breakdownResult.subQueries) {
         yield {
           type: 'step',
@@ -207,7 +207,7 @@ export class MultiStepReasoner {
 
       // Combine results
       const combinationResult = await this.combineResults(query, results, context);
-      
+
       yield {
         type: 'answer',
         data: {
@@ -301,7 +301,7 @@ Rules:
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-      
+
       // Validate and normalize sub-queries
       const subQueries: SubQuery[] = (parsed.subQueries || []).map(
         (sq: Partial<SubQuery>, index: number) => ({
@@ -324,7 +324,7 @@ Rules:
       };
     } catch (error) {
       console.error('Failed to parse query breakdown:', error);
-      
+
       // Fallback: single step
       return {
         subQueries: [
@@ -353,10 +353,7 @@ Rules:
 
     try {
       // Substitute any references to previous results
-      const resolvedQuery = this.resolveQueryReferences(
-        subQuery.query,
-        previousResults
-      );
+      const resolvedQuery = this.resolveQueryReferences(subQuery.query, previousResults);
 
       let result: string;
       let sources: Source[] = [];
@@ -390,9 +387,7 @@ Rules:
               expression: resolvedQuery,
               ...subQuery.toolInput,
             });
-            result = toolResult.success
-              ? String(toolResult.data)
-              : `Error: ${toolResult.error}`;
+            result = toolResult.success ? String(toolResult.data) : `Error: ${toolResult.error}`;
           } else {
             // Fallback to LLM for simple calculations
             result = await this.calculateWithLLM(resolvedQuery);
@@ -501,22 +496,19 @@ REASONING: [Your reasoning for how you synthesized the results]`;
     };
   }
 
-  private resolveQueryReferences(
-    query: string,
-    previousResults: SubQueryResult[]
-  ): string {
+  private resolveQueryReferences(query: string, previousResults: SubQueryResult[]): string {
     // Replace references like {{step1.result}} with actual results
     let resolved = query;
     const referencePattern = /\{\{(\w+)\.?(\w+)?\}\}/g;
-    
+
     resolved = resolved.replace(referencePattern, (match, stepId, property) => {
       const result = previousResults.find((r) => r.subQuery.id === stepId);
       if (!result) return match;
-      
+
       if (property === 'result' || !property) {
         return result.result;
       }
-      
+
       // Try to extract property from result (if JSON)
       try {
         const data = JSON.parse(result.result);
@@ -535,7 +527,8 @@ REASONING: [Your reasoning for how you synthesized the results]`;
       [
         {
           role: 'system',
-          content: 'You are a calculator. Evaluate the expression and return ONLY the numerical result.',
+          content:
+            'You are a calculator. Evaluate the expression and return ONLY the numerical result.',
         },
         {
           role: 'user',
@@ -565,13 +558,10 @@ REASONING: [Your reasoning for how you synthesized the results]`;
     return response.content.trim();
   }
 
-  private async performComparison(
-    query: string,
-    results: SubQueryResult[]
-  ): Promise<string> {
+  private async performComparison(query: string, results: SubQueryResult[]): Promise<string> {
     const llm = createProviderFromEnv();
     const context = results.map((r) => `${r.subQuery.query}: ${r.result}`).join('\n');
-    
+
     const response = await llm.generate(
       [
         {
@@ -588,13 +578,10 @@ REASONING: [Your reasoning for how you synthesized the results]`;
     return response.content.trim();
   }
 
-  private async analyzeWithLLM(
-    query: string,
-    results: SubQueryResult[]
-  ): Promise<string> {
+  private async analyzeWithLLM(query: string, results: SubQueryResult[]): Promise<string> {
     const llm = createProviderFromEnv();
     const context = results.map((r) => r.result).join('\n\n');
-    
+
     const response = await llm.generate(
       [
         {
@@ -621,14 +608,14 @@ REASONING: [Your reasoning for how you synthesized the results]`;
   private collectSources(results: SubQueryResult[]): Source[] {
     const allSources = results.flatMap((r) => r.sources);
     const seen = new Map<string, Source>();
-    
+
     for (const source of allSources) {
       const key = `${source.metadata.documentId}-${source.metadata.chunkIndex}`;
       if (!seen.has(key)) {
         seen.set(key, source);
       }
     }
-    
+
     return Array.from(seen.values());
   }
 }

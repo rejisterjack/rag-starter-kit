@@ -9,61 +9,50 @@
 // Core Service
 // =============================================================================
 
+export type { ExportServiceConfig } from './export-service';
 export {
   ExportService,
+  ExportServiceError,
   getExportService,
-  resetExportService,
+  quickExportMarkdown,
   quickExportPDF,
   quickExportWord,
-  quickExportMarkdown,
-  ExportServiceError,
-} from './export-service';
-
-export type {
-  ExportServiceConfig,
+  resetExportService,
 } from './export-service';
 
 // =============================================================================
 // Generators
 // =============================================================================
 
-// PDF Generator
+export type { MarkdownGenerationOptions } from './markdown-generator';
 export {
-  PDFGenerator,
-  generatePDF,
-  generateBulkPDF,
-  quickPDF,
-  StreamingPDFGenerator,
-  PDFGenerationError,
-} from './pdf-generator';
+  citationsToFootnotes,
+  convertCitationsToFootnotes,
+  generateBulkMarkdown,
+  generateMarkdown,
+  MarkdownGenerationError,
+  MarkdownGenerator,
+} from './markdown-generator';
 export type {
   PDFGenerationOptions,
   PDFGenerationProgress,
 } from './pdf-generator';
-
+// PDF Generator
 export {
-  WordGenerator,
-  generateWord,
+  generateBulkPDF,
+  generatePDF,
+  PDFGenerationError,
+  PDFGenerator,
+  quickPDF,
+  StreamingPDFGenerator,
+} from './pdf-generator';
+export type { WordGenerationOptions } from './word-generator';
+export {
   generateBulkWord,
+  generateWord,
   WordGenerationError,
+  WordGenerator,
 } from './word-generator';
-
-export type {
-  WordGenerationOptions,
-} from './word-generator';
-
-export {
-  MarkdownGenerator,
-  generateMarkdown,
-  generateBulkMarkdown,
-  citationsToFootnotes,
-  convertCitationsToFootnotes,
-  MarkdownGenerationError,
-} from './markdown-generator';
-
-export type {
-  MarkdownGenerationOptions,
-} from './markdown-generator';
 
 // =============================================================================
 // Storage
@@ -71,11 +60,11 @@ export type {
 
 export {
   ExportStorage,
-  getExportStorage,
-  resetExportStorage,
-  generateExportFilename,
-  getMimeType,
   formatFileSize,
+  generateExportFilename,
+  getExportStorage,
+  getMimeType,
+  resetExportStorage,
 } from './storage';
 
 // StorageConfig and StoredFile are exported from './types'
@@ -85,25 +74,25 @@ export {
 // =============================================================================
 
 export type {
-  ExportFormat,
-  CitationStyle,
-  ExportStatus,
-  ExportOptions,
   BulkExportOptions,
+  CitationFormatter,
+  CitationStyle,
+  ExportCitation,
+  ExportConversation,
+  ExportEvent,
+  ExportEventType,
+  ExportFormat,
   ExportJob,
   ExportJobMetadata,
-  ExportResult,
-  ExportProgress,
-  ExportConversation,
   ExportMessage,
+  ExportOptions,
+  ExportProgress,
+  ExportResult,
   ExportSource,
-  ExportCitation,
+  ExportStatus,
+  FormattedCitation,
   PDFTemplateProps,
   WordTemplateData,
-  FormattedCitation,
-  CitationFormatter,
-  ExportEventType,
-  ExportEvent,
 } from './types';
 
 // =============================================================================
@@ -111,12 +100,12 @@ export type {
 // =============================================================================
 
 export {
-  exportConversationToMarkdown,
+  type ExportedConversation,
+  type ExportOptions as LegacyExportOptions,
   exportConversationsToMarkdown,
-  exportConversationToPDF,
+  exportConversationToCSV,
   exportConversationToHTML,
   exportConversationToJSON,
-  exportConversationToCSV,
-  type ExportOptions as LegacyExportOptions,
-  type ExportedConversation,
+  exportConversationToMarkdown,
+  exportConversationToPDF,
 } from './conversation-export';

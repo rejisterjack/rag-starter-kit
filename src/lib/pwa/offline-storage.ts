@@ -8,17 +8,17 @@
 // Database Configuration
 // ============================================================================
 
-const DB_NAME = "RAGChatbotDB";
+const DB_NAME = 'RAGChatbotDB';
 const DB_VERSION = 1;
 
 // Store names
 export const STORES = {
-  PENDING_MESSAGES: "pendingMessages",
-  PENDING_DATA: "pendingData",
-  CACHED_CHATS: "cachedChats",
-  CACHED_DOCUMENTS: "cachedDocuments",
-  SYNC_QUEUE: "syncQueue",
-  SETTINGS: "settings",
+  PENDING_MESSAGES: 'pendingMessages',
+  PENDING_DATA: 'pendingData',
+  CACHED_CHATS: 'cachedChats',
+  CACHED_DOCUMENTS: 'cachedDocuments',
+  SYNC_QUEUE: 'syncQueue',
+  SETTINGS: 'settings',
 } as const;
 
 // ============================================================================
@@ -38,7 +38,7 @@ export interface PendingMessage {
 
 export interface PendingData {
   id: string;
-  type: "message" | "document" | "setting" | "custom";
+  type: 'message' | 'document' | 'setting' | 'custom';
   data: unknown;
   timestamp: number;
   retryCount: number;
@@ -50,7 +50,7 @@ export interface CachedChat {
   title: string;
   messages: Array<{
     id: string;
-    role: "user" | "assistant";
+    role: 'user' | 'assistant';
     content: string;
     timestamp: number;
   }>;
@@ -112,13 +112,13 @@ function getDB(): Promise<IDBDatabase> {
       // Pending messages store
       if (!db.objectStoreNames.contains(STORES.PENDING_MESSAGES)) {
         const messageStore = db.createObjectStore(STORES.PENDING_MESSAGES, {
-          keyPath: "id",
+          keyPath: 'id',
         });
-        messageStore.createIndex("timestamp", "timestamp", { unique: false });
-        messageStore.createIndex("conversationId", "conversationId", {
+        messageStore.createIndex('timestamp', 'timestamp', { unique: false });
+        messageStore.createIndex('conversationId', 'conversationId', {
           unique: false,
         });
-        messageStore.createIndex("workspaceId", "workspaceId", {
+        messageStore.createIndex('workspaceId', 'workspaceId', {
           unique: false,
         });
       }
@@ -126,21 +126,21 @@ function getDB(): Promise<IDBDatabase> {
       // Pending data store
       if (!db.objectStoreNames.contains(STORES.PENDING_DATA)) {
         const dataStore = db.createObjectStore(STORES.PENDING_DATA, {
-          keyPath: "id",
+          keyPath: 'id',
         });
-        dataStore.createIndex("timestamp", "timestamp", { unique: false });
-        dataStore.createIndex("type", "type", { unique: false });
+        dataStore.createIndex('timestamp', 'timestamp', { unique: false });
+        dataStore.createIndex('type', 'type', { unique: false });
       }
 
       // Cached chats store
       if (!db.objectStoreNames.contains(STORES.CACHED_CHATS)) {
         const chatStore = db.createObjectStore(STORES.CACHED_CHATS, {
-          keyPath: "id",
+          keyPath: 'id',
         });
-        chatStore.createIndex("lastAccessed", "lastAccessed", {
+        chatStore.createIndex('lastAccessed', 'lastAccessed', {
           unique: false,
         });
-        chatStore.createIndex("workspaceId", "workspaceId", {
+        chatStore.createIndex('workspaceId', 'workspaceId', {
           unique: false,
         });
       }
@@ -148,12 +148,12 @@ function getDB(): Promise<IDBDatabase> {
       // Cached documents store
       if (!db.objectStoreNames.contains(STORES.CACHED_DOCUMENTS)) {
         const docStore = db.createObjectStore(STORES.CACHED_DOCUMENTS, {
-          keyPath: "id",
+          keyPath: 'id',
         });
-        docStore.createIndex("lastAccessed", "lastAccessed", {
+        docStore.createIndex('lastAccessed', 'lastAccessed', {
           unique: false,
         });
-        docStore.createIndex("workspaceId", "workspaceId", {
+        docStore.createIndex('workspaceId', 'workspaceId', {
           unique: false,
         });
       }
@@ -161,18 +161,18 @@ function getDB(): Promise<IDBDatabase> {
       // Sync queue store
       if (!db.objectStoreNames.contains(STORES.SYNC_QUEUE)) {
         const queueStore = db.createObjectStore(STORES.SYNC_QUEUE, {
-          keyPath: "id",
+          keyPath: 'id',
         });
-        queueStore.createIndex("timestamp", "timestamp", { unique: false });
-        queueStore.createIndex("priority", "priority", { unique: false });
+        queueStore.createIndex('timestamp', 'timestamp', { unique: false });
+        queueStore.createIndex('priority', 'priority', { unique: false });
       }
 
       // Settings store
       if (!db.objectStoreNames.contains(STORES.SETTINGS)) {
         const settingsStore = db.createObjectStore(STORES.SETTINGS, {
-          keyPath: "key",
+          keyPath: 'key',
         });
-        settingsStore.createIndex("updatedAt", "updatedAt", { unique: false });
+        settingsStore.createIndex('updatedAt', 'updatedAt', { unique: false });
       }
     };
   });
@@ -188,7 +188,7 @@ export const pendingMessages = {
   /**
    * Add a message to the pending queue
    */
-  async add(message: Omit<PendingMessage, "id" | "timestamp">): Promise<PendingMessage> {
+  async add(message: Omit<PendingMessage, 'id' | 'timestamp'>): Promise<PendingMessage> {
     const db = await getDB();
     const item: PendingMessage = {
       ...message,
@@ -198,7 +198,7 @@ export const pendingMessages = {
     };
 
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.PENDING_MESSAGES], "readwrite");
+      const transaction = db.transaction([STORES.PENDING_MESSAGES], 'readwrite');
       const store = transaction.objectStore(STORES.PENDING_MESSAGES);
       const request = store.add(item);
 
@@ -213,7 +213,7 @@ export const pendingMessages = {
   async getAll(): Promise<PendingMessage[]> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.PENDING_MESSAGES], "readonly");
+      const transaction = db.transaction([STORES.PENDING_MESSAGES], 'readonly');
       const store = transaction.objectStore(STORES.PENDING_MESSAGES);
       const request = store.getAll();
 
@@ -228,9 +228,9 @@ export const pendingMessages = {
   async getByConversation(conversationId: string): Promise<PendingMessage[]> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.PENDING_MESSAGES], "readonly");
+      const transaction = db.transaction([STORES.PENDING_MESSAGES], 'readonly');
       const store = transaction.objectStore(STORES.PENDING_MESSAGES);
-      const index = store.index("conversationId");
+      const index = store.index('conversationId');
       const request = index.getAll(conversationId);
 
       request.onsuccess = () => resolve(request.result);
@@ -244,7 +244,7 @@ export const pendingMessages = {
   async remove(id: string): Promise<void> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.PENDING_MESSAGES], "readwrite");
+      const transaction = db.transaction([STORES.PENDING_MESSAGES], 'readwrite');
       const store = transaction.objectStore(STORES.PENDING_MESSAGES);
       const request = store.delete(id);
 
@@ -259,7 +259,7 @@ export const pendingMessages = {
   async incrementRetry(id: string): Promise<void> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.PENDING_MESSAGES], "readwrite");
+      const transaction = db.transaction([STORES.PENDING_MESSAGES], 'readwrite');
       const store = transaction.objectStore(STORES.PENDING_MESSAGES);
       const getRequest = store.get(id);
 
@@ -284,7 +284,7 @@ export const pendingMessages = {
   async count(): Promise<number> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.PENDING_MESSAGES], "readonly");
+      const transaction = db.transaction([STORES.PENDING_MESSAGES], 'readonly');
       const store = transaction.objectStore(STORES.PENDING_MESSAGES);
       const request = store.count();
 
@@ -299,7 +299,7 @@ export const pendingMessages = {
   async clear(): Promise<void> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.PENDING_MESSAGES], "readwrite");
+      const transaction = db.transaction([STORES.PENDING_MESSAGES], 'readwrite');
       const store = transaction.objectStore(STORES.PENDING_MESSAGES);
       const request = store.clear();
 
@@ -317,7 +317,7 @@ export const cachedChats = {
   /**
    * Cache a chat
    */
-  async set(chat: Omit<CachedChat, "lastAccessed">): Promise<CachedChat> {
+  async set(chat: Omit<CachedChat, 'lastAccessed'>): Promise<CachedChat> {
     const db = await getDB();
     const item: CachedChat = {
       ...chat,
@@ -325,7 +325,7 @@ export const cachedChats = {
     };
 
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.CACHED_CHATS], "readwrite");
+      const transaction = db.transaction([STORES.CACHED_CHATS], 'readwrite');
       const store = transaction.objectStore(STORES.CACHED_CHATS);
       const request = store.put(item);
 
@@ -340,7 +340,7 @@ export const cachedChats = {
   async get(id: string): Promise<CachedChat | null> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.CACHED_CHATS], "readonly");
+      const transaction = db.transaction([STORES.CACHED_CHATS], 'readonly');
       const store = transaction.objectStore(STORES.CACHED_CHATS);
       const request = store.get(id);
 
@@ -362,7 +362,7 @@ export const cachedChats = {
   async getAll(): Promise<CachedChat[]> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.CACHED_CHATS], "readonly");
+      const transaction = db.transaction([STORES.CACHED_CHATS], 'readonly');
       const store = transaction.objectStore(STORES.CACHED_CHATS);
       const request = store.getAll();
 
@@ -377,7 +377,7 @@ export const cachedChats = {
   async touch(id: string): Promise<void> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.CACHED_CHATS], "readwrite");
+      const transaction = db.transaction([STORES.CACHED_CHATS], 'readwrite');
       const store = transaction.objectStore(STORES.CACHED_CHATS);
       const getRequest = store.get(id);
 
@@ -402,7 +402,7 @@ export const cachedChats = {
   async remove(id: string): Promise<void> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.CACHED_CHATS], "readwrite");
+      const transaction = db.transaction([STORES.CACHED_CHATS], 'readwrite');
       const store = transaction.objectStore(STORES.CACHED_CHATS);
       const request = store.delete(id);
 
@@ -437,7 +437,7 @@ export const cachedDocuments = {
   /**
    * Cache a document
    */
-  async set(doc: Omit<CachedDocument, "lastAccessed">): Promise<CachedDocument> {
+  async set(doc: Omit<CachedDocument, 'lastAccessed'>): Promise<CachedDocument> {
     const db = await getDB();
     const item: CachedDocument = {
       ...doc,
@@ -445,7 +445,7 @@ export const cachedDocuments = {
     };
 
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.CACHED_DOCUMENTS], "readwrite");
+      const transaction = db.transaction([STORES.CACHED_DOCUMENTS], 'readwrite');
       const store = transaction.objectStore(STORES.CACHED_DOCUMENTS);
       const request = store.put(item);
 
@@ -460,7 +460,7 @@ export const cachedDocuments = {
   async get(id: string): Promise<CachedDocument | null> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.CACHED_DOCUMENTS], "readonly");
+      const transaction = db.transaction([STORES.CACHED_DOCUMENTS], 'readonly');
       const store = transaction.objectStore(STORES.CACHED_DOCUMENTS);
       const request = store.get(id);
 
@@ -481,7 +481,7 @@ export const cachedDocuments = {
   async getAll(): Promise<CachedDocument[]> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.CACHED_DOCUMENTS], "readonly");
+      const transaction = db.transaction([STORES.CACHED_DOCUMENTS], 'readonly');
       const store = transaction.objectStore(STORES.CACHED_DOCUMENTS);
       const request = store.getAll();
 
@@ -496,7 +496,7 @@ export const cachedDocuments = {
   async touch(id: string): Promise<void> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.CACHED_DOCUMENTS], "readwrite");
+      const transaction = db.transaction([STORES.CACHED_DOCUMENTS], 'readwrite');
       const store = transaction.objectStore(STORES.CACHED_DOCUMENTS);
       const getRequest = store.get(id);
 
@@ -521,7 +521,7 @@ export const cachedDocuments = {
   async remove(id: string): Promise<void> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.CACHED_DOCUMENTS], "readwrite");
+      const transaction = db.transaction([STORES.CACHED_DOCUMENTS], 'readwrite');
       const store = transaction.objectStore(STORES.CACHED_DOCUMENTS);
       const request = store.delete(id);
 
@@ -539,11 +539,7 @@ export const syncQueue = {
   /**
    * Add item to sync queue
    */
-  async add(
-    type: string,
-    payload: unknown,
-    priority: number = 0
-  ): Promise<SyncQueueItem> {
+  async add(type: string, payload: unknown, priority: number = 0): Promise<SyncQueueItem> {
     const db = await getDB();
     const item: SyncQueueItem = {
       id: crypto.randomUUID(),
@@ -555,7 +551,7 @@ export const syncQueue = {
     };
 
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.SYNC_QUEUE], "readwrite");
+      const transaction = db.transaction([STORES.SYNC_QUEUE], 'readwrite');
       const store = transaction.objectStore(STORES.SYNC_QUEUE);
       const request = store.add(item);
 
@@ -570,7 +566,7 @@ export const syncQueue = {
   async getAll(): Promise<SyncQueueItem[]> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.SYNC_QUEUE], "readonly");
+      const transaction = db.transaction([STORES.SYNC_QUEUE], 'readonly');
       const store = transaction.objectStore(STORES.SYNC_QUEUE);
       const request = store.getAll();
 
@@ -593,7 +589,7 @@ export const syncQueue = {
   async remove(id: string): Promise<void> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.SYNC_QUEUE], "readwrite");
+      const transaction = db.transaction([STORES.SYNC_QUEUE], 'readwrite');
       const store = transaction.objectStore(STORES.SYNC_QUEUE);
       const request = store.delete(id);
 
@@ -608,7 +604,7 @@ export const syncQueue = {
   async incrementRetry(id: string): Promise<void> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.SYNC_QUEUE], "readwrite");
+      const transaction = db.transaction([STORES.SYNC_QUEUE], 'readwrite');
       const store = transaction.objectStore(STORES.SYNC_QUEUE);
       const getRequest = store.get(id);
 
@@ -653,7 +649,7 @@ export const settings = {
   async set(key: string, value: unknown): Promise<void> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.SETTINGS], "readwrite");
+      const transaction = db.transaction([STORES.SETTINGS], 'readwrite');
       const store = transaction.objectStore(STORES.SETTINGS);
       const request = store.put({
         key,
@@ -672,7 +668,7 @@ export const settings = {
   async get<T>(key: string, defaultValue?: T): Promise<T | undefined> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.SETTINGS], "readonly");
+      const transaction = db.transaction([STORES.SETTINGS], 'readonly');
       const store = transaction.objectStore(STORES.SETTINGS);
       const request = store.get(key);
 
@@ -690,7 +686,7 @@ export const settings = {
   async remove(key: string): Promise<void> {
     const db = await getDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORES.SETTINGS], "readwrite");
+      const transaction = db.transaction([STORES.SETTINGS], 'readwrite');
       const store = transaction.objectStore(STORES.SETTINGS);
       const request = store.delete(key);
 
@@ -722,7 +718,7 @@ export async function getStorageStats(): Promise<{
   ]);
 
   let estimatedSize: string | undefined;
-  if ("storage" in navigator) {
+  if ('storage' in navigator) {
     try {
       const estimate = await navigator.storage.estimate();
       if (estimate.usage) {
@@ -758,7 +754,7 @@ export async function clearAllData(): Promise<void> {
 
   for (const storeName of stores) {
     await new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction([storeName], "readwrite");
+      const transaction = db.transaction([storeName], 'readwrite');
       const store = transaction.objectStore(storeName);
       const request = store.clear();
 

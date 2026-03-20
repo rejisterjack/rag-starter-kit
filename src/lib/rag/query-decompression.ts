@@ -136,7 +136,8 @@ Rules:
     });
 
     prompt += `\nCurrent Query: "${query}"\n\n`;
-    prompt += 'Expand this query into a standalone query that includes all necessary context from the conversation. ';
+    prompt +=
+      'Expand this query into a standalone query that includes all necessary context from the conversation. ';
     prompt += 'Replace pronouns (it, they, this, that) with specific entities. ';
     prompt += 'Make it clear and self-contained.\n\n';
     prompt += 'Expanded Query:';
@@ -194,11 +195,11 @@ Rules:
     // Simple pattern replacements
     const patterns: Record<string, (context: string) => string> = {
       'tell me more': (ctx) => `Tell me more about ${ctx}`,
-      'explain': (ctx) => `Explain more about ${ctx}`,
-      'elaborate': (ctx) => `Elaborate on ${ctx}`,
-      'clarify': (ctx) => `Clarify ${ctx}`,
-      'why': (ctx) => `Why ${ctx}`,
-      'how': (ctx) => `How ${ctx}`,
+      explain: (ctx) => `Explain more about ${ctx}`,
+      elaborate: (ctx) => `Elaborate on ${ctx}`,
+      clarify: (ctx) => `Clarify ${ctx}`,
+      why: (ctx) => `Why ${ctx}`,
+      how: (ctx) => `How ${ctx}`,
       'what about': (ctx) => `What about ${ctx}`,
     };
 

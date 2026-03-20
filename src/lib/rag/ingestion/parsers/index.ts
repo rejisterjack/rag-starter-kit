@@ -1,70 +1,67 @@
 /**
  * Document Parsers Index
- * 
+ *
  * Central export point for all document parsers
  */
 
-// PDF Parser
-export {
-  parsePDF,
-  type ParsedPDF,
-  type PDFPage,
-  type PDFMetadata,
-  isScannedPDF,
-  performOCR,
-  extractPageRange,
-  searchInPDF,
-  IngestionParserError as PDFParserError,
-} from './pdf';
-
 // DOCX Parser
 export {
-  parseDOCX,
-  type ParsedDOCX,
-  type DOCXParagraph,
-  type DOCXSection,
-  type DOCXMetadata,
-  extractOutline,
-  extractBySection,
   convertToMarkdown,
-  isValidDOCX,
+  type DOCXMetadata,
+  type DOCXParagraph,
   DOCXParserError,
+  type DOCXSection,
+  extractBySection,
+  extractOutline,
+  isValidDOCX,
+  type ParsedDOCX,
+  parseDOCX,
 } from './docx';
-
+// HTML Parser
+export {
+  type HTMLMetadata,
+  type HTMLSection,
+  type ParsedHTML,
+  parseHTML,
+  scrapeURL as scrapeHTML, // Alias for consistency
+} from './html';
+// PDF Parser
+export {
+  extractPageRange,
+  IngestionParserError as PDFParserError,
+  isScannedPDF,
+  type ParsedPDF,
+  type PDFMetadata,
+  type PDFPage,
+  parsePDF,
+  performOCR,
+  searchInPDF,
+} from './pdf';
 // TXT Parser
 export {
-  parseText,
-  type ParsedText,
-  type TextLine,
-  type TextBlock,
-  type TextParseOptions,
-  parseTextStream,
   extractByLineRange,
-  searchInText,
   extractCodeBlocks,
   extractMarkdownHeadings,
+  type ParsedText,
+  parseText,
+  parseTextStream,
+  searchInText,
+  type TextBlock,
+  type TextLine,
+  type TextParseOptions,
   TextParserError,
 } from './txt';
 
-// HTML Parser
-export {
-  parseHTML,
-  type ParsedHTML,
-  type HTMLMetadata,
-  type HTMLSection,
-  scrapeURL as scrapeHTML, // Alias for consistency
-} from './html';
-
 // URL Scraper
 export {
-  scrapeURL,
-  type ScrapedPage,
-  type URLScrapeOptions,
-  type PaginationOptions,
-  type RobotsTxt,
-  scrapePaginated,
-  scrapeArticle,
   batchScrapeURLs,
   checkRobotsTxt,
+  type PaginationOptions,
+  type RobotsTxt,
+  type ScrapedPage,
+  scrapeArticle,
+  scrapePaginated,
+  scrapeURL,
+  type URLScrapeOptions,
   URLScraperError,
 } from './url';

@@ -1,6 +1,6 @@
 /**
  * Retry Utility
- * 
+ *
  * Provides retry logic with exponential backoff for transient failures.
  */
 
@@ -39,10 +39,7 @@ export interface RetryOptions {
 /**
  * Execute a function with retry logic
  */
-export async function withRetry<T>(
-  fn: () => Promise<T>,
-  options: RetryOptions = {}
-): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
   const {
     maxRetries = 3,
     delayMs = 1000,
@@ -61,19 +58,15 @@ export async function withRetry<T>(
       lastError = error instanceof Error ? error : new Error(String(error));
 
       // Check if we should retry
-      const canRetry = attempt < maxRetries && (
-        shouldRetry?.(lastError, attempt) ?? isRetryableError(lastError)
-      );
+      const canRetry =
+        attempt < maxRetries && (shouldRetry?.(lastError, attempt) ?? isRetryableError(lastError));
 
       if (!canRetry) {
         throw error;
       }
 
       // Calculate delay with exponential backoff
-      const delay = Math.min(
-        delayMs * Math.pow(backoffMultiplier, attempt),
-        maxDelayMs
-      );
+      const delay = Math.min(delayMs * backoffMultiplier ** attempt, maxDelayMs);
 
       // Add jitter to prevent thundering herd
       const jitteredDelay = delay + Math.random() * 1000;
@@ -97,7 +90,7 @@ function isRetryableError(error: Error): boolean {
   }
 
   const message = error.message.toLowerCase();
-  
+
   // Network/connection errors
   const retryablePatterns = [
     'timeout',

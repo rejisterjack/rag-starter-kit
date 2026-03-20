@@ -99,10 +99,12 @@ export class SpeechRecognitionService {
           transcript: alternative.transcript,
           confidence: alternative.confidence,
           isFinal: result.isFinal,
-          alternatives: [{
-            transcript: alternative.transcript,
-            confidence: alternative.confidence,
-          }],
+          alternatives: [
+            {
+              transcript: alternative.transcript,
+              confidence: alternative.confidence,
+            },
+          ],
           [0]: {
             transcript: alternative.transcript,
             confidence: alternative.confidence,

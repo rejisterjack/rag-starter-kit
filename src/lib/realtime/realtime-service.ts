@@ -4,21 +4,20 @@
  * Abstracts WebSocket and SSE implementations
  */
 
-import { Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 
 import type {
-  UserInfo,
-  RoomMember,
-  CursorPosition,
-  TypingEvent,
-  RealtimeMessage,
-  PresenceEvent,
-  NotificationEvent,
   ConnectionOptions,
+  CursorPosition,
+  NotificationEvent,
+  PresenceEvent,
   RealtimeClientConfig,
+  RealtimeMessage,
+  RoomMember,
+  TypingEvent,
+  UserInfo,
 } from './types';
-import { DEFAULT_REALTIME_CONFIG } from './types';
-import { SocketEvent } from './types';
+import { DEFAULT_REALTIME_CONFIG, SocketEvent } from './types';
 
 // =============================================================================
 // Realtime Service Class
@@ -34,17 +33,17 @@ export class RealtimeService {
   private connectionOptions: ConnectionOptions | null = null;
   private presenceInterval: NodeJS.Timeout | null = null;
   private heartbeatInterval: NodeJS.Timeout | null = null;
-  
+
   // Event handlers
   private eventHandlers = new Map<string, Set<(data: unknown) => void>>();
-  
+
   // Presence tracking
   private presenceUsers = new Map<string, RoomMember>();
   private typingUsers = new Map<string, TypingEvent>();
-  
+
   // Current room
   private currentRoomId: string | null = null;
-  
+
   constructor(config: Partial<RealtimeClientConfig> = {}) {
     this.config = { ...DEFAULT_REALTIME_CONFIG, ...config };
   }
@@ -66,7 +65,7 @@ export class RealtimeService {
       await this.connectWebSocket(options);
     } catch (error) {
       console.warn('WebSocket connection failed, trying SSE fallback:', error);
-      
+
       // Fall back to SSE if enabled
       if (this.config.fallbackToSSE) {
         await this.connectSSE(options);
@@ -80,9 +79,9 @@ export class RealtimeService {
 
   private async connectWebSocket(options: ConnectionOptions): Promise<void> {
     const { io } = await import('socket.io-client');
-    
+
     const url = this.config.url || window.location.origin;
-    
+
     this.socket = io(url, {
       path: '/api/socket/io',
       auth: {
@@ -130,7 +129,7 @@ export class RealtimeService {
     });
 
     const url = `/api/realtime/events?${params}`;
-    
+
     this.eventSource = new EventSource(url);
 
     return new Promise((resolve, reject) => {
@@ -161,7 +160,7 @@ export class RealtimeService {
   disconnect(): void {
     this.stopHeartbeat();
     this.stopPresenceUpdates();
-    
+
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
@@ -180,13 +179,13 @@ export class RealtimeService {
     this.presenceUsers.clear();
     this.typingUsers.clear();
     this.currentRoomId = null;
-    
+
     this.emit('disconnected', { timestamp: Date.now() });
   }
 
   isConnected(): boolean {
     return !!(
-      (this.socket?.connected) || 
+      this.socket?.connected ||
       (this.eventSource && this.eventSource.readyState === EventSource.OPEN)
     );
   }
@@ -260,14 +259,14 @@ export class RealtimeService {
   getTypingUsers(): TypingEvent[] {
     const now = Date.now();
     const active: TypingEvent[] = [];
-    
+
     for (const event of this.typingUsers.values()) {
       // Only show typing if within last 6 seconds
       if (now - event.timestamp < 6000 && event.isTyping) {
         active.push(event);
       }
     }
-    
+
     return active;
   }
 
@@ -277,7 +276,7 @@ export class RealtimeService {
 
   updateCursor(roomId: string, position: CursorPosition): void {
     if (!this.socket) return;
-    
+
     this.socket.emit(SocketEvent.CURSOR_MOVE, { roomId, position });
   }
 
@@ -307,7 +306,7 @@ export class RealtimeService {
 
   editMessage(roomId: string, messageId: string, content: string): void {
     if (!this.socket) return;
-    
+
     this.socket.emit(SocketEvent.MESSAGE_EDIT, {
       roomId,
       messageId,
@@ -317,7 +316,7 @@ export class RealtimeService {
 
   deleteMessage(roomId: string, messageId: string): void {
     if (!this.socket) return;
-    
+
     this.socket.emit(SocketEvent.MESSAGE_DELETE, {
       roomId,
       messageId,
@@ -385,7 +384,7 @@ export class RealtimeService {
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, new Set());
     }
-    
+
     const handlers = this.eventHandlers.get(event)!;
     const wrappedHandler = handler as (data: unknown) => void;
     handlers.add(wrappedHandler);
@@ -406,7 +405,7 @@ export class RealtimeService {
   private emit(event: string, data: unknown): void {
     const handlers = this.eventHandlers.get(event);
     if (handlers) {
-      handlers.forEach(handler => {
+      handlers.forEach((handler) => {
         try {
           handler(data);
         } catch (error) {
@@ -426,7 +425,7 @@ export class RealtimeService {
     this.socket.on(SocketEvent.DISCONNECT, (reason: string) => {
       console.log('Socket disconnected:', reason);
       this.emit('disconnected', { reason, timestamp: Date.now() });
-      
+
       // Attempt reconnection if not manually disconnected
       if (reason !== 'io client disconnect') {
         this.scheduleReconnect();
@@ -438,10 +437,7 @@ export class RealtimeService {
       this.scheduleReconnect();
     });
 
-    this.socket.on(SocketEvent.ROOM_JOINED, (data: { 
-      roomId: string; 
-      members: RoomMember[];
-    }) => {
+    this.socket.on(SocketEvent.ROOM_JOINED, (data: { roomId: string; members: RoomMember[] }) => {
       // Update presence users
       for (const member of data.members) {
         this.presenceUsers.set(member.user.id, member as RoomMember);
@@ -458,34 +454,30 @@ export class RealtimeService {
       this.emit('typing', data);
     });
 
-    this.socket.on(SocketEvent.CURSOR_UPDATE, (data: { 
-      user: UserInfo; 
-      position: CursorPosition;
-      timestamp: number;
-    }) => {
-      this.emit('cursor', data);
-    });
+    this.socket.on(
+      SocketEvent.CURSOR_UPDATE,
+      (data: { user: UserInfo; position: CursorPosition; timestamp: number }) => {
+        this.emit('cursor', data);
+      }
+    );
 
     this.socket.on(SocketEvent.MESSAGE_RECEIVE, (data: RealtimeMessage) => {
       this.emit('message', data);
     });
 
-    this.socket.on(SocketEvent.MESSAGE_EDIT, (data: { 
-      messageId: string; 
-      content: string;
-      userId: string;
-      timestamp: number;
-    }) => {
-      this.emit('messageEdit', data);
-    });
+    this.socket.on(
+      SocketEvent.MESSAGE_EDIT,
+      (data: { messageId: string; content: string; userId: string; timestamp: number }) => {
+        this.emit('messageEdit', data);
+      }
+    );
 
-    this.socket.on(SocketEvent.MESSAGE_DELETE, (data: { 
-      messageId: string;
-      userId: string;
-      timestamp: number;
-    }) => {
-      this.emit('messageDelete', data);
-    });
+    this.socket.on(
+      SocketEvent.MESSAGE_DELETE,
+      (data: { messageId: string; userId: string; timestamp: number }) => {
+        this.emit('messageDelete', data);
+      }
+    );
 
     this.socket.on(SocketEvent.PRESENCE_JOIN, (data: PresenceEvent) => {
       const member: RoomMember = {
@@ -513,10 +505,7 @@ export class RealtimeService {
       this.emit('error', data);
     });
 
-    this.socket.on(SocketEvent.RATE_LIMITED, (data: { 
-      event: string; 
-      retryAfter: number;
-    }) => {
+    this.socket.on(SocketEvent.RATE_LIMITED, (data: { event: string; retryAfter: number }) => {
       this.emit('rateLimited', data);
     });
   }
@@ -588,7 +577,7 @@ export class RealtimeService {
     if (this.reconnectTimer || !this.config.reconnection) return;
 
     if (this.reconnectAttempts >= (this.config.reconnectionAttempts || 5)) {
-      this.emit('error', { 
+      this.emit('error', {
         message: 'Max reconnection attempts reached',
         timestamp: Date.now(),
       });
@@ -597,7 +586,7 @@ export class RealtimeService {
 
     this.reconnectAttempts++;
     const delay = Math.min(
-      (this.config.reconnectionDelay || 1000) * Math.pow(2, this.reconnectAttempts - 1),
+      (this.config.reconnectionDelay || 1000) * 2 ** (this.reconnectAttempts - 1),
       this.config.reconnectionDelayMax || 5000
     );
 

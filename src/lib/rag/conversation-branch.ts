@@ -1,6 +1,6 @@
 /**
  * Conversation Branching
- * 
+ *
  * Features for forking conversations, editing messages, and comparing
  * different response paths.
  */
@@ -51,7 +51,7 @@ export interface EditMessageResult {
 /**
  * Fork a conversation at a specific message point.
  * Creates a new conversation branch starting from the specified message.
- * 
+ *
  * @param conversationId - The original conversation ID
  * @param messageId - The message ID to fork at (this message and all after are copied)
  * @param branchName - Optional name for the new branch
@@ -121,10 +121,7 @@ export async function forkConversation(
 /**
  * Create a quick branch (fork at last message)
  */
-export async function quickBranch(
-  conversationId: string,
-  branchName?: string
-): Promise<string> {
+export async function quickBranch(conversationId: string, branchName?: string): Promise<string> {
   const chat = await prisma.chat.findUnique({
     where: { id: conversationId },
     include: {
@@ -155,7 +152,7 @@ export async function quickBranch(
 /**
  * Edit a previous message and create a new branch from that point.
  * This preserves the original conversation while allowing edits.
- * 
+ *
  * @param messageId - The message to edit
  * @param newContent - The new content for the message
  * @param options - Optional configuration
@@ -259,7 +256,7 @@ export async function truncateConversation(
 
   // Delete all messages from this point (including the specified message)
   const messagesToDelete = messages.slice(fromIndex);
-  
+
   await prisma.message.deleteMany({
     where: {
       id: {
@@ -437,9 +434,7 @@ export async function listBranches(rootId: string): Promise<ConversationBranch[]
 /**
  * Get the conversation tree structure
  */
-export async function getConversationTree(
-  rootId: string
-): Promise<{
+export async function getConversationTree(rootId: string): Promise<{
   root: string;
   branches: Array<{
     id: string;
@@ -467,10 +462,7 @@ export async function getConversationTree(
  * Merge a branch back into its parent
  * (Creates a new message in parent with reference to branch)
  */
-export async function mergeBranch(
-  branchId: string,
-  targetMessageId?: string
-): Promise<void> {
+export async function mergeBranch(branchId: string, targetMessageId?: string): Promise<void> {
   const branch = await prisma.chat.findUnique({
     where: { id: branchId },
   });

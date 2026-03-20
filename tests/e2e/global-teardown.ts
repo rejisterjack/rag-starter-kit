@@ -1,6 +1,6 @@
 /**
  * Global Teardown for Playwright E2E Tests
- * 
+ *
  * This file runs once after all E2E tests complete.
  * It can be used to:
  * - Clean up test data
@@ -9,7 +9,7 @@
  * - Archive test artifacts
  */
 
-import { type FullConfig } from '@playwright/test';
+import type { FullConfig } from '@playwright/test';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
@@ -35,7 +35,7 @@ async function globalTeardown(config: FullConfig) {
   if (process.env.CI) {
     console.log('📊 Generating test report...');
     const reportDir = path.join(process.cwd(), 'playwright-report');
-    
+
     if (fs.existsSync(reportDir)) {
       // Create summary file
       const summary = {
@@ -46,10 +46,7 @@ async function globalTeardown(config: FullConfig) {
         branch: process.env.GITHUB_REF_NAME || 'unknown',
       };
 
-      fs.writeFileSync(
-        path.join(reportDir, 'summary.json'),
-        JSON.stringify(summary, null, 2)
-      );
+      fs.writeFileSync(path.join(reportDir, 'summary.json'), JSON.stringify(summary, null, 2));
     }
   }
 

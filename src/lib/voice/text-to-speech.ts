@@ -197,11 +197,12 @@ export class TextToSpeechService {
 
   getPremiumVoices(): SpeechSynthesisVoice[] {
     // Filter for premium/local voices (typically higher quality)
-    return this.voices.filter((v) => 
-      v.localService || 
-      v.name.includes('Premium') ||
-      v.name.includes('Enhanced') ||
-      v.name.includes('Neural')
+    return this.voices.filter(
+      (v) =>
+        v.localService ||
+        v.name.includes('Premium') ||
+        v.name.includes('Enhanced') ||
+        v.name.includes('Neural')
     );
   }
 

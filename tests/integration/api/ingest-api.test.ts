@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST } from '@/app/api/ingest/route';
-import { mockPrisma } from '@/tests/utils/mocks/prisma';
 import { mockNextAuthSession } from '@/tests/utils/helpers/setup';
+import { mockPrisma } from '@/tests/utils/mocks/prisma';
 
 vi.mock('@/lib/db', () => ({
   prisma: mockPrisma,
@@ -136,14 +136,17 @@ describe('POST /api/ingest', () => {
     });
 
     vi.mock('@/lib/rag/ingestion', () => ({
-      processDocument: vi.fn()
+      processDocument: vi
+        .fn()
         .mockResolvedValueOnce({ success: true, document: { id: 'doc-1' } })
         .mockResolvedValueOnce({ success: true, document: { id: 'doc-2' } }),
     }));
 
     const formData = createMockFormData([
       new File(['content1'], 'file1.pdf', { type: 'application/pdf' }),
-      new File(['content2'], 'file2.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }),
+      new File(['content2'], 'file2.docx', {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      }),
     ]);
 
     const request = createMockRequest(formData);
@@ -161,7 +164,8 @@ describe('POST /api/ingest', () => {
     });
 
     vi.mock('@/lib/rag/ingestion', () => ({
-      processDocument: vi.fn()
+      processDocument: vi
+        .fn()
         .mockResolvedValueOnce({ success: true, document: { id: 'doc-1' } })
         .mockResolvedValueOnce({ success: false, error: 'Corrupted file' }),
     }));
@@ -216,7 +220,7 @@ describe('POST /api/ingest', () => {
     ]);
 
     const request = createMockRequest(formData);
-    
+
     // Would typically fail at middleware level
     const response = await POST(request);
     expect([413, 400]).toContain(response.status);

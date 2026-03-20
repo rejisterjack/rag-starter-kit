@@ -137,10 +137,7 @@ export function estimateTokensForChunks(chunks: string[]): TokenCount {
 /**
  * Check if text fits within token budget
  */
-export async function fitsInTokenBudget(
-  text: string,
-  maxTokens: number
-): Promise<boolean> {
+export async function fitsInTokenBudget(text: string, maxTokens: number): Promise<boolean> {
   const count = await countTokens(text);
   return count.total <= maxTokens;
 }
@@ -148,10 +145,7 @@ export async function fitsInTokenBudget(
 /**
  * Truncate text to fit within token budget
  */
-export async function truncateToTokenLimit(
-  text: string,
-  maxTokens: number
-): Promise<string> {
+export async function truncateToTokenLimit(text: string, maxTokens: number): Promise<string> {
   const enc = await getEncoding();
 
   if (!enc) {

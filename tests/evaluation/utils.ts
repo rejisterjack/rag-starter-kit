@@ -1,6 +1,6 @@
 /**
  * RAG Evaluation Utilities
- * 
+ *
  * Helper functions for evaluating RAG pipeline quality.
  */
 
@@ -34,24 +34,16 @@ export function evaluateRetrieval(
   topK: number = 5
 ): number {
   const topRetrieved = retrieved.slice(0, topK);
-  const retrievedIds = topRetrieved.map(r => r.id);
+  const retrievedIds = topRetrieved.map((r) => r.id);
 
-  const relevantRetrieved = retrievedIds.filter(id => 
-    relevantIds.includes(id)
-  );
+  const relevantRetrieved = retrievedIds.filter((id) => relevantIds.includes(id));
 
-  const precision = retrievedIds.length > 0 
-    ? relevantRetrieved.length / retrievedIds.length 
-    : 0;
-  
-  const recall = relevantIds.length > 0
-    ? relevantRetrieved.length / relevantIds.length
-    : 0;
+  const precision = retrievedIds.length > 0 ? relevantRetrieved.length / retrievedIds.length : 0;
+
+  const recall = relevantIds.length > 0 ? relevantRetrieved.length / relevantIds.length : 0;
 
   // F1 score
-  const f1 = precision + recall > 0
-    ? (2 * precision * recall) / (precision + recall)
-    : 0;
+  const f1 = precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 0;
 
   // Mean Reciprocal Rank
   let mrr = 0;
@@ -63,16 +55,13 @@ export function evaluateRetrieval(
   }
 
   // Combined score (weighted average)
-  return (f1 * 0.5) + (mrr * 0.3) + (precision * 0.2);
+  return f1 * 0.5 + mrr * 0.3 + precision * 0.2;
 }
 
 /**
  * Evaluate answer quality against expected answer
  */
-export function evaluateAnswer(
-  generated: string,
-  expected: string
-): number {
+export function evaluateAnswer(generated: string, expected: string): number {
   const normalizedGenerated = normalizeText(generated);
   const normalizedExpected = normalizeText(expected);
 
@@ -85,9 +74,7 @@ export function evaluateAnswer(
   const generatedTokens = new Set(normalizedGenerated.split(/\s+/));
   const expectedTokens = new Set(normalizedExpected.split(/\s+/));
 
-  const intersection = new Set(
-    [...generatedTokens].filter(x => expectedTokens.has(x))
-  );
+  const intersection = new Set([...generatedTokens].filter((x) => expectedTokens.has(x)));
 
   const union = new Set([...generatedTokens, ...expectedTokens]);
 
@@ -95,24 +82,18 @@ export function evaluateAnswer(
 
   // Check for key information presence
   const keyInfo = extractKeyInfo(expected);
-  const foundKeyInfo = keyInfo.filter(info => 
-    normalizedGenerated.includes(info.toLowerCase())
-  );
+  const foundKeyInfo = keyInfo.filter((info) => normalizedGenerated.includes(info.toLowerCase()));
 
-  const keyInfoScore = keyInfo.length > 0
-    ? foundKeyInfo.length / keyInfo.length
-    : 0;
+  const keyInfoScore = keyInfo.length > 0 ? foundKeyInfo.length / keyInfo.length : 0;
 
   // Combined score
-  return (jaccardSimilarity * 0.4) + (keyInfoScore * 0.6);
+  return jaccardSimilarity * 0.4 + keyInfoScore * 0.6;
 }
 
 /**
  * Calculate comprehensive metrics
  */
-export function calculateMetrics(
-  evaluations: EvaluationResult[]
-): {
+export function calculateMetrics(evaluations: EvaluationResult[]): {
   avgPrecision: number;
   avgRecall: number;
   avgF1: number;
@@ -129,7 +110,7 @@ export function calculateMetrics(
 
   if (evaluations.length === 0) return metrics;
 
-  evaluations.forEach(e => {
+  evaluations.forEach((e) => {
     metrics.avgPrecision += e.metrics.precision;
     metrics.avgRecall += e.metrics.recall;
     metrics.avgF1 += e.metrics.f1;
@@ -201,7 +182,7 @@ function extractKeyInfo(text: string): string[] {
   ];
 
   const results: string[] = [];
-  patterns.forEach(pattern => {
+  patterns.forEach((pattern) => {
     const matches = text.match(pattern);
     if (matches) {
       results.push(...matches);
@@ -256,11 +237,14 @@ export function createConfusionMatrix(
   trueNegatives: number;
   falseNegatives: number;
 } {
-  const retrievedIds = new Set(retrieved.map(r => r.id));
+  const retrievedIds = new Set(retrieved.map((r) => r.id));
   const relevantSet = new Set(relevantIds);
   const allSet = new Set(allDocIds);
 
-  let tp = 0, fp = 0, tn = 0, fn = 0;
+  let tp = 0,
+    fp = 0,
+    tn = 0,
+    fn = 0;
 
   for (const docId of allSet) {
     const isRetrieved = retrievedIds.has(docId);

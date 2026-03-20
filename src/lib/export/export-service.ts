@@ -4,37 +4,44 @@
  * Supports single and batch exports with progress tracking
  */
 
-import { v4 as uuidv4 } from 'uuid';
 import archiver from 'archiver';
 import { Readable } from 'stream';
-
+import { v4 as uuidv4 } from 'uuid';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
+
 // Prisma types - will be generated after prisma generate
 // type DBMessage = import('@prisma/client').Message;
 // type Chat = import('@prisma/client').Chat;
 // type MessageRole = import('@prisma/client').MessageRole;
 
-import { PDFGenerator, type PDFGenerationOptions } from './pdf-generator';
-import { WordGenerator } from './word-generator';
 import { MarkdownGenerator } from './markdown-generator';
+import { type PDFGenerationOptions, PDFGenerator } from './pdf-generator';
 import { ExportStorage, generateExportFilename } from './storage';
 import type {
-  ExportOptions,
   BulkExportOptions,
-  ExportJob,
-  ExportResult,
-  ExportConversation,
-  ExportSource,
   ExportCitation,
+  ExportConversation,
+  ExportJob,
+  ExportOptions,
   ExportProgress,
+  ExportResult,
+  ExportSource,
 } from './types';
+import { WordGenerator } from './word-generator';
 
 // =============================================================================
 // Types
 // =============================================================================
 
-export type { ExportOptions, BulkExportOptions, ExportResult, ExportProgress, ExportConversation, ExportJob };
+export type {
+  BulkExportOptions,
+  ExportConversation,
+  ExportJob,
+  ExportOptions,
+  ExportProgress,
+  ExportResult,
+};
 
 export interface ExportServiceConfig {
   storage?: ExportStorage;
@@ -216,10 +223,7 @@ export class ExportService {
         throw error;
       }
 
-      throw new ExportServiceError(
-        `Export failed: ${errorMessage}`,
-        'INTERNAL_ERROR'
-      );
+      throw new ExportServiceError(`Export failed: ${errorMessage}`, 'INTERNAL_ERROR');
     }
   }
 
@@ -285,7 +289,8 @@ export class ExportService {
           citations,
           (progress) => {
             this.updateJob(jobId, {
-              progress: Math.round((i / conversations.length) * 70) + Math.round(progress.progress * 0.7),
+              progress:
+                Math.round((i / conversations.length) * 70) + Math.round(progress.progress * 0.7),
               currentStep: `Processing conversation ${i + 1} of ${conversations.length}...`,
               processedItems: i,
             });
@@ -363,10 +368,7 @@ export class ExportService {
         throw error;
       }
 
-      throw new ExportServiceError(
-        `Bulk export failed: ${errorMessage}`,
-        'INTERNAL_ERROR'
-      );
+      throw new ExportServiceError(`Bulk export failed: ${errorMessage}`, 'INTERNAL_ERROR');
     }
   }
 
@@ -507,30 +509,32 @@ export class ExportService {
       take: 100, // Limit bulk export
     });
 
-    return chats.map((chat: unknown) => this.transformToExportConversation(chat as Parameters<typeof this.transformToExportConversation>[0]));
+    return chats.map((chat: unknown) =>
+      this.transformToExportConversation(
+        chat as Parameters<typeof this.transformToExportConversation>[0]
+      )
+    );
   }
 
-  private transformToExportConversation(
-    chat: {
+  private transformToExportConversation(chat: {
+    id: string;
+    title: string;
+    createdAt: Date;
+    updatedAt: Date;
+    workspaceId: string | null;
+    userId: string | null;
+    messages: Array<{
       id: string;
-      title: string;
+      content: string;
+      role: string;
       createdAt: Date;
-      updatedAt: Date;
-      workspaceId: string | null;
-      userId: string | null;
-      messages: Array<{
-        id: string;
-        content: string;
-        role: string;
-        createdAt: Date;
-        chatId: string;
-        sources?: unknown;
-        tokensUsed?: unknown;
-      }>;
-      workspace?: { name: string } | null;
-      user?: { name: string | null } | null;
-    }
-  ): ExportConversation {
+      chatId: string;
+      sources?: unknown;
+      tokensUsed?: unknown;
+    }>;
+    workspace?: { name: string } | null;
+    user?: { name: string | null } | null;
+  }): ExportConversation {
     return {
       id: chat.id,
       title: chat.title,
@@ -634,8 +638,7 @@ export class ExportService {
         const buffer = await generator.generate(conversation, citations);
         return {
           buffer,
-          mimeType:
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         };
       }
 
@@ -660,9 +663,7 @@ export class ExportService {
     }
   }
 
-  private async createZipArchive(
-    files: { name: string; buffer: Buffer }[]
-  ): Promise<Buffer> {
+  private async createZipArchive(files: { name: string; buffer: Buffer }[]): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const chunks: Buffer[] = [];
       const archive = archiver('zip', { zlib: { level: 9 } });
@@ -752,12 +753,7 @@ export async function quickExportPDF(
   workspaceId?: string
 ): Promise<ExportResult> {
   const service = getExportService();
-  return service.exportChat(
-    chatId,
-    { format: 'pdf', includeCitations: true },
-    userId,
-    workspaceId
-  );
+  return service.exportChat(chatId, { format: 'pdf', includeCitations: true }, userId, workspaceId);
 }
 
 /**

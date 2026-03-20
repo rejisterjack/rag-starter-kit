@@ -78,9 +78,9 @@ async function loadPlaywright(): Promise<PlaywrightModule | null> {
   if (playwrightInstance) return playwrightInstance;
   try {
     // Dynamic import for optional dependency
-    // @ts-ignore - playwright is an optional dependency
+    // @ts-expect-error - playwright is an optional dependency
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pw = await import('playwright') as any;
+    const pw = (await import('playwright')) as any;
     playwrightInstance = pw as unknown as PlaywrightModule;
     return playwrightInstance;
   } catch {
@@ -100,10 +100,7 @@ function parseHTML(buffer: Buffer): ParsedHTML {
 /**
  * Scrape a URL and extract content
  */
-export async function scrapeURL(
-  url: string,
-  options: URLScrapeOptions = {}
-): Promise<ScrapedPage> {
+export async function scrapeURL(url: string, options: URLScrapeOptions = {}): Promise<ScrapedPage> {
   // Validate URL
   let parsedUrl: URL;
   try {
@@ -148,7 +145,7 @@ async function scrapeWithPlaywright(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let page: PlaywrightPage = null as any;
-  
+
   try {
     page = await context.newPage();
 
@@ -203,10 +200,7 @@ async function scrapeWithPlaywright(
 /**
  * Scrape using fetch as fallback
  */
-async function scrapeWithFetch(
-  url: string,
-  options: URLScrapeOptions
-): Promise<ScrapedPage> {
+async function scrapeWithFetch(url: string, options: URLScrapeOptions): Promise<ScrapedPage> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), options.timeout || 30000);
 
@@ -214,7 +208,7 @@ async function scrapeWithFetch(
     const response = await fetch(url, {
       headers: {
         'User-Agent': options.userAgent || getDefaultUserAgent(),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
       },
       signal: controller.signal,
@@ -249,16 +243,13 @@ async function scrapeWithFetch(
 /**
  * Scroll page to bottom for lazy-loaded content
  */
-async function scrollPageToBottom(
-  page: PlaywrightPage,
-  maxScrolls: number
-): Promise<void> {
+async function scrollPageToBottom(page: PlaywrightPage, maxScrolls: number): Promise<void> {
   let previousHeight = 0;
   let scrollCount = 0;
 
   while (scrollCount < maxScrolls) {
     const currentHeight = await page.evaluate(() => document.body.scrollHeight);
-    
+
     if (currentHeight === previousHeight) {
       break;
     }
@@ -312,7 +303,7 @@ export async function* scrapePaginated(
 
     // Find next page link
     if (pagination.nextSelector && page.links.length > 0) {
-      const nextLink = page.links.find(link => {
+      const nextLink = page.links.find((link) => {
         const text = link.text.toLowerCase();
         const hasNextText = text.includes('next') || text.includes('»') || text.includes('→');
         const pageMatch = link.href.match(/page=(\d+)/);
@@ -343,7 +334,7 @@ export async function checkRobotsTxt(origin: string): Promise<RobotsTxt> {
 
     const content = await response.text();
     const lines = content.split('\n');
-    
+
     let userAgentRelevant = false;
     let allowed = true;
     let crawlDelay: number | undefined;
@@ -351,7 +342,7 @@ export async function checkRobotsTxt(origin: string): Promise<RobotsTxt> {
 
     for (const line of lines) {
       const trimmed = line.trim();
-      
+
       // Skip comments and empty lines
       if (trimmed.startsWith('#') || !trimmed) continue;
 
@@ -362,29 +353,30 @@ export async function checkRobotsTxt(origin: string): Promise<RobotsTxt> {
       switch (directive.toLowerCase()) {
         case 'user-agent':
           // Check if this applies to us ("*" or contains "bot")
-          userAgentRelevant = value === '*' || 
-                              value.toLowerCase().includes('bot') ||
-                              value.toLowerCase().includes('crawler');
+          userAgentRelevant =
+            value === '*' ||
+            value.toLowerCase().includes('bot') ||
+            value.toLowerCase().includes('crawler');
           break;
-        
+
         case 'disallow':
           if (userAgentRelevant && value) {
             allowed = false;
           }
           break;
-        
+
         case 'allow':
           if (userAgentRelevant && value) {
             allowed = true;
           }
           break;
-        
+
         case 'crawl-delay':
           if (userAgentRelevant) {
             crawlDelay = parseFloat(value);
           }
           break;
-        
+
         case 'sitemap':
           sitemaps.push(value);
           break;
@@ -435,16 +427,18 @@ function checkIfArticle(scraped: ScrapedPage): boolean {
  * Get default user agent string
  */
 function getDefaultUserAgent(): string {
-  return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.0' +
-         ' (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.0' +
-         ' RAGBot/1.0 (+https://example.com/bot)';
+  return (
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.0' +
+    ' (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.0' +
+    ' RAGBot/1.0 (+https://example.com/bot)'
+  );
 }
 
 /**
  * Sleep utility
  */
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -466,11 +460,11 @@ export async function batchScrapeURLs(
   concurrency: number = 3
 ): Promise<Array<{ url: string; result?: ScrapedPage; error?: string }>> {
   const results: Array<{ url: string; result?: ScrapedPage; error?: string }> = [];
-  
+
   // Process in batches
   for (let i = 0; i < urls.length; i += concurrency) {
     const batch = urls.slice(i, i + concurrency);
-    
+
     const batchResults = await Promise.all(
       batch.map(async (url) => {
         try {
@@ -484,7 +478,7 @@ export async function batchScrapeURLs(
         }
       })
     );
-    
+
     results.push(...batchResults);
   }
 

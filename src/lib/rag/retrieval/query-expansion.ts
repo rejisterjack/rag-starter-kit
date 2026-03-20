@@ -1,15 +1,14 @@
 /**
  * Query Expansion Techniques
- * 
+ *
  * Implements advanced query expansion methods:
  * - Multi-Query Expansion: Generate variations of the original query
  * - HyDE (Hypothetical Document Embeddings): Generate hypothetical answer for better retrieval
  * - Sub-query Decomposition: Break complex queries into simpler sub-queries
  */
 
-import { generateChatCompletion } from '@/lib/ai';
-import { generateEmbedding } from '@/lib/ai';
-import type { QueryExpansionConfig, HyDEConfig } from './types';
+import { generateChatCompletion, generateEmbedding } from '@/lib/ai';
+import type { HyDEConfig, QueryExpansionConfig } from './types';
 
 /**
  * Default configuration for query expansion
@@ -74,34 +73,33 @@ export class QueryExpander {
   private expansionConfig: QueryExpansionConfig;
   private hydeConfig: HyDEConfig;
 
-  constructor(
-    expansionConfig?: Partial<QueryExpansionConfig>,
-    hydeConfig?: Partial<HyDEConfig>
-  ) {
+  constructor(expansionConfig?: Partial<QueryExpansionConfig>, hydeConfig?: Partial<HyDEConfig>) {
     this.expansionConfig = { ...defaultQueryExpansionConfig, ...expansionConfig };
     this.hydeConfig = { ...defaultHyDEConfig, ...hydeConfig };
   }
 
   /**
    * Generate multiple query variations using an LLM
-   * 
+   *
    * @param query - Original user query
    * @returns Array of query variations including original (if configured)
    */
   async expandMultiQuery(query: string): Promise<string[]> {
-    const prompt = MULTI_QUERY_PROMPT
-      .replace('{query}', query)
-      .replace(/{num_variations}/g, String(this.expansionConfig.numVariations));
+    const prompt = MULTI_QUERY_PROMPT.replace('{query}', query).replace(
+      /{num_variations}/g,
+      String(this.expansionConfig.numVariations)
+    );
 
     try {
       const messages: ChatMessage[] = [
         {
           role: 'system',
-          content: 'You are a helpful assistant that generates query variations for better document retrieval.',
+          content:
+            'You are a helpful assistant that generates query variations for better document retrieval.',
         },
         { role: 'user', content: prompt },
       ];
-      
+
       const { text } = await generateChatCompletion(
         messages as unknown as Parameters<typeof generateChatCompletion>[0],
         { temperature: this.expansionConfig.temperature }
@@ -138,7 +136,8 @@ export class QueryExpander {
     // Simple transformations
     const transformations = [
       // Remove question words
-      (q: string) => q.replace(/^(what is|what are|how to|how do|why is|why are|when is|when are)\s+/i, ''),
+      (q: string) =>
+        q.replace(/^(what is|what are|how to|how do|why is|why are|when is|when are)\s+/i, ''),
       // Add "information about"
       (q: string) => `information about ${q.replace(/^(what is|what are)\s+/i, '')}`,
       // Add "details on"
@@ -157,10 +156,10 @@ export class QueryExpander {
 
   /**
    * HyDE (Hypothetical Document Embeddings) expansion
-   * 
+   *
    * Generates a hypothetical document that would answer the query,
    * then returns the embedding of that document for vector search.
-   * 
+   *
    * @param query - Original user query
    * @returns Embedding of the hypothetical document
    */
@@ -174,7 +173,7 @@ export class QueryExpander {
     if (!promptTemplate) {
       return generateEmbedding(query);
     }
-    
+
     const prompt = promptTemplate.replace('{query}', query);
 
     try {
@@ -185,13 +184,16 @@ export class QueryExpander {
         },
         { role: 'user', content: prompt },
       ];
-      
+
       const { text: hypotheticalDoc } = await generateChatCompletion(
         messages as unknown as Parameters<typeof generateChatCompletion>[0],
         { temperature: this.hydeConfig.temperature, maxTokens: 500 }
       );
 
-      console.log('[QueryExpander] HyDE generated document:', hypotheticalDoc.slice(0, 100) + '...');
+      console.log(
+        '[QueryExpander] HyDE generated document:',
+        hypotheticalDoc.slice(0, 100) + '...'
+      );
 
       // Generate embedding for the hypothetical document
       return generateEmbedding(hypotheticalDoc);
@@ -204,7 +206,7 @@ export class QueryExpander {
 
   /**
    * Generate hypothetical document text (without embedding)
-   * 
+   *
    * @param query - Original user query
    * @returns Hypothetical document text
    */
@@ -213,7 +215,7 @@ export class QueryExpander {
     if (!promptTemplate) {
       return query;
     }
-    
+
     const prompt = promptTemplate.replace('{query}', query);
 
     try {
@@ -224,7 +226,7 @@ export class QueryExpander {
         },
         { role: 'user', content: prompt },
       ];
-      
+
       const { text } = await generateChatCompletion(
         messages as unknown as Parameters<typeof generateChatCompletion>[0],
         { temperature: this.hydeConfig.temperature, maxTokens: 500 }
@@ -240,7 +242,7 @@ export class QueryExpander {
   /**
    * Sub-query decomposition
    * Breaks complex queries into simpler sub-queries
-   * 
+   *
    * @param query - Original user query
    * @returns Array of sub-queries
    */
@@ -255,7 +257,7 @@ export class QueryExpander {
         },
         { role: 'user', content: prompt },
       ];
-      
+
       const { text } = await generateChatCompletion(
         messages as unknown as Parameters<typeof generateChatCompletion>[0],
         { temperature: 0.5 }
@@ -334,10 +336,7 @@ export async function expandMultiQuery(
 /**
  * Convenience function for HyDE expansion
  */
-export async function expandHyDE(
-  query: string,
-  config?: Partial<HyDEConfig>
-): Promise<number[]> {
+export async function expandHyDE(query: string, config?: Partial<HyDEConfig>): Promise<number[]> {
   const expander = new QueryExpander(undefined, config);
   return expander.expandHyDE(query);
 }

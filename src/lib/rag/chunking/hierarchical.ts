@@ -4,11 +4,11 @@
  * Structure: Parent (section) -> Child (paragraph) -> Grandchild (sentence group)
  */
 
-import { generateId } from './utils';
-import type { Chunk, ChunkingOptions, Chunker } from './types';
-import { ChunkingError } from './types';
-import { estimateTokenCount } from './tokens';
 import { FixedChunker } from './fixed';
+import { estimateTokenCount } from './tokens';
+import type { Chunk, Chunker, ChunkingOptions } from './types';
+import { ChunkingError } from './types';
+import { generateId } from './utils';
 
 /**
  * Heading patterns for detecting document structure
@@ -61,11 +61,9 @@ export class HierarchicalChunker implements Chunker {
   validateOptions(options: ChunkingOptions): boolean {
     const levels = options.hierarchicalLevels ?? 2;
     if (levels < 1 || levels > 3) {
-      throw new ChunkingError(
-        'hierarchicalLevels must be between 1 and 3',
-        'INVALID_OPTIONS',
-        { hierarchicalLevels: levels }
-      );
+      throw new ChunkingError('hierarchicalLevels must be between 1 and 3', 'INVALID_OPTIONS', {
+        hierarchicalLevels: levels,
+      });
     }
 
     return true;
@@ -78,10 +76,7 @@ export class HierarchicalChunker implements Chunker {
     this.validateOptions(options);
 
     if (!document || document.trim().length === 0) {
-      throw new ChunkingError(
-        'Document is empty',
-        'EMPTY_DOCUMENT'
-      );
+      throw new ChunkingError('Document is empty', 'EMPTY_DOCUMENT');
     }
 
     const levels = options.hierarchicalLevels ?? 2;
@@ -94,14 +89,7 @@ export class HierarchicalChunker implements Chunker {
 
     // Step 2: Build hierarchy to desired depth
     const chunks: Chunk[] = [];
-    await this.buildChunksFromNode(
-      root,
-      document,
-      options.documentId,
-      levels,
-      0,
-      chunks
-    );
+    await this.buildChunksFromNode(root, document, options.documentId, levels, 0, chunks);
 
     // Step 3: Flatten and create parent-child relationships
     return this.flattenHierarchy(chunks);
@@ -222,10 +210,7 @@ export class HierarchicalChunker implements Chunker {
       };
 
       // Find parent
-      while (
-        stack.length > 1 &&
-        stack[stack.length - 1].level >= heading.level
-      ) {
+      while (stack.length > 1 && stack[stack.length - 1].level >= heading.level) {
         stack.pop();
       }
 
@@ -296,18 +281,16 @@ export class HierarchicalChunker implements Chunker {
       }
     } else if (node.children.length > 0) {
       // Flatten remaining children into paragraphs
-      const childChunks = await this.createChildChunks(
-        node,
-        originalDocument,
-        chunks.length
-      );
+      const childChunks = await this.createChildChunks(node, originalDocument, chunks.length);
       chunks.push(...childChunks);
     }
 
     // If node has no children but has content, split it further
-    if (node.children.length === 0 &&
-        node.content.length > (options?.chunkSize ?? 1000) &&
-        currentLevel < maxLevels) {
+    if (
+      node.children.length === 0 &&
+      node.content.length > (options?.chunkSize ?? 1000) &&
+      currentLevel < maxLevels
+    ) {
       const subChunks = await this.splitIntoSubChunks(
         node,
         originalDocument,
@@ -466,10 +449,7 @@ export async function chunkHierarchical(
 /**
  * Get parent chunk for a given child chunk
  */
-export function getParentChunk(
-  childChunk: Chunk,
-  allChunks: Chunk[]
-): Chunk | undefined {
+export function getParentChunk(childChunk: Chunk, allChunks: Chunk[]): Chunk | undefined {
   if (!childChunk.metadata.parentId) {
     return undefined;
   }
@@ -479,25 +459,17 @@ export function getParentChunk(
 /**
  * Get all child chunks for a given parent chunk
  */
-export function getChildChunks(
-  parentChunk: Chunk,
-  allChunks: Chunk[]
-): Chunk[] {
+export function getChildChunks(parentChunk: Chunk, allChunks: Chunk[]): Chunk[] {
   if (!parentChunk.metadata.childIds || parentChunk.metadata.childIds.length === 0) {
     return [];
   }
-  return allChunks.filter((c) =>
-    parentChunk.metadata.childIds?.includes(c.id)
-  );
+  return allChunks.filter((c) => parentChunk.metadata.childIds?.includes(c.id));
 }
 
 /**
  * Get full context path for a chunk (all ancestors)
  */
-export function getChunkContextPath(
-  chunk: Chunk,
-  allChunks: Chunk[]
-): Chunk[] {
+export function getChunkContextPath(chunk: Chunk, allChunks: Chunk[]): Chunk[] {
   const path: Chunk[] = [];
   let current: Chunk | undefined = chunk;
 

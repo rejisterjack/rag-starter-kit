@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 test.describe('Chat', () => {
   test.beforeEach(async ({ page }) => {
@@ -20,11 +20,13 @@ test.describe('Chat', () => {
     await page.click('[data-testid="send-button"]');
 
     // User message should appear
-    await expect(page.locator('[data-testid="user-message"]').last()).toContainText('What is the revenue');
+    await expect(page.locator('[data-testid="user-message"]').last()).toContainText(
+      'What is the revenue'
+    );
 
     // Assistant response should appear
     await expect(page.locator('[data-testid="assistant-message"]').last()).toBeVisible();
-    
+
     // Response should contain content
     await expect(page.locator('[data-testid="assistant-message"]').last()).not.toBeEmpty();
   });
@@ -175,7 +177,7 @@ test.describe('Chat', () => {
     await page.goto('/chat');
 
     // Simulate network error
-    await page.route('/api/chat', route => route.abort('failed'));
+    await page.route('/api/chat', (route) => route.abort('failed'));
 
     await page.fill('[data-testid="chat-input"]', 'Test');
     await page.click('[data-testid="send-button"]');

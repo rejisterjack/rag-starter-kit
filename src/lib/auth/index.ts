@@ -173,8 +173,10 @@ export const {
       if (token && session.user) {
         session.user.id = typeof token.id === 'string' ? token.id : '';
         session.user.role = typeof token.role === 'string' ? token.role : 'USER';
-        session.user.workspaceId = typeof token.workspaceId === 'string' ? token.workspaceId : undefined;
-        session.user.workspaceRole = typeof token.workspaceRole === 'string' ? token.workspaceRole : undefined;
+        session.user.workspaceId =
+          typeof token.workspaceId === 'string' ? token.workspaceId : undefined;
+        session.user.workspaceRole =
+          typeof token.workspaceRole === 'string' ? token.workspaceRole : undefined;
       }
       return session;
     },

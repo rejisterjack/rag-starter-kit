@@ -1,17 +1,17 @@
 /**
  * Experiments Module
- * 
+ *
  * A/B Testing for prompts and other experiments.
  */
 
 export {
-  PromptExperimentManager,
-  getExperimentManager,
-  getPromptVariant,
-  trackExperimentResult,
   DEFAULT_EXPERIMENTS,
-  type PromptVersion,
   type Experiment,
   type ExperimentMetrics,
   type ExperimentResult,
+  getExperimentManager,
+  getPromptVariant,
+  PromptExperimentManager,
+  type PromptVersion,
+  trackExperimentResult,
 } from './prompt-experiments';

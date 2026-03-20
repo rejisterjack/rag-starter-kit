@@ -80,19 +80,19 @@ export class SlackIntegration {
       case 'ask':
       case '':
         return this.handleAsk(args, userLink.userId);
-      
+
       case 'save':
         return this.handleSave(args, command.channel_id);
-      
+
       case 'search':
         return this.handleSearch(args, userLink.userId);
-      
+
       case 'docs':
         return this.handleListDocs(userLink.userId);
-      
+
       case 'help':
         return this.handleHelp();
-      
+
       default:
         return {
           text: `Unknown command: ${subcommand}. Try /rag help`,
@@ -112,7 +112,7 @@ export class SlackIntegration {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await this.getUserApiKey(userId)}`,
+          Authorization: `Bearer ${await this.getUserApiKey(userId)}`,
         },
         body: JSON.stringify({
           messages: [{ role: 'user', content: query }],
@@ -120,14 +120,14 @@ export class SlackIntegration {
         }),
       });
 
-      const data = await response.json() as ChatApiResponse;
-      
+      const data = (await response.json()) as ChatApiResponse;
+
       if (!response.ok) {
         throw new Error(data.error ?? 'Failed to get answer');
       }
 
       let responseText = data.data?.content ?? '';
-      
+
       // Add sources if available
       const sources = data.data?.sources;
       if (sources !== undefined && sources.length > 0) {
@@ -246,7 +246,7 @@ export class SlackIntegration {
     await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.botToken}`,
+        Authorization: `Bearer ${this.botToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

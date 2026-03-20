@@ -1,19 +1,14 @@
 /**
  * Hybrid Search - Combining Vector and Keyword Retrieval
- * 
+ *
  * Implements Reciprocal Rank Fusion (RRF) to combine results from
  * vector similarity search and keyword search for improved retrieval quality.
  */
 
-import { VectorRetriever, defaultVectorSearchConfig } from './vector';
-import { KeywordRetriever, defaultKeywordSearchConfig } from './keyword';
 import { generateEmbedding } from '@/lib/ai';
-import type {
-  RetrievedChunk,
-  RetrievalOptions,
-  HybridSearchConfig,
-  RankedChunk,
-} from './types';
+import { type defaultKeywordSearchConfig, KeywordRetriever } from './keyword';
+import type { HybridSearchConfig, RankedChunk, RetrievalOptions, RetrievedChunk } from './types';
+import { type defaultVectorSearchConfig, VectorRetriever } from './vector';
 
 /**
  * Default configuration for hybrid search
@@ -27,18 +22,15 @@ export const defaultHybridSearchConfig: HybridSearchConfig = {
 
 /**
  * Reciprocal Rank Fusion (RRF) implementation
- * 
+ *
  * RRF formula: score = sum(1 / (k + rank)) for each list
  * where k = 60 (constant that dampens the impact of low rankings)
- * 
+ *
  * @param resultsList - Array of result lists from different retrieval methods
  * @param k - RRF constant (default: 60)
  * @returns Fused and ranked results
  */
-export function reciprocalRankFusion(
-  resultsList: RetrievedChunk[][],
-  k = 60
-): RankedChunk[] {
+export function reciprocalRankFusion(resultsList: RetrievedChunk[][], k = 60): RankedChunk[] {
   // Map to track unique chunks and their RRF scores
   const chunkMap = new Map<string, RankedChunk>();
 
@@ -46,7 +38,7 @@ export function reciprocalRankFusion(
   resultsList.forEach((results, listIndex) => {
     results.forEach((chunk, rank) => {
       const existing = chunkMap.get(chunk.id);
-      
+
       // RRF score contribution from this list
       const rrfContribution = 1 / (k + rank + 1); // +1 because rank is 0-indexed
 
@@ -54,7 +46,7 @@ export function reciprocalRankFusion(
         // Add to existing RRF score and track original rank
         existing.rrfScore += rrfContribution;
         existing.originalRanks.set(`list_${listIndex}`, rank + 1);
-        
+
         // Keep the higher score
         if (chunk.score > existing.score) {
           existing.score = chunk.score;
@@ -72,8 +64,7 @@ export function reciprocalRankFusion(
   });
 
   // Convert to array and sort by RRF score (descending)
-  const rankedChunks = Array.from(chunkMap.values())
-    .sort((a, b) => b.rrfScore - a.rrfScore);
+  const rankedChunks = Array.from(chunkMap.values()).sort((a, b) => b.rrfScore - a.rrfScore);
 
   return rankedChunks;
 }
@@ -160,10 +151,7 @@ export function deduplicateChunks(
     let isDuplicate = false;
 
     for (const existing of deduplicated) {
-      const similarity = calculateJaccardSimilarity(
-        chunk.content,
-        existing.content
-      );
+      const similarity = calculateJaccardSimilarity(chunk.content, existing.content);
       if (similarity >= similarityThreshold) {
         isDuplicate = true;
         break;
@@ -213,10 +201,7 @@ export class HybridRetriever {
   /**
    * Perform hybrid retrieval
    */
-  async retrieve(
-    query: string,
-    options: RetrievalOptions
-  ): Promise<RetrievedChunk[]> {
+  async retrieve(query: string, options: RetrievalOptions): Promise<RetrievedChunk[]> {
     const startTime = Date.now();
     const topK = options.topK ?? 5;
 
@@ -240,10 +225,7 @@ export class HybridRetriever {
     );
 
     // Apply RRF fusion
-    const fusedResults = reciprocalRankFusion(
-      [vectorResults, keywordResults],
-      this.config.rrfK
-    );
+    const fusedResults = reciprocalRankFusion([vectorResults, keywordResults], this.config.rrfK);
 
     // Convert back to RetrievedChunk format
     let finalChunks: RetrievedChunk[] = fusedResults.map((ranked) => ({
@@ -272,10 +254,7 @@ export class HybridRetriever {
   /**
    * Retrieve with weighted score fusion (alternative to RRF)
    */
-  async retrieveWeighted(
-    query: string,
-    options: RetrievalOptions
-  ): Promise<RetrievedChunk[]> {
+  async retrieveWeighted(query: string, options: RetrievalOptions): Promise<RetrievedChunk[]> {
     const startTime = Date.now();
     const topK = options.topK ?? 5;
 

@@ -2,14 +2,14 @@
  * Document analysis for smart chunking strategy selection
  */
 
+import { estimateTokenCount } from './tokens';
 import type {
-  DocumentProfile,
-  DocumentType,
-  DocumentStructure,
   ChunkingStrategy,
+  DocumentProfile,
+  DocumentStructure,
+  DocumentType,
   DocumentAnalyzer as IDocumentAnalyzer,
 } from './types';
-import { estimateTokenCount } from './tokens';
 
 /**
  * Analyzer for detecting document characteristics and recommending chunking strategies
@@ -72,31 +72,27 @@ export class DocumentAnalyzer implements IDocumentAnalyzer {
    * Detect document structure elements
    */
   private detectStructure(content: string): DocumentStructure {
-    const hasHeadings = this.headingPatterns.some((pattern) =>
-      pattern.test(content)
-    );
+    const hasHeadings = this.headingPatterns.some((pattern) => pattern.test(content));
 
-    const headingMatches = content.match(/^#{1,6}\s+(.+)$/gm) ||
+    const headingMatches =
+      content.match(/^#{1,6}\s+(.+)$/gm) ||
       content.match(/^[A-Z][A-Z\s]{2,}$/gm) ||
       content.match(/^\d+\.\s+\w+/gm) ||
       [];
 
     const headings = headingMatches.map((h) => h.replace(/^#+\s*/, '').trim());
 
-    const hasCodeBlocks = /```[\s\S]*?```/.test(content) ||
-      /^\s{4,}\w+/m.test(content);
+    const hasCodeBlocks = /```[\s\S]*?```/.test(content) || /^\s{4,}\w+/m.test(content);
 
-    const hasLists = /^\s*[-*+]\s/m.test(content) ||
-      /^\s*\d+\.\s/m.test(content);
+    const hasLists = /^\s*[-*+]\s/m.test(content) || /^\s*\d+\.\s/m.test(content);
 
     const hasTables = /\|.*\|/.test(content);
 
-    const paragraphs = content
-      .split(/\n\s*\n/)
-      .filter((p) => p.trim().length > 0);
-    const avgParagraphLength = paragraphs.length > 0
-      ? paragraphs.reduce((sum, p) => sum + p.length, 0) / paragraphs.length
-      : 0;
+    const paragraphs = content.split(/\n\s*\n/).filter((p) => p.trim().length > 0);
+    const avgParagraphLength =
+      paragraphs.length > 0
+        ? paragraphs.reduce((sum, p) => sum + p.length, 0) / paragraphs.length
+        : 0;
 
     return {
       hasHeadings,
@@ -112,10 +108,7 @@ export class DocumentAnalyzer implements IDocumentAnalyzer {
   /**
    * Detect document type based on content patterns
    */
-  private detectDocumentType(
-    content: string,
-    structure: DocumentStructure
-  ): DocumentType {
+  private detectDocumentType(content: string, structure: DocumentStructure): DocumentType {
     const scores: Record<DocumentType, number> = {
       code: 0,
       legal: 0,
@@ -148,17 +141,13 @@ export class DocumentAnalyzer implements IDocumentAnalyzer {
 
     // Technical detection
     const hasTechnicalMarkers =
-      /\b(API|endpoint|function|method|class|interface|component|module|library)\b/i.test(
-        content
-      );
+      /\b(API|endpoint|function|method|class|interface|component|module|library)\b/i.test(content);
     const hasCodeExamples = structure.hasCodeBlocks;
     scores.technical = (hasTechnicalMarkers ? 5 : 0) + (hasCodeExamples ? 3 : 0);
 
     // Narrative detection
     const sentences = content.split(/[.!?]+/).filter((s) => s.trim().length > 0);
-    const avgSentenceLen = sentences.length > 0
-      ? content.length / sentences.length
-      : 0;
+    const avgSentenceLen = sentences.length > 0 ? content.length / sentences.length : 0;
     const hasDialogue = /"[^"]+"\s*said|\bsaid\s+"[^"]+"/i.test(content);
     const hasNarrativeStructure = avgSentenceLen > 80 && !structure.hasHeadings;
     scores.narrative = (hasDialogue ? 5 : 0) + (hasNarrativeStructure ? 3 : 0);
@@ -241,7 +230,7 @@ export class DocumentAnalyzer implements IDocumentAnalyzer {
         // Narrative text flows continuously
         return 'semantic';
 
-      default:
+      default: {
         // Default based on structure
         const structureScore = this.calculateStructureScore(structure);
         if (structureScore > 0.6) {
@@ -250,6 +239,7 @@ export class DocumentAnalyzer implements IDocumentAnalyzer {
           return 'semantic';
         }
         return 'fixed';
+      }
     }
   }
 

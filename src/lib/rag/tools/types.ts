@@ -1,6 +1,6 @@
 /**
  * Tools System - Type Definitions
- * 
+ *
  * Defines the core interfaces for tools that can be used by agents.
  */
 

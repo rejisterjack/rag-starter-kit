@@ -1,6 +1,6 @@
 /**
  * A/B Testing for Prompts
- * 
+ *
  * Supports running experiments with different prompt variants
  * and tracking their performance.
  */
@@ -82,9 +82,7 @@ export class PromptExperimentManager {
     }
 
     // Use consistent hashing for variant assignment
-    const hash = createHash('md5')
-      .update(`${experimentId}:${userId}`)
-      .digest('hex');
+    const hash = createHash('md5').update(`${experimentId}:${userId}`).digest('hex');
     const hashValue = parseInt(hash.slice(0, 8), 16) / 0xffffffff;
 
     // Determine variant based on traffic split
@@ -180,7 +178,7 @@ export class PromptExperimentManager {
 
     return Array.from(variantResults.entries()).map(([variantId, data]) => {
       const variant = experiment.variants.find((v) => v.id === variantId);
-      
+
       return {
         variantId,
         variantName: variant?.name ?? 'Unknown',
@@ -193,18 +191,18 @@ export class PromptExperimentManager {
   /**
    * Compare experiment variants
    */
-  async compareVariants(
-    experimentId: string
-  ): Promise<Array<{
-    variantId: string;
-    variantName: string;
-    metrics: ExperimentMetrics;
-    sampleSize: number;
-    confidence?: number;
-    isWinner?: boolean;
-  }>> {
+  async compareVariants(experimentId: string): Promise<
+    Array<{
+      variantId: string;
+      variantName: string;
+      metrics: ExperimentMetrics;
+      sampleSize: number;
+      confidence?: number;
+      isWinner?: boolean;
+    }>
+  > {
     const results = await this.getExperimentResults(experimentId);
-    
+
     if (results.length === 0) return [];
 
     // Find best performing variant based on composite score
@@ -232,7 +230,7 @@ export class PromptExperimentManager {
     if (experiment) {
       experiment.status = 'completed';
       experiment.endDate = new Date();
-      
+
       if (winnerVariantId) {
         // Store winner in metadata
         (experiment as Experiment & { winnerVariantId?: string }).winnerVariantId = winnerVariantId;
@@ -244,9 +242,7 @@ export class PromptExperimentManager {
    * List all active experiments
    */
   listActiveExperiments(): Experiment[] {
-    return Array.from(this.activeExperiments.values()).filter(
-      (e) => e.status === 'running'
-    );
+    return Array.from(this.activeExperiments.values()).filter((e) => e.status === 'running');
   }
 
   // ============================================================================
@@ -254,15 +250,12 @@ export class PromptExperimentManager {
   // ============================================================================
 
   private aggregateMetrics(metrics: ExperimentMetrics[]): ExperimentMetrics {
-    const avg = (values: number[]) =>
-      values.reduce((a, b) => a + b, 0) / (values.length || 1);
+    const avg = (values: number[]) => values.reduce((a, b) => a + b, 0) / (values.length || 1);
 
     const responseQualities = metrics
       .map((m) => m.responseQuality)
       .filter((v): v is number => v !== undefined);
-    const latencies = metrics
-      .map((m) => m.latency)
-      .filter((v): v is number => v !== undefined);
+    const latencies = metrics.map((m) => m.latency).filter((v): v is number => v !== undefined);
     const tokenUsages = metrics
       .map((m) => m.tokenUsage)
       .filter((v): v is number => v !== undefined);
@@ -386,7 +379,7 @@ let globalExperimentManager: PromptExperimentManager | null = null;
 export function getExperimentManager(): PromptExperimentManager {
   if (!globalExperimentManager) {
     globalExperimentManager = new PromptExperimentManager();
-    
+
     // Register default experiments
     for (const experiment of Object.values(DEFAULT_EXPERIMENTS)) {
       globalExperimentManager.registerExperiment(experiment);
@@ -399,10 +392,7 @@ export function getExperimentManager(): PromptExperimentManager {
  * Get prompt variant for current request
  * Convenience function that uses the global manager
  */
-export function getPromptVariant(
-  experiment: string,
-  userId: string
-): PromptVersion | null {
+export function getPromptVariant(experiment: string, userId: string): PromptVersion | null {
   return getExperimentManager().getPromptVariant(experiment, userId);
 }
 
@@ -416,12 +406,7 @@ export async function trackExperimentResult(
   metrics: ExperimentMetrics,
   metadata?: { userId?: string; conversationId?: string; query?: string }
 ): Promise<void> {
-  return getExperimentManager().trackExperimentResult(
-    experiment,
-    variant,
-    metrics,
-    metadata
-  );
+  return getExperimentManager().trackExperimentResult(experiment, variant, metrics, metadata);
 }
 
 // ============================================================================

@@ -1,13 +1,13 @@
 /**
  * Collaborative Features
- * 
+ *
  * - Share conversations via link
  * - Add comments/annotations to responses
  * - @mentions in workspace
  */
 
-import { prisma } from '@/lib/db';
 import { randomBytes } from 'crypto';
+import { prisma } from '@/lib/db';
 import type { Message } from '@/types';
 
 // ============================================================================
@@ -104,9 +104,7 @@ export async function createShareLink(
     conversationId,
     token,
     createdBy: userId,
-    expiresAt: expiresInDays
-      ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
-      : null,
+    expiresAt: expiresInDays ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000) : null,
     permissions: {
       canView: true,
       canComment: permissions.canComment ?? false,
@@ -131,9 +129,7 @@ export async function createShareLink(
 /**
  * Get conversation by share token
  */
-export async function getConversationByShareToken(
-  token: string
-): Promise<{
+export async function getConversationByShareToken(token: string): Promise<{
   conversation: {
     id: string;
     title: string;
@@ -149,10 +145,7 @@ export async function getConversationByShareToken(
 /**
  * Revoke a share link
  */
-export async function revokeShareLink(
-  shareId: string,
-  _userId: string
-): Promise<void> {
+export async function revokeShareLink(shareId: string, _userId: string): Promise<void> {
   // Note: shareLink model not in schema - no-op
   void shareId;
   void _userId;
@@ -162,10 +155,7 @@ export async function revokeShareLink(
 /**
  * List share links for a conversation
  */
-export async function listShareLinks(
-  conversationId: string,
-  userId: string
-): Promise<ShareLink[]> {
+export async function listShareLinks(conversationId: string, userId: string): Promise<ShareLink[]> {
   // Note: shareLink model not in schema - returning empty array
   void conversationId;
   void userId;
@@ -180,7 +170,7 @@ export async function listShareLinks(
     createdAt: Date;
   }> = [];
 
-  return links.map((link: typeof links[0]) => ({
+  return links.map((link: (typeof links)[0]) => ({
     id: link.id,
     conversationId: link.conversationId,
     token: link.token,
@@ -252,9 +242,7 @@ export async function addComment(
 /**
  * Get comments for a conversation
  */
-export async function getComments(
-  conversationId: string
-): Promise<Comment[]> {
+export async function getComments(conversationId: string): Promise<Comment[]> {
   // Note: comment model not in schema - returning empty array
   void conversationId;
   const comments: Array<{
@@ -307,10 +295,7 @@ export async function getComments(
 /**
  * Resolve a comment
  */
-export async function resolveComment(
-  commentId: string,
-  userId: string
-): Promise<void> {
+export async function resolveComment(commentId: string, userId: string): Promise<void> {
   // Note: comment model not in schema - mock implementation
   void commentId;
   void userId;
@@ -320,10 +305,7 @@ export async function resolveComment(
 /**
  * Delete a comment
  */
-export async function deleteComment(
-  commentId: string,
-  userId: string
-): Promise<void> {
+export async function deleteComment(commentId: string, userId: string): Promise<void> {
   // Note: comment model not in schema - mock implementation
   void commentId;
   void userId;
@@ -382,9 +364,7 @@ export async function addAnnotation(
 /**
  * Get annotations for a conversation
  */
-export async function getAnnotations(
-  conversationId: string
-): Promise<Annotation[]> {
+export async function getAnnotations(conversationId: string): Promise<Annotation[]> {
   // Note: annotation model not in schema - returning empty array
   void conversationId;
   const annotations: Array<{
@@ -398,7 +378,7 @@ export async function getAnnotations(
     createdAt: Date;
   }> = [];
 
-  return annotations.map((a: typeof annotations[0]) => ({
+  return annotations.map((a: (typeof annotations)[0]) => ({
     id: a.id,
     messageId: a.messageId,
     conversationId: a.conversationId,
@@ -500,7 +480,7 @@ export async function getUnreadMentions(userId: string): Promise<Mention[]> {
     mentionedBy: { name: string | null; email: string } | null;
   }> = [];
 
-  return mentions.map((m: typeof mentions[0]) => ({
+  return mentions.map((m: (typeof mentions)[0]) => ({
     id: m.id,
     messageId: m.messageId,
     conversationId: m.conversationId,
@@ -515,10 +495,7 @@ export async function getUnreadMentions(userId: string): Promise<Mention[]> {
 /**
  * Mark mentions as read
  */
-export async function markMentionsAsRead(
-  mentionIds: string[],
-  userId: string
-): Promise<void> {
+export async function markMentionsAsRead(mentionIds: string[], userId: string): Promise<void> {
   // Note: mention model not in schema - no-op
   void mentionIds;
   void userId;

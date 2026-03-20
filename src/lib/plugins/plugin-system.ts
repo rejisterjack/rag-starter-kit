@@ -37,38 +37,41 @@ export interface Plugin {
   version: string;
   description: string;
   author: string;
-  
+
   // Lifecycle hooks
   onInstall?: () => Promise<void>;
   onUninstall?: () => Promise<void>;
   onEnable?: () => Promise<void>;
   onDisable?: () => Promise<void>;
-  
+
   // Feature extensions
   hooks: {
     // Chat hooks
     'chat:beforeSend'?: ChatBeforeSendHandler;
     'chat:afterReceive'?: ChatAfterReceiveHandler;
     'chat:onError'?: ChatOnErrorHandler;
-    
+
     // Document hooks
     'document:beforeIngest'?: DocumentBeforeIngestHandler;
     'document:afterIngest'?: DocumentAfterIngestHandler;
-    
+
     // UI hooks
     'ui:toolbar'?: UIComponentHandler;
     'ui:sidebar'?: UIComponentHandler;
     'ui:settings'?: UIComponentHandler;
   };
-  
+
   // Settings schema
-  settings?: Record<string, {
-    type: 'string' | 'number' | 'boolean' | 'select';
-    label: string;
-    description?: string;
-    default?: unknown;
-    options?: string[]; // for select type
-  }>;
+  settings?: Record<
+    string,
+    {
+      type: 'string' | 'number' | 'boolean' | 'select';
+      label: string;
+      description?: string;
+      default?: unknown;
+      options?: string[]; // for select type
+    }
+  >;
 }
 
 export class PluginManager {
@@ -195,7 +198,10 @@ export class PluginManager {
   /**
    * Execute hooks for document before ingest
    */
-  async executeHook(name: 'document:beforeIngest', data: DocumentIngestData): Promise<DocumentIngestData>;
+  async executeHook(
+    name: 'document:beforeIngest',
+    data: DocumentIngestData
+  ): Promise<DocumentIngestData>;
   /**
    * Execute hooks for document after ingest
    */
@@ -203,19 +209,28 @@ export class PluginManager {
   /**
    * Execute hooks for UI components
    */
-  async executeHook(name: 'ui:toolbar' | 'ui:sidebar' | 'ui:settings', data: null): Promise<ComponentType | null>;
+  async executeHook(
+    name: 'ui:toolbar' | 'ui:sidebar' | 'ui:settings',
+    data: null
+  ): Promise<ComponentType | null>;
   /**
    * Execute hooks (generic implementation)
    */
   async executeHook<T>(name: string, data: T): Promise<T | void | ComponentType> {
     const handlers = this.hooks.get(name) ?? [];
-    
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let result: unknown = data;
 
     for (const handler of handlers) {
       try {
-        if (name === 'document:beforeIngest' && typeof result === 'object' && result !== null && 'content' in result && 'metadata' in result) {
+        if (
+          name === 'document:beforeIngest' &&
+          typeof result === 'object' &&
+          result !== null &&
+          'content' in result &&
+          'metadata' in result
+        ) {
           result = await (handler as DocumentBeforeIngestHandler)(
             (result as DocumentIngestData).content,
             (result as DocumentIngestData).metadata

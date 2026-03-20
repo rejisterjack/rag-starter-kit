@@ -1,17 +1,17 @@
 /**
  * Vector Similarity Search using pgvector
- * 
+ *
  * Implements cosine similarity search with configurable distance metrics,
  * pre-filtering by metadata, and post-filtering by score threshold.
  */
 
 import { prisma } from '@/lib/db';
 import type {
-  RetrievedChunk,
-  RetrievalOptions,
-  VectorSearchConfig,
-  RawSearchResult,
   DistanceMetric,
+  RawSearchResult,
+  RetrievalOptions,
+  RetrievedChunk,
+  VectorSearchConfig,
 } from './types';
 
 /**
@@ -132,10 +132,7 @@ export class VectorRetriever {
   /**
    * Perform vector similarity search
    */
-  async retrieve(
-    queryEmbedding: number[],
-    options: RetrievalOptions
-  ): Promise<RetrievedChunk[]> {
+  async retrieve(queryEmbedding: number[], options: RetrievalOptions): Promise<RetrievedChunk[]> {
     const startTime = Date.now();
     const topK = options.topK ?? 5;
     const minScore = options.minScore ?? 0.7;
@@ -182,10 +179,7 @@ export class VectorRetriever {
       // Add embedding, threshold, and limit to params
       const queryParams = [...params, queryEmbedding, minScore, topK * 2]; // Get more for post-filtering
 
-      const results = await prisma.$queryRawUnsafe<RawSearchResult[]>(
-        sqlQuery,
-        ...queryParams
-      );
+      const results = await prisma.$queryRawUnsafe<RawSearchResult[]>(sqlQuery, ...queryParams);
 
       // Transform to RetrievedChunk format
       const chunks: RetrievedChunk[] = results.map((result) => ({
@@ -205,9 +199,7 @@ export class VectorRetriever {
       }));
 
       // Post-filtering: ensure we respect the topK limit
-      const filteredChunks = chunks
-        .filter((chunk) => chunk.score >= minScore)
-        .slice(0, topK);
+      const filteredChunks = chunks.filter((chunk) => chunk.score >= minScore).slice(0, topK);
 
       console.log(
         `[VectorRetriever] Found ${filteredChunks.length} chunks in ${Date.now() - startTime}ms`
@@ -271,10 +263,13 @@ export function createVectorIndexSQL(
   metric: DistanceMetric = 'cosine',
   indexName = 'idx_chunks_embedding'
 ): string {
-  const opclass = metric === 'cosine' ? 'vector_cosine_ops' : 
-                  metric === 'euclidean' ? 'vector_l2_ops' : 
-                  'vector_ip_ops';
-  
+  const opclass =
+    metric === 'cosine'
+      ? 'vector_cosine_ops'
+      : metric === 'euclidean'
+        ? 'vector_l2_ops'
+        : 'vector_ip_ops';
+
   return `
     -- Create vector index for ${metric} similarity
     CREATE INDEX IF NOT EXISTS ${indexName} 

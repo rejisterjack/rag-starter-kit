@@ -4,8 +4,8 @@
  * Supports local filesystem and S3-compatible storage
  */
 
-import { writeFile, readFile, unlink, mkdir, stat, readdir } from 'fs/promises';
 import { existsSync } from 'fs';
+import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -433,10 +433,11 @@ export function generateExportFilename(
 ): string {
   const date = timestamp ?? new Date();
   const dateStr = date.toISOString().split('T')[0];
-  const sanitizedTitle = conversationTitle
-    ?.replace(/[^a-zA-Z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .substring(0, 30) ?? 'export';
+  const sanitizedTitle =
+    conversationTitle
+      ?.replace(/[^a-zA-Z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .substring(0, 30) ?? 'export';
 
   const extensions: Record<string, string> = {
     pdf: 'pdf',

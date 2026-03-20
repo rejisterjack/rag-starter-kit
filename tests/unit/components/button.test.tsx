@@ -1,11 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { Button } from '@/components/ui/button';
 
 describe('Button', () => {
   it('renders correctly', () => {
     render(<Button>Click me</Button>);
-    
+
     const button = screen.getByRole('button', { name: /click me/i });
     expect(button).toBeInTheDocument();
     expect(button).toHaveTextContent('Click me');
@@ -14,20 +14,20 @@ describe('Button', () => {
   it('handles click events', () => {
     const handleClick = vi.fn();
     render(<Button onClick={handleClick}>Click me</Button>);
-    
+
     const button = screen.getByRole('button', { name: /click me/i });
     fireEvent.click(button);
-    
+
     expect(handleClick).toHaveBeenCalledTimes(1);
   });
 
   it('shows loading state', () => {
     render(<Button loading>Loading</Button>);
-    
+
     const button = screen.getByRole('button');
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute('aria-busy', 'true');
-    
+
     // Check for loading spinner
     const spinner = button.querySelector('[class*="animate-spin"]');
     expect(spinner).toBeInTheDocument();
@@ -35,7 +35,7 @@ describe('Button', () => {
 
   it('is accessible', () => {
     render(<Button aria-label="Submit form">Submit</Button>);
-    
+
     const button = screen.getByRole('button');
     expect(button).toHaveAttribute('aria-label', 'Submit form');
     expect(button).toHaveAttribute('type', 'button');
@@ -71,7 +71,7 @@ describe('Button', () => {
 
   it('can be disabled', () => {
     render(<Button disabled>Disabled</Button>);
-    
+
     const button = screen.getByRole('button');
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute('disabled');
@@ -83,7 +83,7 @@ describe('Button', () => {
         <a href="/test">Link Button</a>
       </Button>
     );
-    
+
     const link = screen.getByRole('link', { name: /link button/i });
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '/test');

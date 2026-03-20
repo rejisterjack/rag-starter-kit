@@ -4,10 +4,10 @@
  * Based on LangChain's RecursiveCharacterTextSplitter logic
  */
 
-import { generateId } from './utils';
-import type { Chunk, ChunkingOptions, Chunker, ChunkStats } from './types';
-import { ChunkingError } from './types';
 import { countTokensForChunks, estimateTokenCount } from './tokens';
+import type { Chunk, Chunker, ChunkingOptions, ChunkStats } from './types';
+import { ChunkingError } from './types';
+import { generateId } from './utils';
 
 /**
  * Default separators in priority order
@@ -51,28 +51,22 @@ export class FixedChunker implements Chunker {
    */
   validateOptions(options: ChunkingOptions): boolean {
     if (options.chunkSize && options.chunkSize < 1) {
-      throw new ChunkingError(
-        'chunkSize must be at least 1',
-        'INVALID_OPTIONS',
-        { chunkSize: options.chunkSize }
-      );
+      throw new ChunkingError('chunkSize must be at least 1', 'INVALID_OPTIONS', {
+        chunkSize: options.chunkSize,
+      });
     }
 
     if (options.chunkOverlap && options.chunkOverlap < 0) {
-      throw new ChunkingError(
-        'chunkOverlap must be non-negative',
-        'INVALID_OPTIONS',
-        { chunkOverlap: options.chunkOverlap }
-      );
+      throw new ChunkingError('chunkOverlap must be non-negative', 'INVALID_OPTIONS', {
+        chunkOverlap: options.chunkOverlap,
+      });
     }
 
-    if (options.chunkOverlap && options.chunkSize &&
-        options.chunkOverlap >= options.chunkSize) {
-      throw new ChunkingError(
-        'chunkOverlap must be less than chunkSize',
-        'INVALID_OPTIONS',
-        { chunkOverlap: options.chunkOverlap, chunkSize: options.chunkSize }
-      );
+    if (options.chunkOverlap && options.chunkSize && options.chunkOverlap >= options.chunkSize) {
+      throw new ChunkingError('chunkOverlap must be less than chunkSize', 'INVALID_OPTIONS', {
+        chunkOverlap: options.chunkOverlap,
+        chunkSize: options.chunkSize,
+      });
     }
 
     return true;
@@ -85,10 +79,7 @@ export class FixedChunker implements Chunker {
     this.validateOptions(options);
 
     if (!document || document.trim().length === 0) {
-      throw new ChunkingError(
-        'Document is empty',
-        'EMPTY_DOCUMENT'
-      );
+      throw new ChunkingError('Document is empty', 'EMPTY_DOCUMENT');
     }
 
     const chunkSize = options.chunkSize ?? 1000;
@@ -133,10 +124,8 @@ export class FixedChunker implements Chunker {
       const separatorSuffix = separator && this.keepSeparator === 'end' ? separator : '';
       const separatorPrefix = separator && this.keepSeparator === 'start' ? separator : '';
 
-      const potentialChunk = currentChunk +
-        (currentChunk ? separatorPrefix : '') +
-        split +
-        separatorSuffix;
+      const potentialChunk =
+        currentChunk + (currentChunk ? separatorPrefix : '') + split + separatorSuffix;
 
       if (potentialChunk.length > chunkSize && currentChunk) {
         // Current chunk is full, save it
@@ -144,8 +133,9 @@ export class FixedChunker implements Chunker {
 
         // Start new chunk with overlap
         if (chunkOverlap > 0) {
-          currentChunk = this.getOverlapChunk(currentChunk, chunkOverlap) +
-            (separatorPrefix) +
+          currentChunk =
+            this.getOverlapChunk(currentChunk, chunkOverlap) +
+            separatorPrefix +
             split +
             separatorSuffix;
         } else {
@@ -223,8 +213,7 @@ export class FixedChunker implements Chunker {
           subSeparator ? [subSeparator] : ['']
         );
         result.push(...subChunks);
-      } else if (result.length > 0 &&
-                 result[result.length - 1].length + chunk.length < chunkSize) {
+      } else if (result.length > 0 && result[result.length - 1].length + chunk.length < chunkSize) {
         // Merge with previous chunk if it's small
         result[result.length - 1] += '\n\n' + chunk;
       } else {
@@ -249,11 +238,7 @@ export class FixedChunker implements Chunker {
   /**
    * Create Chunk objects with proper metadata
    */
-  private createChunks(
-    texts: string[],
-    originalDocument: string,
-    _documentId?: string
-  ): Chunk[] {
+  private createChunks(texts: string[], originalDocument: string, _documentId?: string): Chunk[] {
     let currentPosition = 0;
 
     return texts.map((content, index) => {

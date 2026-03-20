@@ -1,6 +1,6 @@
 /**
  * OAuth2/OIDC Provider Configuration
- * 
+ *
  * Supports enterprise SSO via:
  * - Google Workspace
  * - Microsoft/Azure AD
@@ -114,7 +114,10 @@ export interface OAuthProfile {
  */
 export const OAuthProviderPresets: Record<
   OAuthProviderType,
-  Omit<OAuthProviderConfig, 'id' | 'workspaceId' | 'clientId' | 'clientSecret' | 'name' | 'createdAt' | 'updatedAt'>
+  Omit<
+    OAuthProviderConfig,
+    'id' | 'workspaceId' | 'clientId' | 'clientSecret' | 'name' | 'createdAt' | 'updatedAt'
+  >
 > = {
   google_workspace: {
     provider: 'google_workspace',
@@ -243,30 +246,35 @@ export const OAuthAttributeMappingSchema = z.object({
   emailVerified: z.string().optional(),
 });
 
-export const OAuthProviderConfigSchema = z.object({
-  workspaceId: z.string().cuid(),
-  provider: z.enum(['google_workspace', 'azure_ad', 'okta', 'onelogin', 'auth0', 'generic_oidc']),
-  name: z.string().min(1, 'Name is required'),
-  clientId: z.string().min(1, 'Client ID is required'),
-  clientSecret: z.string().min(1, 'Client secret is required'),
-  authorizationUrl: z.string().url().optional(),
-  tokenUrl: z.string().url().optional(),
-  userInfoUrl: z.string().url().optional(),
-  jwksUrl: z.string().url().optional(),
-  issuer: z.string().optional(),
-  scopes: z.array(z.string()).default(['openid', 'email', 'profile']),
-  attributeMapping: OAuthAttributeMappingSchema.default({ email: 'email' }),
-  active: z.boolean().default(true),
-}).refine((data) => {
-  // For generic_oidc, require all OIDC endpoints
-  if (data.provider === 'generic_oidc') {
-    return !!(data.authorizationUrl && data.tokenUrl && data.userInfoUrl);
-  }
-  return true;
-}, {
-  message: 'Generic OIDC requires authorizationUrl, tokenUrl, and userInfoUrl',
-  path: ['provider'],
-});
+export const OAuthProviderConfigSchema = z
+  .object({
+    workspaceId: z.string().cuid(),
+    provider: z.enum(['google_workspace', 'azure_ad', 'okta', 'onelogin', 'auth0', 'generic_oidc']),
+    name: z.string().min(1, 'Name is required'),
+    clientId: z.string().min(1, 'Client ID is required'),
+    clientSecret: z.string().min(1, 'Client secret is required'),
+    authorizationUrl: z.string().url().optional(),
+    tokenUrl: z.string().url().optional(),
+    userInfoUrl: z.string().url().optional(),
+    jwksUrl: z.string().url().optional(),
+    issuer: z.string().optional(),
+    scopes: z.array(z.string()).default(['openid', 'email', 'profile']),
+    attributeMapping: OAuthAttributeMappingSchema.default({ email: 'email' }),
+    active: z.boolean().default(true),
+  })
+  .refine(
+    (data) => {
+      // For generic_oidc, require all OIDC endpoints
+      if (data.provider === 'generic_oidc') {
+        return !!(data.authorizationUrl && data.tokenUrl && data.userInfoUrl);
+      }
+      return true;
+    },
+    {
+      message: 'Generic OIDC requires authorizationUrl, tokenUrl, and userInfoUrl',
+      path: ['provider'],
+    }
+  );
 
 // =============================================================================
 // Provider URL Builders
@@ -284,7 +292,10 @@ export function buildProviderUrls(
   type: OAuthProviderType,
   config: Partial<OAuthProviderConfig>,
   params: ProviderUrlParams = {}
-): Pick<OAuthProviderConfig, 'authorizationUrl' | 'tokenUrl' | 'userInfoUrl' | 'jwksUrl' | 'issuer'> {
+): Pick<
+  OAuthProviderConfig,
+  'authorizationUrl' | 'tokenUrl' | 'userInfoUrl' | 'jwksUrl' | 'issuer'
+> {
   const preset = OAuthProviderPresets[type];
   const replaceParams = (url: string): string => {
     let result = url;
@@ -300,7 +311,8 @@ export function buildProviderUrls(
   return {
     authorizationUrl: config.authorizationUrl || replaceParams(preset.authorizationUrl),
     tokenUrl: config.tokenUrl || replaceParams(preset.tokenUrl),
-    userInfoUrl: config.userInfoUrl || (preset.userInfoUrl ? replaceParams(preset.userInfoUrl) : undefined),
+    userInfoUrl:
+      config.userInfoUrl || (preset.userInfoUrl ? replaceParams(preset.userInfoUrl) : undefined),
     jwksUrl: config.jwksUrl || (preset.jwksUrl ? replaceParams(preset.jwksUrl) : undefined),
     issuer: config.issuer || (preset.issuer ? replaceParams(preset.issuer) : undefined),
   };
@@ -320,13 +332,13 @@ export function generateAuthUrl(
   nonce?: string
 ): string {
   const url = new URL(config.authorizationUrl);
-  
+
   url.searchParams.set('client_id', config.clientId);
   url.searchParams.set('redirect_uri', redirectUri);
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('scope', config.scopes.join(' '));
   url.searchParams.set('state', state);
-  
+
   if (nonce) {
     url.searchParams.set('nonce', nonce);
   }
@@ -388,11 +400,11 @@ export async function fetchUserProfile(
     throw new OAuthError(`Failed to fetch user profile: ${error}`, 'PROFILE_FETCH_FAILED');
   }
 
-  const raw = await response.json() as Record<string, unknown>;
+  const raw = (await response.json()) as Record<string, unknown>;
 
   // Map attributes according to configuration
   const mapping = config.attributeMapping;
-  
+
   const email = getNestedValue(raw, mapping.email) as string;
   if (!email) {
     throw new OAuthError('Email not found in user profile', 'EMAIL_NOT_FOUND');
@@ -405,9 +417,11 @@ export async function fetchUserProfile(
   let groups: string[] | undefined;
   if (mapping.groups) {
     const groupsValue = getNestedValue(raw, mapping.groups);
-    groups = Array.isArray(groupsValue) 
-      ? groupsValue as string[]
-      : groupsValue ? [String(groupsValue)] : undefined;
+    groups = Array.isArray(groupsValue)
+      ? (groupsValue as string[])
+      : groupsValue
+        ? [String(groupsValue)]
+        : undefined;
   }
 
   return {
@@ -415,7 +429,9 @@ export async function fetchUserProfile(
     email: email.toLowerCase().trim(),
     name: mapping.name ? String(getNestedValue(raw, mapping.name) || '') : undefined,
     givenName: mapping.givenName ? String(getNestedValue(raw, mapping.givenName) || '') : undefined,
-    familyName: mapping.familyName ? String(getNestedValue(raw, mapping.familyName) || '') : undefined,
+    familyName: mapping.familyName
+      ? String(getNestedValue(raw, mapping.familyName) || '')
+      : undefined,
     groups,
     picture: mapping.picture ? String(getNestedValue(raw, mapping.picture) || '') : undefined,
     emailVerified,
@@ -470,7 +486,10 @@ export class OAuthError extends Error {
  * State store for CSRF protection
  * In production, use Redis or database with TTL
  */
-const stateStore = new Map<string, { workspaceId: string; providerId: string; createdAt: number }>();
+const stateStore = new Map<
+  string,
+  { workspaceId: string; providerId: string; createdAt: number }
+>();
 const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
@@ -547,7 +566,7 @@ export async function getWorkspaceOAuthProviders(
     updatedAt: Date;
   }> = [];
 
-  return providers.map((p: typeof providers[0]) => ({
+  return providers.map((p: (typeof providers)[0]) => ({
     id: p.id,
     workspaceId: p.workspaceId,
     provider: p.provider as OAuthProviderType,

@@ -1,16 +1,16 @@
 /**
  * Keyword/Full-Text Search using PostgreSQL tsvector
- * 
+ *
  * Implements BM25-style ranking using PostgreSQL's full-text search capabilities.
  * Supports multiple query parsing methods and highlighting of matching terms.
  */
 
 import { prisma } from '@/lib/db';
 import type {
-  RetrievedChunk,
-  RetrievalOptions,
   KeywordSearchConfig,
   RawSearchResult,
+  RetrievalOptions,
+  RetrievedChunk,
 } from './types';
 
 /**
@@ -44,7 +44,7 @@ export const supportedLanguages = [
   'simple', // language-independent
 ] as const;
 
-export type SupportedLanguage = typeof supportedLanguages[number];
+export type SupportedLanguage = (typeof supportedLanguages)[number];
 
 /**
  * Get the tsquery generation function based on query type
@@ -127,10 +127,7 @@ export class KeywordRetriever {
   /**
    * Perform keyword/full-text search
    */
-  async retrieve(
-    query: string,
-    options: RetrievalOptions
-  ): Promise<RetrievedChunk[]> {
+  async retrieve(query: string, options: RetrievalOptions): Promise<RetrievedChunk[]> {
     const startTime = Date.now();
     const topK = options.topK ?? 5;
     const minScore = options.minScore ?? 0.01; // BM25 scores are typically small
@@ -191,9 +188,10 @@ export class KeywordRetriever {
       // Transform to RetrievedChunk format
       const chunks: RetrievedChunk[] = results.map((result) => ({
         id: result.id,
-        content: this.config.highlight && result.highlighted_content
-          ? result.highlighted_content
-          : result.content,
+        content:
+          this.config.highlight && result.highlighted_content
+            ? result.highlighted_content
+            : result.content,
         score: Number(result.score),
         metadata: {
           documentId: result.documentId,
@@ -208,9 +206,7 @@ export class KeywordRetriever {
       }));
 
       // Post-filtering by score
-      const filteredChunks = chunks
-        .filter((chunk) => chunk.score >= minScore)
-        .slice(0, topK);
+      const filteredChunks = chunks.filter((chunk) => chunk.score >= minScore).slice(0, topK);
 
       console.log(
         `[KeywordRetriever] Found ${filteredChunks.length} chunks in ${Date.now() - startTime}ms`
@@ -228,11 +224,7 @@ export class KeywordRetriever {
   /**
    * Get search suggestions based on partial query
    */
-  async getSuggestions(
-    partialQuery: string,
-    workspaceId: string,
-    limit = 5
-  ): Promise<string[]> {
+  async getSuggestions(partialQuery: string, workspaceId: string, limit = 5): Promise<string[]> {
     validateLanguage(this.config.language ?? 'english');
 
     const results = await prisma.$queryRaw<Array<{ word: string }>>`
@@ -253,7 +245,10 @@ export class KeywordRetriever {
   /**
    * Get term frequency statistics for a workspace
    */
-  async getTermStats(workspaceId: string, limit = 100): Promise<Array<{ term: string; frequency: number }>> {
+  async getTermStats(
+    workspaceId: string,
+    limit = 100
+  ): Promise<Array<{ term: string; frequency: number }>> {
     const language = validateLanguage(this.config.language ?? 'english');
 
     const results = await prisma.$queryRaw<Array<{ word: string; nentry: bigint; ndoc: bigint }>>`

@@ -3,11 +3,7 @@
  * Detects Web Speech API support and provides fallback recommendations
  */
 
-import {
-  type BrowserSupportInfo,
-  type SupportedLanguage,
-  type LanguageOption,
-} from './types';
+import type { BrowserSupportInfo, LanguageOption, SupportedLanguage } from './types';
 
 // =============================================================================
 // Language Options
@@ -15,45 +11,150 @@ import {
 
 export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   { code: 'auto', name: 'Auto-detect', nativeName: 'Auto-detect', flag: '\ud83c\udf10' },
-  { code: 'en-US', name: 'English (US)', nativeName: 'English (US)', flag: '\ud83c\uddfa\ud83c\uddf8' },
-  { code: 'en-GB', name: 'English (UK)', nativeName: 'English (UK)', flag: '\ud83c\uddec\ud83c\udde7' },
-  { code: 'en-AU', name: 'English (Australia)', nativeName: 'English (Australia)', flag: '\ud83c\udde6\ud83c\uddfa' },
-  { code: 'en-CA', name: 'English (Canada)', nativeName: 'English (Canada)', flag: '\ud83c\udde8\ud83c\udde6' },
-  { code: 'en-IN', name: 'English (India)', nativeName: 'English (India)', flag: '\ud83c\uddee\ud83c\uddf3' },
-  { code: 'es-ES', name: 'Spanish (Spain)', nativeName: 'Espanol (Espana)', flag: '\ud83c\uddea\ud83c\uddf8' },
-  { code: 'es-MX', name: 'Spanish (Mexico)', nativeName: 'Espanol (Mexico)', flag: '\ud83c\uddf2\ud83c\uddfd' },
-  { code: 'es-AR', name: 'Spanish (Argentina)', nativeName: 'Espanol (Argentina)', flag: '\ud83c\udde6\ud83c\uddf7' },
-  { code: 'fr-FR', name: 'French (France)', nativeName: 'Francais (France)', flag: '\ud83c\uddeb\ud83c\uddf7' },
-  { code: 'fr-CA', name: 'French (Canada)', nativeName: 'Francais (Canada)', flag: '\ud83c\udde8\ud83c\udde6' },
+  {
+    code: 'en-US',
+    name: 'English (US)',
+    nativeName: 'English (US)',
+    flag: '\ud83c\uddfa\ud83c\uddf8',
+  },
+  {
+    code: 'en-GB',
+    name: 'English (UK)',
+    nativeName: 'English (UK)',
+    flag: '\ud83c\uddec\ud83c\udde7',
+  },
+  {
+    code: 'en-AU',
+    name: 'English (Australia)',
+    nativeName: 'English (Australia)',
+    flag: '\ud83c\udde6\ud83c\uddfa',
+  },
+  {
+    code: 'en-CA',
+    name: 'English (Canada)',
+    nativeName: 'English (Canada)',
+    flag: '\ud83c\udde8\ud83c\udde6',
+  },
+  {
+    code: 'en-IN',
+    name: 'English (India)',
+    nativeName: 'English (India)',
+    flag: '\ud83c\uddee\ud83c\uddf3',
+  },
+  {
+    code: 'es-ES',
+    name: 'Spanish (Spain)',
+    nativeName: 'Espanol (Espana)',
+    flag: '\ud83c\uddea\ud83c\uddf8',
+  },
+  {
+    code: 'es-MX',
+    name: 'Spanish (Mexico)',
+    nativeName: 'Espanol (Mexico)',
+    flag: '\ud83c\uddf2\ud83c\uddfd',
+  },
+  {
+    code: 'es-AR',
+    name: 'Spanish (Argentina)',
+    nativeName: 'Espanol (Argentina)',
+    flag: '\ud83c\udde6\ud83c\uddf7',
+  },
+  {
+    code: 'fr-FR',
+    name: 'French (France)',
+    nativeName: 'Francais (France)',
+    flag: '\ud83c\uddeb\ud83c\uddf7',
+  },
+  {
+    code: 'fr-CA',
+    name: 'French (Canada)',
+    nativeName: 'Francais (Canada)',
+    flag: '\ud83c\udde8\ud83c\udde6',
+  },
   { code: 'de-DE', name: 'German', nativeName: 'Deutsch', flag: '\ud83c\udde9\ud83c\uddea' },
-  { code: 'de-AT', name: 'German (Austria)', nativeName: 'Deutsch (Osterreich)', flag: '\ud83c\udde6\ud83c\uddf9' },
-  { code: 'de-CH', name: 'German (Switzerland)', nativeName: 'Deutsch (Schweiz)', flag: '\ud83c\udde8\ud83c\udded' },
+  {
+    code: 'de-AT',
+    name: 'German (Austria)',
+    nativeName: 'Deutsch (Osterreich)',
+    flag: '\ud83c\udde6\ud83c\uddf9',
+  },
+  {
+    code: 'de-CH',
+    name: 'German (Switzerland)',
+    nativeName: 'Deutsch (Schweiz)',
+    flag: '\ud83c\udde8\ud83c\udded',
+  },
   { code: 'it-IT', name: 'Italian', nativeName: 'Italiano', flag: '\ud83c\uddee\ud83c\uddf9' },
-  { code: 'pt-BR', name: 'Portuguese (Brazil)', nativeName: 'Portugues (Brasil)', flag: '\ud83c\udde7\ud83c\uddf7' },
-  { code: 'pt-PT', name: 'Portuguese (Portugal)', nativeName: 'Portugues (Portugal)', flag: '\ud83c\uddf5\ud83c\uddf9' },
+  {
+    code: 'pt-BR',
+    name: 'Portuguese (Brazil)',
+    nativeName: 'Portugues (Brasil)',
+    flag: '\ud83c\udde7\ud83c\uddf7',
+  },
+  {
+    code: 'pt-PT',
+    name: 'Portuguese (Portugal)',
+    nativeName: 'Portugues (Portugal)',
+    flag: '\ud83c\uddf5\ud83c\uddf9',
+  },
   { code: 'nl-NL', name: 'Dutch', nativeName: 'Nederlands', flag: '\ud83c\uddf3\ud83c\uddf1' },
   { code: 'pl-PL', name: 'Polish', nativeName: 'Polski', flag: '\ud83c\uddf5\ud83c\uddf1' },
   { code: 'ru-RU', name: 'Russian', nativeName: 'Russkiy', flag: '\ud83c\uddf7\ud83c\uddfa' },
   { code: 'ja-JP', name: 'Japanese', nativeName: 'Nihongo', flag: '\ud83c\uddef\ud83c\uddf5' },
   { code: 'ko-KR', name: 'Korean', nativeName: 'Hangugeo', flag: '\ud83c\uddf0\ud83c\uddf7' },
-  { code: 'zh-CN', name: 'Chinese (Simplified)', nativeName: 'Jian Ti Zhong Wen', flag: '\ud83c\udde8\ud83c\uddf3' },
-  { code: 'zh-TW', name: 'Chinese (Traditional)', nativeName: 'Fan Ti Zhong Wen', flag: '\ud83c\uddf9\ud83c\uddfc' },
-  { code: 'zh-HK', name: 'Chinese (Hong Kong)', nativeName: 'Xiang Gang Zhong Wen', flag: '\ud83c\udded\ud83c\uddf0' },
-  { code: 'ar-SA', name: 'Arabic (Saudi Arabia)', nativeName: 'Al-Arabiyya', flag: '\ud83c\uddf8\ud83c\udde6' },
-  { code: 'ar-AE', name: 'Arabic (UAE)', nativeName: 'Al-Arabiyya (UAE)', flag: '\ud83c\udde6\ud83c\uddea' },
-  { code: 'ar-EG', name: 'Arabic (Egypt)', nativeName: 'Al-Arabiyya (Misr)', flag: '\ud83c\uddea\ud83c\uddec' },
+  {
+    code: 'zh-CN',
+    name: 'Chinese (Simplified)',
+    nativeName: 'Jian Ti Zhong Wen',
+    flag: '\ud83c\udde8\ud83c\uddf3',
+  },
+  {
+    code: 'zh-TW',
+    name: 'Chinese (Traditional)',
+    nativeName: 'Fan Ti Zhong Wen',
+    flag: '\ud83c\uddf9\ud83c\uddfc',
+  },
+  {
+    code: 'zh-HK',
+    name: 'Chinese (Hong Kong)',
+    nativeName: 'Xiang Gang Zhong Wen',
+    flag: '\ud83c\udded\ud83c\uddf0',
+  },
+  {
+    code: 'ar-SA',
+    name: 'Arabic (Saudi Arabia)',
+    nativeName: 'Al-Arabiyya',
+    flag: '\ud83c\uddf8\ud83c\udde6',
+  },
+  {
+    code: 'ar-AE',
+    name: 'Arabic (UAE)',
+    nativeName: 'Al-Arabiyya (UAE)',
+    flag: '\ud83c\udde6\ud83c\uddea',
+  },
+  {
+    code: 'ar-EG',
+    name: 'Arabic (Egypt)',
+    nativeName: 'Al-Arabiyya (Misr)',
+    flag: '\ud83c\uddea\ud83c\uddec',
+  },
   { code: 'hi-IN', name: 'Hindi', nativeName: 'Hindi', flag: '\ud83c\uddee\ud83c\uddf3' },
   { code: 'th-TH', name: 'Thai', nativeName: 'Thai', flag: '\ud83c\uddf9\ud83c\udded' },
   { code: 'vi-VN', name: 'Vietnamese', nativeName: 'Tieng Viet', flag: '\ud83c\uddfb\ud83c\uddf3' },
   { code: 'tr-TR', name: 'Turkish', nativeName: 'Turkce', flag: '\ud83c\uddf9\ud83c\uddf7' },
-  { code: 'id-ID', name: 'Indonesian', nativeName: 'Bahasa Indonesia', flag: '\ud83c\uddee\ud83c\udde9' },
+  {
+    code: 'id-ID',
+    name: 'Indonesian',
+    nativeName: 'Bahasa Indonesia',
+    flag: '\ud83c\uddee\ud83c\udde9',
+  },
 ];
 
 /**
  * Get language option by code
  */
 export function getLanguageByCode(code: SupportedLanguage): LanguageOption | undefined {
-  return SUPPORTED_LANGUAGES.find(lang => lang.code === code);
+  return SUPPORTED_LANGUAGES.find((lang) => lang.code === code);
 }
 
 /**
@@ -73,10 +174,14 @@ export function getLanguageName(code: SupportedLanguage): string {
  */
 export function detectBrowser(): string {
   if (typeof window === 'undefined') return 'unknown';
-  
+
   const userAgent = window.navigator.userAgent.toLowerCase();
-  
-  if (userAgent.indexOf('chrome') > -1 && userAgent.indexOf('edge') === -1 && userAgent.indexOf('opr') === -1) {
+
+  if (
+    userAgent.indexOf('chrome') > -1 &&
+    userAgent.indexOf('edge') === -1 &&
+    userAgent.indexOf('opr') === -1
+  ) {
     return 'Chrome';
   } else if (userAgent.indexOf('safari') > -1 && userAgent.indexOf('chrome') === -1) {
     return 'Safari';
@@ -87,7 +192,7 @@ export function detectBrowser(): string {
   } else if (userAgent.indexOf('opr') > -1 || userAgent.indexOf('opera') > -1) {
     return 'Opera';
   }
-  
+
   return 'Unknown';
 }
 
@@ -96,7 +201,7 @@ export function detectBrowser(): string {
  */
 export function isMobileDevice(): boolean {
   if (typeof window === 'undefined') return false;
-  
+
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     window.navigator.userAgent
   );
@@ -107,7 +212,7 @@ export function isMobileDevice(): boolean {
  */
 export function isIOS(): boolean {
   if (typeof window === 'undefined') return false;
-  
+
   return /iPad|iPhone|iPod/.test(window.navigator.userAgent);
 }
 
@@ -135,17 +240,17 @@ export function checkBrowserSupport(): BrowserSupportInfo {
   }
 
   const browserName = detectBrowser();
-  
+
   // Check Speech Recognition support
   const hasSpeechRecognition = 'SpeechRecognition' in window;
   const hasWebkitSpeechRecognition = 'webkitSpeechRecognition' in window;
-  
+
   // Check Speech Synthesis support
   const hasSpeechSynthesis = 'speechSynthesis' in window;
-  
+
   // Determine support level
   let supportLevel: 'full' | 'partial' | 'none' = 'none';
-  
+
   if (hasSpeechRecognition || hasWebkitSpeechRecognition) {
     if (hasSpeechSynthesis) {
       supportLevel = 'full';
@@ -161,7 +266,7 @@ export function checkBrowserSupport(): BrowserSupportInfo {
   let interimResults = false;
   let maxAlternatives = false;
   let grammarList = false;
-  
+
   try {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -169,7 +274,7 @@ export function checkBrowserSupport(): BrowserSupportInfo {
       continuous = 'continuous' in recognition;
       interimResults = 'interimResults' in recognition;
       maxAlternatives = 'maxAlternatives' in recognition;
-      
+
       // Check grammar list support
       grammarList = 'SpeechGrammarList' in window || 'webkitSpeechGrammarList' in window;
     }
@@ -179,7 +284,7 @@ export function checkBrowserSupport(): BrowserSupportInfo {
 
   // Determine recommended fallback
   let recommendedFallback: 'web-api' | 'whisper-api' | 'none' = 'none';
-  
+
   if (supportLevel === 'none') {
     recommendedFallback = 'whisper-api';
   } else if (supportLevel === 'partial' && !hasSpeechRecognition && !hasWebkitSpeechRecognition) {
@@ -234,7 +339,7 @@ export async function requestMicrophonePermission(): Promise<boolean> {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     // Stop all tracks immediately (we just needed permission)
-    stream.getTracks().forEach(track => track.stop());
+    stream.getTracks().forEach((track) => track.stop());
     return true;
   } catch (error) {
     console.error('Microphone permission denied:', error);
@@ -275,11 +380,11 @@ export function getUnsupportedMessage(info: BrowserSupportInfo): string | null {
   }
 
   const missingFeatures: string[] = [];
-  
+
   if (!info.speechRecognition && !info.webkitSpeechRecognition) {
     missingFeatures.push('speech recognition');
   }
-  
+
   if (!info.speechSynthesis) {
     missingFeatures.push('text-to-speech');
   }

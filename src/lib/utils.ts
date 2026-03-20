@@ -184,9 +184,9 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
   return debounced;
 }
 
-export interface ThrottledFunction<T extends (...args: unknown[]) => unknown> {
-  (...args: Parameters<T>): void;
-}
+export type ThrottledFunction<T extends (...args: unknown[]) => unknown> = (
+  ...args: Parameters<T>
+) => void;
 
 /**
  * Throttle a function
@@ -224,10 +224,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
 /**
  * Group array items by a key or key function
  */
-export function groupBy<T>(
-  array: T[],
-  key: keyof T | ((item: T) => string)
-): Record<string, T[]> {
+export function groupBy<T>(array: T[], key: keyof T | ((item: T) => string)): Record<string, T[]> {
   return array.reduce((groups: Record<string, T[]>, item) => {
     const groupKey = typeof key === 'function' ? key(item) : String(item[key]);
     if (!groups[groupKey]) groups[groupKey] = [];
@@ -286,7 +283,7 @@ export function deepClone<T>(obj: T): T {
 
   const cloned = {} as T;
   for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+    if (Object.hasOwn(obj, key)) {
       cloned[key] = deepClone(obj[key]);
     }
   }

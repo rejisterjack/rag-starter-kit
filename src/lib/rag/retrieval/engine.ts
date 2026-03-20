@@ -1,6 +1,6 @@
 /**
  * Main Retrieval Engine
- * 
+ *
  * Orchestrates all retrieval strategies:
  * - Query expansion (multi-query, HyDE)
  * - Multiple retrieval strategies (vector, keyword, hybrid)
@@ -10,22 +10,22 @@
  * - Self-query transformation
  */
 
-import { VectorRetriever } from './vector';
-import { KeywordRetriever } from './keyword';
+import { generateEmbedding } from '@/lib/ai';
+import { ContextualCompressor } from './compression';
 import { HybridRetriever, reciprocalRankFusion } from './hybrid';
+import { KeywordRetriever } from './keyword';
 import { QueryExpander } from './query-expansion';
 import { createReranker, diversifyWithMMR } from './reranking';
-import { ContextualCompressor } from './compression';
-import { SelfQueryTransformer, hasMetadataFilters } from './self-query';
-import { generateEmbedding } from '@/lib/ai';
+import { hasMetadataFilters, SelfQueryTransformer } from './self-query';
 import type {
-  RetrievalOptions,
-  RetrievalResult,
-  RetrievedChunk,
-  RetrievalPreset,
-  RetrievalStrategy,
   RetrievalFilters,
+  RetrievalOptions,
+  RetrievalPreset,
+  RetrievalResult,
+  RetrievalStrategy,
+  RetrievedChunk,
 } from './types';
+import { VectorRetriever } from './vector';
 
 /**
  * Configuration presets for different retrieval modes
@@ -157,16 +157,10 @@ export class RetrievalEngine {
     // Initialize retrievers
     this.vectorRetriever = new VectorRetriever(options.vectorConfig);
     this.keywordRetriever = new KeywordRetriever(options.keywordConfig);
-    this.hybridRetriever = new HybridRetriever(
-      options.vectorConfig,
-      options.keywordConfig
-    );
+    this.hybridRetriever = new HybridRetriever(options.vectorConfig, options.keywordConfig);
 
     // Initialize transformers
-    this.queryExpander = new QueryExpander(
-      options.expansionConfig,
-      options.hydeConfig
-    );
+    this.queryExpander = new QueryExpander(options.expansionConfig, options.hydeConfig);
     this.selfQueryTransformer = new SelfQueryTransformer();
     this.compressor = new ContextualCompressor(options.compressionConfig);
 
@@ -175,7 +169,7 @@ export class RetrievalEngine {
 
   /**
    * Main retrieval method
-   * 
+   *
    * Pipeline:
    * 1. Self-query transformation (extract filters)
    * 2. Query expansion (if enabled)
@@ -206,7 +200,7 @@ export class RetrievalEngine {
     };
 
     // Step 2 & 3: Query expansion and retrieval
-    let allResults: RetrievedChunk[] = [];
+    const allResults: RetrievedChunk[] = [];
     const strategiesUsed: string[] = [];
 
     for (const strategy of preset.strategies) {
@@ -293,7 +287,7 @@ export class RetrievalEngine {
   ): Promise<RetrievedChunk[]> {
     // Generate query variations
     const queries = await this.queryExpander.expandMultiQuery(query);
-    
+
     // Execute retrieval for each variation
     const results = await Promise.all(
       queries.map(async (q) => {
@@ -327,17 +321,14 @@ export class RetrievalEngine {
   /**
    * Merge results from multiple strategies using RRF
    */
-  private mergeResults(
-    allResults: RetrievedChunk[],
-    strategiesUsed: string[]
-): RetrievedChunk[] {
+  private mergeResults(allResults: RetrievedChunk[], strategiesUsed: string[]): RetrievedChunk[] {
     if (strategiesUsed.length <= 1) {
       return allResults;
     }
 
     // Group results by strategy
     const resultsByStrategy = new Map<string, RetrievedChunk[]>();
-    
+
     for (const chunk of allResults) {
       const strategy = chunk.retrievalMethod.split('-')[0];
       const existing = resultsByStrategy.get(strategy) ?? [];
@@ -364,10 +355,14 @@ export class RetrievalEngine {
   private getPreset(options: RetrievalOptions): RetrievalPreset {
     // Check if options specify strategies
     if (options.strategies && options.strategies.length > 0) {
-      const presetName: RetrievalPresetName = options.strategies[0].type === 'vector' ? 'speed' :
-                        options.strategies[0].type === 'keyword' ? 'keyword' :
-                        options.strategies[0].type === 'multi-query' ? 'research' :
-                        'balanced';
+      const presetName: RetrievalPresetName =
+        options.strategies[0].type === 'vector'
+          ? 'speed'
+          : options.strategies[0].type === 'keyword'
+            ? 'keyword'
+            : options.strategies[0].type === 'multi-query'
+              ? 'research'
+              : 'balanced';
       return retrievalPresets[presetName];
     }
 
@@ -394,14 +389,10 @@ export class RetrievalEngine {
   /**
    * Quick vector search
    */
-  async searchVector(
-    query: string,
-    workspaceId: string,
-    topK = 5
-  ): Promise<RetrievalResult> {
+  async searchVector(query: string, workspaceId: string, topK = 5): Promise<RetrievalResult> {
     const embedding = await generateEmbedding(query);
     const startTime = Date.now();
-    
+
     const chunks = await this.vectorRetriever.retrieve(embedding, {
       workspaceId,
       query,
@@ -419,13 +410,9 @@ export class RetrievalEngine {
   /**
    * Quick keyword search
    */
-  async searchKeyword(
-    query: string,
-    workspaceId: string,
-    topK = 5
-  ): Promise<RetrievalResult> {
+  async searchKeyword(query: string, workspaceId: string, topK = 5): Promise<RetrievalResult> {
     const startTime = Date.now();
-    
+
     const chunks = await this.keywordRetriever.retrieve(query, {
       workspaceId,
       query,
@@ -443,13 +430,9 @@ export class RetrievalEngine {
   /**
    * Quick hybrid search
    */
-  async searchHybrid(
-    query: string,
-    workspaceId: string,
-    topK = 5
-  ): Promise<RetrievalResult> {
+  async searchHybrid(query: string, workspaceId: string, topK = 5): Promise<RetrievalResult> {
     const startTime = Date.now();
-    
+
     const chunks = await this.hybridRetriever.retrieve(query, {
       workspaceId,
       query,
@@ -495,9 +478,7 @@ export class RetrievalEngine {
   /**
    * Update query expander config
    */
-  updateExpansionConfig(
-    config: Parameters<QueryExpander['updateExpansionConfig']>[0]
-  ): void {
+  updateExpansionConfig(config: Parameters<QueryExpander['updateExpansionConfig']>[0]): void {
     this.queryExpander.updateExpansionConfig(config);
   }
 }
@@ -505,9 +486,7 @@ export class RetrievalEngine {
 /**
  * Create a new RetrievalEngine instance
  */
-export function createRetrievalEngine(
-  options?: RetrievalEngineOptions
-): RetrievalEngine {
+export function createRetrievalEngine(options?: RetrievalEngineOptions): RetrievalEngine {
   return new RetrievalEngine(options);
 }
 

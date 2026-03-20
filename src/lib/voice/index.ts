@@ -2,74 +2,63 @@
  * Voice Module - exports all voice-related functionality
  */
 
-// Types
-export type {
-  // Speech Recognition
-  SupportedLanguage,
-  LanguageOption,
-  SpeechRecognitionOptions,
-  SpeechRecognitionAlternative,
-  SpeechRecognitionResult,
-  SpeechRecognitionErrorType,
-  SpeechRecognitionError,
-  
-  // Text-to-Speech
-  TTSVoice,
-  TTSSynthesisOptions,
-  TTSEventType,
-  TTSEventCallback,
-  
-  // Voice Commands
-  VoiceCommand,
-  VoiceCommandHandler,
-  BuiltInVoiceCommand,
-  
-  // Voice Settings
-  VoiceInputMode,
-  VoiceSettings,
-  
-  // Hook Returns
-  UseVoiceInputReturn,
-  UseVoiceOutputReturn,
-  UseVoiceCommandsReturn,
-  
-  // Browser Support
-  BrowserSupportInfo,
-  
-  // API
-  WhisperTranscriptionRequest,
-  WhisperTranscriptionResponse,
-  RecordingState,
-  AudioLevelData,
-} from './types';
-
-// Values
-export {
-  DEFAULT_VOICE_SETTINGS,
-} from './types';
-
 // Browser Support
 export {
-  SUPPORTED_LANGUAGES,
+  checkBrowserSupport,
+  detectBrowser,
   getLanguageByCode,
   getLanguageName,
-  detectBrowser,
-  isMobileDevice,
+  getMicrophonePermissionStatus,
+  getNavigator,
+  getUnsupportedMessage,
+  getWindow,
+  isClient,
   isIOS,
-  checkBrowserSupport,
+  isMobileDevice,
   isSpeechRecognitionSupported,
   isSpeechSynthesisSupported,
   requestMicrophonePermission,
-  getMicrophonePermissionStatus,
-  getUnsupportedMessage,
-  getWindow,
-  getNavigator,
-  isClient,
+  SUPPORTED_LANGUAGES,
 } from './browser-support';
-
 // Speech Service
 export {
-  SpeechService,
   getSpeechService,
   resetSpeechService,
+  SpeechService,
 } from './speech-service';
+// Types
+export type {
+  AudioLevelData,
+  // Browser Support
+  BrowserSupportInfo,
+  BuiltInVoiceCommand,
+  LanguageOption,
+  RecordingState,
+  SpeechRecognitionAlternative,
+  SpeechRecognitionError,
+  SpeechRecognitionErrorType,
+  SpeechRecognitionOptions,
+  SpeechRecognitionResult,
+  // Speech Recognition
+  SupportedLanguage,
+  TTSEventCallback,
+  TTSEventType,
+  TTSSynthesisOptions,
+  // Text-to-Speech
+  TTSVoice,
+  UseVoiceCommandsReturn,
+  // Hook Returns
+  UseVoiceInputReturn,
+  UseVoiceOutputReturn,
+  // Voice Commands
+  VoiceCommand,
+  VoiceCommandHandler,
+  // Voice Settings
+  VoiceInputMode,
+  VoiceSettings,
+  // API
+  WhisperTranscriptionRequest,
+  WhisperTranscriptionResponse,
+} from './types';
+// Values
+export { DEFAULT_VOICE_SETTINGS } from './types';

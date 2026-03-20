@@ -1,9 +1,9 @@
 /**
  * Load Testing Configuration
- * 
+ *
  * Performance tests using Artillery-style configuration.
  * Run with: k6 run load.test.ts
- * 
+ *
  * Note: This file contains configurations that can be used with k6 or Artillery.
  * For actual execution, install k6: brew install k6
  */
@@ -21,21 +21,21 @@ export const options = {
       duration: '1m',
       tags: { test_type: 'smoke' },
     },
-    
+
     // Load test - normal expected load
     load: {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '2m', target: 10 },   // Ramp up
-        { duration: '5m', target: 10 },   // Steady state
-        { duration: '2m', target: 20 },   // Increase
-        { duration: '5m', target: 20 },   // Steady state
-        { duration: '2m', target: 0 },    // Ramp down
+        { duration: '2m', target: 10 }, // Ramp up
+        { duration: '5m', target: 10 }, // Steady state
+        { duration: '2m', target: 20 }, // Increase
+        { duration: '5m', target: 20 }, // Steady state
+        { duration: '2m', target: 0 }, // Ramp down
       ],
       tags: { test_type: 'load' },
     },
-    
+
     // Stress test - find breaking point
     stress: {
       executor: 'ramping-vus',
@@ -51,7 +51,7 @@ export const options = {
       ],
       tags: { test_type: 'stress' },
     },
-    
+
     // Spike test - sudden traffic increase
     spike: {
       executor: 'ramping-vus',
@@ -67,7 +67,7 @@ export const options = {
       ],
       tags: { test_type: 'spike' },
     },
-    
+
     // Soak test - prolonged load to find memory leaks
     soak: {
       executor: 'constant-vus',
@@ -76,11 +76,11 @@ export const options = {
       tags: { test_type: 'soak' },
     },
   },
-  
+
   thresholds: {
     http_req_duration: ['p(95)<2000'], // 95% of requests under 2s
-    http_req_failed: ['rate<0.05'],     // Less than 5% errors
-    http_reqs: ['rate>10'],             // At least 10 RPS
+    http_req_failed: ['rate<0.05'], // Less than 5% errors
+    http_reqs: ['rate>10'], // At least 10 RPS
   },
 };
 
@@ -90,7 +90,7 @@ const API_KEY = __ENV.API_KEY || '';
 export default function () {
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${API_KEY}`,
+    Authorization: `Bearer ${API_KEY}`,
   };
 
   // Test health endpoint
@@ -110,7 +110,7 @@ export default function () {
       message: 'What is the revenue for Q1?',
       workspaceId: 'test-workspace',
     });
-    
+
     const response = http.post(`${BASE_URL}/api/chat`, payload, { headers });
     check(response, {
       'chat status is 200': (r) => r.status === 200,
@@ -135,13 +135,13 @@ export default function () {
 // Setup function run once before the test
 export function setup() {
   console.log(`Starting load test against ${BASE_URL}`);
-  
+
   // Verify the target is reachable
   const response = http.get(`${BASE_URL}/api/health`);
   if (response.status !== 200) {
     throw new Error(`Target ${BASE_URL} is not reachable`);
   }
-  
+
   return { startTime: new Date().toISOString() };
 }
 

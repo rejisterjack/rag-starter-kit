@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth, signIn, signOut } from '@/lib/auth';
-import { mockPrisma, getMockPrisma } from '@/tests/utils/mocks/prisma';
+import { getMockPrisma, mockPrisma } from '@/tests/utils/mocks/prisma';
 
 vi.mock('@/lib/db', () => ({
   prisma: mockPrisma,
@@ -42,7 +42,7 @@ describe('Authentication', () => {
     });
 
     it('handles GitHub OAuth sign in', async () => {
-      const mockSignIn = vi.fn().mockResolvedValue({ 
+      const mockSignIn = vi.fn().mockResolvedValue({
         error: null,
         status: 200,
         ok: true,
@@ -96,7 +96,7 @@ describe('Authentication', () => {
 
     it('lists user workspaces', async () => {
       getMockPrisma().membership.findMany = vi.fn().mockResolvedValue(
-        mockWorkspaces.map(ws => ({
+        mockWorkspaces.map((ws) => ({
           role: ws.role,
           workspace: { id: ws.id, name: ws.name },
         }))
@@ -112,7 +112,7 @@ describe('Authentication', () => {
     });
 
     it('switches active workspace', async () => {
-      const mockUpdate = vi.fn().mockResolvedValue({ 
+      const mockUpdate = vi.fn().mockResolvedValue({
         id: 'user-001',
         activeWorkspaceId: 'ws-2',
       });
@@ -169,29 +169,33 @@ describe('Authentication', () => {
       { role: 'viewer', canDelete: false, canInvite: false, canManageBilling: false },
     ];
 
-    it.each(permissionMatrix)(
-      '$role canDelete: $canDelete, canInvite: $canInvite, canManageBilling: $canManageBilling',
-      async ({ role, canDelete, canInvite, canManageBilling }) => {
-        getMockPrisma().membership.findFirst = vi.fn().mockResolvedValue({
+    it.each(
+      permissionMatrix
+    )('$role canDelete: $canDelete, canInvite: $canInvite, canManageBilling: $canManageBilling', async ({
+      role,
+      canDelete,
+      canInvite,
+      canManageBilling,
+    }) => {
+      getMockPrisma().membership.findFirst = vi.fn().mockResolvedValue({
+        userId: 'user-001',
+        workspaceId: 'ws-1',
+        role,
+      });
+
+      const membership = await getMockPrisma().membership.findFirst({
+        where: {
           userId: 'user-001',
           workspaceId: 'ws-1',
-          role,
-        });
+        },
+      });
 
-        const membership = await getMockPrisma().membership.findFirst({
-          where: {
-            userId: 'user-001',
-            workspaceId: 'ws-1',
-          },
-        });
+      const permissions = getPermissions(membership.role);
 
-        const permissions = getPermissions(membership.role);
-
-        expect(permissions.canDelete).toBe(canDelete);
-        expect(permissions.canInvite).toBe(canInvite);
-        expect(permissions.canManageBilling).toBe(canManageBilling);
-      }
-    );
+      expect(permissions.canDelete).toBe(canDelete);
+      expect(permissions.canInvite).toBe(canInvite);
+      expect(permissions.canManageBilling).toBe(canManageBilling);
+    });
 
     it('checks document access permissions', async () => {
       const mockDocument = {

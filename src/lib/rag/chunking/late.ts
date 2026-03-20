@@ -2,15 +2,15 @@
  * Late chunking strategy
  * Embeds entire document first, then averages token-level embeddings over chunk windows
  * Results in better contextualized embeddings with more accurate context representation
- * 
+ *
  * Use case: Models with large context windows (OpenAI text-embedding-3 with 8k context)
  * Reference: https://arxiv.org/abs/2409.04701
  */
 
-import { generateId, averageVectors } from './utils';
-import type { Chunk, ChunkingOptions, Chunker } from './types';
-import { ChunkingError } from './types';
 import { countTokens, estimateTokenCount } from './tokens';
+import type { Chunk, Chunker, ChunkingOptions } from './types';
+import { ChunkingError } from './types';
+import { averageVectors, generateId } from './utils';
 
 /**
  * Function type for getting token-level embeddings
@@ -66,18 +66,12 @@ export class LateChunker implements Chunker {
     this.validateOptions(options);
 
     if (!document || document.trim().length === 0) {
-      throw new ChunkingError(
-        'Document is empty',
-        'EMPTY_DOCUMENT'
-      );
+      throw new ChunkingError('Document is empty', 'EMPTY_DOCUMENT');
     }
 
     const embedFn = options.getTokenEmbeddings || this.tokenEmbeddingFunction;
     if (!embedFn) {
-      throw new ChunkingError(
-        'Token embedding function is required',
-        'INVALID_OPTIONS'
-      );
+      throw new ChunkingError('Token embedding function is required', 'INVALID_OPTIONS');
     }
 
     const contextWindow = options.chunkSize ?? 8191;
@@ -104,11 +98,9 @@ export class LateChunker implements Chunker {
     try {
       tokenEmbeddings = await embedFn(document);
     } catch (error) {
-      throw new ChunkingError(
-        'Failed to generate token-level embeddings',
-        'EMBEDDING_FAILED',
-        { error }
-      );
+      throw new ChunkingError('Failed to generate token-level embeddings', 'EMBEDDING_FAILED', {
+        error,
+      });
     }
 
     // Step 3: Create chunks with averaged embeddings
@@ -258,20 +250,14 @@ export class LateChunker implements Chunker {
     const tokensPerChar = tokenEmbeddings.length / document.length;
 
     // Calculate window size in tokens
-    const windowSizeTokens = Math.max(
-      Math.floor(targetChunkSize * tokensPerChar),
-      10
-    );
+    const windowSizeTokens = Math.max(Math.floor(targetChunkSize * tokensPerChar), 10);
     const strideTokens = Math.max(Math.floor(stride * tokensPerChar), 5);
 
     let tokenIndex = 0;
     let chunkIndex = 0;
 
     while (tokenIndex < tokenEmbeddings.length) {
-      const windowEnd = Math.min(
-        tokenIndex + windowSizeTokens,
-        tokenEmbeddings.length
-      );
+      const windowEnd = Math.min(tokenIndex + windowSizeTokens, tokenEmbeddings.length);
 
       // Get embeddings for this window
       const windowEmbeddings = tokenEmbeddings.slice(tokenIndex, windowEnd);
@@ -313,16 +299,10 @@ export class LateChunker implements Chunker {
     return chunks;
   }
 
-
-
   /**
    * Create fallback chunks without embeddings
    */
-  private createFallbackChunks(
-    content: string,
-    startIndex: number,
-    startOffset: number
-  ): Chunk[] {
+  private createFallbackChunks(content: string, startIndex: number, startOffset: number): Chunk[] {
     const chunks: Chunk[] = [];
     const targetSize = 400;
     const overlap = 50;
@@ -407,11 +387,9 @@ export function createLateChunkingEmbedder(
       const embeddings = await embedFunction(chunks);
       return embeddings;
     } catch (error) {
-      throw new ChunkingError(
-        'Failed to generate simulated token embeddings',
-        'EMBEDDING_FAILED',
-        { error }
-      );
+      throw new ChunkingError('Failed to generate simulated token embeddings', 'EMBEDDING_FAILED', {
+        error,
+      });
     }
   };
 }

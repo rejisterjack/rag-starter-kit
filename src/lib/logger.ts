@@ -48,9 +48,14 @@ class Logger {
 
     // In development, use console for readability
     if (this.isDevelopment) {
-      const consoleFn = level === 'error' ? console.error :
-                       level === 'warn' ? console.warn :
-                       level === 'debug' ? console.debug : console.log;
+      const consoleFn =
+        level === 'error'
+          ? console.error
+          : level === 'warn'
+            ? console.warn
+            : level === 'debug'
+              ? console.debug
+              : console.log;
       consoleFn(`[${formatted.level}] ${message}`, context || '');
       return;
     }

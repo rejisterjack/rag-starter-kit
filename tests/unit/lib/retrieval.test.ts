@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  vectorSearch,
-  keywordSearch,
-  hybridSearch,
-  rerankResults,
   combineResults,
+  hybridSearch,
+  keywordSearch,
+  rerankResults,
+  vectorSearch,
 } from '@/lib/rag/retrieval';
-import { mockPrisma, getMockPrisma } from '@/tests/utils/mocks/prisma';
+import { getMockPrisma, mockPrisma } from '@/tests/utils/mocks/prisma';
 
 vi.mock('@/lib/db', () => ({
   prisma: mockPrisma,
@@ -16,7 +16,12 @@ describe('Retrieval', () => {
   const mockChunks = [
     { id: 'chunk-1', content: 'Q1 revenue was $32 million', similarity: 0.92, documentId: 'doc-1' },
     { id: 'chunk-2', content: 'Q2 revenue was $38 million', similarity: 0.88, documentId: 'doc-1' },
-    { id: 'chunk-3', content: 'Total operating expenses were $123 million', similarity: 0.85, documentId: 'doc-1' },
+    {
+      id: 'chunk-3',
+      content: 'Total operating expenses were $123 million',
+      similarity: 0.85,
+      documentId: 'doc-1',
+    },
   ];
 
   beforeEach(() => {
@@ -30,7 +35,9 @@ describe('Retrieval', () => {
 
       const results = await vectorSearch({
         query: 'What was the revenue?',
-        queryEmbedding: Array(1536).fill(0).map(() => Math.random()),
+        queryEmbedding: Array(1536)
+          .fill(0)
+          .map(() => Math.random()),
         workspaceId: 'ws-1',
         topK: 5,
       });
@@ -87,7 +94,7 @@ describe('Retrieval', () => {
     });
 
     it('applies similarity threshold', async () => {
-      const filteredChunks = mockChunks.filter(c => c.similarity >= 0.9);
+      const filteredChunks = mockChunks.filter((c) => c.similarity >= 0.9);
       const mockQuery = vi.fn().mockResolvedValue(filteredChunks);
       getMockPrisma().$queryRaw = mockQuery;
 
@@ -99,7 +106,7 @@ describe('Retrieval', () => {
         minSimilarity: 0.9,
       });
 
-      expect(results.every(r => r.similarity >= 0.9)).toBe(true);
+      expect(results.every((r) => r.similarity >= 0.9)).toBe(true);
     });
 
     it('handles empty results gracefully', async () => {
@@ -151,11 +158,13 @@ describe('Retrieval', () => {
     it('handles special characters in query', async () => {
       getMockPrisma().$queryRaw = vi.fn().mockResolvedValue([]);
 
-      await expect(keywordSearch({
-        query: 'test & special | chars!',
-        workspaceId: 'ws-1',
-        topK: 5,
-      })).resolves.not.toThrow();
+      await expect(
+        keywordSearch({
+          query: 'test & special | chars!',
+          workspaceId: 'ws-1',
+          topK: 5,
+        })
+      ).resolves.not.toThrow();
     });
   });
 
@@ -170,8 +179,8 @@ describe('Retrieval', () => {
         { id: 'chunk-3', content: 'Keyword match', rank: 0.8 },
       ];
 
-      getMockPrisma().$queryRaw
-        .mockResolvedValueOnce(vectorResults)
+      getMockPrisma()
+        .$queryRaw.mockResolvedValueOnce(vectorResults)
         .mockResolvedValueOnce(keywordResults);
 
       const results = await hybridSearch({
@@ -182,7 +191,7 @@ describe('Retrieval', () => {
       });
 
       // Should include results from both searches
-      const ids = results.map(r => r.id);
+      const ids = results.map((r) => r.id);
       expect(ids).toContain('chunk-1');
       expect(ids).toContain('chunk-3');
     });
@@ -190,15 +199,15 @@ describe('Retrieval', () => {
     it('applies RRF fusion', async () => {
       const vectorResults = [
         { id: 'chunk-1', content: 'First', similarity: 0.95 },
-        { id: 'chunk-2', content: 'Second', similarity: 0.90 },
+        { id: 'chunk-2', content: 'Second', similarity: 0.9 },
       ];
       const keywordResults = [
         { id: 'chunk-2', content: 'Second', rank: 0.95 },
         { id: 'chunk-1', content: 'First', rank: 0.85 },
       ];
 
-      getMockPrisma().$queryRaw
-        .mockResolvedValueOnce(vectorResults)
+      getMockPrisma()
+        .$queryRaw.mockResolvedValueOnce(vectorResults)
         .mockResolvedValueOnce(keywordResults);
 
       const results = await hybridSearch({
@@ -215,15 +224,11 @@ describe('Retrieval', () => {
     });
 
     it('applies weighted fusion', async () => {
-      const vectorResults = [
-        { id: 'chunk-1', content: 'Vector', similarity: 0.5 },
-      ];
-      const keywordResults = [
-        { id: 'chunk-1', content: 'Vector', rank: 0.9 },
-      ];
+      const vectorResults = [{ id: 'chunk-1', content: 'Vector', similarity: 0.5 }];
+      const keywordResults = [{ id: 'chunk-1', content: 'Vector', rank: 0.9 }];
 
-      getMockPrisma().$queryRaw
-        .mockResolvedValueOnce(vectorResults)
+      getMockPrisma()
+        .$queryRaw.mockResolvedValueOnce(vectorResults)
         .mockResolvedValueOnce(keywordResults);
 
       const results = await hybridSearch({
@@ -239,15 +244,11 @@ describe('Retrieval', () => {
     });
 
     it('deduplicates results from both searches', async () => {
-      const vectorResults = [
-        { id: 'chunk-1', content: 'Duplicate', similarity: 0.95 },
-      ];
-      const keywordResults = [
-        { id: 'chunk-1', content: 'Duplicate', rank: 0.9 },
-      ];
+      const vectorResults = [{ id: 'chunk-1', content: 'Duplicate', similarity: 0.95 }];
+      const keywordResults = [{ id: 'chunk-1', content: 'Duplicate', rank: 0.9 }];
 
-      getMockPrisma().$queryRaw
-        .mockResolvedValueOnce(vectorResults)
+      getMockPrisma()
+        .$queryRaw.mockResolvedValueOnce(vectorResults)
         .mockResolvedValueOnce(keywordResults);
 
       const results = await hybridSearch({
@@ -257,7 +258,7 @@ describe('Retrieval', () => {
         topK: 5,
       });
 
-      const chunk1Results = results.filter(r => r.id === 'chunk-1');
+      const chunk1Results = results.filter((r) => r.id === 'chunk-1');
       expect(chunk1Results).toHaveLength(1);
     });
   });
@@ -281,9 +282,7 @@ describe('Retrieval', () => {
     });
 
     it('uses cross-encoder for re-ranking', async () => {
-      const results = [
-        { id: 'chunk-1', content: 'Test content', score: 0.8 },
-      ];
+      const results = [{ id: 'chunk-1', content: 'Test content', score: 0.8 }];
 
       // Mock the cross-encoder scoring
       vi.mock('@/lib/rag/reranker', () => ({
@@ -300,11 +299,13 @@ describe('Retrieval', () => {
     });
 
     it('limits results to topK', async () => {
-      const results = Array(10).fill(0).map((_, i) => ({
-        id: `chunk-${i}`,
-        content: `Content ${i}`,
-        score: 0.9 - i * 0.05,
-      }));
+      const results = Array(10)
+        .fill(0)
+        .map((_, i) => ({
+          id: `chunk-${i}`,
+          content: `Content ${i}`,
+          score: 0.9 - i * 0.05,
+        }));
 
       const reranked = await rerankResults({
         query: 'test',
@@ -331,7 +332,7 @@ describe('Retrieval', () => {
 
       expect(combined).toHaveLength(3);
       // chunk-2 score should be combined
-      const chunk2 = combined.find(c => c.id === 'chunk-2');
+      const chunk2 = combined.find((c) => c.id === 'chunk-2');
       expect(chunk2?.score).toBeGreaterThan(0.8);
     });
 
@@ -348,7 +349,7 @@ describe('Retrieval', () => {
       const combined = combineResults([set1, set2], { normalize: true });
 
       // All scores should be in [0, 1] range
-      combined.forEach(c => {
+      combined.forEach((c) => {
         expect(c.score).toBeGreaterThanOrEqual(0);
         expect(c.score).toBeLessThanOrEqual(1);
       });
@@ -358,27 +359,31 @@ describe('Retrieval', () => {
   describe('Edge Cases', () => {
     it('handles very long queries', async () => {
       const longQuery = 'word '.repeat(500);
-      
+
       getMockPrisma().$queryRaw = vi.fn().mockResolvedValue([]);
 
-      await expect(vectorSearch({
-        query: longQuery,
-        queryEmbedding: Array(1536).fill(0),
-        workspaceId: 'ws-1',
-        topK: 5,
-      })).resolves.not.toThrow();
+      await expect(
+        vectorSearch({
+          query: longQuery,
+          queryEmbedding: Array(1536).fill(0),
+          workspaceId: 'ws-1',
+          topK: 5,
+        })
+      ).resolves.not.toThrow();
     });
 
     it('handles queries with special characters', async () => {
       const specialQuery = "Revenue & Profit (Q1'24) - *Special*!";
-      
+
       getMockPrisma().$queryRaw = vi.fn().mockResolvedValue([]);
 
-      await expect(keywordSearch({
-        query: specialQuery,
-        workspaceId: 'ws-1',
-        topK: 5,
-      })).resolves.not.toThrow();
+      await expect(
+        keywordSearch({
+          query: specialQuery,
+          workspaceId: 'ws-1',
+          topK: 5,
+        })
+      ).resolves.not.toThrow();
     });
 
     it('handles null embeddings gracefully', async () => {
@@ -395,12 +400,14 @@ describe('Retrieval', () => {
     it('handles database errors gracefully', async () => {
       getMockPrisma().$queryRaw = vi.fn().mockRejectedValue(new Error('DB Error'));
 
-      await expect(vectorSearch({
-        query: 'test',
-        queryEmbedding: [],
-        workspaceId: 'ws-1',
-        topK: 5,
-      })).rejects.toThrow('DB Error');
+      await expect(
+        vectorSearch({
+          query: 'test',
+          queryEmbedding: [],
+          workspaceId: 'ws-1',
+          topK: 5,
+        })
+      ).rejects.toThrow('DB Error');
     });
   });
 });

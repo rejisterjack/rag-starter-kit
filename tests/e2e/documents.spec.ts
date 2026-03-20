@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+
 // import path from 'path';
 
 test.describe('Documents', () => {
@@ -32,7 +33,9 @@ test.describe('Documents', () => {
     await expect(page.locator('[data-testid="upload-success"]')).toBeVisible();
 
     // Document should appear in list
-    await expect(page.locator('[data-testid="document-item"]').first()).toContainText('test-document.pdf');
+    await expect(page.locator('[data-testid="document-item"]').first()).toContainText(
+      'test-document.pdf'
+    );
   });
 
   test('shows document list', async ({ page }) => {
@@ -79,7 +82,10 @@ test.describe('Documents', () => {
     const count = await documents.count();
 
     for (let i = 0; i < count; i++) {
-      const status = await documents.nth(i).locator('[data-testid="document-status"]').textContent();
+      const status = await documents
+        .nth(i)
+        .locator('[data-testid="document-status"]')
+        .textContent();
       expect(status).toBe('Processed');
     }
   });
@@ -209,7 +215,9 @@ test.describe('Documents', () => {
 
     if (count > 0) {
       // Should show spinner or progress
-      await expect(processingDocs.first().locator('[data-testid="processing-spinner"]')).toBeVisible();
+      await expect(
+        processingDocs.first().locator('[data-testid="processing-spinner"]')
+      ).toBeVisible();
     }
   });
 

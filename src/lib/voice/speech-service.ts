@@ -4,16 +4,16 @@
  */
 
 import type {
-  SpeechRecognitionOptions,
-  SpeechRecognitionError,
-  TTSVoice,
-  TTSSynthesisOptions,
-  VoiceCommand,
   AudioLevelData,
+  SpeechRecognitionError,
+  SpeechRecognitionErrorEvent,
   SpeechRecognitionErrorType,
   SpeechRecognitionEvent,
-  SpeechRecognitionErrorEvent,
   SpeechRecognitionInstance,
+  SpeechRecognitionOptions,
+  TTSSynthesisOptions,
+  TTSVoice,
+  VoiceCommand,
 } from '@/types';
 
 import {
@@ -27,7 +27,7 @@ import {
 // Event Types
 // =============================================================================
 
-type SpeechServiceEventType = 
+type SpeechServiceEventType =
   | 'recognition:start'
   | 'recognition:end'
   | 'recognition:result'
@@ -60,7 +60,7 @@ export class SpeechService {
   private analyser: AnalyserNode | null = null;
   private microphoneStream: MediaStream | null = null;
   private audioLevelInterval: ReturnType<typeof setInterval> | null = null;
-  
+
   private eventListeners: Map<SpeechServiceEventType, Set<SpeechServiceEventHandler>> = new Map();
   private commands: Map<string, VoiceCommand> = new Map();
   private transcriptBuffer = '';
@@ -171,7 +171,7 @@ export class SpeechService {
    */
   configure(options: SpeechRecognitionOptions): void {
     this.options = { ...this.options, ...options };
-    
+
     if (this.recognition) {
       this.recognition.lang = this.options.language || 'en-US';
       this.recognition.continuous = this.options.continuous ?? false;
@@ -259,17 +259,17 @@ export class SpeechService {
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const result = event.results[i];
       if (!result) continue;
-      
+
       const transcriptItem = result[0];
       if (!transcriptItem) continue;
-      
+
       const transcript = transcriptItem.transcript ?? '';
       const confidence = transcriptItem.confidence ?? 0;
 
       if (result.isFinal) {
         finalTranscript += transcript;
         this.transcriptBuffer += transcript + ' ';
-        
+
         // Check for voice commands
         this.checkForCommands(transcript);
 
@@ -319,9 +319,9 @@ export class SpeechService {
   private getErrorMessage(error: string): string {
     const errorMessages: Record<string, string> = {
       'no-speech': 'No speech was detected. Please try again.',
-      'aborted': 'Speech recognition was aborted.',
+      aborted: 'Speech recognition was aborted.',
       'audio-capture': 'No microphone was found or microphone is not working.',
-      'network': 'A network error occurred. Please check your connection.',
+      network: 'A network error occurred. Please check your connection.',
       'not-allowed': 'Microphone permission was denied.',
       'service-not-allowed': 'Speech recognition service is not allowed.',
       'bad-grammar': 'There was an error with the speech grammar.',
@@ -358,10 +358,10 @@ export class SpeechService {
     // Set voice if specified
     if (options.voice) {
       const voices = this.getVoices();
-      const voice = voices.find(v => v.voiceURI === options.voice?.voiceURI);
+      const voice = voices.find((v) => v.voiceURI === options.voice?.voiceURI);
       if (voice) {
         const speechVoices = this.synthesis.getVoices();
-        const speechVoice = speechVoices.find(sv => sv.voiceURI === voice.voiceURI);
+        const speechVoice = speechVoices.find((sv) => sv.voiceURI === voice.voiceURI);
         if (speechVoice) {
           utterance.voice = speechVoice;
         }
@@ -437,7 +437,7 @@ export class SpeechService {
     if (!this.synthesis) return [];
 
     const voices = this.synthesis.getVoices();
-    return voices.map(voice => ({
+    return voices.map((voice) => ({
       voiceURI: voice.voiceURI,
       name: voice.name,
       lang: voice.lang,
@@ -451,7 +451,7 @@ export class SpeechService {
    * Get voices for a specific language
    */
   getVoicesForLanguage(lang: string): TTSVoice[] {
-    return this.getVoices().filter(voice => 
+    return this.getVoices().filter((voice) =>
       voice.lang.toLowerCase().startsWith(lang.toLowerCase())
     );
   }
@@ -475,15 +475,17 @@ export class SpeechService {
     if (!navigator.mediaDevices) return;
 
     try {
-      this.microphoneStream = await navigator.mediaDevices.getUserMedia({ 
+      this.microphoneStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-        }
+        },
       });
 
-      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.audioContext = new AudioContextClass();
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;
@@ -510,7 +512,7 @@ export class SpeechService {
     }
 
     if (this.microphoneStream) {
-      this.microphoneStream.getTracks().forEach(track => track.stop());
+      this.microphoneStream.getTracks().forEach((track) => track.stop());
       this.microphoneStream = null;
     }
 
@@ -581,11 +583,11 @@ export class SpeechService {
             phrase,
             transcript,
           });
-          
+
           // Extract arguments (text after the command phrase)
           const phraseIndex = lowerTranscript.indexOf(phrase.toLowerCase());
           const args = transcript.slice(phraseIndex + phrase.length).trim();
-          
+
           command.handler(args);
           return; // Only execute first matching command
         }
@@ -637,7 +639,7 @@ export class SpeechService {
   private emit(event: SpeechServiceEventType, data: unknown): void {
     const handlers = this.eventListeners.get(event);
     if (handlers) {
-      handlers.forEach(handler => {
+      handlers.forEach((handler) => {
         try {
           handler(data);
         } catch (error) {

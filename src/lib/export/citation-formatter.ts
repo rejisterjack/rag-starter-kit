@@ -3,12 +3,7 @@
  * Formats citations in different academic styles (APA, MLA, Chicago, IEEE)
  */
 
-import type {
-  ExportCitation,
-  FormattedCitation,
-  CitationFormatter,
-  CitationStyle,
-} from './types';
+import type { CitationFormatter, CitationStyle, ExportCitation, FormattedCitation } from './types';
 
 // =============================================================================
 // Types
@@ -234,7 +229,9 @@ export class InlineNumberedFormatter implements CitationFormatter {
 /**
  * Get the appropriate citation formatter for a style
  */
-export function getCitationFormatter(style: CitationStyle | AcademicCitationStyle): CitationFormatter {
+export function getCitationFormatter(
+  style: CitationStyle | AcademicCitationStyle
+): CitationFormatter {
   switch (style) {
     case 'apa':
       return new APACitationFormatter();

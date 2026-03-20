@@ -1,6 +1,6 @@
 /**
  * Self-Query Module
- * 
+ *
  * Extracts structured filters from natural language queries using an LLM.
  * Converts queries like "documents from last month about billing" into:
  * - Query: "billing"
@@ -91,21 +91,22 @@ export class SelfQueryTransformer {
 
   /**
    * Transform a natural language query into structured query + filters
-   * 
+   *
    * @param query - Natural language user query
    * @returns Structured query and filters
    */
   async transform(query: string): Promise<SelfQueryResult> {
     try {
-      const prompt = SELF_QUERY_USER_PROMPT
-        .replace('{current_date}', new Date().toISOString())
-        .replace('{query}', query);
+      const prompt = SELF_QUERY_USER_PROMPT.replace(
+        '{current_date}',
+        new Date().toISOString()
+      ).replace('{query}', query);
 
       const messages: ChatMessage[] = [
         { role: 'system', content: this.systemPrompt },
         { role: 'user', content: prompt },
       ];
-      
+
       const { text } = await generateChatCompletion(
         messages as unknown as Parameters<typeof generateChatCompletion>[0],
         { temperature: 0.1 } // Low temperature for deterministic output
@@ -113,7 +114,7 @@ export class SelfQueryTransformer {
 
       // Parse the JSON response
       const result = this.parseResponse(text);
-      
+
       console.log('[SelfQueryTransformer] Transformed query:', {
         original: query,
         extracted: result.query,
@@ -315,10 +316,18 @@ export function parseSortInstructions(query: string): {
   sortOrder?: 'asc' | 'desc';
 } {
   const sortPatterns = [
-    { pattern: /\b(most recent|newest|latest)\b/gi, sortBy: 'date' as const, sortOrder: 'desc' as const },
+    {
+      pattern: /\b(most recent|newest|latest)\b/gi,
+      sortBy: 'date' as const,
+      sortOrder: 'desc' as const,
+    },
     { pattern: /\b(oldest|earliest)\b/gi, sortBy: 'date' as const, sortOrder: 'asc' as const },
     { pattern: /\b(alphabetical|a-z)\b/gi, sortBy: 'name' as const, sortOrder: 'asc' as const },
-    { pattern: /\b(relevant|most relevant)\b/gi, sortBy: 'relevance' as const, sortOrder: 'desc' as const },
+    {
+      pattern: /\b(relevant|most relevant)\b/gi,
+      sortBy: 'relevance' as const,
+      sortOrder: 'desc' as const,
+    },
   ];
 
   let cleanedQuery = query;

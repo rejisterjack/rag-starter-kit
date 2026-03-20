@@ -1,16 +1,16 @@
 /**
  * Document Tools
- * 
+ *
  * Tools for searching and summarizing documents.
  * Used by ReAct agents and other agentic components.
  */
 
 import { z } from 'zod';
-import { createTool, createSuccessResult, createErrorResult } from './types';
-import { retrieveSources, buildContext, generateQueryEmbedding } from '../retrieval';
-import { prisma } from '@/lib/db';
 import { createProviderFromEnv } from '@/lib/ai/llm';
+import { prisma } from '@/lib/db';
 import type { Source } from '@/types';
+import { buildContext, generateQueryEmbedding, retrieveSources } from '../retrieval';
+import { createErrorResult, createSuccessResult, createTool } from './types';
 
 // ============================================================================
 // Search Documents Tool
@@ -58,25 +58,26 @@ Returns relevant chunks with their content, source document names, and similarit
       // Build context from sources
       const context = buildContext(sources, 4000);
 
-      return createSuccessResult({
-        query,
-        found: true,
-        totalResults: sources.length,
-        context,
-        results: sources.map((s, index) => ({
-          index: index + 1,
-          content: s.content,
-          documentName: s.metadata.documentName,
-          documentId: s.metadata.documentId,
-          page: s.metadata.page,
-          chunkIndex: s.metadata.chunkIndex,
-          similarity: s.similarity,
-        })),
-      }, sources);
-    } catch (error) {
-      return createErrorResult(
-        error instanceof Error ? error.message : 'Document search failed'
+      return createSuccessResult(
+        {
+          query,
+          found: true,
+          totalResults: sources.length,
+          context,
+          results: sources.map((s, index) => ({
+            index: index + 1,
+            content: s.content,
+            documentName: s.metadata.documentName,
+            documentId: s.metadata.documentId,
+            page: s.metadata.page,
+            chunkIndex: s.metadata.chunkIndex,
+            similarity: s.similarity,
+          })),
+        },
+        sources
       );
+    } catch (error) {
+      return createErrorResult(error instanceof Error ? error.message : 'Document search failed');
     }
   },
 });
@@ -88,7 +89,10 @@ Returns relevant chunks with their content, source document names, and similarit
 const DocumentSummaryParamsSchema = z.object({
   documentId: z.string().describe('The ID of the document to summarize'),
   maxLength: z.number().optional().describe('Maximum length of summary in words (default: 300)'),
-  focus: z.string().optional().describe('Specific aspect to focus on (e.g., "financial data", "key findings")'),
+  focus: z
+    .string()
+    .optional()
+    .describe('Specific aspect to focus on (e.g., "financial data", "key findings")'),
 });
 
 type DocumentSummaryParams = z.infer<typeof DocumentSummaryParamsSchema>;
@@ -123,9 +127,7 @@ Returns a concise summary highlighting key points.`,
       }
 
       // Combine chunks for summarization
-      const fullText = document.chunks
-        .map((c) => c.content)
-        .join('\n\n');
+      const fullText = document.chunks.map((c) => c.content).join('\n\n');
 
       if (!fullText) {
         return createErrorResult('Document has no content to summarize');
@@ -133,7 +135,7 @@ Returns a concise summary highlighting key points.`,
 
       // Generate summary using LLM
       const llm = createProviderFromEnv();
-      
+
       const prompt = focus
         ? `Summarize the following document in approximately ${maxLength} words, focusing on: ${focus}\n\nDocument:\n${fullText.slice(0, 8000)}\n\nSummary:`
         : `Provide a comprehensive summary of the following document in approximately ${maxLength} words. Include the main points, key findings, and important details.\n\nDocument:\n${fullText.slice(0, 8000)}\n\nSummary:`;
@@ -142,7 +144,8 @@ Returns a concise summary highlighting key points.`,
         [
           {
             role: 'system',
-            content: 'You are a professional document summarizer. Create clear, accurate summaries.',
+            content:
+              'You are a professional document summarizer. Create clear, accurate summaries.',
           },
           {
             role: 'user',
@@ -164,14 +167,17 @@ Returns a concise summary highlighting key points.`,
         },
       }));
 
-      return createSuccessResult({
-        documentId,
-        documentName: document.name,
-        summary: response.content.trim(),
-        wordCount: response.content.split(/\s+/).length,
-        totalChunks: document.chunks.length,
-        focus,
-      }, sources);
+      return createSuccessResult(
+        {
+          documentId,
+          documentName: document.name,
+          summary: response.content.trim(),
+          wordCount: response.content.split(/\s+/).length,
+          totalChunks: document.chunks.length,
+          focus,
+        },
+        sources
+      );
     } catch (error) {
       return createErrorResult(
         error instanceof Error ? error.message : 'Failed to generate summary'
@@ -209,7 +215,7 @@ Returns document metadata including names, types, sizes, and status.`,
       if (documentId) {
         // Get specific document
         const document = await prisma.document.findFirst({
-          where: { 
+          where: {
             id: documentId,
             userId: workspaceId, // Note: in real app, join with workspace members
           },
@@ -241,7 +247,7 @@ Returns document metadata including names, types, sizes, and status.`,
 
       // List all documents in workspace
       const documents = await prisma.document.findMany({
-        where: { 
+        where: {
           userId: workspaceId, // Note: in real app, join with workspace members
         },
         orderBy: { createdAt: 'desc' },
@@ -306,16 +312,18 @@ Returns semantically similar chunks ranked by relevance.`,
       const queryEmbedding = await generateQueryEmbedding(query);
 
       // Perform semantic search using raw SQL
-      const results = await prisma.$queryRaw<Array<{
-        id: string;
-        document_id: string;
-        content: string;
-        index: number;
-        page: number | null;
-        section: string | null;
-        document_name: string;
-        similarity: number;
-      }>>`
+      const results = await prisma.$queryRaw<
+        Array<{
+          id: string;
+          document_id: string;
+          content: string;
+          index: number;
+          page: number | null;
+          section: string | null;
+          document_name: string;
+          similarity: number;
+        }>
+      >`
         SELECT 
           dc.id,
           dc.document_id,
@@ -347,22 +355,23 @@ Returns semantically similar chunks ranked by relevance.`,
         },
       }));
 
-      return createSuccessResult({
-        query,
-        totalResults: results.length,
-        threshold,
-        results: results.map((r) => ({
-          content: r.content,
-          documentName: r.document_name,
-          documentId: r.document_id,
-          page: r.page,
-          similarity: r.similarity,
-        })),
-      }, sources);
-    } catch (error) {
-      return createErrorResult(
-        error instanceof Error ? error.message : 'Semantic search failed'
+      return createSuccessResult(
+        {
+          query,
+          totalResults: results.length,
+          threshold,
+          results: results.map((r) => ({
+            content: r.content,
+            documentName: r.document_name,
+            documentId: r.document_id,
+            page: r.page,
+            similarity: r.similarity,
+          })),
+        },
+        sources
       );
+    } catch (error) {
+      return createErrorResult(error instanceof Error ? error.message : 'Semantic search failed');
     }
   },
 });
@@ -373,7 +382,10 @@ Returns semantically similar chunks ranked by relevance.`,
 
 const CompareDocumentsParamsSchema = z.object({
   documentIds: z.array(z.string()).min(2).describe('Array of document IDs to compare (minimum 2)'),
-  aspect: z.string().optional().describe('Specific aspect to compare (e.g., "revenue", "findings", "methodology")'),
+  aspect: z
+    .string()
+    .optional()
+    .describe('Specific aspect to compare (e.g., "revenue", "findings", "methodology")'),
 });
 
 type CompareDocumentsParams = z.infer<typeof CompareDocumentsParamsSchema>;
@@ -416,7 +428,10 @@ Returns a comparison analysis with similarities and differences.`,
       const docTexts = documents.map((d) => ({
         name: d.name,
         id: d.id,
-        content: d.chunks.map((c) => c.content).join('\n\n').slice(0, 3000),
+        content: d.chunks
+          .map((c) => c.content)
+          .join('\n\n')
+          .slice(0, 3000),
       }));
 
       const prompt = aspect
@@ -437,7 +452,8 @@ ${aspect ? `4. Specific findings about "${aspect}":` : ''}`;
         [
           {
             role: 'system',
-            content: 'You are a document comparison expert. Provide structured, detailed comparisons.',
+            content:
+              'You are a document comparison expert. Provide structured, detailed comparisons.',
           },
           {
             role: 'user',
@@ -461,12 +477,15 @@ ${aspect ? `4. Specific findings about "${aspect}":` : ''}`;
         }))
       );
 
-      return createSuccessResult({
-        documentIds,
-        documentNames: documents.map((d) => d.name),
-        aspect,
-        comparison: response.content.trim(),
-      }, sources);
+      return createSuccessResult(
+        {
+          documentIds,
+          documentNames: documents.map((d) => d.name),
+          aspect,
+          comparison: response.content.trim(),
+        },
+        sources
+      );
     } catch (error) {
       return createErrorResult(
         error instanceof Error ? error.message : 'Document comparison failed'

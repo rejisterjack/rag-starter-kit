@@ -1,12 +1,12 @@
 /**
  * Vector Store
- * 
+ *
  * Core vector operations using pgvector extension.
  * Provides document chunk storage, similarity search, and metadata filtering.
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
 import type { DocumentChunk } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 
 // Type for transaction client
 type PrismaTransactionClient = Omit<
@@ -98,11 +98,7 @@ export class VectorStore {
   /**
    * Add document chunks with embeddings
    */
-  async addVectors(
-    chunks: ChunkInsertData[],
-    documentId: string,
-    userId: string
-  ): Promise<void> {
+  async addVectors(chunks: ChunkInsertData[], documentId: string, userId: string): Promise<void> {
     if (chunks.length === 0) return;
 
     // Verify document exists and belongs to user
@@ -153,13 +149,7 @@ export class VectorStore {
     queryEmbedding: number[],
     options: SearchOptions
   ): Promise<SearchResult[]> {
-    const {
-      userId,
-      topK = 5,
-      minScore = 0.7,
-      filter,
-      searchType = 'cosine',
-    } = options;
+    const { userId, topK = 5, minScore = 0.7, filter, searchType = 'cosine' } = options;
 
     // Build the distance expression based on search type
     const distanceExpr = this.getDistanceExpression(searchType);
@@ -191,17 +181,19 @@ export class VectorStore {
     const whereClause = conditions.join(' AND ');
 
     // Execute search query
-    const results = await this.prisma.$queryRaw<Array<{
-      chunkId: string;
-      content: string;
-      score: number;
-      documentId: string;
-      documentName: string;
-      documentType: string;
-      page: number | null;
-      section: string | null;
-      index: number;
-    }>>`
+    const results = await this.prisma.$queryRaw<
+      Array<{
+        chunkId: string;
+        content: string;
+        score: number;
+        documentId: string;
+        documentName: string;
+        documentType: string;
+        page: number | null;
+        section: string | null;
+        index: number;
+      }>
+    >`
       SELECT 
         dc.id as "chunkId",
         dc.content,
@@ -253,10 +245,7 @@ export class VectorStore {
   /**
    * Update a single chunk's embedding
    */
-  async updateVectors(
-    chunkId: string,
-    embedding: number[]
-  ): Promise<void> {
+  async updateVectors(chunkId: string, embedding: number[]): Promise<void> {
     await this.prisma.$executeRaw`
       UPDATE document_chunks
       SET embedding = ${embedding}::vector
@@ -382,14 +371,16 @@ export class VectorStore {
     chunksWithoutEmbeddings: number;
     avgContentLength: number;
   }> {
-    const result = await this.prisma.$queryRaw<[
-      {
-        total_chunks: bigint;
-        chunks_with_embeddings: bigint;
-        chunks_without_embeddings: bigint;
-        avg_content_length: number;
-      },
-    ]>`
+    const result = await this.prisma.$queryRaw<
+      [
+        {
+          total_chunks: bigint;
+          chunks_with_embeddings: bigint;
+          chunks_without_embeddings: bigint;
+          avg_content_length: number;
+        },
+      ]
+    >`
       SELECT 
         COUNT(*) as total_chunks,
         COUNT(CASE WHEN embedding IS NOT NULL THEN 1 END) as chunks_with_embeddings,

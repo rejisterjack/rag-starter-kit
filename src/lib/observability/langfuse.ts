@@ -1,12 +1,12 @@
 /**
  * Langfuse Integration
- * 
+ *
  * Provides observability for the RAG pipeline:
  * - Trace RAG pipeline execution
  * - Track latency per component
  * - Monitor retrieval quality
  * - Cost tracking
- * 
+ *
  * Note: This is a wrapper around Langfuse SDK.
  * Install with: npm install langfuse
  */
@@ -87,10 +87,10 @@ export class LangfuseClient {
   private async initialize(): Promise<void> {
     try {
       // Dynamic import to avoid requiring langfuse as a hard dependency
-      // @ts-ignore - langfuse is an optional dependency
+      // @ts-expect-error - langfuse is an optional dependency
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { Langfuse } = await import('langfuse') as any;
-      
+      const { Langfuse } = (await import('langfuse')) as any;
+
       if (!this.config) {
         console.warn('Langfuse config not provided');
         return;
@@ -132,7 +132,7 @@ export class LangfuseClient {
 
     try {
       const trace = (this.client as { trace: (p: typeof params) => unknown }).trace(params);
-      
+
       return {
         traceId: (trace as { id: string }).id,
         name: params.name,
@@ -160,9 +160,11 @@ export class LangfuseClient {
     if (!this.isEnabled() || !this.client) return null;
 
     try {
-      const span = (this.client as { 
-        span: (p: { traceId: string } & typeof params) => unknown 
-      }).span({
+      const span = (
+        this.client as {
+          span: (p: { traceId: string } & typeof params) => unknown;
+        }
+      ).span({
         traceId,
         ...params,
       });
@@ -219,9 +221,11 @@ export class LangfuseClient {
     if (!this.isEnabled() || !this.client) return null;
 
     try {
-      const generation = (this.client as {
-        generation: (p: { traceId: string } & typeof params) => unknown;
-      }).generation({
+      const generation = (
+        this.client as {
+          generation: (p: { traceId: string } & typeof params) => unknown;
+        }
+      ).generation({
         traceId,
         ...params,
       });
@@ -344,9 +348,7 @@ export class RAGPipelineTracer {
   /**
    * Trace the retrieval phase
    */
-  async traceRetrieval<T>(
-    fn: () => Promise<T>
-  ): Promise<T> {
+  async traceRetrieval<T>(fn: () => Promise<T>): Promise<T> {
     const traceId = this.currentTrace?.traceId;
     if (!traceId) return fn();
 
@@ -358,7 +360,7 @@ export class RAGPipelineTracer {
 
     try {
       const result = await fn();
-      
+
       await this.langfuse.logEvent(traceId, {
         name: 'retrieval_complete',
         metadata: {
@@ -382,7 +384,9 @@ export class RAGPipelineTracer {
   /**
    * Trace the generation phase
    */
-  async traceGeneration<T extends { content: string; usage?: { promptTokens: number; completionTokens: number } }>(
+  async traceGeneration<
+    T extends { content: string; usage?: { promptTokens: number; completionTokens: number } },
+  >(
     fn: () => Promise<T>,
     params: {
       model: string;
@@ -434,8 +438,7 @@ export class RAGPipelineTracer {
     if (!traceId) return;
 
     const avgSimilarity =
-      sources.reduce((sum, s) => sum + (s.similarity ?? 0), 0) /
-      (sources.length || 1);
+      sources.reduce((sum, s) => sum + (s.similarity ?? 0), 0) / (sources.length || 1);
 
     await this.langfuse.score(traceId, {
       name: 'retrieval_quality',

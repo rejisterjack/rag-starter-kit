@@ -3,8 +3,8 @@
  * Allocates and manages token budgets for context, history, and responses
  */
 
-import type { Message } from './memory';
 import type { RetrievedChunk } from './chain';
+import type { Message } from './memory';
 
 // =============================================================================
 // Types
@@ -67,17 +67,17 @@ export const MODEL_TOKEN_LIMITS: Record<string, ModelTokenLimits> = {
     maxContextTokens: 16385,
     reservedForOutput: 4096,
   },
-  'llama3': {
+  llama3: {
     maxTokens: 8192,
     maxContextTokens: 8192,
     reservedForOutput: 2000,
   },
-  'mistral': {
+  mistral: {
     maxTokens: 32768,
     maxContextTokens: 32768,
     reservedForOutput: 4096,
   },
-  'phi3': {
+  phi3: {
     maxTokens: 128000,
     maxContextTokens: 128000,
     reservedForOutput: 4096,
@@ -118,22 +118,20 @@ export class TokenBudgetManager {
     } = {}
   ): AllocationResult {
     const warnings: string[] = [];
-    
+
     // Get model limits
     const modelLimits = this.getModelLimits(options.modelName);
     const effectiveMaxTokens = Math.min(maxTokens, modelLimits.maxContextTokens);
-    
+
     // Calculate available tokens for input (excluding reserved output)
     const availableTokens = effectiveMaxTokens - modelLimits.reservedForOutput;
-    
+
     if (availableTokens <= 0) {
       warnings.push('Max tokens too low for model output requirements');
     }
 
     // Calculate system prompt tokens
-    const systemTokens = options.systemPrompt 
-      ? estimateTokens(options.systemPrompt) 
-      : 200; // Default estimate
+    const systemTokens = options.systemPrompt ? estimateTokens(options.systemPrompt) : 200; // Default estimate
 
     // Remaining tokens after system prompt
     const remainingTokens = Math.max(0, availableTokens - systemTokens);
@@ -147,10 +145,7 @@ export class TokenBudgetManager {
     );
 
     // Select chunks that fit in context budget
-    const { selectedChunks, usedContextTokens } = this.selectChunks(
-      chunks,
-      contextTarget
-    );
+    const { selectedChunks, usedContextTokens } = this.selectChunks(chunks, contextTarget);
 
     if (selectedChunks.length < chunks.length) {
       warnings.push(
@@ -204,18 +199,12 @@ export class TokenBudgetManager {
   /**
    * Get recommended max tokens for response based on remaining budget
    */
-  getRecommendedMaxResponseTokens(
-    usedInputTokens: number,
-    modelName?: string
-  ): number {
+  getRecommendedMaxResponseTokens(usedInputTokens: number, modelName?: string): number {
     const modelLimits = this.getModelLimits(modelName);
     const available = modelLimits.maxContextTokens - usedInputTokens;
-    
+
     // Reserve some buffer and don't exceed model's reserved output
-    return Math.min(
-      Math.floor(available * 0.9),
-      modelLimits.reservedForOutput
-    );
+    return Math.min(Math.floor(available * 0.9), modelLimits.reservedForOutput);
   }
 
   /**
@@ -261,9 +250,7 @@ export class TokenBudgetManager {
       this.budget.reservedRatio;
 
     if (total > 1.0) {
-      throw new Error(
-        `Token budget ratios sum to ${total}, must be <= 1.0`
-      );
+      throw new Error(`Token budget ratios sum to ${total}, must be <= 1.0`);
     }
   }
 
@@ -330,13 +317,10 @@ export class TokenBudgetManager {
     const formattingOverhead = 10;
 
     // Start from most recent if prioritizing recent messages
-    const messagesToProcess = prioritizeRecent
-      ? [...messages].reverse()
-      : messages;
+    const messagesToProcess = prioritizeRecent ? [...messages].reverse() : messages;
 
     for (const message of messagesToProcess) {
-      const messageTokens =
-        estimateTokens(message.content) + formattingOverhead;
+      const messageTokens = estimateTokens(message.content) + formattingOverhead;
 
       if (usedTokens + messageTokens > maxTokens && selected.length > 0) {
         break;
@@ -365,17 +349,17 @@ export class TokenBudgetManager {
  */
 export function estimateTokens(text: string): number {
   if (!text) return 0;
-  
+
   // Count words and characters for better estimation
   const wordCount = text.trim().split(/\s+/).length;
   const charCount = text.length;
-  
+
   // Different models have different tokenization, but roughly:
   // - 1 token ≈ 4 characters
   // - 1 token ≈ 0.75 words (for English)
   const estimateFromChars = Math.ceil(charCount / 4);
   const estimateFromWords = Math.ceil(wordCount / 0.75);
-  
+
   // Use the more conservative estimate
   return Math.max(estimateFromChars, estimateFromWords);
 }
@@ -401,7 +385,7 @@ export function estimateMessageTokens(messages: Array<{ role: string; content: s
  */
 export function truncateToTokens(text: string, maxTokens: number): string {
   const estimated = estimateTokens(text);
-  
+
   if (estimated <= maxTokens) {
     return text;
   }
@@ -409,22 +393,20 @@ export function truncateToTokens(text: string, maxTokens: number): string {
   // Rough conversion: tokens * 4 = characters
   const maxChars = maxTokens * 4;
   const truncated = text.slice(0, maxChars);
-  
+
   // Try to end at a word boundary
   const lastSpace = truncated.lastIndexOf(' ');
   if (lastSpace > maxChars * 0.8) {
     return truncated.slice(0, lastSpace) + '...';
   }
-  
+
   return truncated + '...';
 }
 
 /**
  * Create a token budget manager
  */
-export function createTokenBudgetManager(
-  budget?: Partial<TokenBudget>
-): TokenBudgetManager {
+export function createTokenBudgetManager(budget?: Partial<TokenBudget>): TokenBudgetManager {
   return new TokenBudgetManager(budget);
 }
 
@@ -457,9 +439,7 @@ export function validateTokenConfig(config: {
   }
 
   const totalRatio =
-    (config.contextRatio ?? 0) +
-    (config.historyRatio ?? 0) +
-    (config.responseRatio ?? 0);
+    (config.contextRatio ?? 0) + (config.historyRatio ?? 0) + (config.responseRatio ?? 0);
 
   if (totalRatio > 1.0) {
     errors.push(`Total ratio ${totalRatio} exceeds 1.0`);
@@ -474,9 +454,7 @@ export function validateTokenConfig(config: {
 /**
  * Calculate token usage statistics
  */
-export function calculateTokenStats(
-  allocations: TokenAllocation[]
-): {
+export function calculateTokenStats(allocations: TokenAllocation[]): {
   totalInputTokens: number;
   totalOutputTokens: number;
   averageContextTokens: number;
@@ -487,16 +465,11 @@ export function calculateTokenStats(
     (sum, a) => sum + a.systemTokens + a.contextTokens + a.historyTokens,
     0
   );
-  const totalOutput = allocations.reduce(
-    (sum, a) => sum + a.responseTokens,
-    0
-  );
+  const totalOutput = allocations.reduce((sum, a) => sum + a.responseTokens, 0);
   const avgContext =
-    allocations.reduce((sum, a) => sum + a.contextTokens, 0) /
-    allocations.length || 0;
+    allocations.reduce((sum, a) => sum + a.contextTokens, 0) / allocations.length || 0;
   const avgHistory =
-    allocations.reduce((sum, a) => sum + a.historyTokens, 0) /
-    allocations.length || 0;
+    allocations.reduce((sum, a) => sum + a.historyTokens, 0) / allocations.length || 0;
   const maxContext = Math.max(...allocations.map((a) => a.contextTokens));
 
   return {

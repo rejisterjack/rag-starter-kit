@@ -3,7 +3,7 @@
  * Resilient RAG chain with automatic fallback handling
  */
 
-import type { LLMProvider, LLMOptions, LLMMessage, LLMResponse, LLMError } from '@/lib/ai/llm';
+import type { LLMError, LLMMessage, LLMOptions, LLMProvider, LLMResponse } from '@/lib/ai/llm';
 import { RAGChain, type RAGChainParams, type RAGResponse, type StreamEvent } from './chain';
 
 // =============================================================================
@@ -31,10 +31,7 @@ export interface ErrorContext {
   timestamp: Date;
 }
 
-export type ErrorHandler = (
-  error: LLMError,
-  context: ErrorContext
-) => Promise<boolean>; // Return true to retry
+export type ErrorHandler = (error: LLMError, context: ErrorContext) => Promise<boolean>; // Return true to retry
 
 const DEFAULT_FALLBACK_CONFIG: FallbackConfig = {
   primaryModel: 'gpt-4o-mini',
@@ -52,10 +49,7 @@ export class ResilientRAGChain extends RAGChain {
   private fallbackConfig: FallbackConfig;
   private errorHandlers: ErrorHandler[] = [];
 
-  constructor(
-    llmProvider: LLMProvider,
-    fallbackConfig?: Partial<FallbackConfig>
-  ) {
+  constructor(llmProvider: LLMProvider, fallbackConfig?: Partial<FallbackConfig>) {
     super(llmProvider);
     this.fallbackConfig = { ...DEFAULT_FALLBACK_CONFIG, ...fallbackConfig };
   }
@@ -64,17 +58,14 @@ export class ResilientRAGChain extends RAGChain {
    * Generate with automatic fallback to alternative models
    */
   async generateWithFallback(params: RAGChainParams): Promise<ResilientRAGResponse> {
-    const modelsToTry = [
-      this.fallbackConfig.primaryModel,
-      ...this.fallbackConfig.fallbackModels,
-    ];
+    const modelsToTry = [this.fallbackConfig.primaryModel, ...this.fallbackConfig.fallbackModels];
 
     let lastError: Error | undefined;
     let attempts = 0;
 
     for (const model of modelsToTry) {
       attempts++;
-      
+
       try {
         const response = await this.invoke({
           ...params,
@@ -113,9 +104,7 @@ export class ResilientRAGChain extends RAGChain {
 
         // Add delay before retry
         if (attempts < modelsToTry.length) {
-          await this.delay(
-            this.calculateDelay(attempts)
-          );
+          await this.delay(this.calculateDelay(attempts));
         }
       }
     }
@@ -130,19 +119,14 @@ export class ResilientRAGChain extends RAGChain {
   /**
    * Stream with automatic fallback
    */
-  async *streamWithFallback(
-    params: RAGChainParams
-  ): AsyncGenerator<StreamEvent> {
-    const modelsToTry = [
-      this.fallbackConfig.primaryModel,
-      ...this.fallbackConfig.fallbackModels,
-    ];
+  async *streamWithFallback(params: RAGChainParams): AsyncGenerator<StreamEvent> {
+    const modelsToTry = [this.fallbackConfig.primaryModel, ...this.fallbackConfig.fallbackModels];
 
     let attempts = 0;
 
     for (const model of modelsToTry) {
       attempts++;
-      
+
       try {
         yield {
           type: 'generating',
@@ -247,10 +231,7 @@ export class ResilientRAGChain extends RAGChain {
     return false;
   }
 
-  private async handleError(
-    error: LLMError,
-    context: ErrorContext
-  ): Promise<boolean> {
+  private async handleError(error: LLMError, context: ErrorContext): Promise<boolean> {
     for (const handler of this.errorHandlers) {
       try {
         const shouldRetry = await handler(error, context);
@@ -266,11 +247,11 @@ export class ResilientRAGChain extends RAGChain {
 
   private calculateDelay(attempt: number): number {
     const baseDelay = this.fallbackConfig.retryDelayMs;
-    
+
     if (this.fallbackConfig.exponentialBackoff) {
-      return baseDelay * Math.pow(2, attempt - 1);
+      return baseDelay * 2 ** (attempt - 1);
     }
-    
+
     return baseDelay;
   }
 
@@ -313,12 +294,7 @@ export async function withRetry<T>(
     onRetry?: (error: unknown, attempt: number) => void;
   } = {}
 ): Promise<T> {
-  const {
-    maxRetries = 3,
-    retryDelayMs = 1000,
-    shouldRetry = () => true,
-    onRetry,
-  } = options;
+  const { maxRetries = 3, retryDelayMs = 1000, shouldRetry = () => true, onRetry } = options;
 
   let lastError: unknown;
 
@@ -336,7 +312,7 @@ export async function withRetry<T>(
         onRetry(error, attempt);
       }
 
-      const delay = retryDelayMs * Math.pow(2, attempt - 1);
+      const delay = retryDelayMs * 2 ** (attempt - 1);
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
@@ -365,13 +341,8 @@ export class FallbackLLMProvider implements LLMProvider {
     void config;
   }
 
-  async generate(
-    messages: LLMMessage[],
-    options?: LLMOptions
-  ): Promise<LLMResponse> {
-    return this.executeWithFallback((provider) =>
-      provider.generate(messages, options)
-    );
+  async generate(messages: LLMMessage[], options?: LLMOptions): Promise<LLMResponse> {
+    return this.executeWithFallback((provider) => provider.generate(messages, options));
   }
 
   async stream(
@@ -382,9 +353,7 @@ export class FallbackLLMProvider implements LLMProvider {
     usage: Promise<{ promptTokens: number; completionTokens: number; totalTokens: number }>;
     model: string;
   }> {
-    return this.executeWithFallback((provider) =>
-      provider.stream(messages, options)
-    );
+    return this.executeWithFallback((provider) => provider.stream(messages, options));
   }
 
   private async executeWithFallback<T>(
@@ -429,9 +398,7 @@ export class CircuitBreaker {
   private state: Map<string, CircuitBreakerState> = new Map();
   private _config: { failureThreshold: number; resetTimeoutMs: number };
 
-  constructor(
-    config?: { failureThreshold?: number; resetTimeoutMs?: number }
-  ) {
+  constructor(config?: { failureThreshold?: number; resetTimeoutMs?: number }) {
     this._config = {
       failureThreshold: 5,
       resetTimeoutMs: 30000,
@@ -459,7 +426,7 @@ export class CircuitBreaker {
 
   private isOpen(key: string): boolean {
     const state = this.state.get(key);
-    
+
     if (!state) return false;
     if (!state.open) return false;
 

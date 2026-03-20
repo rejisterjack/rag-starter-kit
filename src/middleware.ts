@@ -1,7 +1,6 @@
-import { getToken } from 'next-auth/jwt';
-import { NextResponse } from 'next/server';
-
 import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
 // =============================================================================
 // Route Configuration
@@ -24,12 +23,7 @@ const PUBLIC_ROUTES = [
 ];
 
 // API routes that require authentication
-const PROTECTED_API_ROUTES = [
-  '/api/chat',
-  '/api/ingest',
-  '/api/documents',
-  '/api/workspaces',
-];
+const PROTECTED_API_ROUTES = ['/api/chat', '/api/ingest', '/api/documents', '/api/workspaces'];
 
 // Routes that require specific roles
 const ADMIN_ROUTES = ['/admin', '/api/admin'];
@@ -50,7 +44,7 @@ const corsHeaders = {
 export async function middleware(req: NextRequest) {
   const { nextUrl } = req;
   const { pathname } = nextUrl;
-  
+
   // Get token from session
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   const isLoggedIn = !!token;
@@ -72,17 +66,17 @@ export async function middleware(req: NextRequest) {
   // Allow public routes
   if (isPublicRoute) {
     const response = NextResponse.next();
-    
+
     // Add security headers
     addSecurityHeaders(response);
-    
+
     // Add CORS headers for API routes
     if (pathname.startsWith('/api/')) {
       Object.entries(corsHeaders).forEach(([key, value]) => {
         response.headers.set(key, value);
       });
     }
-    
+
     return response;
   }
 
@@ -98,9 +92,9 @@ export async function middleware(req: NextRequest) {
 
   // Check if route requires authentication
   // Note: Route groups like (chat) are not part of the URL path
-  const requiresAuth = PROTECTED_API_ROUTES.some(
-    (route) => pathname.startsWith(route)
-  ) || pathname.startsWith('/chat');
+  const requiresAuth =
+    PROTECTED_API_ROUTES.some((route) => pathname.startsWith(route)) ||
+    pathname.startsWith('/chat');
 
   // Redirect unauthenticated users to login
   if (!isLoggedIn && requiresAuth) {
@@ -132,7 +126,7 @@ export async function middleware(req: NextRequest) {
 
   // Add user info to headers for server components
   const requestHeaders = new Headers(req.headers);
-  
+
   if (isLoggedIn && user) {
     requestHeaders.set('x-user-id', user.id as string);
     requestHeaders.set('x-user-role', user.role ?? 'USER');
@@ -168,16 +162,16 @@ export async function middleware(req: NextRequest) {
 function addSecurityHeaders(response: NextResponse): void {
   // Prevent clickjacking
   response.headers.set('X-Frame-Options', 'DENY');
-  
+
   // Prevent MIME type sniffing
   response.headers.set('X-Content-Type-Options', 'nosniff');
-  
+
   // XSS Protection
   response.headers.set('X-XSS-Protection', '1; mode=block');
-  
+
   // Referrer Policy
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
+
   // Content Security Policy
   const csp = [
     "default-src 'self'",
@@ -190,9 +184,9 @@ function addSecurityHeaders(response: NextResponse): void {
     "base-uri 'self'",
     "form-action 'self'",
   ].join('; ');
-  
+
   response.headers.set('Content-Security-Policy', csp);
-  
+
   // HTTPS enforcement in production
   if (process.env.NODE_ENV === 'production') {
     response.headers.set(
@@ -200,7 +194,7 @@ function addSecurityHeaders(response: NextResponse): void {
       'max-age=31536000; includeSubDomains; preload'
     );
   }
-  
+
   // Permissions Policy
   response.headers.set(
     'Permissions-Policy',

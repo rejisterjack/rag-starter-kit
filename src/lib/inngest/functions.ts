@@ -51,7 +51,6 @@ export const processDocumentJob = inngest.createFunction(
     const { documentId, userId } = event.data;
     const startTime = Date.now();
 
-
     // Step 1: Create Ingestion Job Record
     const job = await step.run('create-job', async () => {
       await prisma.ingestionJob.deleteMany({
@@ -375,7 +374,6 @@ export const cleanupStaleJobs = inngest.createFunction(
     triggers: [{ cron: '0 */6 * * *' }],
   },
   async ({ step }: { step: InngestContext['step'] }) => {
-
     const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
 
     const staleJobs = await step.run('find-stale-jobs', async () => {

@@ -1,17 +1,17 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { DocumentList } from '@/components/documents/document-list';
 import { sampleDocuments } from '@/tests/utils/fixtures/documents';
 
 describe('DocumentList', () => {
   const mockOnSelect = vi.fn();
   const mockOnDelete = vi.fn();
-// const mockOnDownload = vi.fn();
+  // const mockOnDownload = vi.fn();
 
   it('renders list of documents', () => {
     render(<DocumentList documents={sampleDocuments as any} />);
 
-    sampleDocuments.forEach(doc => {
+    sampleDocuments.forEach((doc) => {
       expect(screen.getByText(doc.name!)).toBeInTheDocument();
     });
   });
@@ -23,12 +23,7 @@ describe('DocumentList', () => {
   });
 
   it('calls onSelect when document is clicked', () => {
-    render(
-      <DocumentList 
-        documents={sampleDocuments as any} 
-        onSelect={mockOnSelect}
-      />
-    );
+    render(<DocumentList documents={sampleDocuments as any} onSelect={mockOnSelect} />);
 
     fireEvent.click(screen.getByText(sampleDocuments[0].name!));
     expect(mockOnSelect).toHaveBeenCalledWith(sampleDocuments[0].id);
@@ -49,12 +44,7 @@ describe('DocumentList', () => {
   });
 
   it('shows checkbox for multi-select', () => {
-    render(
-      <DocumentList 
-        documents={sampleDocuments as any}
-        selectable
-      />
-    );
+    render(<DocumentList documents={sampleDocuments as any} selectable />);
 
     const checkboxes = screen.getAllByRole('checkbox');
     expect(checkboxes.length).toBeGreaterThan(0);
@@ -62,13 +52,9 @@ describe('DocumentList', () => {
 
   it('handles select all', () => {
     const mockOnSelectAll = vi.fn();
-    
+
     render(
-      <DocumentList 
-        documents={sampleDocuments as any}
-        selectable
-        onSelectAll={mockOnSelectAll}
-      />
+      <DocumentList documents={sampleDocuments as any} selectable onSelectAll={mockOnSelectAll} />
     );
 
     const selectAllCheckbox = screen.getByLabelText(/select all/i);
@@ -78,12 +64,7 @@ describe('DocumentList', () => {
   });
 
   it('shows delete button on hover', () => {
-    render(
-      <DocumentList 
-        documents={sampleDocuments as any}
-        onDelete={mockOnDelete}
-      />
-    );
+    render(<DocumentList documents={sampleDocuments as any} onDelete={mockOnDelete} />);
 
     const firstDoc = screen.getByText(sampleDocuments[0].name!).closest('div');
     fireEvent.mouseEnter(firstDoc!);

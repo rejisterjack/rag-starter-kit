@@ -69,7 +69,10 @@ export async function parseDOCX(buffer: Buffer): Promise<ParsedDOCX> {
     ];
 
     // Calculate statistics
-    const wordCount = rawText.trim().split(/\s+/).filter(w => w.length > 0).length;
+    const wordCount = rawText
+      .trim()
+      .split(/\s+/)
+      .filter((w) => w.length > 0).length;
     const characterCount = rawText.length;
 
     return {
@@ -93,7 +96,7 @@ export async function parseDOCX(buffer: Buffer): Promise<ParsedDOCX> {
  */
 function parseParagraphsFromHTML(html: string): DOCXParagraph[] {
   const paragraphs: DOCXParagraph[] = [];
-  
+
   // Simple regex-based HTML parsing for paragraph structure
   // In production, consider using a proper HTML parser
   const paragraphRegex = /<p[^>]*>(.*?)<\/p>/gi;
@@ -118,7 +121,7 @@ function parseParagraphsFromHTML(html: string): DOCXParagraph[] {
   }
 
   // Extract list items
-  let listLevel = 0;
+  const listLevel = 0;
   while ((match = listItemRegex.exec(html)) !== null) {
     const text = stripHtmlTags(match[1]).trim();
     if (text) {
@@ -135,7 +138,7 @@ function parseParagraphsFromHTML(html: string): DOCXParagraph[] {
   // Extract regular paragraphs
   while ((match = paragraphRegex.exec(html)) !== null) {
     const text = stripHtmlTags(match[1]).trim();
-    if (text && !paragraphs.some(p => p.text === text)) {
+    if (text && !paragraphs.some((p) => p.text === text)) {
       paragraphs.push({
         text,
         style: 'Normal',
@@ -170,7 +173,7 @@ async function extractMetadata(buffer: Buffer): Promise<DOCXMetadata> {
   try {
     await mammoth.extractRawText({ buffer });
     // mammoth doesn't expose metadata directly, so we use heuristics
-    
+
     return {
       // These would be extracted from the DOCX core.xml if available
       title: undefined,
@@ -187,10 +190,12 @@ async function extractMetadata(buffer: Buffer): Promise<DOCXMetadata> {
 /**
  * Extract document outline (headings hierarchy)
  */
-export function extractOutline(paragraphs: DOCXParagraph[]): Array<{ level: number; text: string }> {
+export function extractOutline(
+  paragraphs: DOCXParagraph[]
+): Array<{ level: number; text: string }> {
   return paragraphs
-    .filter(p => p.isHeading)
-    .map(p => ({
+    .filter((p) => p.isHeading)
+    .map((p) => ({
       level: p.headingLevel || 1,
       text: p.text,
     }));
@@ -199,10 +204,7 @@ export function extractOutline(paragraphs: DOCXParagraph[]): Array<{ level: numb
 /**
  * Extract content by heading section
  */
-export function extractBySection(
-  paragraphs: DOCXParagraph[],
-  sectionHeading: string
-): string {
+export function extractBySection(paragraphs: DOCXParagraph[], sectionHeading: string): string {
   let inSection = false;
   const sectionContent: string[] = [];
 
@@ -258,7 +260,9 @@ export class DOCXParserError extends Error {
  */
 export function isValidDOCX(buffer: Buffer): boolean {
   // DOCX files are ZIP archives that start with PK
-  return buffer.length > 4 && 
-         buffer[0] === 0x50 && // P
-         buffer[1] === 0x4B;   // K
+  return (
+    buffer.length > 4 &&
+    buffer[0] === 0x50 && // P
+    buffer[1] === 0x4b
+  ); // K
 }

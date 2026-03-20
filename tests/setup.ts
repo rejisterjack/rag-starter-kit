@@ -1,15 +1,15 @@
 /**
  * Test Setup File
- * 
+ *
  * This file runs before all tests to set up the test environment.
  * Configured in vitest.config.ts as setupFiles.
  */
 
 import '@testing-library/jest-dom';
-import { vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
-import { resetPrismaMocks } from '@/tests/utils/mocks/prisma';
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 import { resetOpenAIMocks } from '@/tests/utils/mocks/openai';
+import { resetPrismaMocks } from '@/tests/utils/mocks/prisma';
 
 // ============================================================================
 // Global Mocks
@@ -146,7 +146,7 @@ beforeEach(() => {
   resetPrismaMocks();
   resetOpenAIMocks();
   vi.clearAllMocks();
-  
+
   // Reset fetch mock
   vi.mocked(global.fetch).mockReset();
 });
@@ -192,6 +192,3 @@ declare global {
     }
   }
 }
-
-// Export empty object to make this a module
-export {};

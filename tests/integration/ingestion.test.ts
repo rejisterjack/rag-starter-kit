@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest';
-import { processDocument, extractText, chunkDocument, storeEmbeddings } from '@/lib/rag/ingestion';
-import { mockPrisma, getMockPrisma, resetPrismaMocks } from '@/tests/utils/mocks/prisma';
-import { 
-  samplePDFDocument, 
-  sampleFinancialReportContent,
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { chunkDocument, extractText, processDocument, storeEmbeddings } from '@/lib/rag/ingestion';
+import {
+  mockOversizedFile,
   mockPDFFile,
-  mockOversizedFile 
+  sampleFinancialReportContent,
+  samplePDFDocument,
 } from '@/tests/utils/fixtures/documents';
+import { getMockPrisma, mockPrisma, resetPrismaMocks } from '@/tests/utils/mocks/prisma';
 
 // Mock dependencies
 vi.mock('@/lib/db', () => ({
@@ -58,12 +58,14 @@ describe('Document Ingestion Pipeline', () => {
 
       expect(result.success).toBe(true);
       expect(result.document).toBeDefined();
-      expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.objectContaining({
-          name: 'test-document.pdf',
-          type: 'application/pdf',
-        }),
-      }));
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            name: 'test-document.pdf',
+            type: 'application/pdf',
+          }),
+        })
+      );
     });
 
     it('extracts text content from PDF', async () => {
@@ -91,7 +93,7 @@ describe('Document Ingestion Pipeline', () => {
 
     it('validates file type before processing', async () => {
       const { mockInvalidFile } = await import('@/tests/utils/fixtures/documents');
-      
+
       const result = await processDocument({
         file: mockInvalidFile,
         workspaceId: 'workspace-001',
@@ -117,7 +119,7 @@ describe('Document Ingestion Pipeline', () => {
   describe('Word Document Processing', () => {
     it('processes DOCX files', async () => {
       const { mockWordFile } = await import('@/tests/utils/fixtures/documents');
-      
+
       const result = await extractText(mockWordFile);
 
       expect(result.text).toContain('Word document');
@@ -193,11 +195,9 @@ describe('Document Ingestion Pipeline', () => {
       getMockPrisma().chunk.createMany = mockCreateMany;
 
       vi.mock('@/lib/rag/embeddings', () => ({
-        generateEmbeddingsBatch: vi.fn().mockResolvedValue([
-          Array(1536).fill(0.1),
-          Array(1536).fill(0.2),
-          Array(1536).fill(0.3),
-        ]),
+        generateEmbeddingsBatch: vi
+          .fn()
+          .mockResolvedValue([Array(1536).fill(0.1), Array(1536).fill(0.2), Array(1536).fill(0.3)]),
       }));
 
       const result = await storeEmbeddings({
@@ -237,9 +237,7 @@ describe('Document Ingestion Pipeline', () => {
 
   describe('Error Handling', () => {
     it('handles corrupted PDFs gracefully', async () => {
-      vi.mocked(await import('pdf-parse')).mockRejectedValue(
-        new Error('Invalid PDF structure')
-      );
+      vi.mocked(await import('pdf-parse')).mockRejectedValue(new Error('Invalid PDF structure'));
 
       const result = await processDocument({
         file: mockPDFFile,
@@ -253,9 +251,7 @@ describe('Document Ingestion Pipeline', () => {
 
     it('handles processing timeouts', async () => {
       vi.mocked(await import('pdf-parse')).mockImplementation(
-        () => new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 100)
-        )
+        () => new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 100))
       );
 
       const result = await processDocument({
@@ -270,9 +266,9 @@ describe('Document Ingestion Pipeline', () => {
     });
 
     it('handles database errors during storage', async () => {
-      getMockPrisma().document.create = vi.fn().mockRejectedValue(
-        new Error('Database connection failed')
-      );
+      getMockPrisma().document.create = vi
+        .fn()
+        .mockRejectedValue(new Error('Database connection failed'));
 
       const result = await processDocument({
         file: mockPDFFile,
@@ -286,9 +282,7 @@ describe('Document Ingestion Pipeline', () => {
 
     it('handles embedding generation failures', async () => {
       vi.mock('@/lib/rag/embeddings', () => ({
-        generateEmbeddingsBatch: vi.fn().mockRejectedValue(
-          new Error('API rate limit exceeded')
-        ),
+        generateEmbeddingsBatch: vi.fn().mockRejectedValue(new Error('API rate limit exceeded')),
       }));
 
       const result = await storeEmbeddings({
@@ -301,10 +295,11 @@ describe('Document Ingestion Pipeline', () => {
     });
 
     it('retries failed operations', async () => {
-      const mockCreate = vi.fn()
+      const mockCreate = vi
+        .fn()
         .mockRejectedValueOnce(new Error('Transient error'))
         .mockResolvedValueOnce(samplePDFDocument);
-      
+
       getMockPrisma().document.create = mockCreate;
 
       const result = await processDocument({
@@ -322,7 +317,7 @@ describe('Document Ingestion Pipeline', () => {
   describe('Background Processing', () => {
     it('queues processing job for large files', async () => {
       const mockInngestSend = vi.fn().mockResolvedValue({ ids: ['job-123'] });
-      
+
       vi.mock('@/lib/inngest', () => ({
         inngest: {
           send: mockInngestSend,
@@ -336,10 +331,12 @@ describe('Document Ingestion Pipeline', () => {
         background: true,
       });
 
-      expect(mockInngestSend).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'document/process',
-        data: expect.any(Object),
-      }));
+      expect(mockInngestSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'document/process',
+          data: expect.any(Object),
+        })
+      );
     });
 
     it('tracks processing progress', async () => {

@@ -14,37 +14,37 @@ export enum SocketEvent {
   CONNECT = 'connect',
   DISCONNECT = 'disconnect',
   CONNECT_ERROR = 'connect_error',
-  
+
   // Room events
   JOIN_ROOM = 'join_room',
   LEAVE_ROOM = 'leave_room',
   ROOM_JOINED = 'room_joined',
   ROOM_LEFT = 'room_left',
-  
+
   // Typing events
   TYPING_START = 'typing_start',
   TYPING_STOP = 'typing_stop',
   USER_TYPING = 'user_typing',
-  
+
   // Cursor events
   CURSOR_MOVE = 'cursor_move',
   CURSOR_UPDATE = 'cursor_update',
-  
+
   // Message events
   MESSAGE_SEND = 'message_send',
   MESSAGE_RECEIVE = 'message_receive',
   MESSAGE_EDIT = 'message_edit',
   MESSAGE_DELETE = 'message_delete',
-  
+
   // Presence events
   PRESENCE_JOIN = 'presence_join',
   PRESENCE_LEAVE = 'presence_leave',
   PRESENCE_UPDATE = 'presence_update',
-  
+
   // Notification events
   NOTIFICATION = 'notification',
   NOTIFY_USER = 'notify_user',
-  
+
   // Error events
   ERROR = 'error',
   RATE_LIMITED = 'rate_limited',

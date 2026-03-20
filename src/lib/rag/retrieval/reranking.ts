@@ -1,13 +1,13 @@
 /**
  * Re-ranking Module
- * 
+ *
  * Implements result re-ranking using:
  * - Cohere Rerank API (external service)
  * - Local cross-encoder model (fallback)
  * - Simple keyword overlap scoring (baseline)
  */
 
-import type { RetrievedChunk, RerankConfig } from './types';
+import type { RerankConfig, RetrievedChunk } from './types';
 
 /**
  * Reranker interface
@@ -39,7 +39,7 @@ interface CohereRerankResponse {
 /**
  * Cohere Reranker implementation
  * Uses Cohere's rerank API for improved result ordering
- * 
+ *
  * @see https://docs.cohere.com/docs/rerank
  */
 export class CohereReranker implements Reranker {
@@ -74,7 +74,7 @@ export class CohereReranker implements Reranker {
       const response = await fetch('https://api.cohere.com/v1/rerank', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -114,7 +114,7 @@ export class CohereReranker implements Reranker {
 
 /**
  * Local cross-encoder reranker (fallback)
- * 
+ *
  * This is a simplified implementation that uses keyword overlap
  * and other heuristics. In production, you would use:
  * - sentence-transformers cross-encoder
@@ -151,30 +151,33 @@ export class LocalReranker implements Reranker {
       const scores = {
         // Term overlap (Jaccard similarity)
         termOverlap: this.calculateJaccardSimilarity(queryTerms, chunkTerms),
-        
+
         // Exact phrase matches
-        phraseMatch: queryPhrases.filter((p) => chunkLower.includes(p)).length / queryPhrases.length,
-        
+        phraseMatch:
+          queryPhrases.filter((p) => chunkLower.includes(p)).length / queryPhrases.length,
+
         // Keyword frequency (BM25-inspired)
         keywordFreq: this.calculateKeywordFrequency(queryTerms, chunkLower),
-        
+
         // Original retrieval score (weighted less)
         originalScore: chunk.score * 0.3,
-        
+
         // Position bonus (earlier chunks often more relevant)
         positionBonus: 1 / (1 + chunk.metadata.position * 0.1),
-        
+
         // Heading match bonus
-        headingMatch: chunk.metadata.headings?.some((h) => 
+        headingMatch: chunk.metadata.headings?.some((h) =>
           queryTerms.some((qt) => h.toLowerCase().includes(qt))
-        ) ? 0.2 : 0,
+        )
+          ? 0.2
+          : 0,
       };
 
       // Combined score with weights
-      const combinedScore = 
+      const combinedScore =
         scores.termOverlap * 0.25 +
         scores.phraseMatch * 0.25 +
-        scores.keywordFreq * 0.20 +
+        scores.keywordFreq * 0.2 +
         scores.originalScore +
         scores.positionBonus * 0.05 +
         scores.headingMatch;
@@ -187,9 +190,7 @@ export class LocalReranker implements Reranker {
     });
 
     // Sort by score and return top N
-    const reranked = scoredChunks
-      .sort((a, b) => b.score - a.score)
-      .slice(0, this.topN);
+    const reranked = scoredChunks.sort((a, b) => b.score - a.score).slice(0, this.topN);
 
     console.log(`[LocalReranker] Re-ranked ${chunks.length} chunks`);
     return reranked;
@@ -259,16 +260,82 @@ export class LocalReranker implements Reranker {
    */
   private isStopWord(word: string): boolean {
     const stopWords = new Set([
-      'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
-      'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
-      'would', 'could', 'should', 'may', 'might', 'must', 'shall',
-      'can', 'need', 'dare', 'ought', 'used', 'to', 'of', 'in',
-      'for', 'on', 'with', 'at', 'by', 'from', 'as', 'into',
-      'through', 'during', 'before', 'after', 'above', 'below',
-      'between', 'under', 'and', 'but', 'or', 'yet', 'so', 'if',
-      'because', 'although', 'though', 'while', 'where', 'when',
-      'that', 'which', 'who', 'whom', 'whose', 'what', 'this',
-      'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they',
+      'the',
+      'a',
+      'an',
+      'is',
+      'are',
+      'was',
+      'were',
+      'be',
+      'been',
+      'being',
+      'have',
+      'has',
+      'had',
+      'do',
+      'does',
+      'did',
+      'will',
+      'would',
+      'could',
+      'should',
+      'may',
+      'might',
+      'must',
+      'shall',
+      'can',
+      'need',
+      'dare',
+      'ought',
+      'used',
+      'to',
+      'of',
+      'in',
+      'for',
+      'on',
+      'with',
+      'at',
+      'by',
+      'from',
+      'as',
+      'into',
+      'through',
+      'during',
+      'before',
+      'after',
+      'above',
+      'below',
+      'between',
+      'under',
+      'and',
+      'but',
+      'or',
+      'yet',
+      'so',
+      'if',
+      'because',
+      'although',
+      'though',
+      'while',
+      'where',
+      'when',
+      'that',
+      'which',
+      'who',
+      'whom',
+      'whose',
+      'what',
+      'this',
+      'these',
+      'those',
+      'i',
+      'you',
+      'he',
+      'she',
+      'it',
+      'we',
+      'they',
     ]);
     return stopWords.has(word.toLowerCase());
   }
@@ -288,13 +355,14 @@ export class KeywordOverlapReranker implements Reranker {
 
   async rerank(query: string, chunks: RetrievedChunk[]): Promise<RetrievedChunk[]> {
     const queryTerms = new Set(
-      query.toLowerCase().split(/\s+/).filter((t) => t.length > 3)
+      query
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((t) => t.length > 3)
     );
 
     const scoredChunks = chunks.map((chunk) => {
-      const chunkTerms = new Set(
-        chunk.content.toLowerCase().split(/\s+/)
-      );
+      const chunkTerms = new Set(chunk.content.toLowerCase().split(/\s+/));
 
       // Calculate overlap
       const intersection = new Set([...queryTerms].filter((x) => chunkTerms.has(x)));
@@ -310,9 +378,7 @@ export class KeywordOverlapReranker implements Reranker {
       };
     });
 
-    return scoredChunks
-      .sort((a, b) => b.score - a.score)
-      .slice(0, this.topN);
+    return scoredChunks.sort((a, b) => b.score - a.score).slice(0, this.topN);
   }
 }
 
@@ -324,11 +390,7 @@ export function createReranker(config?: Partial<RerankConfig>): Reranker {
 
   switch (provider) {
     case 'cohere':
-      return new CohereReranker(
-        config?.apiKey,
-        config?.model,
-        config?.topN
-      );
+      return new CohereReranker(config?.apiKey, config?.model, config?.topN);
     case 'local':
       return new LocalReranker(config?.topN);
     case 'none':
@@ -358,7 +420,7 @@ export async function rerankChunks(
 /**
  * Diversify results using Maximal Marginal Relevance (MMR)
  * Balances relevance with diversity to reduce redundancy
- * 
+ *
  * @param chunks - Retrieved chunks
  * @param lambda - Trade-off parameter (0 = max diversity, 1 = max relevance)
  * @param topN - Number of results to return
@@ -385,9 +447,7 @@ export function diversifyWithMMR(
       const relevance = chunk.score;
 
       // Diversity component (max similarity to already selected)
-      const maxSimilarity = Math.max(
-        ...selected.map((s) => calculateSimilarity(chunk, s))
-      );
+      const maxSimilarity = Math.max(...selected.map((s) => calculateSimilarity(chunk, s)));
 
       // MMR formula: lambda * relevance - (1 - lambda) * max_similarity
       return lambda * relevance - (1 - lambda) * maxSimilarity;
@@ -407,9 +467,9 @@ export function diversifyWithMMR(
 function calculateSimilarity(chunk1: RetrievedChunk, chunk2: RetrievedChunk): number {
   const terms1 = new Set(chunk1.content.toLowerCase().split(/\s+/));
   const terms2 = new Set(chunk2.content.toLowerCase().split(/\s+/));
-  
+
   const intersection = new Set([...terms1].filter((x) => terms2.has(x)));
   const union = new Set([...terms1, ...terms2]);
-  
+
   return intersection.size / union.size;
 }

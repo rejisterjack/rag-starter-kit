@@ -1,14 +1,13 @@
 /**
  * Legacy exports for backward compatibility
- * 
+ *
  * These functions are maintained for compatibility with existing code.
  * New code should use the RetrievalEngine class directly.
  */
 
 import { generateEmbedding } from '@/lib/ai';
 import { prisma } from '@/lib/db';
-import type { Source } from '@/types';
-import type { RAGConfig } from '@/types';
+import type { RAGConfig, Source } from '@/types';
 
 // Default RAG configuration
 const defaultRAGConfig: RAGConfig = {
@@ -38,20 +37,8 @@ export async function searchSimilarChunks(
   queryEmbedding: number[],
   userId: string,
   config: Partial<RAGConfig> = {}
-): Promise<Array<{
-  id: string;
-  documentId: string;
-  content: string;
-  index: number;
-  page: number | null;
-  section: string | null;
-  documentName: string;
-  similarity: number;
-}>> {
-  const topK = config.topK ?? defaultRAGConfig.topK;
-  const threshold = config.similarityThreshold ?? defaultRAGConfig.similarityThreshold;
-
-  const results = await prisma.$queryRaw<Array<{
+): Promise<
+  Array<{
     id: string;
     documentId: string;
     content: string;
@@ -60,7 +47,23 @@ export async function searchSimilarChunks(
     section: string | null;
     documentName: string;
     similarity: number;
-  }>>`
+  }>
+> {
+  const topK = config.topK ?? defaultRAGConfig.topK;
+  const threshold = config.similarityThreshold ?? defaultRAGConfig.similarityThreshold;
+
+  const results = await prisma.$queryRaw<
+    Array<{
+      id: string;
+      documentId: string;
+      content: string;
+      index: number;
+      page: number | null;
+      section: string | null;
+      documentName: string;
+      similarity: number;
+    }>
+  >`
     SELECT 
       dc.id,
       dc.document_id as "documentId",

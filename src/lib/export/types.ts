@@ -237,7 +237,7 @@ export interface CitationFormatter {
 // Event Types
 // =============================================================================
 
-export type ExportEventType = 
+export type ExportEventType =
   | 'export:started'
   | 'export:progress'
   | 'export:completed'

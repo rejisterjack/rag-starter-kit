@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
-import { useDocuments } from '@/hooks/use-documents';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useDocuments } from '@/hooks/use-documents';
 
 // Mock fetch
 global.fetch = vi.fn();
@@ -16,10 +16,9 @@ describe('useDocuments', () => {
         },
       },
     });
-    
-    return ({ children }: { children: React.ReactNode }) => (
-      React.createElement(QueryClientProvider, { client: queryClient }, children)
-    );
+
+    return ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
   };
 
   beforeEach(() => {
@@ -65,7 +64,7 @@ describe('useDocuments', () => {
 
   it('uploads document successfully', async () => {
     const mockDocument = { id: '1', name: 'uploaded.pdf', status: 'processing' };
-    
+
     vi.mocked(global.fetch)
       .mockResolvedValueOnce({
         ok: true,

@@ -515,7 +515,10 @@ export async function checkApiRateLimit(
 
     return { allowed: true, remaining: limit - recentRequests - 1, resetAt };
   } catch (error) {
-    logger.error('Rate limit check failed', { keyId, error: error instanceof Error ? error.message : 'Unknown' });
+    logger.error('Rate limit check failed', {
+      keyId,
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
     // Fail open to avoid blocking legitimate requests on DB errors
     return { allowed: true, remaining: 1, resetAt };
   }

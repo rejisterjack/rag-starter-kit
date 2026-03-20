@@ -4,7 +4,7 @@
  */
 
 import { Redis } from '@upstash/redis';
-import type { UserInfo, CursorPosition, PresenceStatus } from './types';
+import type { CursorPosition, PresenceStatus, UserInfo } from './types';
 
 // =============================================================================
 // Redis Client Configuration
@@ -33,9 +33,7 @@ export function getRedisClient(): Redis {
 
 // Check if Redis is configured
 export function isRedisConfigured(): boolean {
-  return !!(
-    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-  );
+  return !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 }
 
 // =============================================================================
@@ -203,10 +201,7 @@ export async function getUserPresence(userId: string): Promise<PresenceData | nu
 /**
  * Get all users in a room
  */
-export async function getUsersInRoom(
-  roomType: string,
-  roomId: string
-): Promise<PresenceData[]> {
+export async function getUsersInRoom(roomType: string, roomId: string): Promise<PresenceData[]> {
   if (!isRedisConfigured()) return [];
 
   const redis = getRedisClient();
@@ -266,10 +261,7 @@ export async function removePresence(userId: string): Promise<void> {
 /**
  * Set user status
  */
-export async function setUserStatus(
-  userId: string,
-  status: PresenceStatus
-): Promise<void> {
+export async function setUserStatus(userId: string, status: PresenceStatus): Promise<void> {
   if (!isRedisConfigured()) return;
 
   const redis = getRedisClient();

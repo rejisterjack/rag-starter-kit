@@ -1,6 +1,6 @@
 /**
  * Global Setup for Playwright E2E Tests
- * 
+ *
  * This file runs once before all E2E tests to set up the test environment.
  * It can be used to:
  * - Start the development server
@@ -11,6 +11,7 @@
 
 import { chromium, type FullConfig } from '@playwright/test';
 import { execSync } from 'child_process';
+
 // import path from 'path';
 
 async function globalSetup(config: FullConfig) {
@@ -41,7 +42,7 @@ async function globalSetup(config: FullConfig) {
   // Create authenticated state for tests
   if (storageState) {
     console.log('🔐 Creating authenticated browser state...');
-    
+
     const browser = await chromium.launch();
     const page = await browser.newPage();
 
@@ -49,8 +50,14 @@ async function globalSetup(config: FullConfig) {
     await page.goto(`${baseURL}/login`);
 
     // Perform login
-    await page.fill('[data-testid="email-input"]', process.env.TEST_USER_EMAIL || 'test@example.com');
-    await page.fill('[data-testid="password-input"]', process.env.TEST_USER_PASSWORD || 'TestPassword123!');
+    await page.fill(
+      '[data-testid="email-input"]',
+      process.env.TEST_USER_EMAIL || 'test@example.com'
+    );
+    await page.fill(
+      '[data-testid="password-input"]',
+      process.env.TEST_USER_PASSWORD || 'TestPassword123!'
+    );
     await page.click('[data-testid="login-button"]');
 
     // Wait for navigation to dashboard

@@ -1,8 +1,5 @@
-import { Prisma } from '@prisma/client';
-
+import { AuditEvent, AuditSeverity, type Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
-
-import { AuditEvent, AuditSeverity } from '@prisma/client';
 
 // Re-export enums for convenience
 export { AuditEvent, AuditSeverity };
@@ -67,23 +64,25 @@ export interface AuditLogResult {
 export async function logAuditEvent(input: LogAuditEventInput): Promise<void> {
   try {
     // Don't block on audit logging
-    prisma.auditLog.create({
-      data: {
-        event: input.event,
-        userId: input.userId,
-        workspaceId: input.workspaceId,
-        severity: input.severity ?? 'INFO',
-        metadata: (input.metadata ?? {}) as unknown as Prisma.InputJsonValue,
-        resource: (input.resource ?? {}) as unknown as Prisma.InputJsonValue,
-        changes: (input.changes ?? {}) as unknown as Prisma.InputJsonValue,
-        error: input.error ?? null,
-        ipAddress: input.ipAddress,
-        userAgent: input.userAgent,
-      },
-    }).catch((error) => {
-      // Log to console if database logging fails
-      console.error('Failed to write audit log:', error);
-    });
+    prisma.auditLog
+      .create({
+        data: {
+          event: input.event,
+          userId: input.userId,
+          workspaceId: input.workspaceId,
+          severity: input.severity ?? 'INFO',
+          metadata: (input.metadata ?? {}) as unknown as Prisma.InputJsonValue,
+          resource: (input.resource ?? {}) as unknown as Prisma.InputJsonValue,
+          changes: (input.changes ?? {}) as unknown as Prisma.InputJsonValue,
+          error: input.error ?? null,
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+        },
+      })
+      .catch((error) => {
+        // Log to console if database logging fails
+        console.error('Failed to write audit log:', error);
+      });
   } catch (error) {
     // Never throw from audit logging
     console.error('Audit logging error:', error);
@@ -166,7 +165,7 @@ export async function getAuditLogs(
   ]);
 
   return {
-    logs: logs.map(log => ({
+    logs: logs.map((log) => ({
       ...log,
       metadata: log.metadata as Record<string, unknown> | null,
       resource: log.resource as Record<string, unknown> | null,
@@ -199,7 +198,7 @@ export async function getRecentWorkspaceEvents(
     take: limit,
   });
 
-  return logs.map(log => ({
+  return logs.map((log) => ({
     ...log,
     metadata: log.metadata as Record<string, unknown> | null,
     resource: log.resource as Record<string, unknown> | null,
@@ -211,14 +210,12 @@ export async function getRecentWorkspaceEvents(
 /**
  * Get security events (for admin/security monitoring)
  */
-export async function getSecurityEvents(
-  options?: {
-    startDate?: Date;
-    endDate?: Date;
-    severity?: AuditSeverity;
-    limit?: number;
-  }
-): Promise<AuditLogResult[]> {
+export async function getSecurityEvents(options?: {
+  startDate?: Date;
+  endDate?: Date;
+  severity?: AuditSeverity;
+  limit?: number;
+}): Promise<AuditLogResult[]> {
   const where: Record<string, unknown> = {
     event: {
       in: [
@@ -259,7 +256,7 @@ export async function getSecurityEvents(
     take: options?.limit ?? 50,
   });
 
-  return logs.map(log => ({
+  return logs.map((log) => ({
     ...log,
     metadata: log.metadata as Record<string, unknown> | null,
     resource: log.resource as Record<string, unknown> | null,
@@ -366,9 +363,7 @@ export async function cleanupAuditLogs(): Promise<{
 /**
  * Export audit logs for compliance
  */
-export async function exportAuditLogs(
-  query: AuditLogQuery
-): Promise<AuditLogResult[]> {
+export async function exportAuditLogs(query: AuditLogQuery): Promise<AuditLogResult[]> {
   const { logs } = await getAuditLogs({ ...query, limit: 10000 });
   return logs;
 }

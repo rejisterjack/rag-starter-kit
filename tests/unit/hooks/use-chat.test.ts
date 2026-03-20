@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useChat } from '@/hooks/use-chat';
 
 // Mock the AI SDK
@@ -17,7 +17,7 @@ describe('useChat', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     (useAIChat as ReturnType<typeof vi.fn>).mockReturnValue({
       messages: [],
       input: '',
@@ -35,7 +35,7 @@ describe('useChat', () => {
 
   it('initializes with empty state', () => {
     const { result } = renderHook(() => useChat({ api: '/api/chat' }));
-    
+
     expect(result.current.messages).toEqual([]);
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBeNull();
@@ -44,13 +44,13 @@ describe('useChat', () => {
   describe('Message Sending', () => {
     it('sends a message successfully', async () => {
       mockAppend.mockResolvedValueOnce(undefined);
-      
+
       const { result } = renderHook(() => useChat({ api: '/api/chat' }));
-      
+
       await act(async () => {
         await result.current.sendMessage('Hello');
       });
-      
+
       expect(mockAppend).toHaveBeenCalledWith({
         role: 'user',
         content: 'Hello',
@@ -59,31 +59,35 @@ describe('useChat', () => {
 
     it('sends message with context', async () => {
       mockAppend.mockResolvedValueOnce(undefined);
-      
-      const { result } = renderHook(() => useChat({ 
-        api: '/api/chat',
-        body: { workspaceId: 'ws-1' }
-      }));
-      
+
+      const { result } = renderHook(() =>
+        useChat({
+          api: '/api/chat',
+          body: { workspaceId: 'ws-1' },
+        })
+      );
+
       await act(async () => {
         await result.current.sendMessage('Hello', {
-          context: { documents: ['doc-1'] }
+          context: { documents: ['doc-1'] },
         });
       });
-      
-      expect(mockAppend).toHaveBeenCalledWith(expect.objectContaining({
-        role: 'user',
-        content: 'Hello',
-      }));
+
+      expect(mockAppend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: 'user',
+          content: 'Hello',
+        })
+      );
     });
 
     it('handles sending empty messages gracefully', async () => {
       const { result } = renderHook(() => useChat({ api: '/api/chat' }));
-      
+
       await act(async () => {
         await result.current.sendMessage('');
       });
-      
+
       expect(mockAppend).not.toHaveBeenCalled();
     });
 
@@ -100,13 +104,13 @@ describe('useChat', () => {
         stop: mockStop,
         setMessages: mockSetMessages,
       });
-      
+
       const { result } = renderHook(() => useChat({ api: '/api/chat' }));
-      
+
       await act(async () => {
         await result.current.sendMessage('Hello');
       });
-      
+
       expect(mockAppend).not.toHaveBeenCalled();
     });
   });
@@ -114,9 +118,9 @@ describe('useChat', () => {
   describe('Streaming Handling', () => {
     it('tracks streaming state', async () => {
       const { result, rerender } = renderHook(() => useChat({ api: '/api/chat' }));
-      
+
       expect(result.current.isStreaming).toBe(false);
-      
+
       (useAIChat as ReturnType<typeof vi.fn>).mockReturnValue({
         messages: [{ id: '1', role: 'assistant', content: 'Hello' }],
         input: '',
@@ -129,9 +133,9 @@ describe('useChat', () => {
         stop: mockStop,
         setMessages: mockSetMessages,
       });
-      
+
       rerender();
-      
+
       expect(result.current.isStreaming).toBe(true);
     });
 
@@ -140,7 +144,7 @@ describe('useChat', () => {
         { id: '1', role: 'user', content: 'Hi' },
         { id: '2', role: 'assistant', content: 'Hello! How can I help?' },
       ];
-      
+
       (useAIChat as ReturnType<typeof vi.fn>).mockReturnValue({
         messages,
         input: '',
@@ -153,20 +157,20 @@ describe('useChat', () => {
         stop: mockStop,
         setMessages: mockSetMessages,
       });
-      
+
       const { result } = renderHook(() => useChat({ api: '/api/chat' }));
-      
+
       expect(result.current.messages).toHaveLength(2);
       expect(result.current.messages[1].content).toBe('Hello! How can I help?');
     });
 
     it('stops streaming on request', () => {
       const { result } = renderHook(() => useChat({ api: '/api/chat' }));
-      
+
       act(() => {
         result.current.stopGeneration();
       });
-      
+
       expect(mockStop).toHaveBeenCalled();
     });
   });
@@ -174,7 +178,7 @@ describe('useChat', () => {
   describe('Error Handling', () => {
     it('handles API errors', async () => {
       const error = new Error('API Error');
-      
+
       (useAIChat as ReturnType<typeof vi.fn>).mockReturnValue({
         messages: [],
         input: '',
@@ -187,37 +191,39 @@ describe('useChat', () => {
         stop: mockStop,
         setMessages: mockSetMessages,
       });
-      
+
       const { result } = renderHook(() => useChat({ api: '/api/chat' }));
-      
+
       expect(result.current.error).toEqual(error);
       expect(result.current.isError).toBe(true);
     });
 
     it('retries failed requests', async () => {
       mockReload.mockResolvedValueOnce(undefined);
-      
+
       const { result } = renderHook(() => useChat({ api: '/api/chat' }));
-      
+
       await act(async () => {
         await result.current.retry();
       });
-      
+
       expect(mockReload).toHaveBeenCalled();
     });
 
     it('clears error state', () => {
       const onError = vi.fn();
-      
-      renderHook(() => useChat({ 
-        api: '/api/chat',
-        onError,
-      }));
-      
+
+      renderHook(() =>
+        useChat({
+          api: '/api/chat',
+          onError,
+        })
+      );
+
       // Simulate error callback
       const errorCallback = (useAIChat as ReturnType<typeof vi.fn>).mock.calls[0][0].onError;
       errorCallback(new Error('Test error'));
-      
+
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
     });
   });
@@ -225,11 +231,11 @@ describe('useChat', () => {
   describe('Message Management', () => {
     it('clears all messages', () => {
       const { result } = renderHook(() => useChat({ api: '/api/chat' }));
-      
+
       act(() => {
         result.current.clearMessages();
       });
-      
+
       expect(mockSetMessages).toHaveBeenCalledWith([]);
     });
 
@@ -239,7 +245,7 @@ describe('useChat', () => {
         { id: '2', role: 'assistant', content: 'Response' },
         { id: '3', role: 'user', content: 'Second' },
       ];
-      
+
       (useAIChat as ReturnType<typeof vi.fn>).mockReturnValue({
         messages,
         input: '',
@@ -252,17 +258,14 @@ describe('useChat', () => {
         stop: mockStop,
         setMessages: mockSetMessages,
       });
-      
+
       const { result } = renderHook(() => useChat({ api: '/api/chat' }));
-      
+
       act(() => {
         result.current.deleteMessage('2');
       });
-      
-      expect(mockSetMessages).toHaveBeenCalledWith([
-        messages[0],
-        messages[2],
-      ]);
+
+      expect(mockSetMessages).toHaveBeenCalledWith([messages[0], messages[2]]);
     });
 
     it('edits a message and regenerates response', async () => {
@@ -270,7 +273,7 @@ describe('useChat', () => {
         { id: '1', role: 'user', content: 'Original' },
         { id: '2', role: 'assistant', content: 'Response' },
       ];
-      
+
       (useAIChat as ReturnType<typeof vi.fn>).mockReturnValue({
         messages,
         input: '',
@@ -283,16 +286,14 @@ describe('useChat', () => {
         stop: mockStop,
         setMessages: mockSetMessages,
       });
-      
+
       const { result } = renderHook(() => useChat({ api: '/api/chat' }));
-      
+
       await act(async () => {
         await result.current.editMessage('1', 'Edited');
       });
-      
-      expect(mockSetMessages).toHaveBeenCalledWith([
-        { ...messages[0], content: 'Edited' },
-      ]);
+
+      expect(mockSetMessages).toHaveBeenCalledWith([{ ...messages[0], content: 'Edited' }]);
       expect(mockReload).toHaveBeenCalled();
     });
   });
@@ -304,12 +305,10 @@ describe('useChat', () => {
           id: '1',
           role: 'assistant',
           content: 'According to the report...',
-          annotations: [
-            { type: 'citation', documentId: 'doc-1', chunkId: 'chunk-1', page: 5 },
-          ],
+          annotations: [{ type: 'citation', documentId: 'doc-1', chunkId: 'chunk-1', page: 5 }],
         },
       ];
-      
+
       (useAIChat as ReturnType<typeof vi.fn>).mockReturnValue({
         messages,
         input: '',
@@ -322,9 +321,9 @@ describe('useChat', () => {
         stop: mockStop,
         setMessages: mockSetMessages,
       });
-      
+
       const { result } = renderHook(() => useChat({ api: '/api/chat' }));
-      
+
       const citations = result.current.getCitations('1');
       expect(citations).toHaveLength(1);
       expect(citations[0]).toMatchObject({
@@ -337,7 +336,7 @@ describe('useChat', () => {
   describe('Input Handling', () => {
     it('sets input value', () => {
       const handleInputChange = vi.fn();
-      
+
       (useAIChat as ReturnType<typeof vi.fn>).mockReturnValue({
         messages: [],
         input: '',
@@ -350,23 +349,23 @@ describe('useChat', () => {
         stop: mockStop,
         setMessages: mockSetMessages,
       });
-      
+
       const { result } = renderHook(() => useChat({ api: '/api/chat' }));
-      
+
       const mockEvent = {
         target: { value: 'New input' },
       } as React.ChangeEvent<HTMLTextAreaElement>;
-      
+
       act(() => {
         result.current.handleInputChange(mockEvent);
       });
-      
+
       expect(handleInputChange).toHaveBeenCalledWith(mockEvent);
     });
 
     it('submits with input', () => {
       const handleSubmit = vi.fn();
-      
+
       (useAIChat as ReturnType<typeof vi.fn>).mockReturnValue({
         messages: [],
         input: 'Test input',
@@ -379,17 +378,17 @@ describe('useChat', () => {
         stop: mockStop,
         setMessages: mockSetMessages,
       });
-      
+
       const { result } = renderHook(() => useChat({ api: '/api/chat' }));
-      
+
       const mockEvent = {
         preventDefault: vi.fn(),
       } as unknown as React.FormEvent;
-      
+
       act(() => {
         result.current.handleSubmit(mockEvent);
       });
-      
+
       expect(handleSubmit).toHaveBeenCalledWith(mockEvent, expect.any(Object));
     });
   });

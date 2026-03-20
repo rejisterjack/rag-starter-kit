@@ -6,19 +6,21 @@ import { z } from 'zod';
 
 export const documentUploadSchema = z.object({
   workspaceId: z.string().min(1),
-  files: z.array(
-    z.object({
-      name: z.string().min(1),
-      size: z.number().max(50 * 1024 * 1024, 'File size exceeds 50MB limit'),
-      type: z.enum([
-        'application/pdf',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'text/plain',
-        'text/markdown',
-        'text/html',
-      ]),
-    })
-  ).min(1),
+  files: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        size: z.number().max(50 * 1024 * 1024, 'File size exceeds 50MB limit'),
+        type: z.enum([
+          'application/pdf',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'text/plain',
+          'text/markdown',
+          'text/html',
+        ]),
+      })
+    )
+    .min(1),
 });
 
 export type DocumentUploadInput = z.infer<typeof documentUploadSchema>;

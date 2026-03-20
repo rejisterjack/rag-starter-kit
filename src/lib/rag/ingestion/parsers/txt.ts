@@ -30,10 +30,8 @@ export interface TextParseOptions {
   encoding?: string;
   detectEncoding?: boolean;
   maxFileSize?: number; // in bytes
-  chunkSize?: number;   // for streaming large files
+  chunkSize?: number; // for streaming large files
 }
-
-
 
 /**
  * Parse a text buffer with encoding detection
@@ -49,7 +47,7 @@ export function parseText(buffer: Buffer, options: TextParseOptions = {}): Parse
 
   // Detect or use specified encoding
   let encoding = options.encoding || 'utf-8';
-  
+
   if (options.detectEncoding !== false) {
     encoding = detectEncoding(buffer);
   }
@@ -72,7 +70,10 @@ export function parseText(buffer: Buffer, options: TextParseOptions = {}): Parse
   // Calculate statistics
   const lineCount = lines.length;
   const characterCount = text.length;
-  const wordCount = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+  const wordCount = text
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0).length;
 
   return {
     text,
@@ -90,16 +91,16 @@ export function parseText(buffer: Buffer, options: TextParseOptions = {}): Parse
 function detectEncoding(buffer: Buffer): string {
   // Check for BOM (Byte Order Mark)
   if (buffer.length >= 3) {
-    if (buffer[0] === 0xEF && buffer[1] === 0xBB && buffer[2] === 0xBF) {
+    if (buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
       return 'utf-8'; // UTF-8 BOM
     }
   }
-  
+
   if (buffer.length >= 2) {
-    if (buffer[0] === 0xFF && buffer[1] === 0xFE) {
+    if (buffer[0] === 0xff && buffer[1] === 0xfe) {
       return 'utf-16le'; // UTF-16 LE BOM
     }
-    if (buffer[0] === 0xFE && buffer[1] === 0xFF) {
+    if (buffer[0] === 0xfe && buffer[1] === 0xff) {
       return 'utf-16be'; // UTF-16 BE BOM
     }
   }
@@ -108,25 +109,25 @@ function detectEncoding(buffer: Buffer): string {
   // Check for valid UTF-8 sequences
   let isValidUtf8 = true;
   let i = 0;
-  
+
   while (i < Math.min(buffer.length, 4096)) {
     const byte = buffer[i];
-    
+
     // Check for null bytes (likely binary or UTF-16)
     if (byte === 0) {
       isValidUtf8 = false;
       break;
     }
-    
+
     // Check for multi-byte UTF-8 sequences
     if (byte >= 0x80) {
       let bytesToFollow = 0;
-      if ((byte & 0xE0) === 0xC0) bytesToFollow = 1;
-      else if ((byte & 0xF0) === 0xE0) bytesToFollow = 2;
-      else if ((byte & 0xF8) === 0xF0) bytesToFollow = 3;
-      
+      if ((byte & 0xe0) === 0xc0) bytesToFollow = 1;
+      else if ((byte & 0xf0) === 0xe0) bytesToFollow = 2;
+      else if ((byte & 0xf8) === 0xf0) bytesToFollow = 3;
+
       for (let j = 1; j <= bytesToFollow; j++) {
-        if (i + j >= buffer.length || (buffer[i + j] & 0xC0) !== 0x80) {
+        if (i + j >= buffer.length || (buffer[i + j] & 0xc0) !== 0x80) {
           isValidUtf8 = false;
           break;
         }
@@ -149,8 +150,8 @@ function detectEncoding(buffer: Buffer): string {
  */
 function normalizeLineEndings(text: string): string {
   return text
-    .replace(/\r\n/g, '\n')  // Windows CRLF
-    .replace(/\r/g, '\n');   // Old Mac CR
+    .replace(/\r\n/g, '\n') // Windows CRLF
+    .replace(/\r/g, '\n'); // Old Mac CR
 }
 
 /**
@@ -158,7 +159,7 @@ function normalizeLineEndings(text: string): string {
  */
 function parseLines(text: string): TextLine[] {
   const rawLines = text.split('\n');
-  
+
   return rawLines.map((line, index) => ({
     lineNumber: index + 1,
     text: line,
@@ -175,7 +176,7 @@ export async function* parseTextStream(
 ): AsyncGenerator<TextBlock, void, unknown> {
   const chunkSize = options.chunkSize || 64 * 1024; // 64KB chunks
   const encoding = options.encoding || detectEncoding(buffer);
-  
+
   let offset = 0;
   let lineNumber = 1;
   let pendingLine = '';
@@ -183,7 +184,7 @@ export async function* parseTextStream(
   while (offset < buffer.length) {
     const end = Math.min(offset + chunkSize, buffer.length);
     const chunk = buffer.slice(offset, end);
-    
+
     let text: string;
     try {
       text = chunk.toString(encoding as BufferEncoding);
@@ -194,7 +195,7 @@ export async function* parseTextStream(
     // Handle line splits across chunks
     const combined = pendingLine + text;
     const lines = combined.split('\n');
-    
+
     // Keep the last potentially incomplete line for next chunk
     pendingLine = lines.pop() || '';
 
@@ -227,22 +228,25 @@ export async function* parseTextStream(
 export function extractByLineRange(parsed: ParsedText, startLine: number, endLine: number): string {
   const startIndex = Math.max(0, startLine - 1);
   const endIndex = Math.min(parsed.lines.length, endLine);
-  
+
   return parsed.lines
     .slice(startIndex, endIndex)
-    .map(l => l.text)
+    .map((l) => l.text)
     .join('\n');
 }
 
 /**
  * Search for text and return line numbers
  */
-export function searchInText(parsed: ParsedText, query: string): Array<{ lineNumber: number; text: string }> {
+export function searchInText(
+  parsed: ParsedText,
+  query: string
+): Array<{ lineNumber: number; text: string }> {
   const lowerQuery = query.toLowerCase();
-  
+
   return parsed.lines
-    .filter(line => line.text.toLowerCase().includes(lowerQuery))
-    .map(line => ({
+    .filter((line) => line.text.toLowerCase().includes(lowerQuery))
+    .map((line) => ({
       lineNumber: line.lineNumber,
       text: line.text,
     }));
@@ -251,19 +255,21 @@ export function searchInText(parsed: ParsedText, query: string): Array<{ lineNum
 /**
  * Extract code blocks (indented or fenced)
  */
-export function extractCodeBlocks(text: string): Array<{ language?: string; code: string; startLine: number }> {
+export function extractCodeBlocks(
+  text: string
+): Array<{ language?: string; code: string; startLine: number }> {
   const blocks: Array<{ language?: string; code: string; startLine: number }> = [];
   const lines = text.split('\n');
-  
+
   let inFencedBlock = false;
   let currentBlock: string[] = [];
   let currentLanguage: string | undefined;
   let blockStartLine = 0;
-  
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const fenceMatch = line.match(/^```(\w*)/);
-    
+
     if (fenceMatch) {
       if (!inFencedBlock) {
         // Start of fenced block
@@ -285,20 +291,22 @@ export function extractCodeBlocks(text: string): Array<{ language?: string; code
       currentBlock.push(line);
     }
   }
-  
+
   return blocks;
 }
 
 /**
  * Extract headings from markdown-formatted text
  */
-export function extractMarkdownHeadings(text: string): Array<{ level: number; text: string; lineNumber: number }> {
+export function extractMarkdownHeadings(
+  text: string
+): Array<{ level: number; text: string; lineNumber: number }> {
   const headings: Array<{ level: number; text: string; lineNumber: number }> = [];
   const lines = text.split('\n');
-  
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    
+
     // ATX style headings (# Heading)
     const atxMatch = line.match(/^(#{1,6})\s+(.+)$/);
     if (atxMatch) {
@@ -309,7 +317,7 @@ export function extractMarkdownHeadings(text: string): Array<{ level: number; te
       });
       continue;
     }
-    
+
     // Setext style headings (underlined)
     if (i < lines.length - 1) {
       const nextLine = lines[i + 1];
@@ -328,7 +336,7 @@ export function extractMarkdownHeadings(text: string): Array<{ level: number; te
       }
     }
   }
-  
+
   return headings;
 }
 
@@ -340,7 +348,7 @@ function formatBytes(bytes: number): string {
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
 }
 
 /**

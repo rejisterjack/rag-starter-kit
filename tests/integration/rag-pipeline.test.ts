@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { runRAGPipeline, generateResponse, retrieveContext } from '@/lib/rag/engine';
-import { mockPrisma, getMockPrisma } from '@/tests/utils/mocks/prisma';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { generateResponse, retrieveContext, runRAGPipeline } from '@/lib/rag/engine';
+import { getMockPrisma, mockPrisma } from '@/tests/utils/mocks/prisma';
+
 // import { createChunksWithEmbeddings } from '@/tests/utils/fixtures/chunks';
 
 vi.mock('@/lib/db', () => ({
@@ -39,7 +40,8 @@ describe('RAG Pipeline Integration', () => {
   describe('End-to-End RAG Flow', () => {
     it('processes query through full pipeline', async () => {
       // Mock retrieval
-      getMockPrisma().$queryRaw = vi.fn()
+      getMockPrisma().$queryRaw = vi
+        .fn()
         .mockResolvedValueOnce(mockContext) // Vector search
         .mockResolvedValueOnce([]); // Keyword search
 
@@ -65,7 +67,9 @@ describe('RAG Pipeline Integration', () => {
 
       const context = await retrieveContext({
         query: 'Q1 revenue 2024',
-        queryEmbedding: Array(1536).fill(0).map(() => Math.random()),
+        queryEmbedding: Array(1536)
+          .fill(0)
+          .map(() => Math.random()),
         workspaceId: 'workspace-001',
         topK: 5,
       });
@@ -124,7 +128,7 @@ describe('RAG Pipeline Integration', () => {
         minSimilarity: 0.5,
       });
 
-      expect(context.every(c => c.similarity >= 0.5)).toBe(true);
+      expect(context.every((c) => c.similarity >= 0.5)).toBe(true);
       expect(context).toHaveLength(2);
     });
 
@@ -132,7 +136,7 @@ describe('RAG Pipeline Integration', () => {
       getMockPrisma().$queryRaw = vi.fn().mockResolvedValue(mockContext);
 
       vi.mock('@/lib/rag/reranker', () => ({
-        rerankResults: vi.fn().mockImplementation(({ results }) => 
+        rerankResults: vi.fn().mockImplementation(({ results }) =>
           // Reverse order to simulate reranking
           Promise.resolve([...results].reverse())
         ),
@@ -152,8 +156,8 @@ describe('RAG Pipeline Integration', () => {
       const vectorResults = [{ id: 'v1', content: 'Vector result', similarity: 0.9 }];
       const keywordResults = [{ id: 'k1', content: 'Keyword result', rank: 0.8 }];
 
-      getMockPrisma().$queryRaw
-        .mockResolvedValueOnce(vectorResults)
+      getMockPrisma()
+        .$queryRaw.mockResolvedValueOnce(vectorResults)
         .mockResolvedValueOnce(keywordResults);
 
       const context = await retrieveContext({
@@ -163,7 +167,7 @@ describe('RAG Pipeline Integration', () => {
         searchType: 'hybrid',
       });
 
-      const ids = context.map(c => c.id);
+      const ids = context.map((c) => c.id);
       expect(ids).toContain('v1');
       expect(ids).toContain('k1');
     });
@@ -188,7 +192,7 @@ describe('RAG Pipeline Integration', () => {
       const mockStream = new ReadableStream({
         start(controller) {
           const tokens = ['The', ' Q1', ' revenue', ' was', ' $32', ' million', '.'];
-          tokens.forEach(token => controller.enqueue(new TextEncoder().encode(token)));
+          tokens.forEach((token) => controller.enqueue(new TextEncoder().encode(token)));
           controller.close();
         },
       });
@@ -210,7 +214,7 @@ describe('RAG Pipeline Integration', () => {
 
     it('includes citation markers in stream', async () => {
       const chunks: string[] = [];
-      
+
       const mockStream = new ReadableStream({
         start(controller) {
           controller.enqueue(new TextEncoder().encode('According to [1]'));
@@ -260,19 +264,19 @@ describe('RAG Pipeline Integration', () => {
         stream: true,
       });
 
-      await expect(
-        stream.getReader().read()
-      ).rejects.toThrow('Connection lost');
+      await expect(stream.getReader().read()).rejects.toThrow('Connection lost');
     });
   });
 
   describe('Context Assembly', () => {
     it('respects max context length', async () => {
-      const longContext = Array(20).fill(0).map((_, i) => ({
-        id: `chunk-${i}`,
-        content: 'Very long content '.repeat(50),
-        similarity: 0.9 - i * 0.01,
-      }));
+      const longContext = Array(20)
+        .fill(0)
+        .map((_, i) => ({
+          id: `chunk-${i}`,
+          content: 'Very long content '.repeat(50),
+          similarity: 0.9 - i * 0.01,
+        }));
 
       getMockPrisma().$queryRaw = vi.fn().mockResolvedValue(longContext);
 
@@ -294,16 +298,19 @@ describe('RAG Pipeline Integration', () => {
         workspaceId: 'workspace-001',
       });
 
-      context.forEach(chunk => {
+      context.forEach((chunk) => {
         expect(chunk.metadata).toBeDefined();
         expect(chunk.documentId).toBeDefined();
       });
     });
 
     it('formats context for LLM', async () => {
-      const formattedContext = mockContext.map((c, i) => 
-        `[${i + 1}] ${c.content}\nSource: Document ${c.documentId}, Page ${c.metadata.page}`
-      ).join('\n\n');
+      const formattedContext = mockContext
+        .map(
+          (c, i) =>
+            `[${i + 1}] ${c.content}\nSource: Document ${c.documentId}, Page ${c.metadata.page}`
+        )
+        .join('\n\n');
 
       expect(formattedContext).toContain('[1]');
       expect(formattedContext).toContain('Source:');
@@ -343,11 +350,13 @@ describe('RAG Pipeline Integration', () => {
     it('handles retrieval errors gracefully', async () => {
       getMockPrisma().$queryRaw = vi.fn().mockRejectedValue(new Error('DB error'));
 
-      await expect(retrieveContext({
-        query: 'test',
-        queryEmbedding: [],
-        workspaceId: 'workspace-001',
-      })).rejects.toThrow('DB error');
+      await expect(
+        retrieveContext({
+          query: 'test',
+          queryEmbedding: [],
+          workspaceId: 'workspace-001',
+        })
+      ).rejects.toThrow('DB error');
     });
 
     it('handles empty context gracefully', async () => {
@@ -369,16 +378,19 @@ describe('RAG Pipeline Integration', () => {
         }),
       }));
 
-      await expect(generateResponse({
-        query: 'test',
-        context: mockContext,
-        stream: false,
-      })).rejects.toThrow('OpenAI API error');
+      await expect(
+        generateResponse({
+          query: 'test',
+          context: mockContext,
+          stream: false,
+        })
+      ).rejects.toThrow('OpenAI API error');
     });
 
     it('provides fallback for rate limits', async () => {
       vi.mock('ai', () => ({
-        streamText: vi.fn()
+        streamText: vi
+          .fn()
           .mockRejectedValueOnce(new Error('Rate limit exceeded'))
           .mockReturnValueOnce({
             text: 'Fallback response',
@@ -429,12 +441,14 @@ describe('RAG Pipeline Integration', () => {
         userId: 'user-001',
       });
 
-      expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.objectContaining({
-          promptTokens: expect.any(Number),
-          completionTokens: expect.any(Number),
-        }),
-      }));
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            promptTokens: expect.any(Number),
+            completionTokens: expect.any(Number),
+          }),
+        })
+      );
     });
   });
 });

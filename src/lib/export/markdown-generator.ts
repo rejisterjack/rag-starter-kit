@@ -4,12 +4,12 @@
  */
 
 import type {
-  ExportConversation,
-  ExportOptions,
-  ExportCitation,
-  ExportMessage,
-  ExportProgress,
   CitationStyle,
+  ExportCitation,
+  ExportConversation,
+  ExportMessage,
+  ExportOptions,
+  ExportProgress,
 } from './types';
 
 // =============================================================================
@@ -136,10 +136,7 @@ export class MarkdownGenerator {
     conversations: ExportConversation[],
     allCitations: ExportCitation[][] = []
   ): Promise<string> {
-    const totalMessages = conversations.reduce(
-      (sum, c) => sum + c.messages.length,
-      0
-    );
+    const totalMessages = conversations.reduce((sum, c) => sum + c.messages.length, 0);
 
     this.reportProgress({
       status: 'processing',
@@ -335,11 +332,7 @@ export class MarkdownGenerator {
     return lines;
   }
 
-  private formatCitation(
-    citation: ExportCitation,
-    index: number,
-    style: CitationStyle
-  ): string {
+  private formatCitation(citation: ExportCitation, index: number, style: CitationStyle): string {
     const num = index + 1;
 
     switch (style) {
@@ -359,19 +352,14 @@ export class MarkdownGenerator {
   private formatMessageContent(content: string): string {
     // The content is already in markdown format from the conversation
     // We just need to ensure proper line endings and escaping
-    return content
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      .trim();
+    return content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
   }
 
   private findCitationForSource(
     source: { documentId: string; page?: number },
     citations: ExportCitation[]
   ): ExportCitation | undefined {
-    return citations.find(
-      (c) => c.documentId === source.documentId && c.page === source.page
-    );
+    return citations.find((c) => c.documentId === source.documentId && c.page === source.page);
   }
 
   private getRoleLabel(role: string): string {
@@ -479,10 +467,7 @@ export function citationsToFootnotes(citations: ExportCitation[]): string {
 /**
  * Extract citations from content and replace with footnote references
  */
-export function convertCitationsToFootnotes(
-  content: string,
-  citations: ExportCitation[]
-): string {
+export function convertCitationsToFootnotes(content: string, citations: ExportCitation[]): string {
   let result = content;
 
   // Replace [1], [2], etc. with [^1], [^2], etc.

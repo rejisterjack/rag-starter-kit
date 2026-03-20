@@ -5,9 +5,9 @@
  * Supports Identity Provider (IdP) initiated and Service Provider (SP) initiated SSO.
  */
 
+import type { Prisma } from '@prisma/client';
 // Import samlify
 import * as saml from 'samlify';
-import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import {
@@ -439,9 +439,7 @@ export async function getWorkspaceSamlConfig(workspaceId: string): Promise<SamlC
   if (!connection || !connection.enabled) return null;
 
   // Safely extract attribute mapping from JSON
-  const attrMappingJson = connection.attributeMapping as
-    | Record<string, string>
-    | undefined;
+  const attrMappingJson = connection.attributeMapping as Record<string, string> | undefined;
 
   return {
     id: connection.id,

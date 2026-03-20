@@ -68,14 +68,14 @@ export interface WorkspacesListResponse {
 export interface MembersListResponse {
   success: boolean;
   data: {
-    members: (WorkspaceMember & {
+    members: WorkspaceMember & {
       user: {
         id: string;
         name: string | null;
         email: string;
         image: string | null;
       };
-    });
+    };
   };
 }
 
@@ -88,17 +88,17 @@ export interface WorkspaceSettings {
   defaultModel?: string;
   defaultTemperature?: number;
   maxTokens?: number;
-  
+
   // RAG settings
   chunkSize?: number;
   chunkOverlap?: number;
   topK?: number;
   similarityThreshold?: number;
-  
+
   // Security settings
   requireApproval?: boolean;
   allowedDomains?: string[];
-  
+
   // Branding
   customLogo?: string;
   primaryColor?: string;

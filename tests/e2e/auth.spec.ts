@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 test.describe('Authentication', () => {
   test.beforeEach(async ({ page }) => {
@@ -93,7 +93,7 @@ test.describe('Authentication', () => {
   test('redirects to requested page after login', async ({ page }) => {
     // Try to access protected page while logged out
     await page.goto('/chat');
-    
+
     // Should redirect to login with callback URL
     await expect(page).toHaveURL(/login.*callbackUrl/);
 
@@ -136,7 +136,7 @@ test.describe('Authentication', () => {
   test('shows loading state during authentication', async ({ page }) => {
     await page.fill('[data-testid="email-input"]', 'test@example.com');
     await page.fill('[data-testid="password-input"]', 'SecurePassword123!');
-    
+
     // Click login
     await page.click('[data-testid="login-button"]');
 

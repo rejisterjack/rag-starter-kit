@@ -3,7 +3,7 @@
  * Manages conversation history with summarization for long conversations
  */
 
-import { type Message as PrismaMessage, PrismaClient } from '@prisma/client';
+import type { PrismaClient, Message as PrismaMessage } from '@prisma/client';
 import { createProviderFromEnv } from '@/lib/ai/llm';
 import { buildConversationSummarizationPrompt } from '@/lib/ai/prompts/templates';
 import type { Source } from '@/types';
@@ -65,10 +65,7 @@ export class ConversationMemory {
   /**
    * Get conversation history with optional limit
    */
-  async getHistory(
-    conversationId: string,
-    limit?: number
-  ): Promise<Message[]> {
+  async getHistory(conversationId: string, limit?: number): Promise<Message[]> {
     const messages = await this.prisma.message.findMany({
       where: { chatId: conversationId },
       orderBy: { createdAt: 'asc' },
@@ -117,9 +114,9 @@ export class ConversationMemory {
         content: message.content,
         role: message.role.toUpperCase() as 'USER' | 'ASSISTANT' | 'SYSTEM',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        sources: message.sources as any ?? undefined,
+        sources: (message.sources as any) ?? undefined,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tokensUsed: message.tokensUsed as any ?? undefined,
+        tokensUsed: (message.tokensUsed as any) ?? undefined,
       },
     });
 
@@ -144,9 +141,9 @@ export class ConversationMemory {
             content: msg.content,
             role: msg.role.toUpperCase() as 'USER' | 'ASSISTANT' | 'SYSTEM',
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            sources: msg.sources as any ?? undefined,
+            sources: (msg.sources as any) ?? undefined,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            tokensUsed: msg.tokensUsed as any ?? undefined,
+            tokensUsed: (msg.tokensUsed as any) ?? undefined,
           },
         })
       )
@@ -178,8 +175,7 @@ export class ConversationMemory {
         [
           {
             role: 'system',
-            content:
-              'You are a helpful assistant that summarizes conversations accurately.',
+            content: 'You are a helpful assistant that summarizes conversations accurately.',
           },
           { role: 'user', content: prompt },
         ],
@@ -218,9 +214,7 @@ export class ConversationMemory {
     const messagesToKeep = allMessages.slice(-10);
 
     // Create summary
-    const messagesToSummarizeMapped = messagesToSummarize.map((m) =>
-      this.mapPrismaMessage(m)
-    );
+    const messagesToSummarizeMapped = messagesToSummarize.map((m) => this.mapPrismaMessage(m));
     const summary = await this.summarize(messagesToSummarizeMapped);
 
     // Delete old messages
@@ -288,10 +282,7 @@ export class ConversationMemory {
   /**
    * Search messages in a conversation
    */
-  async searchMessages(
-    conversationId: string,
-    query: string
-  ): Promise<Message[]> {
+  async searchMessages(conversationId: string, query: string): Promise<Message[]> {
     const messages = await this.prisma.message.findMany({
       where: {
         chatId: conversationId,
@@ -317,7 +308,8 @@ export class ConversationMemory {
       content: m.content,
       createdAt: m.createdAt,
       sources: m.sources ? (m.sources as unknown as Source[]) : undefined,
-      tokensUsed: (m.tokensUsed as { prompt: number; completion: number; total: number }) ?? undefined,
+      tokensUsed:
+        (m.tokensUsed as { prompt: number; completion: number; total: number }) ?? undefined,
     };
   }
 
@@ -399,7 +391,7 @@ export function formatMessagesForContext(
  */
 export function extractKeyFacts(messages: Message[]): string[] {
   const facts: string[] = [];
-  
+
   for (const msg of messages) {
     // Look for declarative statements in assistant responses
     if (msg.role === 'assistant') {

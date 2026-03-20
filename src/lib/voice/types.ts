@@ -10,20 +10,34 @@
 /**
  * Supported languages for speech recognition and synthesis
  */
-export type SupportedLanguage = 
-  | 'en-US' | 'en-GB' | 'en-AU' | 'en-CA' | 'en-IN'
-  | 'es-ES' | 'es-MX' | 'es-AR'
-  | 'fr-FR' | 'fr-CA'
-  | 'de-DE' | 'de-AT' | 'de-CH'
+export type SupportedLanguage =
+  | 'en-US'
+  | 'en-GB'
+  | 'en-AU'
+  | 'en-CA'
+  | 'en-IN'
+  | 'es-ES'
+  | 'es-MX'
+  | 'es-AR'
+  | 'fr-FR'
+  | 'fr-CA'
+  | 'de-DE'
+  | 'de-AT'
+  | 'de-CH'
   | 'it-IT'
-  | 'pt-BR' | 'pt-PT'
+  | 'pt-BR'
+  | 'pt-PT'
   | 'nl-NL'
   | 'pl-PL'
   | 'ru-RU'
   | 'ja-JP'
   | 'ko-KR'
-  | 'zh-CN' | 'zh-TW' | 'zh-HK'
-  | 'ar-SA' | 'ar-AE' | 'ar-EG'
+  | 'zh-CN'
+  | 'zh-TW'
+  | 'zh-HK'
+  | 'ar-SA'
+  | 'ar-AE'
+  | 'ar-EG'
   | 'hi-IN'
   | 'th-TH'
   | 'vi-VN'
@@ -132,19 +146,16 @@ export interface TTSSynthesisOptions {
 /**
  * TTS event types
  */
-export type TTSEventType = 
-  | 'start' 
-  | 'end' 
-  | 'error' 
-  | 'pause' 
-  | 'resume' 
-  | 'boundary' 
-  | 'mark';
+export type TTSEventType = 'start' | 'end' | 'error' | 'pause' | 'resume' | 'boundary' | 'mark';
 
 /**
  * TTS event callback
  */
-export type TTSEventCallback = (event: { type: TTSEventType; charIndex?: number; charLength?: number }) => void;
+export type TTSEventCallback = (event: {
+  type: TTSEventType;
+  charIndex?: number;
+  charLength?: number;
+}) => void;
 
 // =============================================================================
 // Voice Command Types
@@ -304,7 +315,9 @@ export interface UseVoiceCommandsReturn {
   /** Whether voice commands are enabled */
   isEnabled: boolean;
   /** Register a new command */
-  registerCommand: (command: Omit<VoiceCommand, 'handler'> & { handler: VoiceCommandHandler }) => void;
+  registerCommand: (
+    command: Omit<VoiceCommand, 'handler'> & { handler: VoiceCommandHandler }
+  ) => void;
   /** Unregister a command */
   unregisterCommand: (id: string) => void;
   /** Enable/disable voice commands */

@@ -3,10 +3,10 @@
  * Core RAG pipeline orchestrating retrieval, prompt building, and generation
  */
 
-import type { LLMProvider, LLMMessage, LLMOptions } from '@/lib/ai/llm';
+import type { LLMMessage, LLMOptions, LLMProvider } from '@/lib/ai/llm';
 import { buildSystemPromptWithContext } from '@/lib/ai/prompts/templates';
-import type { Source, RAGConfig } from '@/types';
-import { retrieveSources, buildContext } from './retrieval';
+import type { RAGConfig, Source } from '@/types';
+import { buildContext, retrieveSources } from './retrieval';
 
 // =============================================================================
 // Types
@@ -90,12 +90,10 @@ class DefaultPromptBuilder implements PromptBuilder {
     const systemPrompt = this.buildSystemPrompt(context, config);
 
     // Convert history to LLM messages (limit to last 6 for context window)
-    const historyMessages: LLMMessage[] = history
-      .slice(-6)
-      .map((msg) => ({
-        role: msg.role === 'user' ? 'user' : 'assistant',
-        content: msg.content,
-      }));
+    const historyMessages: LLMMessage[] = history.slice(-6).map((msg) => ({
+      role: msg.role === 'user' ? 'user' : 'assistant',
+      content: msg.content,
+    }));
 
     return [
       { role: 'system', content: systemPrompt },
@@ -110,11 +108,7 @@ class DefaultPromptBuilder implements PromptBuilder {
 // =============================================================================
 
 class DefaultRetrievalEngine implements RetrievalEngine {
-  async retrieve(
-    query: string,
-    userId: string,
-    config?: Partial<RAGConfig>
-  ): Promise<Source[]> {
+  async retrieve(query: string, userId: string, config?: Partial<RAGConfig>): Promise<Source[]> {
     return retrieveSources(query, userId, config);
   }
 }
@@ -265,7 +259,10 @@ export class RAGChain {
         type: 'error',
         data: {
           error: error instanceof Error ? error.message : 'Unknown error',
-          code: error instanceof Error && 'code' in error ? (error as { code: string }).code : 'UNKNOWN',
+          code:
+            error instanceof Error && 'code' in error
+              ? (error as { code: string }).code
+              : 'UNKNOWN',
         },
       };
       throw error;
@@ -281,8 +278,7 @@ export class RAGChain {
     }
 
     // Calculate average similarity score
-    const avgSimilarity =
-      sources.reduce((sum, s) => sum + (s.similarity ?? 0), 0) / sources.length;
+    const avgSimilarity = sources.reduce((sum, s) => sum + (s.similarity ?? 0), 0) / sources.length;
 
     // Confidence factors:
     // 1. Average similarity (0-1)
@@ -290,13 +286,12 @@ export class RAGChain {
     // 3. Diversity (prefer sources from different documents)
 
     const sourceCountFactor = Math.min(sources.length / 3, 1);
-    
+
     const documentIds = new Set(sources.map((s) => s.metadata.documentId));
     const diversityFactor = Math.min(documentIds.size / 2, 1);
 
     // Weighted combination
-    const confidence =
-      avgSimilarity * 0.5 + sourceCountFactor * 0.25 + diversityFactor * 0.25;
+    const confidence = avgSimilarity * 0.5 + sourceCountFactor * 0.25 + diversityFactor * 0.25;
 
     return Math.round(confidence * 100) / 100;
   }

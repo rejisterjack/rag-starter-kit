@@ -3,7 +3,14 @@
  * Generates PDF files from conversations using @react-pdf/renderer
  */
 
-import { Page, Document as PDFDocument, renderToBuffer, StyleSheet, Text, View } from '@react-pdf/renderer';
+import {
+  Page,
+  Document as PDFDocument,
+  renderToBuffer,
+  StyleSheet,
+  Text,
+  View,
+} from '@react-pdf/renderer';
 import type { ReactElement } from 'react';
 
 import type { ExportCitation, ExportConversation, ExportOptions, ExportProgress } from './types';
@@ -145,7 +152,10 @@ function ConversationPDF({ conversation, citations, options }: ConversationPDFPr
 
   return (
     <PDFDocument>
-      <Page size={(options.pageSize || 'A4') as PDFPageSize} style={styles.page as PDFPageProps['style']}>
+      <Page
+        size={(options.pageSize || 'A4') as PDFPageSize}
+        style={styles.page as PDFPageProps['style']}
+      >
         {/* Header */}
         {options.includeHeader !== false && (
           <View style={styles.header}>
@@ -322,7 +332,11 @@ export async function generateBulkPDF(
   const CombinedPDF = (): ReactElement => (
     <PDFDocument>
       {conversations.map((conversation, convIndex) => (
-        <Page key={convIndex} size={(options.pageSize || 'A4') as PDFPageSize} style={styles.page as PDFPageProps['style']}>
+        <Page
+          key={convIndex}
+          size={(options.pageSize || 'A4') as PDFPageSize}
+          style={styles.page as PDFPageProps['style']}
+        >
           <View style={styles.header}>
             <Text style={styles.title}>{conversation.title}</Text>
             <Text style={styles.subtitle}>ID: {conversation.id}</Text>

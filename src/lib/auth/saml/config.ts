@@ -1,6 +1,6 @@
 /**
  * SAML Configuration Module
- * 
+ *
  * Provides types, schemas, and configuration management for SAML 2.0 authentication.
  * Follows SAML 2.0 specification for enterprise Single Sign-On.
  */
@@ -180,13 +180,15 @@ export const DEFAULT_SSO_SETTINGS: WorkspaceSSOSettings = {
 // Validation Schemas
 // =============================================================================
 
-export const AttributeMappingSchema = z.object({
-  email: z.string().default('email'),
-  name: z.string().optional(),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  groups: z.string().optional(),
-}).catchall(z.string().optional());
+export const AttributeMappingSchema = z
+  .object({
+    email: z.string().default('email'),
+    name: z.string().optional(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    groups: z.string().optional(),
+  })
+  .catchall(z.string().optional());
 
 export const SamlConfigSchema = z.object({
   workspaceId: z.string().cuid(),
@@ -199,22 +201,32 @@ export const SamlConfigSchema = z.object({
   privateKey: z.string().optional(),
   wantAssertionsSigned: z.boolean().default(true),
   wantResponseSigned: z.boolean().default(true),
-  signatureAlgorithm: z.enum(['rsa-sha256', 'rsa-sha512', 'rsa-sha1', 'ecdsa-sha256', 'eddsa-ed25519']).default('rsa-sha256'),
+  signatureAlgorithm: z
+    .enum(['rsa-sha256', 'rsa-sha512', 'rsa-sha1', 'ecdsa-sha256', 'eddsa-ed25519'])
+    .default('rsa-sha256'),
   digestAlgorithm: z.enum(['sha256', 'sha512', 'sha1']).default('sha256'),
-  nameIdFormat: z.enum([
-    'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
-    'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
-    'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
-    'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
-    'urn:oasis:names:tc:SAML:1.1:nameid-format:X509SubjectName',
-  ]).default('urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'),
+  nameIdFormat: z
+    .enum([
+      'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
+      'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
+      'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
+      'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
+      'urn:oasis:names:tc:SAML:1.1:nameid-format:X509SubjectName',
+    ])
+    .default('urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'),
   attributeMapping: AttributeMappingSchema.default({ email: 'email' }),
   active: z.boolean().default(true),
 });
 
 export const WorkspaceSSOSettingsSchema = z.object({
   ssoEnabled: z.boolean().default(false),
-  ssoDomains: z.array(z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$/, 'Invalid domain format')).default([]),
+  ssoDomains: z
+    .array(
+      z
+        .string()
+        .regex(/^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$/, 'Invalid domain format')
+    )
+    .default([]),
   forceSSO: z.boolean().default(false),
   defaultRole: z.enum(['MEMBER', 'ADMIN', 'VIEWER']).default('MEMBER'),
   jitProvisioning: z.boolean().default(true),
@@ -291,10 +303,14 @@ export function generateSPMetadata(config: SPMetadataConfig): string {
   const contactPerson = config.contactPerson
     ? `  <ContactPerson contactType="technical">
     <EmailAddress>${config.contactPerson.technical.email}</EmailAddress>
-  </ContactPerson>${config.contactPerson.support ? `
+  </ContactPerson>${
+    config.contactPerson.support
+      ? `
   <ContactPerson contactType="support">
     <EmailAddress>${config.contactPerson.support.email}</EmailAddress>
-  </ContactPerson>` : ''}`
+  </ContactPerson>`
+      : ''
+  }`
     : '';
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -360,7 +376,7 @@ export function getCertificateExpiry(_cert: string): Date | null {
     //   .replace(/-----BEGIN CERTIFICATE-----/g, '')
     //   .replace(/-----END CERTIFICATE-----/g, '')
     //   .replace(/\s/g, '');
-    
+
     // Parse the certificate to find the notAfter date
     // In a real implementation, you'd use a library like @peculiar/x509 or node-forge
     // For now, return null to indicate we need proper parsing
@@ -445,15 +461,20 @@ export async function parseIdPMetadata(metadataXml: string): Promise<ParsedIdPMe
   // Extract entity ID from EntityDescriptor
   const entityIdMatch = metadataXml.match(/<md:EntityDescriptor[^>]*entityID="([^"]*)"/);
   const entityId = entityIdMatch?.[1] ?? metadataXml.match(/entityID="([^"]*)"/)?.[1];
-  
+
   if (!entityId) {
     throw new SamlError('Failed to extract entityId from IdP metadata', 'CONFIG_NOT_FOUND', 400);
   }
 
   // Extract SSO URL (entryPoint)
-  const ssoUrlMatch = metadataXml.match(/<md:SingleSignOnService[^>]*Binding="[^"]*HTTP-Redirect[^"]*"[^>]*Location="([^"]*)"/);
-  const entryPoint = ssoUrlMatch?.[1] ?? 
-    metadataXml.match(/<md:SingleSignOnService[^>]*Location="([^"]*)"[^>]*Binding="[^"]*HTTP-Redirect/)?.[1] ??
+  const ssoUrlMatch = metadataXml.match(
+    /<md:SingleSignOnService[^>]*Binding="[^"]*HTTP-Redirect[^"]*"[^>]*Location="([^"]*)"/
+  );
+  const entryPoint =
+    ssoUrlMatch?.[1] ??
+    metadataXml.match(
+      /<md:SingleSignOnService[^>]*Location="([^"]*)"[^>]*Binding="[^"]*HTTP-Redirect/
+    )?.[1] ??
     metadataXml.match(/SingleSignOnService[^>]*Location="([^"]*)"/)?.[1];
 
   if (!entryPoint) {
@@ -461,17 +482,27 @@ export async function parseIdPMetadata(metadataXml: string): Promise<ParsedIdPMe
   }
 
   // Extract SLO URL (logoutUrl) - optional
-  const sloUrlMatch = metadataXml.match(/<md:SingleLogoutService[^>]*Binding="[^"]*HTTP-Redirect[^"]*"[^>]*Location="([^"]*)"/);
-  const logoutUrl = sloUrlMatch?.[1] ?? 
-    metadataXml.match(/<md:SingleLogoutService[^>]*Location="([^"]*)"[^>]*Binding="[^"]*HTTP-Redirect/)?.[1] ??
+  const sloUrlMatch = metadataXml.match(
+    /<md:SingleLogoutService[^>]*Binding="[^"]*HTTP-Redirect[^"]*"[^>]*Location="([^"]*)"/
+  );
+  const logoutUrl =
+    sloUrlMatch?.[1] ??
+    metadataXml.match(
+      /<md:SingleLogoutService[^>]*Location="([^"]*)"[^>]*Binding="[^"]*HTTP-Redirect/
+    )?.[1] ??
     metadataXml.match(/SingleLogoutService[^>]*Location="([^"]*)"/)?.[1];
 
   // Extract X509Certificate
   const certMatch = metadataXml.match(/<ds:X509Certificate>([^<]*)<\/ds:X509Certificate>/);
-  const certificate = certMatch?.[1] ?? metadataXml.match(/X509Certificate>([^<]*)<\/X509Certificate>/)?.[1];
+  const certificate =
+    certMatch?.[1] ?? metadataXml.match(/X509Certificate>([^<]*)<\/X509Certificate>/)?.[1];
 
   if (!certificate) {
-    throw new SamlError('Failed to extract certificate from IdP metadata', 'INVALID_CERTIFICATE', 400);
+    throw new SamlError(
+      'Failed to extract certificate from IdP metadata',
+      'INVALID_CERTIFICATE',
+      400
+    );
   }
 
   // Format certificate with PEM headers if not present
