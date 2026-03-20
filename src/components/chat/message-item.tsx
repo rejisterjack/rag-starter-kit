@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
 import { Bot, Check, Copy, Pencil, Trash2, User, X } from 'lucide-react';
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,7 +27,6 @@ export interface Message {
   isStreaming?: boolean;
 }
 
-// Re-export Source for convenience
 export type { Source } from './citations';
 
 interface MessageItemProps {
@@ -70,18 +70,29 @@ export function MessageItem({
   };
 
   return (
-    <div className={cn('group relative py-6', isUser ? 'bg-background' : 'bg-muted/30')}>
-      <div className="mx-auto flex max-w-3xl gap-4 px-4">
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className={cn(
+        'group relative py-6 px-4 mb-4 rounded-3xl transition-all duration-300',
+        isUser 
+          ? 'ml-auto max-w-3xl bg-primary/10 border border-primary/20 shadow-[0_0_20px_-5px_rgba(124,58,237,0.15)] mr-4' 
+          : 'glass max-w-3xl mr-auto ml-4'
+      )}
+    >
+      <div className="flex gap-4">
         {/* Avatar */}
-        <div className="flex shrink-0 flex-col items-center">
+        <div className="flex shrink-0 flex-col items-center mt-1">
           <Avatar
             className={cn(
-              'h-8 w-8',
-              isUser ? 'bg-primary text-primary-foreground' : 'bg-green-600 text-white'
+              'h-9 w-9 ring-2 ring-offset-2 ring-offset-background shadow-md',
+              isUser ? 'bg-primary text-primary-foreground ring-primary/30' : 'bg-emerald-500 text-white ring-emerald-500/30'
             )}
           >
             <AvatarFallback>
-              {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+              {isUser ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
             </AvatarFallback>
           </Avatar>
         </div>
@@ -89,71 +100,73 @@ export function MessageItem({
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="mb-1 flex items-center gap-2">
-            <span className="text-sm font-semibold">{isUser ? 'You' : 'Assistant'}</span>
-            <span className="text-xs text-muted-foreground">
+          <div className="mb-2 flex items-center gap-2">
+            <span className={cn("text-sm font-semibold tracking-tight", isUser ? "text-primary" : "text-emerald-500")}>
+              {isUser ? 'You' : 'Assistant'}
+            </span>
+            <span className="text-xs text-muted-foreground font-medium">
               {formatRelativeTime(message.createdAt)}
             </span>
             {message.model && (
-              <span className="text-xs text-muted-foreground">· {message.model}</span>
+              <span className="text-xs text-muted-foreground/60">· {message.model}</span>
             )}
           </div>
 
           {/* Message content */}
           {isEditing ? (
-            <div className="space-y-2">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
               <Textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                className="min-h-[100px] resize-none"
+                className="min-h-[120px] resize-none bg-background/50 border-white/10 focus-visible:ring-primary/50 rounded-xl"
                 autoFocus
               />
               <div className="flex gap-2">
-                <Button size="sm" onClick={handleSaveEdit}>
-                  <Check className="mr-1 h-4 w-4" />
-                  Save
+                <Button size="sm" onClick={handleSaveEdit} className="rounded-full shadow-md">
+                  <Check className="mr-1.5 h-4 w-4" /> Save
                 </Button>
-                <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
-                  <X className="mr-1 h-4 w-4" />
-                  Cancel
+                <Button size="sm" variant="ghost" onClick={handleCancelEdit} className="rounded-full">
+                  <X className="mr-1.5 h-4 w-4" /> Cancel
                 </Button>
               </div>
-            </div>
+            </motion.div>
           ) : (
             <>
-              <div className="text-foreground">
+              <div className="text-foreground/90 leading-relaxed prose prose-invert max-w-none">
                 <Markdown content={message.content} onCitationClick={onCitationClick} />
               </div>
 
               {/* Sources for assistant messages */}
-              {isAssistant && showSources && message.sources && message.sources.length > 0 && (
-                <div className="mt-4">
-                  <CitationList
-                    sources={message.sources}
-                    onSourceClick={(source) => onCitationClick?.(source.index)}
-                  />
-                </div>
-              )}
+              <AnimatePresence>
+                {isAssistant && showSources && message.sources && message.sources.length > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }} 
+                    animate={{ opacity: 1, height: "auto" }} 
+                    className="mt-5 pt-4 border-t border-border/40"
+                  >
+                    <CitationList
+                      sources={message.sources}
+                      onSourceClick={(source) => onCitationClick?.(source.index)}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </>
           )}
         </div>
 
         {/* Actions */}
         {!isEditing && (
-          <div className="opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="absolute right-4 top-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100 bg-background/80 backdrop-blur-md rounded-full shadow-sm p-0.5 border border-border/50">
             <TooltipProvider>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopy}>
-                      {copied ? (
-                        <Check className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-foreground/5" onClick={handleCopy}>
+                      {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent className="rounded-lg text-xs border-none shadow-xl bg-popover/90 backdrop-blur-md">
                     <p>{copied ? 'Copied!' : 'Copy message'}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -161,37 +174,22 @@ export function MessageItem({
                 {(isUser || isAssistant) && (onEdit || onDelete) && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-foreground/5 text-muted-foreground">
                         <span className="sr-only">More options</span>
-                        <svg
-                          width="15"
-                          height="15"
-                          viewBox="0 0 15 15"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4"
-                        >
-                          <path
-                            d="M3.625 7.5C3.625 7.15482 3.905 6.875 4.25 6.875C4.595 6.875 4.875 7.15482 4.875 7.5C4.875 7.84518 4.595 8.125 4.25 8.125C3.905 8.125 3.625 7.84518 3.625 7.5ZM7.125 7.5C7.125 7.15482 7.405 6.875 7.75 6.875C8.095 6.875 8.375 7.15482 8.375 7.5C8.375 7.84518 8.095 8.125 7.75 8.125C7.405 8.125 7.125 7.84518 7.125 7.5ZM10.625 7.5C10.625 7.15482 10.905 6.875 11.25 6.875C11.595 6.875 11.875 7.15482 11.875 7.5C11.875 7.84518 11.595 8.125 11.25 8.125C10.905 8.125 10.625 7.84518 10.625 7.5Z"
-                            fill="currentColor"
-                          />
+                        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
+                          <path d="M3.625 7.5C3.625 7.15482 3.905 6.875 4.25 6.875C4.595 6.875 4.875 7.15482 4.875 7.5C4.875 7.84518 4.595 8.125 4.25 8.125C3.905 8.125 3.625 7.84518 3.625 7.5ZM7.125 7.5C7.125 7.15482 7.405 6.875 7.75 6.875C8.095 6.875 8.375 7.15482 8.375 7.5C8.375 7.84518 8.095 8.125 7.75 8.125C7.405 8.125 7.125 7.84518 7.125 7.5ZM10.625 7.5C10.625 7.15482 10.905 6.875 11.25 6.875C11.595 6.875 11.875 7.15482 11.875 7.5C11.875 7.84518 11.595 8.125 11.25 8.125C10.905 8.125 10.625 7.84518 10.625 7.5Z" fill="currentColor" />
                         </svg>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="rounded-xl glass shadow-2xl border-white/10 min-w-32">
                       {isUser && onEdit && (
-                        <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
+                        <DropdownMenuItem onClick={() => setIsEditing(true)} className="rounded-md focus:bg-primary/10 focus:text-primary transition-colors cursor-pointer">
+                          <Pencil className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
                       )}
                       {onDelete && (
-                        <DropdownMenuItem
-                          onClick={() => onDelete(message.id)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                        <DropdownMenuItem onClick={() => onDelete(message.id)} className="rounded-md text-destructive focus:bg-destructive/10 focus:text-destructive transition-colors cursor-pointer">
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
@@ -202,6 +200,6 @@ export function MessageItem({
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -1,5 +1,7 @@
 import { Suspense } from 'react';
 
+export const dynamic = 'force-dynamic';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { prisma } from '@/lib/db';
 import { getAuditLogs } from '@/lib/audit/audit-logger';
@@ -73,68 +75,57 @@ async function DashboardContent() {
       />
 
       {/* Recent Activity */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Audit Logs</CardTitle>
-            <CardDescription>Latest system events and activities</CardDescription>
+      <div className="grid gap-8 lg:grid-cols-2 mt-8">
+        <Card className="glass backdrop-blur-xl border-white/5 shadow-2xl">
+          <CardHeader className="border-b border-border/40 pb-4 mb-4">
+            <CardTitle className="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">Recent Audit Logs</CardTitle>
+            <CardDescription className="font-medium text-muted-foreground">Latest system events and activities</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2">
             <RecentAuditLogs logs={stats.recentAuditLogs} />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>System Health</CardTitle>
-            <CardDescription>Overview of system components</CardDescription>
+        <Card className="glass backdrop-blur-xl border-white/5 shadow-2xl h-fit">
+          <CardHeader className="border-b border-border/40 pb-4 mb-4">
+            <CardTitle className="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">System Health</CardTitle>
+            <CardDescription className="font-medium text-muted-foreground">Overview of system components</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Database</span>
-              <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-100">
-                Operational
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Authentication</span>
-              <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-100">
-                Operational
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">AI Services</span>
-              <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-100">
-                Operational
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Background Jobs</span>
-              <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-100">
-                Operational
-              </span>
-            </div>
+          <CardContent className="space-y-5 pt-2">
+            {[
+              { name: 'Database', status: 'Operational' },
+              { name: 'Authentication', status: 'Operational' },
+              { name: 'AI Services', status: 'Operational' },
+              { name: 'Background Jobs', status: 'Operational' }
+            ].map((system) => (
+              <div key={system.name} className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/5 transition-all">
+                <span className="text-sm font-semibold tracking-tight text-foreground/90">{system.name}</span>
+                <span className="inline-flex items-center rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-emerald-400 shadow-sm">
+                  {system.status}
+                </span>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>
 
       {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common administrative tasks</CardDescription>
+      <Card className="glass backdrop-blur-xl border-white/5 shadow-2xl mt-8">
+        <CardHeader className="border-b border-border/40 pb-4 mb-4">
+          <CardTitle className="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">Quick Actions</CardTitle>
+          <CardDescription className="font-medium text-muted-foreground">Common administrative tasks</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-2">
           <div className="flex flex-wrap gap-4">
             <a
               href="/admin/audit-logs"
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              className="inline-flex items-center justify-center rounded-full bg-primary/90 px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
             >
               View Audit Logs
             </a>
             <a
               href="/admin/sso"
-              className="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
+              className="inline-flex items-center justify-center rounded-full bg-white/10 border border-white/10 px-6 py-2.5 text-sm font-semibold text-foreground hover:bg-white/20 shadow-lg transition-all hover:-translate-y-0.5"
             >
               Manage SSO
             </a>

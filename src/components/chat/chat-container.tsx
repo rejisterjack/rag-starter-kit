@@ -1,10 +1,12 @@
-'use client';
+"use client";
 
 import { Menu, Moon, PanelLeft, Plus, Settings, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type React from 'react';
 import { useCallback, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,84 +76,103 @@ export function ChatContainer({
   const hasMessages = messages.length > 0 || isStreaming;
 
   return (
-    <div className={cn('flex h-screen bg-background', className)}>
+    <div className={cn('flex h-screen bg-transparent relative overflow-hidden', className)}>
+      {/* Dynamic Background Noise/Gradient optional here since we're in app layout */}
+      <div className="absolute inset-0 bg-background/40 backdrop-blur-3xl -z-10" />
+
       {/* Mobile sidebar */}
       {sidebar && (
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="absolute left-4 top-4 z-50 lg:hidden">
+            <Button variant="ghost" size="icon" className="absolute left-4 top-4 z-50 lg:hidden shadow-md glass rounded-full">
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-80 p-0">
+          <SheetContent side="left" className="w-[85vw] sm:w-[380px] p-0 border-r-0 glass shadow-2xl">
             {sidebar}
           </SheetContent>
         </Sheet>
       )}
 
       {/* Desktop sidebar */}
-      {sidebar && <div className="hidden w-80 border-r lg:block">{sidebar}</div>}
+      {sidebar && (
+        <div className="hidden w-80 lg:block border-r border-white/5 relative z-20">
+          {sidebar}
+        </div>
+      )}
 
       {/* Main chat area */}
-      <div className="flex flex-1 flex-col min-w-0">
+      <div className="flex flex-1 flex-col min-w-0 relative z-10">
         {/* Header */}
-        <header className="flex h-14 items-center justify-between border-b px-4">
+        <header className="flex h-16 items-center justify-between border-b border-border/40 px-6 backdrop-blur-md bg-foreground/5 relative z-30 shadow-sm">
           <div className="flex items-center gap-2 lg:hidden">
-            {/* Spacer for mobile menu button */}
             <div className="w-8" />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {onNewChat && (
-              <Button variant="ghost" size="sm" className="gap-2" onClick={onNewChat}>
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">New chat</span>
-              </Button>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button variant="default" size="sm" className="gap-2 rounded-full shadow-lg shadow-primary/20 bg-primary/90 hover:bg-primary" onClick={onNewChat}>
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline font-medium">New Session</span>
+                </Button>
+              </motion.div>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Sources toggle (desktop) */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden md:flex"
-              onClick={() => setIsSourcesInlineCollapsed(!isSourcesInlineCollapsed)}
-            >
-              <PanelLeft className="h-5 w-5" />
-            </Button>
+          <div className="flex items-center gap-1.5 bg-foreground/5 p-1 rounded-full border border-white/5">
+            {/* Sources toggle */}
+            <TooltipProvider delayDuration={0}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hidden md:flex rounded-full h-8 w-8 hover:bg-background/50 text-muted-foreground hover:text-foreground"
+                onClick={() => setIsSourcesInlineCollapsed(!isSourcesInlineCollapsed)}
+              >
+                <PanelLeft className="h-4 w-4" />
+              </Button>
+            </TooltipProvider>
+
+            <div className="w-px h-4 bg-border/50 hidden md:block" />
 
             {/* Theme toggle */}
             <Button
               variant="ghost"
               size="icon"
+              className="rounded-full h-8 w-8 hover:bg-background/50 text-muted-foreground hover:text-foreground"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             >
-              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
 
             {/* Settings */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Settings className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-background/50 text-muted-foreground hover:text-foreground">
+                  <Settings className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Settings</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Model: GPT-4o-mini</DropdownMenuItem>
-                <DropdownMenuItem>Temperature: 0.7</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>View all settings</DropdownMenuItem>
+              <DropdownMenuContent align="end" className="glass border-border/50 shadow-2xl rounded-xl min-w-48 mt-2 p-2">
+                <DropdownMenuLabel className="font-semibold text-foreground">Preferences</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-border/50" />
+                <DropdownMenuItem className="rounded-lg focus:bg-primary/20 focus:text-primary cursor-pointer transition-colors">
+                  Model: GPT-4o-mini
+                </DropdownMenuItem>
+                <DropdownMenuItem className="rounded-lg focus:bg-primary/20 focus:text-primary cursor-pointer transition-colors">
+                  Temperature: 0.7
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-border/50" />
+                <DropdownMenuItem className="rounded-lg focus:bg-primary/20 focus:text-primary cursor-pointer transition-colors">
+                  Open Settings
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </header>
 
-        {/* Chat content */}
-        <div className="flex flex-1 overflow-hidden">
-          <div className="flex flex-1 flex-col min-w-0">
+        {/* Chat content bounds */}
+        <div className="flex flex-1 overflow-hidden relative">
+          <div className="flex flex-1 flex-col min-w-0 bg-transparent">
             {hasMessages ? (
               <>
                 <MessageList
@@ -165,11 +186,19 @@ export function ChatContainer({
                   onCitationClick={handleCitationClick}
                   onCancelStreaming={onCancelStreaming}
                 />
-                <MessageInput
-                  onSend={onSendMessage}
-                  isLoading={isLoading || isStreaming}
-                  disabled={isLoading}
-                />
+                
+                {/* Input area gets a nice fade up floating container */}
+                <motion.div 
+                  initial={{ y: 20, opacity: 0 }} 
+                  animate={{ y: 0, opacity: 1 }} 
+                  className="px-4 pb-6 pt-4 bg-gradient-to-t from-background via-background/90 to-transparent"
+                >
+                  <MessageInput
+                    onSend={onSendMessage}
+                    isLoading={isLoading || isStreaming}
+                    disabled={isLoading}
+                  />
+                </motion.div>
               </>
             ) : (
               <EmptyState
@@ -196,7 +225,7 @@ export function ChatContainer({
         </div>
       </div>
 
-      {/* Sources panel (mobile/sheet) */}
+      {/* Mobile Sources Modal */}
       <SourcesPanel
         sources={sources}
         isOpen={isSourcesPanelOpen}

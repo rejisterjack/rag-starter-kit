@@ -1,6 +1,9 @@
+'use client';
+
 import type { AuditLogResult } from '@/lib/audit/audit-logger';
 import { Badge } from '@/components/ui/badge';
 import { AuditEvent, AuditSeverity } from '@prisma/client';
+import { motion, type Variants } from 'framer-motion';
 
 interface RecentAuditLogsProps {
   logs: AuditLogResult[];
@@ -11,7 +14,6 @@ function getSeverityColor(
 ): 'destructive' | 'warning' | 'secondary' | 'info' {
   switch (severity) {
     case 'CRITICAL':
-      return 'destructive';
     case 'ERROR':
       return 'destructive';
     case 'WARNING':
@@ -54,38 +56,52 @@ function formatRelativeTime(date: Date): string {
   return new Date(date).toLocaleDateString();
 }
 
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.3 },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, x: -10 },
+  show: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 100 } },
+};
+
 export function RecentAuditLogs({ logs }: RecentAuditLogsProps): React.ReactElement {
   if (logs.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
+      <div className="text-center py-8 text-muted-foreground/60 font-medium">
         <p>No recent activity</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-3">
       {logs.map((log) => (
-        <div
+        <motion.div
+          variants={itemVariants}
           key={log.id}
-          className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+          className="flex items-start gap-4 p-4 rounded-xl glass border border-white/5 hover:bg-white/5 transition-all duration-300"
         >
-          <span className="text-lg shrink-0">{getEventIcon(log.event)}</span>
+          <div className="text-2xl shrink-0 h-10 w-10 flex items-center justify-center bg-background/50 rounded-full shadow-inner">{getEventIcon(log.event)}</div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium text-sm">{log.event}</span>
-              <Badge variant={getSeverityColor(log.severity)} className="text-xs">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="font-semibold text-sm tracking-tight text-foreground/90">{log.event}</span>
+              <Badge variant={getSeverityColor(log.severity)} className="text-[10px] uppercase font-bold tracking-wider px-2 py-0 border-none shadow-sm">
                 {log.severity}
               </Badge>
             </div>
-            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground/80">
               {log.user ? <span className="truncate">{log.user.email}</span> : <span>System</span>}
-              <span>•</span>
+              <span className="opacity-50">•</span>
               <span>{formatRelativeTime(log.createdAt)}</span>
             </div>
           </div>
-        </div>
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 }
