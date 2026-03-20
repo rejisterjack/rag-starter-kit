@@ -750,3 +750,37 @@ model SamlConnection {
   @@index([enabled])
   @@map("saml_connections")
 }
+
+// ============================================================================
+// Webhook Models
+// ============================================================================
+
+model Webhook {
+  id          String        @id @default(cuid())
+  name        String
+  url         String
+  secret      String        // For HMAC signature
+  events      String[]      // Events to subscribe to
+  status      WebhookStatus @default(ACTIVE)
+  
+  // Relations
+  workspaceId String
+  createdById String
+  
+  // Stats
+  lastTriggeredAt DateTime?
+  failureCount    Int       @default(0)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([workspaceId])
+  @@index([status])
+  @@map("webhooks")
+}
+
+enum WebhookStatus {
+  ACTIVE
+  PAUSED
+  FAILED
+}

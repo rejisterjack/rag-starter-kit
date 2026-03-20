@@ -17,8 +17,9 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm@10.0.0
 
-# Copy package files
+# Copy package files and prisma schema (needed for postinstall)
 COPY package.json pnpm-lock.yaml ./
+COPY prisma ./prisma
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -97,4 +98,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
 
 # Start the application
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
