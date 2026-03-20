@@ -5,8 +5,12 @@ import type { Header } from "next/dist/lib/load-custom-routes";
 const nextConfig: NextConfig = {
   output: "standalone",
   experimental: {
-    // ppr: true,  // Disabled - requires canary version
-    // dynamicIO: true,  // Disabled - renamed to cacheComponents in newer versions
+    // Partial Prerendering - improves TTFB by streaming static shell
+    // Requires Next.js 15+ with compatible app structure
+    ppr: true,
+    
+    // Dynamic IO - enables async/await in Server Components
+    dynamicIO: true,
   },
   webpack: (config, { isServer }): webpack.Configuration => {
     // Exclude playwright from client-side bundle

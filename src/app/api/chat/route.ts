@@ -20,13 +20,13 @@ import { prisma } from '@/lib/db';
 import { CitationHandler, sourcesToChunks } from '@/lib/rag/citations';
 import { ConversationMemory } from '@/lib/rag/memory';
 import { retrieveSources } from '@/lib/rag/retrieval';
+import { estimateMessageTokens } from '@/lib/rag/token-budget';
 import { validateChatInput } from '@/lib/security/input-validator';
 import {
   addRateLimitHeaders,
   checkApiRateLimit,
   getRateLimitIdentifier,
 } from '@/lib/security/rate-limiter';
-// import { estimateMessageTokens } from '@/lib/rag/token-budget';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 import type { RAGConfig } from '@/types';
 
@@ -189,6 +189,19 @@ export async function POST(req: Request) {
       ...history,
       { role: 'user', content: userMessage },
     ];
+
+    // Step 10b: Estimate token usage for budget tracking
+    const estimatedTokens = estimateMessageTokens(llmMessages);
+    if (estimatedTokens > config.maxTokens * 2) {
+      return NextResponse.json(
+        {
+          error: 'Message too long',
+          code: 'TOKEN_LIMIT',
+          details: `Estimated tokens (${estimatedTokens}) exceeds limit (${config.maxTokens * 2})`,
+        },
+        { status: 400 }
+      );
+    }
 
     // Step 11: Save user message to database
     if (effectiveConversationId) {

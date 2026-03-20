@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { emailService } from '@/lib/notifications/email';
 
-import type { MemberRole, Workspace, WorkspaceMember } from './types';
+import type { MemberRole, Workspace, WorkspaceMember, WorkspacePlan } from './types';
 
 // =============================================================================
 // Configuration
@@ -16,12 +16,12 @@ import type { MemberRole, Workspace, WorkspaceMember } from './types';
 function getAppUrl(): string {
   const url = process.env.NEXT_PUBLIC_APP_URL;
   if (url) return url;
-  
+
   // Allow localhost fallback only in development
   if (process.env.NODE_ENV === 'development') {
     return 'http://localhost:3000';
   }
-  
+
   throw new Error('NEXT_PUBLIC_APP_URL environment variable is required in production');
 }
 
@@ -208,7 +208,7 @@ export async function getWorkspaceById(workspaceId: string): Promise<WorkspaceWi
     logoUrl: result.logoUrl,
     avatar: result.logoUrl,
     ownerId: result.ownerId,
-    plan: 'FREE',
+    plan: ((result.settings as Record<string, unknown>)?.plan as WorkspacePlan) || 'FREE',
     settings: result.settings as Record<string, unknown> | null,
     createdAt: result.createdAt,
     updatedAt: result.updatedAt,
@@ -435,8 +435,11 @@ export async function switchWorkspace(userId: string, workspaceId: string): Prom
     throw new Error('Access denied to workspace');
   }
 
-  // Update user's current workspace preference (stored in session via JWT callback)
-  // This is handled by the session callback in auth config
+  // Persist the active workspace to the database
+  await prisma.user.update({
+    where: { id: userId },
+    data: { activeWorkspaceId: workspaceId },
+  });
 }
 
 /**
@@ -582,10 +585,18 @@ export async function inviteMember(
     });
 
     if (!emailResult.success) {
-      // If email fails, delete the invitation
-      await prisma.workspaceInvitation.delete({
-        where: { id: invitation.id },
-      });
+      // If email fails, attempt to delete the invitation (best effort)
+      try {
+        await prisma.workspaceInvitation.delete({
+          where: { id: invitation.id },
+        });
+      } catch (deleteError) {
+        // Log but don't fail - invitation exists but email wasn't sent
+        logger.error('Failed to clean up invitation after email failure', {
+          invitationId: invitation.id,
+          error: deleteError instanceof Error ? deleteError.message : 'Unknown',
+        });
+      }
       return { success: false, error: `Failed to send invitation email: ${emailResult.error}` };
     }
 
@@ -599,13 +610,16 @@ export async function inviteMember(
 
     return { success: true, inviteToken };
   } catch (error) {
-    console.error('Invite member error:', error);
+    logger.error('Invite member error', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
     return { success: false, error: 'Failed to invite member' };
   }
 }
 
 /**
  * Accept a workspace invitation
+ * Uses database transaction to ensure atomicity
  */
 export async function acceptInvitation(
   token: string,
@@ -666,20 +680,23 @@ export async function acceptInvitation(
       return { success: true, workspaceId: invitation.workspaceId };
     }
 
-    // Create membership
-    await prisma.workspaceMember.create({
-      data: {
-        workspaceId: invitation.workspaceId,
-        userId,
-        role: invitation.role,
-        status: 'ACTIVE',
-      },
-    });
+    // Use transaction to ensure atomicity of member creation + invitation update
+    await prisma.$transaction(async (tx) => {
+      // Create membership
+      await tx.workspaceMember.create({
+        data: {
+          workspaceId: invitation.workspaceId,
+          userId,
+          role: invitation.role,
+          status: 'ACTIVE',
+        },
+      });
 
-    // Mark invitation as accepted
-    await prisma.workspaceInvitation.update({
-      where: { token },
-      data: { status: 'ACCEPTED', acceptedAt: new Date() },
+      // Mark invitation as accepted
+      await tx.workspaceInvitation.update({
+        where: { token },
+        data: { status: 'ACCEPTED', acceptedAt: new Date() },
+      });
     });
 
     // Log acceptance
@@ -692,7 +709,9 @@ export async function acceptInvitation(
 
     return { success: true, workspaceId: invitation.workspaceId };
   } catch (error) {
-    logger.error('Accept invitation error', { error: error instanceof Error ? error.message : 'Unknown' });
+    logger.error('Accept invitation error', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
     return { success: false, error: 'Failed to accept invitation' };
   }
 }
@@ -737,7 +756,9 @@ export async function cancelInvitation(
 
     return { success: true };
   } catch (error) {
-    logger.error('Cancel invitation error', { error: error instanceof Error ? error.message : 'Unknown' });
+    logger.error('Cancel invitation error', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
     return { success: false, error: 'Failed to cancel invitation' };
   }
 }
@@ -850,7 +871,9 @@ export async function removeMember(
 
     return { success: true };
   } catch (error) {
-    console.error('Remove member error:', error);
+    logger.error('Remove member error', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
     return { success: false, error: 'Failed to remove member' };
   }
 }
@@ -895,7 +918,9 @@ export async function updateMemberRole(
 
     return { success: true };
   } catch (error) {
-    console.error('Update member role error:', error);
+    logger.error('Update member role error', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
     return { success: false, error: 'Failed to update member role' };
   }
 }
@@ -939,7 +964,9 @@ export async function leaveWorkspace(
 
     return { success: true };
   } catch (error) {
-    console.error('Leave workspace error:', error);
+    logger.error('Leave workspace error', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
     return { success: false, error: 'Failed to leave workspace' };
   }
 }

@@ -5,6 +5,23 @@
  * Falls back to console logging in development if not configured.
  */
 
+// =============================================================================
+// HTML Escaping Utility (Security)
+// =============================================================================
+
+/**
+ * Escape HTML special characters to prevent XSS attacks
+ * Must be used for all dynamic content in email templates
+ */
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // Type definitions for nodemailer (used with dynamic import)
 interface NodemailerTransport {
   sendMail(options: {
@@ -87,13 +104,12 @@ export class EmailService {
           return await this.sendViaResend(to, from, template);
         case 'sendgrid':
           return await this.sendViaSendGrid(to, from, template);
-        case 'console':
         default:
           return await this.sendViaConsole(to, from, template);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Email sending error:', errorMsg);
+      logger.error('Email sending error', { error: errorMsg });
       return { success: false, error: errorMsg };
     }
   }
@@ -141,18 +157,18 @@ export class EmailService {
     const expiresDate = expiresAt.toLocaleDateString();
 
     return {
-      subject: `${invitedByName} invited you to join ${workspaceName}`,
+      subject: `${escapeHtml(invitedByName)} invited you to join ${escapeHtml(workspaceName)}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #333;">You're Invited!</h1>
-          <p><strong>${invitedByName}</strong> has invited you to join the workspace <strong>${workspaceName}</strong> on RAG Starter Kit.</p>
+          <p><strong>${escapeHtml(invitedByName)}</strong> has invited you to join the workspace <strong>${escapeHtml(workspaceName)}</strong> on RAG Starter Kit.</p>
           <p>Click the button below to accept the invitation:</p>
-          <a href="${inviteUrl}" style="display: inline-block; padding: 12px 24px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">Accept Invitation</a>
+          <a href="${escapeHtml(inviteUrl)}" style="display: inline-block; padding: 12px 24px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">Accept Invitation</a>
           <p style="margin-top: 20px; color: #666;">
             This invitation will expire on <strong>${expiresDate}</strong>.
           </p>
           <p style="color: #666; font-size: 12px;">
-            If the button doesn't work, copy and paste this link: ${inviteUrl}
+            If the button doesn't work, copy and paste this link: ${escapeHtml(inviteUrl)}
           </p>
         </div>
       `,
@@ -177,9 +193,9 @@ export class EmailService {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #333;">Password Reset</h1>
-          <p>Hi ${userName},</p>
+          <p>Hi ${escapeHtml(userName)},</p>
           <p>We received a request to reset your password. Click the button below to create a new password:</p>
-          <a href="${resetUrl}" style="display: inline-block; padding: 12px 24px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a>
+          <a href="${escapeHtml(resetUrl)}" style="display: inline-block; padding: 12px 24px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a>
           <p style="margin-top: 20px; color: #666;">
             This link will expire on <strong>${expiresDate} at ${expiresTime}</strong>.
           </p>
@@ -206,16 +222,16 @@ export class EmailService {
     commentUrl: string;
   }): EmailTemplate {
     return {
-      subject: `${mentionedBy} mentioned you in ${conversationTitle}`,
+      subject: `${escapeHtml(mentionedBy)} mentioned you in ${escapeHtml(conversationTitle)}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #333;">You were mentioned</h1>
-          <p>Hi ${userName},</p>
-          <p><strong>${mentionedBy}</strong> mentioned you in <strong>${conversationTitle}</strong>:</p>
+          <p>Hi ${escapeHtml(userName)},</p>
+          <p><strong>${escapeHtml(mentionedBy)}</strong> mentioned you in <strong>${escapeHtml(conversationTitle)}</strong>:</p>
           <blockquote style="border-left: 3px solid #0070f3; padding-left: 15px; color: #555;">
-            ${commentContent}
+            ${escapeHtml(commentContent)}
           </blockquote>
-          <a href="${commentUrl}" style="display: inline-block; padding: 12px 24px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">View Conversation</a>
+          <a href="${escapeHtml(commentUrl)}" style="display: inline-block; padding: 12px 24px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">View Conversation</a>
         </div>
       `,
       text: `${mentionedBy} mentioned you in ${conversationTitle}: ${commentContent}. View at ${commentUrl}`,
@@ -352,11 +368,18 @@ export class EmailService {
     from: string,
     template: EmailTemplate
   ): Promise<{ success: boolean; error?: string }> {
+    // Console provider logs email content for development/debugging
+    // biome-ignore lint/suspicious/noConsole: Intentional console output for console email provider
     console.log('📧 Email (Console Mode):');
+    // biome-ignore lint/suspicious/noConsole: Intentional console output for console email provider
     console.log('From:', from);
+    // biome-ignore lint/suspicious/noConsole: Intentional console output for console email provider
     console.log('To:', to);
+    // biome-ignore lint/suspicious/noConsole: Intentional console output for console email provider
     console.log('Subject:', template.subject);
+    // biome-ignore lint/suspicious/noConsole: Intentional console output for console email provider
     console.log('Text:', template.text);
+    // biome-ignore lint/suspicious/noConsole: Intentional console output for console email provider
     console.log('---');
 
     return { success: true };
