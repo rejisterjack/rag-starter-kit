@@ -101,7 +101,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
  * DELETE /api/workspaces/[workspaceId]/members/[memberId]
  * Remove a member from the workspace
  */
-export async function DELETE(req: Request, { params }: RouteParams) {
+export async function DELETE(_req: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {

@@ -43,7 +43,7 @@ export function VoiceWaveform({
       const maxBarHeight = rect.height * 0.8;
       const centerY = rect.height / 2;
 
-      bars.forEach((bar, i) => {
+      bars.forEach((_, i) => {
         // Update bar height
         if (isActive) {
           // Simulate audio levels with noise
@@ -122,6 +122,43 @@ export function VoiceWaveformCSS({ isActive, className }: VoiceWaveformCSSProps)
         />
       ))}
     </div>
+  );
+}
+
+interface PulsingDotProps {
+  variant?: 'default' | 'recording';
+  size?: 'sm' | 'md' | 'lg';
+  isActive?: boolean;
+  className?: string;
+}
+
+export function PulsingDot({ 
+  variant = 'default', 
+  size = 'md', 
+  isActive = true, 
+  className 
+}: PulsingDotProps) {
+  const sizeClasses = {
+    sm: 'w-2 h-2',
+    md: 'w-3 h-3',
+    lg: 'w-4 h-4',
+  };
+
+  const variantClasses = {
+    default: 'bg-primary',
+    recording: 'bg-red-500',
+  };
+
+  return (
+    <span
+      className={cn(
+        'inline-block rounded-full',
+        sizeClasses[size],
+        variantClasses[variant],
+        isActive && 'animate-pulse',
+        className
+      )}
+    />
   );
 }
 

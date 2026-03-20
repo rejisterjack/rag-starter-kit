@@ -11,7 +11,7 @@
 
 import { chromium, type FullConfig } from '@playwright/test';
 import { execSync } from 'child_process';
-import path from 'path';
+// import path from 'path';
 
 async function globalSetup(config: FullConfig) {
   console.log('🚀 Starting global setup...');

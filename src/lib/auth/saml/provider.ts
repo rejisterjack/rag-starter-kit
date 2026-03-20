@@ -6,14 +6,13 @@
  */
 
 import * as saml from 'samlify';
-import { z } from 'zod';
+// import { z } from 'zod';
 
 import { prisma } from '@/lib/db';
 
 import {
   type SamlConfig,
   type SamlProfile,
-  type SamlErrorCode,
   SamlError,
   parseCertificate,
   getSamlUrls,

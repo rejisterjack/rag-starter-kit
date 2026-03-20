@@ -187,7 +187,7 @@ Rules:
 
     // Get last assistant message for context
     const lastAssistant = [...history].reverse().find((m) => m.role === 'assistant');
-    const lastUser = [...history].reverse().find((m) => m.role === 'user');
+    // const lastUser = [...history].reverse().find((m) => m.role === 'user');
 
     let expanded = query;
 

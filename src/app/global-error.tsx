@@ -7,7 +7,7 @@ interface GlobalErrorProps {
   reset: () => void;
 }
 
-export default function GlobalError({ error, reset }: GlobalErrorProps): JSX.Element {
+export default function GlobalError({ error, reset }: GlobalErrorProps): React.ReactElement {
   useEffect(() => {
     // Log to error reporting service
     console.error(error);

@@ -67,7 +67,7 @@ export async function GET(
     const authUrl = generateAuthUrl(provider, redirectUri, state);
 
     // Add return URL to state (stored separately)
-    const cookieStore = request.cookies;
+    // const cookieStore = request.cookies; // Available if needed
     const response = NextResponse.redirect(authUrl, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate',

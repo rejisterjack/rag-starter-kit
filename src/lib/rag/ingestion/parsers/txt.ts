@@ -3,7 +3,7 @@
  * Handles large files with streaming and line number mapping
  */
 
-import { Readable } from 'stream';
+// import { Readable } from 'stream';
 
 export interface TextLine {
   lineNumber: number;
@@ -33,8 +33,7 @@ export interface TextParseOptions {
   chunkSize?: number;   // for streaming large files
 }
 
-// Common encodings to try
-const COMMON_ENCODINGS = ['utf-8', 'utf-16le', 'utf-16be', 'latin1', 'ascii', 'windows-1252'];
+
 
 /**
  * Parse a text buffer with encoding detection

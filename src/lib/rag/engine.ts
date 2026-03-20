@@ -6,6 +6,7 @@
  */
 
 import type { RAGConfig, RAGQuery, RAGResponse, Source } from '@/types';
+import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
 
 // ============================================================================
 // Configuration
@@ -246,4 +247,63 @@ export function buildContextFromSources(sources: Source[]): string {
       return `[${index + 1}] From "${meta.documentName}"${meta.page ? `, page ${meta.page}` : ''}:\n${source.content}`;
     })
     .join('\n\n');
+}
+
+// ============================================================================
+// Embedding Creation Helper
+// ============================================================================
+
+/**
+ * Create an embedding generator function using the configured embedding provider
+ * 
+ * This is a convenience function that creates an embedding provider from environment
+ * variables and returns an object with embedQuery and embedDocuments methods.
+ * 
+ * @returns Object with embedQuery and embedDocuments methods
+ * 
+ * @example
+ * ```typescript
+ * const embeddings = createEmbeddings();
+ * const vectors = await embeddings.embedDocuments(['text1', 'text2']);
+ * ```
+ */
+export function createEmbeddings() {
+  const provider = createEmbeddingProviderFromEnv();
+  
+  return {
+    /**
+     * Embed a single query text
+     */
+    embedQuery: async (text: string): Promise<number[]> => {
+      return provider.embedQuery(text);
+    },
+    
+    /**
+     * Embed multiple documents
+     */
+    embedDocuments: async (texts: string[]): Promise<number[][]> => {
+      return provider.embedDocuments(texts);
+    },
+    
+    /**
+     * Get the provider name
+     */
+    get providerName(): string {
+      return provider.name;
+    },
+    
+    /**
+     * Get the model name
+     */
+    get modelName(): string {
+      return provider.modelName;
+    },
+    
+    /**
+     * Get the embedding dimensions
+     */
+    get dimensions(): number {
+      return provider.dimensions;
+    },
+  };
 }

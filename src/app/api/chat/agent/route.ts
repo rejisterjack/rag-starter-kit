@@ -3,7 +3,7 @@
  * Uses Query Router + ReAct Agent + Multi-Step Reasoning for intelligent query handling
  */
 
-import { streamText } from 'ai';
+import { streamText, type LanguageModel } from 'ai';
 import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
@@ -37,18 +37,18 @@ const defaultConfig: RAGConfig = {
 
 const REACT_THRESHOLD = 0.6;
 
-function getModel(modelName: string) {
+function getModel(modelName: string): LanguageModel {
   if (modelName.startsWith('gpt-') || modelName.startsWith('text-')) {
-    return openai(modelName);
+    return openai(modelName) as unknown as LanguageModel;
   }
   const ollamaModels = ['llama3', 'mistral', 'phi3', 'gemma2', 'codellama'];
   if (ollamaModels.some((m) => modelName.startsWith(m))) {
     const ollama = createOllama({
       baseURL: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434/api',
     });
-    return ollama(modelName);
+    return ollama(modelName) as unknown as LanguageModel;
   }
-  return openai(modelName);
+  return openai(modelName) as unknown as LanguageModel;
 }
 
 interface HandlerParams {
@@ -282,7 +282,7 @@ export async function POST(req: Request) {
 }
 
 async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
-  const { userMessage, history, userId, workspaceId, effectiveConversationId, config, shouldStream, rateLimitResult, requestId, startTime } = params;
+  const { userMessage, history, userId, workspaceId, effectiveConversationId, config, shouldStream, rateLimitResult, requestId } = params;
   
   const llmProvider = createProviderFromEnv();
   const memory = new ConversationMemory(prisma);
@@ -305,7 +305,7 @@ async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
       model: getModel(config.model),
       messages: llmMessages,
       temperature: config.temperature,
-      maxTokens: config.maxTokens,
+      maxOutputTokens: config.maxTokens,
       onFinish: async (completion) => {
         if (effectiveConversationId) {
           await memory.addMessage(effectiveConversationId, {
@@ -314,17 +314,17 @@ async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
           });
         }
         await trackTokenUsage({
-          userId,
-          workspaceId,
-          tokensPrompt: completion.usage?.promptTokens ?? 0,
-          tokensCompletion: completion.usage?.completionTokens ?? 0,
+          userId: userId!,
+          workspaceId: workspaceId ?? '',
+          conversationId: effectiveConversationId ?? '',
+          promptTokens: completion.usage?.inputTokens ?? 0,
+          completionTokens: completion.usage?.outputTokens ?? 0,
           model: config.model,
-          endpoint: '/api/chat/agent',
         });
       },
     });
 
-    const response = result.toDataStreamResponse({
+    const response = result.toTextStreamResponse({
       headers: {
         'X-Request-Id': requestId,
         'X-Strategy': 'direct_answer',
@@ -347,12 +347,12 @@ async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
     }
 
     await trackTokenUsage({
-      userId,
-      workspaceId,
-      tokensPrompt: response.usage.promptTokens,
-      tokensCompletion: response.usage.completionTokens,
+      userId: userId!,
+      workspaceId: workspaceId ?? '',
+      conversationId: effectiveConversationId ?? '',
+      promptTokens: response.usage.promptTokens,
+      completionTokens: response.usage.completionTokens,
       model: config.model,
-      endpoint: '/api/chat/agent',
     });
 
     const jsonResponse = NextResponse.json({
@@ -369,20 +369,19 @@ async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
 }
 
 async function handleCalculation(params: HandlerParams & { classification: any }): Promise<Response> {
-  const { userMessage, history, userId, workspaceId, effectiveConversationId, config, rateLimitResult, requestId, startTime } = params;
+  const { userMessage, history, userId, workspaceId, effectiveConversationId, config } = params;
   
   const agent = createReActAgent([
     calculatorTool,
     currentTimeTool,
   ], {
-    maxIterations: 3,
     model: config.model,
   });
 
   const result = await agent.execute(userMessage, {
-    workspaceId,
-    userId,
-    conversationHistory: history,
+    workspaceId: workspaceId ?? '',
+    userId: userId!,
+    history: history as unknown as import('@/types').Message[],
   });
 
   const memory = new ConversationMemory(prisma);
@@ -392,17 +391,16 @@ async function handleCalculation(params: HandlerParams & { classification: any }
     await memory.addMessage(effectiveConversationId, {
       role: 'assistant',
       content: result.answer,
-      metadata: { steps: result.steps },
     });
   }
 
   await trackTokenUsage({
-    userId,
-    workspaceId,
-    tokensPrompt: result.tokensUsed,
-    tokensCompletion: 0,
+    userId: userId!,
+    workspaceId: workspaceId ?? '',
+    conversationId: effectiveConversationId ?? '',
+    promptTokens: result.tokensUsed.prompt,
+    completionTokens: result.tokensUsed.completion,
     model: config.model,
-    endpoint: '/api/chat/agent',
   });
 
   return NextResponse.json({
@@ -418,21 +416,20 @@ async function handleCalculation(params: HandlerParams & { classification: any }
 }
 
 async function handleWebSearch(params: HandlerParams & { classification: any }): Promise<Response> {
-  const { userMessage, history, userId, workspaceId, effectiveConversationId, config, rateLimitResult, requestId, startTime } = params;
+  const { userMessage, history, userId, workspaceId, effectiveConversationId, config } = params;
   
   const webSearch = await createWebSearchToolFromEnv();
   const agent = createReActAgent([
     webSearch,
     currentTimeTool,
   ], {
-    maxIterations: 5,
     model: config.model,
   });
 
   const result = await agent.execute(userMessage, {
-    workspaceId,
-    userId,
-    conversationHistory: history,
+    workspaceId: workspaceId ?? '',
+    userId: userId!,
+    history: history as unknown as import('@/types').Message[],
   });
 
   const memory = new ConversationMemory(prisma);
@@ -442,24 +439,16 @@ async function handleWebSearch(params: HandlerParams & { classification: any }):
     await memory.addMessage(effectiveConversationId, {
       role: 'assistant',
       content: result.answer,
-      sources: result.sources?.map((s: any) => ({
-        id: s.id ?? crypto.randomUUID(),
-        content: s.content ?? s.snippet ?? '',
-        metadata: {
-          title: s.title,
-          url: s.url,
-        },
-      })),
     });
   }
 
   await trackTokenUsage({
-    userId,
-    workspaceId,
-    tokensPrompt: result.tokensUsed,
-    tokensCompletion: 0,
+    userId: userId!,
+    workspaceId: workspaceId ?? '',
+    conversationId: effectiveConversationId ?? '',
+    promptTokens: result.tokensUsed.prompt,
+    completionTokens: result.tokensUsed.completion,
     model: config.model,
-    endpoint: '/api/chat/agent',
   });
 
   return NextResponse.json({
@@ -476,7 +465,7 @@ async function handleWebSearch(params: HandlerParams & { classification: any }):
 }
 
 async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
-  const { userMessage, history, userId, workspaceId, effectiveConversationId, config, shouldStream, rateLimitResult, requestId, startTime } = params;
+  const { userMessage, history, userId, workspaceId, effectiveConversationId, config, shouldStream, rateLimitResult, requestId } = params;
   
   const { retrieveSources } = await import('@/lib/rag/retrieval');
   const sources = await retrieveSources(userMessage, userId, config);
@@ -507,34 +496,24 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
       model: getModel(config.model),
       messages: llmMessages,
       temperature: config.temperature,
-      maxTokens: config.maxTokens,
+      maxOutputTokens: config.maxTokens,
       onFinish: async (completion) => {
-        const citations = citationHandler.extractCitations(completion.text, citationMap);
+        citationHandler.extractCitations(completion.text, citationMap);
         
         if (effectiveConversationId) {
           await memory.addMessage(effectiveConversationId, {
             role: 'assistant',
             content: completion.text,
-            sources: citations.map((c) => ({
-              id: c.chunkId,
-              content: c.content,
-              similarity: c.score,
-              metadata: {
-                documentId: c.documentId,
-                documentName: c.documentName,
-                page: c.page,
-              },
-            })),
           });
         }
 
         await trackTokenUsage({
-          userId,
-          workspaceId,
-          tokensPrompt: completion.usage?.promptTokens ?? 0,
-          tokensCompletion: completion.usage?.completionTokens ?? 0,
+          userId: userId!,
+          workspaceId: workspaceId ?? '',
+          conversationId: effectiveConversationId ?? '',
+          promptTokens: completion.usage?.inputTokens ?? 0,
+          completionTokens: completion.usage?.outputTokens ?? 0,
           model: config.model,
-          endpoint: '/api/chat/agent',
         });
       },
     });
@@ -547,7 +526,7 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
       similarity: s.similarity,
     }));
 
-    const response = result.toDataStreamResponse({
+    const response = result.toTextStreamResponse({
       headers: {
         'X-Request-Id': requestId,
         'X-Strategy': 'direct_retrieval',
@@ -565,26 +544,16 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
       await memory.addMessage(effectiveConversationId, {
         role: 'assistant',
         content: response.content,
-        sources: citations.map((c) => ({
-          id: c.chunkId,
-          content: c.content,
-          similarity: c.score,
-          metadata: {
-            documentId: c.documentId,
-            documentName: c.documentName,
-            page: c.page,
-          },
-        })),
       });
     }
 
     await trackTokenUsage({
-      userId,
-      workspaceId,
-      tokensPrompt: response.usage.promptTokens,
-      tokensCompletion: response.usage.completionTokens,
+      userId: userId!,
+      workspaceId: workspaceId ?? '',
+      conversationId: effectiveConversationId ?? '',
+      promptTokens: response.usage.promptTokens,
+      completionTokens: response.usage.completionTokens,
       model: config.model,
-      endpoint: '/api/chat/agent',
     });
 
     const jsonResponse = NextResponse.json({
@@ -602,7 +571,7 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
 }
 
 async function handleReAct(params: HandlerParams & { classification: any }): Promise<Response> {
-  const { userMessage, history, userId, workspaceId, effectiveConversationId, config, rateLimitResult, requestId, startTime } = params;
+  const { userMessage, history: _history, userId, workspaceId, effectiveConversationId, config } = params;
   
   const tools = [
     calculatorTool,
@@ -619,15 +588,12 @@ async function handleReAct(params: HandlerParams & { classification: any }): Pro
   }
 
   const agent = createReActAgent(tools, {
-    maxIterations: 8,
     model: config.model,
-    temperature: config.temperature,
   });
 
   const result = await agent.execute(userMessage, {
-    workspaceId,
-    userId,
-    conversationHistory: history,
+    workspaceId: workspaceId ?? '',
+    userId: userId!,
   });
 
   const memory = new ConversationMemory(prisma);
@@ -637,23 +603,16 @@ async function handleReAct(params: HandlerParams & { classification: any }): Pro
     await memory.addMessage(effectiveConversationId, {
       role: 'assistant',
       content: result.answer,
-      sources: result.sources?.map((s: any) => ({
-        id: s.id ?? crypto.randomUUID(),
-        content: s.content ?? '',
-        similarity: s.score ?? s.similarity ?? 1,
-        metadata: s.metadata ?? {},
-      })),
-      metadata: { steps: result.steps },
     });
   }
 
   await trackTokenUsage({
-    userId,
-    workspaceId,
-    tokensPrompt: result.tokensUsed,
-    tokensCompletion: 0,
+    userId: userId!,
+    workspaceId: workspaceId ?? '',
+    conversationId: effectiveConversationId ?? '',
+    promptTokens: result.tokensUsed.prompt,
+    completionTokens: result.tokensUsed.completion,
     model: config.model,
-    endpoint: '/api/chat/agent',
   });
 
   return NextResponse.json({
@@ -673,7 +632,7 @@ async function handleReAct(params: HandlerParams & { classification: any }): Pro
 async function handleClarification(
   params: Omit<HandlerParams, 'config' | 'shouldStream' | 'startTime'> & { classification: any }
 ): Promise<Response> {
-  const { userMessage, history, classification, userId, workspaceId, effectiveConversationId, rateLimitResult, requestId } = params;
+  const { userMessage, classification, effectiveConversationId, rateLimitResult } = params;
   
   const memory = new ConversationMemory(prisma);
 

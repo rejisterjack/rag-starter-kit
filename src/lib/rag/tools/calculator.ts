@@ -27,15 +27,7 @@ type CalculatorParams = z.infer<typeof CalculatorParamsSchema>;
 // Safe Math Evaluation
 // ============================================================================
 
-// List of allowed math functions and operators
-const ALLOWED_OPERATORS = new Set([
-  '+', '-', '*', '/', '%', '**', '^', '(', ')', '.',
-  'sqrt', 'abs', 'sin', 'cos', 'tan', 'log', 'ln', 'exp',
-  'min', 'max', 'round', 'floor', 'ceil', 'pi', 'e',
-  'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh',
-  'pow', 'mod', 'sum', 'avg', 'mean', 'median', 'std',
-  ',', ' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-]);
+
 
 const ALLOWED_PATTERNS = /^[\d\s\+\-\*\/\%\^\(\)\.\,\sa-zA-Z]+$/;
 

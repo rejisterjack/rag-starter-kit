@@ -29,7 +29,6 @@ export function VoiceInputButton({
     state,
     transcript,
     interimTranscript,
-    confidence,
     error,
     isSupported,
     startListening,
@@ -38,7 +37,7 @@ export function VoiceInputButton({
     setLanguage,
   } = useSpeechRecognition({
     language,
-    onResult: (text, isFinal) => {
+    onResult: (_, isFinal) => {
       if (isFinal && confidence > 0.7) {
         // Auto-send if high confidence
         // onTranscript(text);
@@ -62,13 +61,7 @@ export function VoiceInputButton({
     startListening();
   }, [resetTranscript, startListening]);
 
-  const handleStop = useCallback(() => {
-    stopListening();
-    setShowConfirm(false);
-    if (transcript) {
-      onTranscript(transcript);
-    }
-  }, [stopListening, transcript, onTranscript]);
+
 
   const handleCancel = useCallback(() => {
     stopListening();

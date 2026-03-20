@@ -3,39 +3,31 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Start seeding...');
-
-  // Create a test user (for development only)
-  const testUser = await prisma.user.upsert({
-    where: { email: 'test@example.com' },
+  // Create admin user
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@example.com' },
     update: {},
     create: {
-      email: 'test@example.com',
-      name: 'Test User',
+      email: 'admin@example.com',
+      name: 'Admin User',
+      role: 'ADMIN',
     },
   });
 
-  console.log(`Created test user: ${testUser.email}`);
+  console.log('Admin user created:', admin.id);
 
-  // Create a sample chat
-  const chat = await prisma.chat.create({
-    data: {
-      title: 'Welcome Chat',
-      userId: testUser.id,
-      messages: {
-        create: [
-          {
-            content: 'Hello! Welcome to the RAG Chatbot.',
-            role: 'ASSISTANT',
-          },
-        ],
-      },
+  // Create default workspace
+  const workspace = await prisma.workspace.upsert({
+    where: { slug: 'default' },
+    update: {},
+    create: {
+      name: 'Default Workspace',
+      slug: 'default',
+      ownerId: admin.id,
     },
   });
 
-  console.log(`Created sample chat: ${chat.id}`);
-
-  console.log('Seeding finished.');
+  console.log('Default workspace created:', workspace.id);
 }
 
 main()

@@ -3,7 +3,7 @@
  * Extracts text, metadata, and page-level content from PDF documents
  */
 
-import pdfParse from 'pdf-parse';
+import * as pdfParse from 'pdf-parse';
 
 export interface PDFPage {
   pageNumber: number;
@@ -91,11 +91,11 @@ function extractPages(fullText: string, pageCount: number): PDFPage[] {
   }
 
   // Common page break patterns in extracted text
-  const pageBreakPatterns = [
-    /\f/, // Form feed character
-    /\n\s*\n\s*\d+\s*\n\s*\n/, // Page numbers surrounded by blank lines
-    /\n-{3,}\s*\n/, // Horizontal rule separators
-  ];
+  // const pageBreakPatterns = [
+  //   /\f/, // Form feed character
+  //   /\n\s*\n\s*\d+\s*\n\s*\n/, // Page numbers surrounded by blank lines
+  //   /\n-{3,}\s*\n/, // Horizontal rule separators
+  // ];
 
   let pages: PDFPage[] = [];
   let currentPosition = 0;
@@ -217,7 +217,7 @@ export function isScannedPDF(parsedPDF: ParsedPDF): boolean {
  * OCR fallback using pdf2pic + Tesseract
  * This is a placeholder - requires additional setup
  */
-export async function performOCR(buffer: Buffer): Promise<string> {
+export async function performOCR(_buffer: Buffer): Promise<string> {
   // Note: This requires installing:
   // - pdf2pic for PDF to image conversion
   // - tesseract.js or Tesseract OCR for text extraction

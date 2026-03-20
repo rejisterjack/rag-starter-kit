@@ -73,9 +73,13 @@ export async function GET(request: NextRequest): Promise<Response> {
       where: { id: workspaceId },
     });
 
-    if (workspace?.ssoDomain) {
+    // Extract SSO domain from workspace settings
+    const workspaceSettings = workspace?.settings as { ssoDomain?: string } | null;
+    const ssoDomain = workspaceSettings?.ssoDomain;
+
+    if (ssoDomain) {
       const userDomain = profile.email.split('@')[1]?.toLowerCase();
-      if (userDomain !== workspace.ssoDomain.toLowerCase()) {
+      if (userDomain !== ssoDomain.toLowerCase()) {
         await logAuditEvent({
           event: AuditEvent.USER_LOGIN,
           workspaceId,
@@ -256,7 +260,7 @@ async function findOrCreateUser(
 /**
  * Create session for authenticated user
  */
-async function createSession(userId: string, workspaceId: string): Promise<void> {
+async function createSession(_userId: string, _workspaceId: string): Promise<void> {
   // Session is handled by NextAuth
   // The redirect will trigger the session check
 }

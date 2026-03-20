@@ -8,8 +8,7 @@ import {
   deleteWorkspace,
 } from '@/lib/workspace/workspace';
 import { canManageWorkspace } from '@/lib/workspace/permissions';
-import { validateUpdateWorkspaceInput } from '@/lib/security/input-validator';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
+
 
 interface RouteParams {
   params: Promise<{ workspaceId: string }>;
@@ -19,7 +18,7 @@ interface RouteParams {
  * GET /api/workspaces/[workspaceId]
  * Get a specific workspace
  */
-export async function GET(req: Request, { params }: RouteParams) {
+export async function GET(_req: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -173,7 +172,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
  * DELETE /api/workspaces/[workspaceId]
  * Delete a workspace
  */
-export async function DELETE(req: Request, { params }: RouteParams) {
+export async function DELETE(_req: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -208,4 +207,57 @@ export async function DELETE(req: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
+}
+
+// =============================================================================
+// Validation
+// =============================================================================
+
+interface UpdateWorkspaceInput {
+  name?: string;
+  description?: string;
+  avatar?: string;
+  settings?: Record<string, unknown>;
+}
+
+/**
+ * Validate update workspace input
+ */
+function validateUpdateWorkspaceInput(body: unknown): UpdateWorkspaceInput {
+  if (!body || typeof body !== 'object') {
+    throw new Error('Invalid input: expected an object');
+  }
+
+  const input = body as Record<string, unknown>;
+  const result: UpdateWorkspaceInput = {};
+
+  if ('name' in input) {
+    if (typeof input.name !== 'string' || input.name.length < 1 || input.name.length > 100) {
+      throw new Error('Invalid name: must be a string between 1 and 100 characters');
+    }
+    result.name = input.name;
+  }
+
+  if ('description' in input) {
+    if (input.description !== null && typeof input.description !== 'string') {
+      throw new Error('Invalid description: must be a string or null');
+    }
+    result.description = input.description ?? undefined;
+  }
+
+  if ('avatar' in input) {
+    if (input.avatar !== null && typeof input.avatar !== 'string') {
+      throw new Error('Invalid avatar: must be a string or null');
+    }
+    result.avatar = input.avatar ?? undefined;
+  }
+
+  if ('settings' in input) {
+    if (input.settings !== null && typeof input.settings !== 'object') {
+      throw new Error('Invalid settings: must be an object or null');
+    }
+    result.settings = (input.settings as Record<string, unknown>) ?? undefined;
+  }
+
+  return result;
 }

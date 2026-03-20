@@ -5,7 +5,7 @@ import {
   getCachedEmbedding,
   setCachedEmbedding,
 } from '@/lib/rag/embeddings';
-import { createMockOpenAIClient, mockEmbeddingResponse } from '@/tests/utils/mocks/openai';
+import { createMockOpenAIClient } from '@/tests/utils/mocks/openai';
 
 // Mock OpenAI
 vi.mock('openai', () => ({

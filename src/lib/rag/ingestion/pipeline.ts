@@ -9,15 +9,15 @@
  * 5. Store - Save to database with vector insertion
  */
 
-import { ChunkingEngine, estimateTokenCount } from '@/lib/rag/chunking';
+import { ChunkingEngine } from '@/lib/rag/chunking';
 import { createEmbeddings } from '@/lib/rag/engine';
 import { prisma } from '@/lib/db';
 
-import { parsePDF, type ParsedPDF } from './parsers/pdf';
-import { parseDOCX, type ParsedDOCX } from './parsers/docx';
-import { parseText, type ParsedText } from './parsers/txt';
-import { parseHTML, type ParsedHTML } from './parsers/html';
-import { scrapeURL, type ScrapedPage } from './parsers/url';
+import { parsePDF } from './parsers/pdf';
+import { parseDOCX } from './parsers/docx';
+import { parseText } from './parsers/txt';
+import { parseHTML } from './parsers/html';
+import { scrapeURL } from './parsers/url';
 
 // =============================================================================
 // Types
@@ -129,7 +129,7 @@ export class IngestionPipeline {
    */
   async process(input: IngestionInput): Promise<IngestionResult> {
     const startTime = Date.now();
-    const processingId = `proc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
 
     try {
       // Stage 1: Validate
@@ -622,16 +622,16 @@ export class IngestionPipeline {
   /**
    * Map pipeline DocumentType to chunking DocumentType
    */
-  private mapToDocumentType(type: DocumentType): import('@/types').DocumentType {
-    switch (type) {
-      case 'PDF': return 'pdf';
-      case 'DOCX': return 'docx';
-      case 'TXT': return 'txt';
-      case 'MD': return 'md';
-      case 'HTML': return 'html';
-      default: return 'txt';
-    }
-  }
+  // private _mapToDocumentType(type: DocumentType): import('@/types').DocumentType {
+  //   switch (type) {
+  //     case 'PDF': return 'pdf';
+  //     case 'DOCX': return 'docx';
+  //     case 'TXT': return 'txt';
+  //     case 'MD': return 'md';
+  //     case 'HTML': return 'html';
+  //     default: return 'txt';
+  //   }
+  // }
 
   /**
    * Find which page a chunk belongs to
@@ -657,7 +657,7 @@ export class IngestionPipeline {
    */
   private findSectionForChunk(
     paragraphs: Array<{ text: string; isHeading?: boolean; headingLevel?: number }>,
-    chunkContent: string
+    _chunkContent: string
   ): string | null {
     // Find the most recent heading before this chunk content
     for (let i = paragraphs.length - 1; i >= 0; i--) {

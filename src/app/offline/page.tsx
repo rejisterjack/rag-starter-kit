@@ -43,6 +43,7 @@ export default function OfflinePage() {
       }, 1500);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [isOffline]);
 
   return (

@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 
-export default function NotFound(): JSX.Element {
+export default function NotFound(): React.ReactElement {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
       <div className="text-center">

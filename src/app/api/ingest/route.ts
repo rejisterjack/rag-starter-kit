@@ -20,8 +20,6 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { inngest } from '@/lib/inngest/client';
 import {
-  detectDocumentType,
-  validateDocument,
   parsePDF,
   parseDOCX,
   parseText,
@@ -33,8 +31,8 @@ import {
   getRateLimitIdentifier,
   addRateLimitHeaders,
 } from '@/lib/security/rate-limiter';
-import { validateIngestInput, validateFile } from '@/lib/security/input-validator';
-import { logAuditEvent, AuditEvent, AuditSeverity } from '@/lib/audit/audit-logger';
+import { validateFile } from '@/lib/security/input-validator';
+import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
 
 // Maximum file size: 50MB
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -224,7 +222,7 @@ async function handleFileIngestion(
   }
 
   // Step 4: Validate document
-  const validation = await validateDocument(file, {
+  const validation = validateFile(file, {
     maxSize: MAX_FILE_SIZE,
   });
 
@@ -251,48 +249,27 @@ async function handleFileIngestion(
   try {
     switch (validation.type) {
       case 'PDF': {
-        const parsed = await parsePDF(buffer);
-        content = parsed.text;
-        metadata = {
-          ...parsed.metadata,
-          totalCharacters: parsed.totalCharacters,
-          pageCount: parsed.metadata.pageCount,
-        };
+        content = await parsePDF(buffer);
+        metadata = { source: 'pdf' };
         break;
       }
 
       case 'DOCX': {
-        const parsed = await parseDOCX(buffer);
-        content = parsed.text;
-        metadata = {
-          ...parsed.metadata,
-          wordCount: parsed.wordCount,
-          characterCount: parsed.characterCount,
-        };
+        content = await parseDOCX(buffer);
+        metadata = { source: 'docx' };
         break;
       }
 
       case 'TXT':
       case 'MD': {
-        const parsed = parseText(buffer, { detectEncoding: true });
-        content = parsed.text;
-        metadata = {
-          encoding: parsed.encoding,
-          lineCount: parsed.lineCount,
-          wordCount: parsed.wordCount,
-          characterCount: parsed.characterCount,
-        };
+        content = parseText(buffer);
+        metadata = { source: 'text' };
         break;
       }
 
       case 'HTML': {
-        const parsed = parseHTML(buffer);
-        content = parsed.text;
-        metadata = {
-          ...parsed.metadata,
-          wordCount: parsed.wordCount,
-          characterCount: parsed.characterCount,
-        };
+        content = await parseHTML(buffer);
+        metadata = { source: 'html' };
         break;
       }
 
@@ -582,13 +559,8 @@ export async function GET(req: NextRequest) {
     const document = await prisma.document.findUnique({
       where: { id: documentId },
       include: {
-        ingestionJobs: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-        _count: {
-          select: { chunks: true },
-        },
+        ingestionJob: true,
+        chunks: { select: { id: true } },
       },
     });
 
@@ -611,7 +583,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get job details
-    const job = document.ingestionJobs[0];
+    const job = document.ingestionJob;
     const metadata = document.metadata as Record<string, unknown> || {};
 
     // Calculate progress
@@ -653,7 +625,7 @@ export async function GET(req: NextRequest) {
       type: document.contentType,
       status: stage,
       progress,
-      chunkCount: document._count.chunks,
+      chunkCount: document.chunks.length,
       error,
       metadata: {
         size: document.size,

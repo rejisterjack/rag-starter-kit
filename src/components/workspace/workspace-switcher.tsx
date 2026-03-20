@@ -31,7 +31,7 @@ interface WorkspaceSwitcherProps {
 export function WorkspaceSwitcher({
   workspaces,
   currentWorkspaceId,
-}: WorkspaceSwitcherProps): JSX.Element {
+}: WorkspaceSwitcherProps): React.ReactElement {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 

@@ -7,10 +7,10 @@
 
 import * as cheerio from 'cheerio';
 import mammoth from 'mammoth';
-import pdfParse from 'pdf-parse';
+import * as pdfParse from 'pdf-parse';
 
 import { createChunks } from '@/lib/rag/chunking';
-import { prisma, createVectorStore, batchInsertChunks, validateChunks } from '@/lib/db';
+import { prisma, batchInsertChunks, validateChunks } from '@/lib/db';
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
 import type { DocumentType, IngestionOptions } from '@/types';
 
@@ -141,7 +141,7 @@ export async function processDocument(
   
   // Initialize embedding provider and vector store
   const embeddingProvider = createEmbeddingProviderFromEnv();
-  const vectorStore = createVectorStore(prisma);
+  // const vectorStore = createVectorStore(prisma);
   
   try {
     // Get document from database
@@ -157,7 +157,7 @@ export async function processDocument(
       throw new Error(`Document has no content: ${documentId}`);
     }
 
-    const userId = document.userId;
+    // const userId = document.userId;
     
     // Update document status
     await prisma.document.update({

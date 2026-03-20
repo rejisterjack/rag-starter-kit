@@ -41,7 +41,7 @@ export interface ExportOptions {
 export function ExportDialog({
   open,
   onOpenChange,
-  conversationId,
+  conversationId: _conversationId,
   conversationTitle,
   onExport,
 }: ExportDialogProps) {
@@ -50,8 +50,6 @@ export function ExportDialog({
   const [includeSources, setIncludeSources] = useState(true);
   const [citationStyle, setCitationStyle] = useState<'numbered' | 'footnote'>('numbered');
   const [isExporting, setIsExporting] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
-
   const handleExport = useCallback(async () => {
     setIsExporting(true);
     try {
@@ -157,7 +155,7 @@ export function ExportDialog({
                 <Checkbox
                   id="citations"
                   checked={includeCitations}
-                  onCheckedChange={(checked) => setIncludeCitations(checked as boolean)}
+                  onCheckedChange={(checked: boolean) => setIncludeCitations(checked)}
                 />
                 <Label htmlFor="citations" className="text-sm font-normal">
                   Include citations
@@ -168,7 +166,7 @@ export function ExportDialog({
                 <Checkbox
                   id="sources"
                   checked={includeSources}
-                  onCheckedChange={(checked) => setIncludeSources(checked as boolean)}
+                  onCheckedChange={(checked: boolean) => setIncludeSources(checked)}
                 />
                 <Label htmlFor="sources" className="text-sm font-normal">
                   Include full source references

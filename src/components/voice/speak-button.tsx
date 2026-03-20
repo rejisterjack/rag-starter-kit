@@ -67,8 +67,6 @@ export function SpeakButton({
   const {
     isSpeaking,
     isPaused,
-    voices,
-    currentVoice,
     isSupported,
     speak,
     cancel,
@@ -269,7 +267,7 @@ export function SpeakText({
   rate,
   className,
 }: SpeakTextProps) {
-  const { isSpeaking, speak, cancel } = useVoiceOutput({
+  const { speak, cancel } = useVoiceOutput({
     defaultRate: rate,
   });
 

@@ -27,6 +27,7 @@ export type {
 // Generators
 // =============================================================================
 
+// PDF Generator
 export {
   PDFGenerator,
   generatePDF,
@@ -35,7 +36,6 @@ export {
   StreamingPDFGenerator,
   PDFGenerationError,
 } from './pdf-generator';
-
 export type {
   PDFGenerationOptions,
   PDFGenerationProgress,

@@ -65,10 +65,10 @@ interface MessageActionsProps {
 // =============================================================================
 
 export function MessageActions({
-  messageId,
+  messageId: _messageId,
   messageContent,
   messageRole,
-  isEditing = false,
+  isEditing: _isEditing = false,
   isForking = false,
   showBranchActions = true,
   onCopy,
@@ -370,7 +370,7 @@ interface MessageActionsBarProps {
 }
 
 export function MessageActionsBar({
-  messageId,
+  messageId: _messageId,
   messageContent,
   messageRole,
   messageIndex,
@@ -514,18 +514,6 @@ export function MessageActionsBar({
         )}
       </div>
     </TooltipProvider>
-  );
-}
-
-// Label component for dialogs
-function Label({ htmlFor, children, className }: { htmlFor?: string; children: React.ReactNode; className?: string }) {
-  return (
-    <label
-      htmlFor={htmlFor}
-      className={cn("text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70", className)}
-    >
-      {children}
-    </label>
   );
 }
 

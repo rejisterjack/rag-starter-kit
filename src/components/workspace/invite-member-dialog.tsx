@@ -31,7 +31,7 @@ interface InviteMemberDialogProps {
 export function InviteMemberDialog({
   workspaceId,
   onInvite,
-}: InviteMemberDialogProps): JSX.Element {
+}: InviteMemberDialogProps): React.ReactElement {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('MEMBER');

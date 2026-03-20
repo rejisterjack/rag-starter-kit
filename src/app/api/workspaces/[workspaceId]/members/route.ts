@@ -4,7 +4,6 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { inviteMember } from '@/lib/workspace/workspace';
 import { canManageMembers } from '@/lib/workspace/permissions';
-import { validateInviteMemberInput } from '@/lib/security/input-validator';
 
 interface RouteParams {
   params: Promise<{ workspaceId: string }>;
@@ -14,7 +13,7 @@ interface RouteParams {
  * GET /api/workspaces/[workspaceId]/members
  * Get all members of a workspace
  */
-export async function GET(req: Request, { params }: RouteParams) {
+export async function GET(_req: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -158,4 +157,35 @@ export async function POST(req: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
+}
+
+// =============================================================================
+// Validation
+// =============================================================================
+
+interface InviteMemberInput {
+  email: string;
+  role: 'ADMIN' | 'MEMBER' | 'VIEWER';
+}
+
+/**
+ * Validate invite member input
+ */
+function validateInviteMemberInput(body: unknown): InviteMemberInput {
+  if (!body || typeof body !== 'object') {
+    throw new Error('Invalid input: expected an object');
+  }
+
+  const { email, role } = body as Record<string, unknown>;
+
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    throw new Error('Invalid email: must be a valid email address');
+  }
+
+  const validRoles = ['ADMIN', 'MEMBER', 'VIEWER'];
+  if (!role || typeof role !== 'string' || !validRoles.includes(role)) {
+    throw new Error(`Invalid role: must be one of ${validRoles.join(', ')}`);
+  }
+
+  return { email, role: role as 'ADMIN' | 'MEMBER' | 'VIEWER' };
 }

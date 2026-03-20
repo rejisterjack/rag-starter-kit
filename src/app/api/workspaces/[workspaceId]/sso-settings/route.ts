@@ -20,7 +20,7 @@ import { invalidateDomainCache } from '@/lib/auth/domain-routing';
 // =============================================================================
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ workspaceId: string }> }
 ): Promise<Response> {
   try {

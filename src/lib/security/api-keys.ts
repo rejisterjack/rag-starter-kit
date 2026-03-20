@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { hash, verify } from 'argon2';
 
 import { prisma } from '@/lib/db';
-import { logAuditEvent, AuditEvent, AuditSeverity } from '@/lib/audit/audit-logger';
+import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
 
 import type { Permission } from '@/lib/workspace/permissions';
 

@@ -17,9 +17,15 @@ export interface ConversationBranch {
   isActive: boolean;
 }
 
+export interface BranchTreeNode extends ConversationBranch {
+  children: BranchTreeNode[];
+  depth: number;
+}
+
 export interface BranchComparison {
-  branchA: ConversationBranch;
-  branchB: ConversationBranch;
+  branchA: ConversationBranch & { messages: Array<{id: string; role: 'user' | 'assistant' | 'system'; content: string; createdAt: Date}> };
+  branchB: ConversationBranch & { messages: Array<{id: string; role: 'user' | 'assistant' | 'system'; content: string; createdAt: Date}> };
+  divergencePoint: string | null;
   differences: Array<{
     messageIndex: number;
     type: 'added' | 'removed' | 'modified';

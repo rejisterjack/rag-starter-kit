@@ -17,7 +17,7 @@ interface ProvidersProps {
  * Root providers component that wraps the application with all necessary context providers
  * Includes: React Query, Theme Provider
  */
-export function Providers({ children }: ProvidersProps): JSX.Element {
+export function Providers({ children }: ProvidersProps): React.ReactElement {
   // Ensure QueryClient is only created once per component lifecycle
   const [queryClient] = useState(
     () =>

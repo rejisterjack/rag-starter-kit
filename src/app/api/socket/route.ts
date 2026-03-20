@@ -6,7 +6,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-import { initWebSocketServer } from '@/lib/realtime/websocket-server';
 import type { UserInfo } from '@/lib/realtime/types';
 
 // =============================================================================
@@ -127,22 +126,4 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-// =============================================================================
-// Server-side WebSocket Initialization (for custom server setups)
-// =============================================================================
 
-/**
- * Initialize the WebSocket server with an HTTP server instance
- * This should be called from a custom server setup or instrumentation hook
- */
-export function initSocketServer(httpServer: Parameters<typeof initWebSocketServer>[0]): void {
-  const config = {
-    corsOrigin: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-    enablePresence: true,
-    enableCursors: true,
-    enableTyping: true,
-  };
-
-  initWebSocketServer(httpServer, config);
-  console.log('WebSocket server initialized');
-}

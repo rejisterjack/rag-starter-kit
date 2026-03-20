@@ -44,7 +44,7 @@ export function ApiKeyQuickCopy({
   showReveal = true,
   className,
   onCopy,
-}: ApiKeyQuickCopyProps): JSX.Element {
+}: ApiKeyQuickCopyProps): React.ReactElement {
   const [isCopied, setIsCopied] = React.useState(false);
   const [isRevealed, setIsRevealed] = React.useState(false);
 
@@ -153,7 +153,7 @@ export function ApiKeyInlineCopy({
   apiKey,
   className,
   onCopy,
-}: ApiKeyInlineCopyProps): JSX.Element {
+}: ApiKeyInlineCopyProps): React.ReactElement {
   const [isCopied, setIsCopied] = React.useState(false);
 
   const handleCopy = React.useCallback(async () => {
@@ -209,7 +209,7 @@ interface ApiKeyMaskedProps {
   className?: string;
 }
 
-export function ApiKeyMasked({ prefix, className }: ApiKeyMaskedProps): JSX.Element {
+export function ApiKeyMasked({ prefix, className }: ApiKeyMaskedProps): React.ReactElement {
   return (
     <div
       className={cn(

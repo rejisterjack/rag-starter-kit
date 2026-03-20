@@ -14,6 +14,7 @@ vi.mock('@/lib/db', () => ({
 }));
 
 vi.mock('pdf-parse', () => ({
+  __esModule: true,
   default: vi.fn().mockResolvedValue({
     text: sampleFinancialReportContent,
     numpages: 45,
@@ -236,7 +237,7 @@ describe('Document Ingestion Pipeline', () => {
 
   describe('Error Handling', () => {
     it('handles corrupted PDFs gracefully', async () => {
-      vi.mocked((await import('pdf-parse')).default).mockRejectedValue(
+      vi.mocked(await import('pdf-parse')).mockRejectedValue(
         new Error('Invalid PDF structure')
       );
 
@@ -251,7 +252,7 @@ describe('Document Ingestion Pipeline', () => {
     });
 
     it('handles processing timeouts', async () => {
-      vi.mocked((await import('pdf-parse')).default).mockImplementation(
+      vi.mocked(await import('pdf-parse')).mockImplementation(
         () => new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Timeout')), 100)
         )

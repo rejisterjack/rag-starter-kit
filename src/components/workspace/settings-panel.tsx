@@ -38,7 +38,7 @@ interface SettingsPanelProps {
 export function SettingsPanel({
   workspace,
   canManageSettings,
-}: SettingsPanelProps): JSX.Element {
+}: SettingsPanelProps): React.ReactElement {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
 

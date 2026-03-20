@@ -12,10 +12,6 @@ import { getRateLimiter } from '@/lib/security/rate-limiter';
 import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
 import {
   isRedisConfigured,
-  getUsersInRoom,
-  getTypingUsers,
-  getCursorsInRoom,
-  type PresenceData,
 } from '@/lib/realtime/presence';
 
 // =============================================================================
@@ -73,7 +69,7 @@ function stopCleanupInterval(): void {
 // Event Types
 // =============================================================================
 
-export enum RealtimeEventType {
+const enum RealtimeEventType {
   // Connection events
   CONNECTED = 'connected',
   DISCONNECTED = 'disconnected',
@@ -144,7 +140,7 @@ function encodeSSEEvent(event: SSEEvent): Uint8Array {
 /**
  * Broadcast an event to all clients in a workspace
  */
-export function broadcastToWorkspace(
+function broadcastToWorkspace(
   workspaceId: string,
   eventType: RealtimeEventType,
   data: Record<string, unknown>,
@@ -177,7 +173,7 @@ export function broadcastToWorkspace(
 /**
  * Broadcast an event to all clients in a conversation
  */
-export function broadcastToConversation(
+function broadcastToConversation(
   conversationId: string,
   eventType: RealtimeEventType,
   data: Record<string, unknown>,
@@ -210,7 +206,7 @@ export function broadcastToConversation(
 /**
  * Broadcast an event to all clients viewing a document
  */
-export function broadcastToDocument(
+function broadcastToDocument(
   documentId: string,
   eventType: RealtimeEventType,
   data: Record<string, unknown>,
@@ -243,7 +239,7 @@ export function broadcastToDocument(
 /**
  * Send event to a specific user
  */
-export function sendToUser(
+function sendToUser(
   userId: string,
   eventType: RealtimeEventType,
   data: Record<string, unknown>
@@ -269,34 +265,6 @@ export function sendToUser(
       }
     }
   }
-}
-
-/**
- * Get client count statistics
- */
-export function getClientStats(): {
-  total: number;
-  byWorkspace: Record<string, number>;
-  byConversation: Record<string, number>;
-} {
-  const byWorkspace: Record<string, number> = {};
-  const byConversation: Record<string, number> = {};
-
-  for (const client of sseClients.values()) {
-    if (client.workspaceId) {
-      byWorkspace[client.workspaceId] = (byWorkspace[client.workspaceId] || 0) + 1;
-    }
-    if (client.conversationId) {
-      byConversation[client.conversationId] =
-        (byConversation[client.conversationId] || 0) + 1;
-    }
-  }
-
-  return {
-    total: sseClients.size,
-    byWorkspace,
-    byConversation,
-  };
 }
 
 // =============================================================================

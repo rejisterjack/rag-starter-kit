@@ -38,7 +38,7 @@ export class SlackIntegration {
    * Handle slash commands
    */
   async handleCommand(command: SlackCommand): Promise<{ text: string; response_type?: 'ephemeral' | 'in_channel' }> {
-    const { text, user_id, user_name } = command;
+    const { text, user_id } = command;
 
     // Find linked user
     const userLink = await prisma.integrationAccount.findFirst({
@@ -125,7 +125,7 @@ export class SlackIntegration {
     }
   }
 
-  private async handleSave(args: string, channelId: string): Promise<{ text: string }> {
+  private async handleSave(_args: string, _channelId: string): Promise<{ text: string }> {
     // Get recent messages from channel and save as document
     return {
       text: 'Saving conversation to RAG... (Feature coming soon)',

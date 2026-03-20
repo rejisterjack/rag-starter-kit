@@ -16,7 +16,6 @@ import { SamlError, type SamlProfile } from '@/lib/auth/saml/config';
 import { prisma } from '@/lib/db';
 import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
 import { createDefaultWorkspace } from '@/lib/workspace/workspace';
-import { auth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,10 +26,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ workspaceId: string }> }
 ): Promise<Response> {
-  let workspaceId: string;
+  let workspaceId: string | undefined;
   
   try {
-    ({ workspaceId } = await params);
+    const resolvedParams = await params;
+    workspaceId = resolvedParams.workspaceId;
     const baseUrl = getBaseUrl(request);
 
     // Parse form data (SAML responses are POSTed as form data)
@@ -81,8 +81,11 @@ export async function POST(
       where: { id: workspaceId },
     });
 
-    if (workspace?.ssoDomain) {
-      const isValidDomain = validateEmailDomain(profile.email, [workspace.ssoDomain]);
+    const workspaceSettings = workspace?.settings as Record<string, unknown> | undefined;
+    const ssoDomain = workspaceSettings?.ssoDomain as string | undefined;
+    
+    if (ssoDomain) {
+      const isValidDomain = validateEmailDomain(profile.email, [ssoDomain]);
       if (!isValidDomain) {
         await logAuditEvent({
           event: AuditEvent.USER_LOGIN,
@@ -103,7 +106,12 @@ export async function POST(
     }
 
     // Find or create user
-    const userResult = await findOrCreateUser(profile, workspaceId);
+    if (!workspaceId) {
+      throw new SamlError('Workspace ID is required', 'WORKSPACE_NOT_FOUND', 400);
+    }
+    // Narrow workspaceId type
+    const resolvedWorkspaceId: string = workspaceId;
+    const userResult = await findOrCreateUser(profile, resolvedWorkspaceId);
 
     if (!userResult.success) {
       return NextResponse.json(
@@ -116,7 +124,7 @@ export async function POST(
     await logAuditEvent({
       event: AuditEvent.USER_LOGIN,
       userId: userResult.userId,
-      workspaceId,
+      workspaceId: resolvedWorkspaceId,
       metadata: {
         method: 'saml',
         idpEntityId: profile.issuer,
@@ -124,8 +132,11 @@ export async function POST(
       },
     });
 
-    // Create session
-    await createSession(userResult.userId, workspaceId);
+    // Create session (workspaceId is guaranteed to be defined here)
+    if (!userResult.userId) {
+      throw new SamlError('User ID is required', 'WORKSPACE_NOT_FOUND', 500);
+    }
+    await createSession(userResult.userId, resolvedWorkspaceId);
 
     // Parse relay state for redirect
     let redirectUrl = '/chat';
@@ -296,7 +307,7 @@ async function findOrCreateUser(
 /**
  * Create session for authenticated user
  */
-async function createSession(userId: string, workspaceId: string): Promise<void> {
+async function createSession(_userId: string, _workspaceId: string): Promise<void> {
   // Session is handled by NextAuth
   // The redirect will trigger the session check
   // Additional session data can be stored here if needed

@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { SSOLoginButton } from '@/components/auth/sso-login-button';
+// import { SSOLoginButton } from '@/components/auth/sso-login-button';
 
 // =============================================================================
 // Types
@@ -39,7 +39,7 @@ interface DomainLookupResult {
 // Main Component
 // =============================================================================
 
-export default function LoginPage(): JSX.Element {
+export default function LoginPage(): React.ReactElement {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/chat';
@@ -352,13 +352,13 @@ interface SSOLoginButtonProps {
 }
 
 function SSOLoginButton({
-  email,
+  email: _email,
   onSSOSelected,
   isLoading,
   workspaceName,
   workspaceLogo,
   ssoMethods,
-}: SSOLoginButtonProps): JSX.Element | null {
+}: SSOLoginButtonProps): React.ReactElement | null {
   if (ssoMethods.length === 0) {
     return null;
   }

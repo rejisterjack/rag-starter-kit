@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description: "Chat with your documents using AI-powered RAG",
 };
 
-export default function ChatLayout({ children }: ChatLayoutProps): React.JSX.Element {
+export default function ChatLayout({ children }: ChatLayoutProps): React.ReactElement {
   return (
     <div className="h-screen overflow-hidden">
       {children}

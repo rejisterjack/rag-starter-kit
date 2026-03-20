@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { runRAGPipeline, generateResponse, retrieveContext } from '@/lib/rag/engine';
 import { mockPrisma, getMockPrisma } from '@/tests/utils/mocks/prisma';
-import { createChunksWithEmbeddings } from '@/tests/utils/fixtures/chunks';
+// import { createChunksWithEmbeddings } from '@/tests/utils/fixtures/chunks';
 
 vi.mock('@/lib/db', () => ({
   prisma: mockPrisma,

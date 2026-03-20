@@ -59,7 +59,7 @@ export function InstallPrompt({
   delay = 2000,
   autoHide = 0,
 }: InstallPromptProps) {
-  const { isAvailable, showPrompt, dismiss } = useInstallPrompt();
+  const { isInstallable: isAvailable, promptInstall: showPrompt, dismissInstall: dismiss } = useInstallPrompt();
   const { platform, isIOS } = usePWA();
   const [isVisible, setIsVisible] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
@@ -70,6 +70,7 @@ export function InstallPrompt({
       const timer = setTimeout(() => setIsVisible(true), delay);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [isAvailable, delay]);
 
   useEffect(() => {
@@ -77,6 +78,7 @@ export function InstallPrompt({
       const timer = setTimeout(handleDismiss, autoHide);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [autoHide, isVisible]);
 
   const handleDismiss = useCallback(() => {
@@ -299,7 +301,7 @@ export function InstallPrompt({
  * Shows a fixed button that expands to show install options
  */
 export function FloatingInstallButton({ className }: { className?: string }) {
-  const { isAvailable, showPrompt, dismiss } = useInstallPrompt();
+  const { isInstallable: isAvailable, promptInstall: showPrompt, dismissInstall: dismiss } = useInstallPrompt();
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (!isAvailable) return null;
@@ -352,7 +354,7 @@ export function FloatingInstallButton({ className }: { className?: string }) {
  */
 export function IOSInstallHint({ className }: { className?: string }) {
   const { platform, isIOS } = usePWA();
-  const { isAvailable } = useInstallPrompt();
+  const { isInstallable: isAvailable } = useInstallPrompt();
   const [isVisible, setIsVisible] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
@@ -365,6 +367,7 @@ export function IOSInstallHint({ className }: { className?: string }) {
         return () => clearTimeout(timer);
       }
     }
+    return undefined;
   }, [platform, isIOS, isAvailable]);
 
   const handleDismiss = () => {

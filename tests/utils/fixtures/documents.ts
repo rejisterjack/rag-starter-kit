@@ -197,7 +197,7 @@ export const sampleDocuments: Partial<Document>[] = [
 export const createMockFile = (
   name: string,
   type: string,
-  size: number
+  _size: number
 ): File => {
   const blob = new Blob(['mock content'], { type });
   return new File([blob], name, { type });

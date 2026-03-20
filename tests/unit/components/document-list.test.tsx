@@ -6,7 +6,7 @@ import { sampleDocuments } from '@/tests/utils/fixtures/documents';
 describe('DocumentList', () => {
   const mockOnSelect = vi.fn();
   const mockOnDelete = vi.fn();
-  const mockOnDownload = vi.fn();
+// const mockOnDownload = vi.fn();
 
   it('renders list of documents', () => {
     render(<DocumentList documents={sampleDocuments as any} />);

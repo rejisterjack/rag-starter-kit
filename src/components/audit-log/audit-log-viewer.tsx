@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Filter, Download, AlertTriangle, Info, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Download, AlertTriangle, Info, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

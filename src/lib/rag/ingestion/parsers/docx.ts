@@ -168,7 +168,7 @@ function stripHtmlTags(html: string): string {
  */
 async function extractMetadata(buffer: Buffer): Promise<DOCXMetadata> {
   try {
-    const result = await mammoth.extractRawText({ buffer });
+    await mammoth.extractRawText({ buffer });
     // mammoth doesn't expose metadata directly, so we use heuristics
     
     return {

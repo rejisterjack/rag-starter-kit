@@ -96,7 +96,7 @@ const Cursor: React.FC<CursorProps> = ({
   // Smooth position using refs for animation
   const currentPos = useRef({ x: position.x, y: position.y });
   const targetPos = useRef({ x: position.x, y: position.y });
-  const animationFrame = useRef<number>();
+  const animationFrame = useRef<number>(undefined);
   const [renderPos, setRenderPos] = useState({ x: position.x, y: position.y });
 
   // Update target position when cursor changes

@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react';
-import { Mic, Volume2, Settings, Command } from 'lucide-react';
+import { Mic, Settings, Command } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { VoiceInputButton, VoiceInputPanel } from './voice-input-button';
 import { SpeakButton } from './speak-button';
 import { VoiceSettingsPanel } from './voice-settings';
-import { VoiceTranscriptPanel } from './voice-transcript-panel';
+// import { VoiceTranscriptPanel } from './voice-transcript-panel';
 import { VoiceWaveform } from './voice-waveform';
 import { useVoiceInput, useVoiceOutput, useVoiceCommands } from '@/hooks/use-voice';
 import { checkBrowserSupport } from '@/lib/voice';
@@ -35,9 +35,6 @@ export function VoiceDemo() {
     interimTranscript,
     fullTranscript,
     error,
-    confidence,
-    startListening,
-    stopListening,
   } = useVoiceInput({
     language: 'en-US',
     interimResults: true,
@@ -46,9 +43,7 @@ export function VoiceDemo() {
 
   // Voice output demo
   const {
-    isSpeaking,
     voices,
-    speak,
     cancel,
   } = useVoiceOutput();
 

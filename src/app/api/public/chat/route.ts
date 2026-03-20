@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
-  const { question } = await req.json();
+  const { question: _question } = await req.json();
   
   return NextResponse.json({
     success: true,

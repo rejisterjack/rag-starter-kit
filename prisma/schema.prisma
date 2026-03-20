@@ -6,9 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("POSTGRES_PRISMA_URL")
-  directUrl = env("POSTGRES_URL_NON_POOLING")
+  provider = "postgresql"
 }
 
 // ============================================================================
@@ -53,11 +51,11 @@ model User {
   email         String    @unique
   emailVerified DateTime?
   image         String?
-  password      String? // For credentials provider (hashed with bcrypt)
+  password      String?
   role          UserRole  @default(USER)
   
   // SSO fields
-  samlId        String?   @unique // SAML NameID for account linking
+  samlId        String?   @unique
   
   accounts      Account[]
   sessions      Session[]
@@ -70,6 +68,7 @@ model User {
   createdApiKeys    ApiKey[]
   auditLogs         AuditLog[]
   rateLimits        RateLimit[]
+  apiUsage          ApiUsage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -101,57 +100,43 @@ model Workspace {
   name        String
   slug        String        @unique
   description String?
-  avatar      String? // URL to workspace avatar
+  logoUrl     String?
+  
+  // SSO settings
+  ssoEnabled  Boolean       @default(false)
+  ssoDomain   String?
+  
+  // Settings stored as JSON
+  settings    Json          @default("{}")
+  
+  // Relations
   ownerId     String
   owner       User          @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members     WorkspaceMember[]
+  documents   Document[]
+  chats       Chat[]
   apiKeys     ApiKey[]
   auditLogs   AuditLog[]
-  rateLimits  RateLimit[]
+  samlConnection SamlConnection?
   
-  // SSO Configuration
-  ssoEnabled  Boolean       @default(false)
-  ssoDomain   String?       @unique // Email domain for auto-routing
-  
-  // Settings
-  settings    Json?         @db.JsonB // Workspace-specific settings
-  
-  // Billing
-  plan        WorkspacePlan @default(FREE)
-  
-  // Relations to existing models (for row-level security)
-  chats       Chat[]
-  documents   Document[]
-  
-  // SSO Relations
-  samlConnection   SamlConnection?
-  oauthConnections OAuthConnection[]
-
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  @@index([ownerId])
   @@index([slug])
-  @@index([ssoDomain])
+  @@index([ownerId])
   @@map("workspaces")
 }
 
 model WorkspaceMember {
-  id          String      @id @default(cuid())
+  id          String           @id @default(cuid())
   workspaceId String
-  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   userId      String
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role        MemberRole  @default(MEMBER)
-  permissions Json?       @db.JsonB // Custom permissions override
+  role        WorkspaceRole    @default(MEMBER)
+  status      MemberStatus     @default(ACTIVE)
+  joinedAt    DateTime         @default(now())
   
-  // Invitations
-  invitedBy   String?
-  invitedAt   DateTime?
-  joinedAt    DateTime    @default(now())
-  
-  // Status
-  status      MemberStatus @default(ACTIVE)
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, userId])
   @@index([workspaceId])
@@ -159,7 +144,7 @@ model WorkspaceMember {
   @@map("workspace_members")
 }
 
-enum MemberRole {
+enum WorkspaceRole {
   OWNER
   ADMIN
   MEMBER
@@ -167,217 +152,257 @@ enum MemberRole {
 }
 
 enum MemberStatus {
-  ACTIVE
-  INACTIVE
   PENDING
+  ACTIVE
   SUSPENDED
-}
-
-enum WorkspacePlan {
-  FREE
-  PRO
-  ENTERPRISE
+  REMOVED
 }
 
 // ============================================================================
-// SSO/SAML Models
+// Document Models
 // ============================================================================
 
-model SamlConnection {
-  id                String   @id @default(cuid())
-  workspaceId       String   @unique
-  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  
-  // Service Provider (SP) Configuration
-  spEntityId        String   // Entity ID of this application
-  
-  // Identity Provider (IdP) Configuration
-  idpEntityId       String   // Entity ID of the IdP
-  entryPoint        String   // SSO URL for the IdP
-  callbackUrl       String   // ACS URL (Assertion Consumer Service)
-  logoutUrl         String?  // SLO URL for single logout
-  
-  // Security Configuration
-  certificate       String   @db.Text // X.509 certificate for verifying IdP signatures
-  privateKey        String?  @db.Text // Private key for signing SAML requests
-  previousCertificate String? @db.Text // Previous certificate for graceful rotation
-  
-  // Signature Settings
-  wantAssertionsSigned Boolean @default(true)
-  wantResponseSigned   Boolean @default(true)
-  signatureAlgorithm   String  @default("rsa-sha256")
-  digestAlgorithm      String  @default("sha256")
-  
-  // SAML Settings
-  nameIdFormat      String   @default("urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress")
-  attributeMapping  Json     @db.JsonB // Maps SAML attributes to user fields
-  
-  // Status
-  active            Boolean  @default(true)
-  certRotatedAt     DateTime?
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  @@index([workspaceId])
-  @@index([active])
-  @@map("saml_connections")
-}
-
-model OAuthConnection {
-  id                String   @id @default(cuid())
-  workspaceId       String
-  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  
-  // Provider Configuration
-  provider          String   // google_workspace, azure_ad, okta, onelogin, auth0, generic_oidc
-  name              String   // Display name for this configuration
-  
-  // OAuth Credentials
-  clientId          String
-  clientSecret      String
-  
-  // Endpoints (for generic OIDC)
-  authorizationUrl  String
-  tokenUrl          String
-  userInfoUrl       String?
-  jwksUrl           String?
-  issuer            String?
-  
-  // Configuration
-  scopes            Json     @db.JsonB // Array of requested scopes
-  attributeMapping  Json     @db.JsonB // Maps OAuth claims to user fields
-  
-  // Status
-  active            Boolean  @default(true)
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  @@unique([workspaceId, provider])
-  @@index([workspaceId])
-  @@index([active])
-  @@map("oauth_connections")
-}
-
-// ============================================================================
-// API Key Management
-// ============================================================================
-
-model ApiKey {
-  id          String    @id @default(cuid())
+model Document {
+  id          String           @id @default(cuid())
   name        String
-  prefix      String    @unique // First 8 characters of the key (for display)
-  hashedKey   String    @unique // Full key hash (Argon2)
+  contentType String
+  size        Int
+  content     String?          @db.Text
+  
+  // Metadata
+  sourceUrl   String?
+  sourceType  String?
+  metadata    Json             @default("{}")
+  
+  // Processing status
+  status      DocumentStatus   @default(PENDING)
   
   // Relations
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdById String
-  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String?
+  workspace   Workspace?       @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  chunks      DocumentChunk[]
+  ingestionJob IngestionJob?
   
-  // Permissions
-  permissions Json      @db.JsonB // Array of permission strings
-  scopes      Json?     @db.JsonB // Allowed endpoints, IP restrictions, etc.
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([status])
+  @@map("documents")
+}
+
+model DocumentChunk {
+  id          String     @id @default(cuid())
+  documentId  String
+  content     String     @db.Text
+  index       Int
+  start       Int
+  end         Int
+  page        Int?
+  section     String?
   
-  // Usage tracking
-  lastUsedAt  DateTime?
-  usageCount  Int       @default(0)
+  // Vector embedding (using pgvector extension)
+  embedding   Unsupported("vector(1536)")?
   
-  // Expiration
-  expiresAt   DateTime?
+  document    Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
   
-  // Status
-  isRevoked   Boolean   @default(false)
-  revokedAt   DateTime?
-  revokedBy   String?
+  createdAt   DateTime   @default(now())
+
+  @@index([documentId])
+  @@map("document_chunks")
+}
+
+model IngestionJob {
+  id          String        @id @default(cuid())
+  documentId  String        @unique
+  status      JobStatus     @default(QUEUED)
+  progress    Int           @default(0)
+  error       String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  
+  document    Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("ingestion_jobs")
+}
+
+enum DocumentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ============================================================================
+// Chat Models
+// ============================================================================
+
+model Chat {
+  id          String     @id @default(cuid())
+  title       String     @default("New Chat")
+  
+  // Optional metadata for features like branching
+  metadata    Json?      @default("{}")
+  
+  // Relations
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  messages    Message[]
+  
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@map("chats")
+}
+
+model Message {
+  id          String    @id @default(cuid())
+  chatId      String
+  content     String    @db.Text
+  role        MessageRole
+  
+  // Source citations
+  sources     Json?
+  
+  // Token usage
+  tokensUsed  Json?
+  
+  chat        Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
   
   createdAt   DateTime  @default(now())
 
+  @@index([chatId])
+  @@map("messages")
+}
+
+enum MessageRole {
+  SYSTEM
+  USER
+  ASSISTANT
+}
+
+// ============================================================================
+// API Key Models
+// ============================================================================
+
+model ApiKey {
+  id          String     @id @default(cuid())
+  name        String
+  keyHash     String     @unique
+  keyPreview  String
+  
+  // Permissions
+  permissions String[]   @default([])
+  
+  // Status
+  status      ApiKeyStatus @default(ACTIVE)
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  
+  // Rate limiting
+  rateLimit   Int        @default(100)
+  
+  // Relations
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  usage       ApiUsage[]
+  
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([userId])
   @@index([workspaceId])
-  @@index([createdById])
-  @@index([hashedKey])
-  @@index([prefix])
+  @@index([keyHash])
   @@map("api_keys")
 }
 
-// ============================================================================
-// Rate Limiting
-// ============================================================================
+model ApiUsage {
+  id                String   @id @default(cuid())
+  
+  // Request details
+  endpoint          String
+  method            String
+  
+  // Usage metrics
+  tokensPrompt      Int      @default(0)
+  tokensCompletion  Int      @default(0)
+  tokensTotal       Int      @default(0)
+  latencyMs         Int      @default(0)
+  
+  // Relations
+  apiKeyId          String?
+  apiKey            ApiKey?  @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  userId            String?
+  user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  workspaceId       String?
+  
+  createdAt         DateTime @default(now())
 
-model RateLimit {
-  id          String   @id @default(cuid())
-  
-  // Identifier can be userId, apiKeyId, or IP address
-  identifier  String
-  type        RateLimitType
-  
-  // Relations (optional - for tracking)
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspaceId String?
-  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  
-  // Limits
-  endpoint    String   // API endpoint or action
-  count       Int      @default(0) // Current count in window
-  resetAt     DateTime // When the window resets
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@unique([identifier, endpoint])
-  @@index([identifier])
+  @@index([apiKeyId])
   @@index([userId])
   @@index([workspaceId])
-  @@index([resetAt])
-  @@map("rate_limits")
+  @@index([createdAt])
+  @@map("api_usage")
 }
 
-enum RateLimitType {
-  USER
-  API_KEY
-  IP
-  WORKSPACE
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
 }
 
 // ============================================================================
-// Audit Logging
+// Audit & Security Models
 // ============================================================================
 
 model AuditLog {
-  id          String      @id @default(cuid())
-  
-  // Event details
+  id          String       @id @default(cuid())
   event       AuditEvent
   severity    AuditSeverity @default(INFO)
   
-  // Relations
-  workspaceId String?
-  workspace   Workspace?  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  // Actor
   userId      String?
-  user        User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  apiKeyId    String?     // If action was performed via API key
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
   
-  // Request details
+  // Resource
+  workspaceId String?
+  workspace   Workspace?   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  // Event data
+  metadata    Json?
+  resource    Json?
+  changes     Json?
+  error       String?
+  
+  // Request context
   ipAddress   String?
   userAgent   String?
   
-  // Event data
-  metadata    Json?       @db.JsonB
-  resource    Json?       @db.JsonB // Resource affected (documentId, etc.)
-  changes     Json?       @db.JsonB // Before/after for updates
-  
-  // Error info
-  error       String?
-  
-  createdAt   DateTime    @default(now())
+  createdAt   DateTime     @default(now())
 
-  @@index([workspaceId])
   @@index([userId])
+  @@index([workspaceId])
   @@index([event])
   @@index([createdAt])
-  @@index([severity])
   @@map("audit_logs")
 }
 
@@ -410,14 +435,9 @@ enum AuditEvent {
   
   // Chat
   CHAT_CREATED
+  CHAT_UPDATED
   CHAT_DELETED
   CHAT_MESSAGE_SENT
-  
-  // Agentic Features
-  AGENT_QUERY_CLASSIFIED
-  AGENT_TOOL_CALLED
-  MULTI_STEP_REASONING_STARTED
-  CONVERSATION_BRANCHED
   
   // API Keys
   API_KEY_CREATED
@@ -431,8 +451,17 @@ enum AuditEvent {
   SUSPICIOUS_ACTIVITY
   PERMISSION_DENIED
   
+  // Agentic Features
+  AGENT_QUERY_CLASSIFIED
+  AGENT_TOOL_CALLED
+  MULTI_STEP_REASONING_STARTED
+  CONVERSATION_BRANCHED
+  
   // Voice
   VOICE_TRANSCRIPTION
+  
+  // Analytics
+  READ_API_USAGE
 }
 
 enum AuditSeverity {
@@ -443,233 +472,81 @@ enum AuditSeverity {
 }
 
 // ============================================================================
-// Chat Models
+// Rate Limiting Models
 // ============================================================================
 
-model Chat {
-  id          String    @id @default(cuid())
-  title       String    @default("New Chat")
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspaceId String?
-  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  messages Message[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([workspaceId])
-  @@index([updatedAt])
-  @@map("chats")
-}
-
-model Message {
+model RateLimit {
   id        String   @id @default(cuid())
-  content   String   @db.Text
-  role      MessageRole
-  chatId    String
-  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
-
-  // Sources used for RAG (stored as JSON)
-  sources   Json?    @db.JsonB
-
-  // Token usage metadata
-  tokensUsed Json?   @db.JsonB
-
-  createdAt DateTime @default(now())
-
-  @@index([chatId])
-  @@index([createdAt])
-  @@map("messages")
-}
-
-enum MessageRole {
-  USER
-  ASSISTANT
-  SYSTEM
-}
-
-// ============================================================================
-// Document Models
-// ============================================================================
-
-model Document {
-  id          String         @id @default(cuid())
-  name        String
-  contentType DocumentType
-  size        Int            // Size in bytes
-  status      DocumentStatus @default(PENDING)
-
-  // Storage
-  storageKey  String?        // S3/Storage key if using external storage
-  content     String?        @db.Text // Plain text content
-
-  // Metadata
-  metadata    Json?          @db.JsonB
-
-  userId      String
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspaceId String?
-  workspace   Workspace?     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  chunks      DocumentChunk[]
-  ingestionJobs IngestionJob[]
-
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-
-  @@index([userId])
-  @@index([workspaceId])
-  @@index([status])
-  @@index([createdAt])
-  @@map("documents")
-}
-
-enum DocumentType {
-  PDF
-  DOCX
-  TXT
-  MD
-  HTML
-}
-
-enum DocumentStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
-model DocumentChunk {
-  id         String   @id @default(cuid())
-  documentId String
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-
-  content   String   @db.Text
-  embedding Unsupported("vector(1536)")? // pgvector extension
-
-  // Chunk metadata
-  index     Int // Position in the document
-  start     Int // Character start position in original document
-  end       Int // Character end position in original document
-  page      Int? // Page number (for PDFs)
-  section   String? // Section/chapter identifier
-
-  createdAt DateTime @default(now())
-
-  @@index([documentId])
-  @@index([index])
-  // Vector similarity search index (managed separately via migration)
-  @@map("document_chunks")
-}
-
-// ============================================================================
-// Ingestion Job Tracking
-// ============================================================================
-
-model IngestionJob {
-  id          String    @id @default(cuid())
-  documentId  String    @unique
-  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  status      JobStatus @default(QUEUED)
-  progress    Int       @default(0) // 0-100
-  error       String?   @db.Text
-
-  startedAt   DateTime?
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([documentId])
-  @@index([status])
-  @@index([createdAt])
-  @@map("ingestion_jobs")
-}
-
-enum JobStatus {
-  QUEUED
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
-// ============================================================================
-// API Usage Tracking
-// ============================================================================
-
-model ApiUsage {
-  id        String   @id @default(cuid())
+  
+  // Identifier (IP, userId, or apiKey)
+  key       String
+  
+  // Window tracking
+  windowStart DateTime
+  requests    Int      @default(0)
+  
+  // Type of limit
+  type      String     @default("default")
+  
+  // Relations
   userId    String?
-  workspaceId String?
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
-  // Request details
-  endpoint  String
-  method    String
-
-  // Token usage (for OpenAI/LangChain calls)
-  tokensPrompt     Int     @default(0)
-  tokensCompletion Int     @default(0)
-  tokensTotal      Int     @default(0)
-
-  // Cost tracking (in USD * 10000 for precision)
-  costCents Int     @default(0)
-
-  // Response time in ms
-  latencyMs Int?
-
-  // Error tracking
-  error     String?
-
-  createdAt DateTime @default(now())
-
+  @@unique([key, type, windowStart])
+  @@index([key])
   @@index([userId])
-  @@index([workspaceId])
-  @@index([createdAt])
-  @@index([endpoint])
-  @@map("api_usage")
+  @@index([windowStart])
+  @@map("rate_limits")
 }
 
-
 // ============================================================================
-// RAG Analytics & Metrics
+// Analytics Models
 // ============================================================================
 
 model RAGEvent {
   id              String   @id @default(cuid())
+  
+  // Query info
   query           String   @db.Text
-  conversationId  String
-  workspaceId     String
-  userId          String
+  conversationId  String?
   
-  // Response details
-  responseLength  Int
-  latencyMs       Int
-  promptTokens    Int
-  completionTokens Int
-  totalTokens     Int
-  model           String
+  // Context
+  workspaceId     String?
+  userId          String?
   
-  // Query classification
-  queryType       String   @default("retrieve") // direct_answer, retrieve, calculate, web_search, clarify
-  confidence      Float?
-  reranked        Boolean  @default(false)
+  // Retrieval info
+  retrievedChunksData Json? @map("retrievedChunks")
   
   // Relations
   retrievedChunks RetrievedChunk[]
   
-  createdAt       DateTime @default(now())
+  // Response
+  response        String?  @db.Text
   
+  // Metrics
+  latencyMs       Int
+  totalTokens     Int      @default(0)
+  model           String   @default("gpt-4o-mini")
+  
+  // Classification
+  queryType       String?
+  confidence      Float?
+  reranked        Boolean  @default(false)
+  
+  createdAt       DateTime @default(now())
+
   @@index([workspaceId])
   @@index([userId])
   @@index([createdAt])
-  @@index([queryType])
   @@map("rag_events")
 }
 
 model RetrievedChunk {
   id          String   @id @default(cuid())
+  
   eventId     String
   event       RAGEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
   
@@ -678,200 +555,153 @@ model RetrievedChunk {
   similarity  Float
   rank        Int
   
+  createdAt   DateTime @default(now())
+
   @@index([eventId])
   @@index([documentId])
   @@map("retrieved_chunks")
 }
 
-model TokenUsage {
-  id               String   @id @default(cuid())
-  workspaceId      String
-  userId           String
-  conversationId   String
-  
-  model            String
-  promptTokens     Int
-  completionTokens Int
-  totalTokens      Int
-  estimatedCost    Float    @default(0) // USD
-  
-  createdAt        DateTime @default(now())
-  
-  @@index([workspaceId])
-  @@index([userId])
-  @@index([createdAt])
-  @@index([model])
-  @@map("token_usage")
+model Metric {
+  id        String   @id @default(cuid())
+  type      String
+  value     Float
+  labels    Json     @default("{}")
+  timestamp DateTime @default(now())
+
+  @@index([type])
+  @@index([timestamp])
+  @@map("metrics")
 }
 
-model WorkspaceBudget {
+// ============================================================================
+// Integration Models
+// ============================================================================
+
+model IntegrationAccount {
   id                String   @id @default(cuid())
-  workspaceId       String   @unique
   
-  monthlyBudget     Float    @default(100) // USD
-  warningThreshold  Float    @default(0.8) // 80%
-  criticalThreshold Float    @default(0.95) // 95%
+  // Provider info
+  provider          String   // 'slack', 'notion', 'github', etc.
+  providerAccountId String
+  
+  // OAuth tokens
+  accessToken       String   @db.Text
+  refreshToken      String?  @db.Text
+  expiresAt         DateTime?
+  
+  // Scopes/permissions
+  scope             String?
+  
+  // Relations
+  userId            String
+  workspaceId       String?
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-  
-  @@map("workspace_budgets")
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("integration_accounts")
 }
 
 // ============================================================================
-// Experiment Tracking
+// Experiment Models (A/B Testing)
 // ============================================================================
 
-model ExperimentResult {
-  id                String   @id @default(cuid())
-  experimentId      String
-  variantId         String
+model Experiment {
+  id            String          @id @default(cuid())
+  name          String
+  description   String?
+  type          String          // 'prompt', 'model', 'retrieval', 'ui'
+  status        ExperimentStatus @default(DRAFT)
   
-  // Metrics
-  responseQuality   Float?
-  latency           Int?
-  tokenUsage        Int?
-  retrievalAccuracy Float?
-  userSatisfaction  Float?
-  customMetrics     Json?    @db.JsonB
+  // Configuration
+  variants      Json            // Array of variant configs
+  trafficAllocation Json        // Percentage per variant
   
-  // Context
-  userId            String?
-  conversationId    String?
-  query             String?  @db.Text
+  // Relations
+  workspaceId   String
+  createdById   String
   
-  createdAt         DateTime @default(now())
+  startDate     DateTime?
+  endDate       DateTime?
   
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([workspaceId])
+  @@index([status])
+  @@map("experiments")
+}
+
+enum ExperimentStatus {
+  DRAFT
+  RUNNING
+  PAUSED
+  COMPLETED
+}
+
+model ExperimentEvent {
+  id            String   @id @default(cuid())
+  
+  experimentId  String
+  variantId     String
+  
+  // Event type
+  eventType     String   // 'impression', 'conversion', 'custom'
+  
+  // User info
+  userId        String?
+  sessionId     String
+  
+  // Event data
+  metadata      Json?
+  
+  createdAt     DateTime @default(now())
+
   @@index([experimentId])
   @@index([variantId])
-  @@index([createdAt])
-  @@map("experiment_results")
+  @@map("experiment_events")
 }
 
 // ============================================================================
-// Collaboration Features
+// SAML SSO Models
 // ============================================================================
 
-model ShareLink {
-  id              String   @id @default(cuid())
-  conversationId  String
-  token           String   @unique
-  
-  // Permissions stored as JSON
-  permissions     Json     @db.JsonB // { canView: boolean, canComment: boolean, canFork: boolean }
-  
-  accessCount     Int      @default(0)
-  createdBy       String
-  expiresAt       DateTime?
-  
-  createdAt       DateTime @default(now())
-  
-  @@index([conversationId])
-  @@index([token])
-  @@map("share_links")
-}
-
-model Comment {
-  id             String   @id @default(cuid())
-  messageId      String
-  conversationId String
-  userId         String
-  
-  content        String   @db.Text
-  parentId       String?  // For threaded comments
-  resolved       Boolean  @default(false)
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
-  @@index([messageId])
-  @@index([conversationId])
-  @@index([userId])
-  @@map("comments")
-}
-
-model Annotation {
-  id              String   @id @default(cuid())
-  messageId       String
-  conversationId  String
-  userId          String
-  
-  content         String   @db.Text
-  highlightedText String?  @db.Text
-  position        Json?    @db.JsonB // { start: number, end: number }
-  
-  createdAt       DateTime @default(now())
-  
-  @@index([messageId])
-  @@index([conversationId])
-  @@map("annotations")
-}
-
-model Mention {
+model SamlConnection {
   id                String   @id @default(cuid())
-  messageId         String
-  conversationId    String
-  mentionedUserId   String
-  mentionedByUserId String
   
-  content           String   @db.Text // Context around the mention
-  read              Boolean  @default(false)
+  // Workspace relation
+  workspaceId       String   @unique
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  // IdP Configuration
+  idpMetadata       String?  // Raw SAML metadata XML
+  idpEntityId       String?
+  idpSsoUrl         String?
+  idpCertificate    String?
+  
+  // SP Configuration
+  spEntityId        String   @default("rag-starter-kit")
+  spAcsUrl          String?
+  
+  // Security
+  publicCertificate String?  // Our public cert for signing
+  privateKey        String?  // Our private key (encrypted)
+  
+  // Settings
+  allowIdpInitiated Boolean  @default(false)
+  defaultRole       String   @default("MEMBER") // Default role for SAML users
+  
+  // State
+  enabled           Boolean  @default(true)
+  lastLoginAt       DateTime?
   
   createdAt         DateTime @default(now())
-  
-  @@index([mentionedUserId])
-  @@index([read])
-  @@index([createdAt])
-  @@map("mentions")
-}
+  updatedAt         DateTime @updatedAt
 
-// ============================================================================
-// Conversation Branching
-// ============================================================================
-
-// Note: Branches are implemented using the Chat model with metadata
-// The metadata field stores: { parentId, forkMessageId, rootId, isBranch }
-
-// ============================================================================
-// Observability (Langfuse Integration)
-// ============================================================================
-
-model ObservabilityTrace {
-  id          String   @id @default(cuid())
-  traceId     String   @unique // External trace ID from Langfuse
-  
-  // Context
-  userId      String?
-  workspaceId String?
-  sessionId   String?
-  
-  name        String
-  metadata    Json?    @db.JsonB
-  
-  createdAt   DateTime @default(now())
-  
-  spans       ObservabilitySpan[]
-  
-  @@index([traceId])
-  @@index([userId])
   @@index([workspaceId])
-  @@map("observability_traces")
-}
-
-model ObservabilitySpan {
-  id          String   @id @default(cuid())
-  traceId     String
-  trace       ObservabilityTrace @relation(fields: [traceId], references: [id], onDelete: Cascade)
-  
-  parentId    String?
-  name        String
-  startTime   DateTime
-  endTime     DateTime?
-  
-  metadata    Json?    @db.JsonB
-  level       String   @default("DEFAULT") // DEBUG, DEFAULT, WARNING, ERROR
-  
-  @@index([traceId])
-  @@index([name])
-  @@map("observability_spans")
+  @@index([enabled])
+  @@map("saml_connections")
 }

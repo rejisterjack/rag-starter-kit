@@ -8,10 +8,10 @@ import { inngest } from './client';
 import { prisma } from '@/lib/db';
 import { createEmbeddings } from '@/lib/rag/engine';
 import { ChunkingEngine } from '@/lib/rag/chunking';
-import { parsePDF } from '@/lib/rag/ingestion/parsers/pdf';
-import { parseDOCX } from '@/lib/rag/ingestion/parsers/docx';
-import { parseText } from '@/lib/rag/ingestion/parsers/txt';
-import { parseHTML } from '@/lib/rag/ingestion/parsers/html';
+// import { parsePDF } from '@/lib/rag/ingestion/parsers/pdf';
+// import { parseDOCX } from '@/lib/rag/ingestion/parsers/docx';
+// import { parseText } from '@/lib/rag/ingestion/parsers/txt';
+// import { parseHTML } from '@/lib/rag/ingestion/parsers/html';
 import { scrapeURL } from '@/lib/rag/ingestion/parsers/url';
 
 // =============================================================================

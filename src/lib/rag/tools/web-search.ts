@@ -49,10 +49,7 @@ export class TavilyProvider implements WebSearchProvider {
     this.apiKey = apiKey;
   }
 
-  async search(
-    query: string,
-    options: WebSearchOptions = {}
-  ): Promise<WebSearchResult[]> {
+  async search(): Promise<WebSearchResult[]> {
     const response = await fetch(`${this.baseUrl}/search`, {
       method: 'POST',
       headers: {
@@ -105,8 +102,8 @@ export class SerpAPIProvider implements WebSearchProvider {
   }
 
   async search(
-    query: string,
-    options: WebSearchOptions = {}
+    _query: string,
+    _options: WebSearchOptions = {}
   ): Promise<WebSearchResult[]> {
     const params = new URLSearchParams({
       q: query,
@@ -154,8 +151,8 @@ export class DuckDuckGoProvider implements WebSearchProvider {
   name = 'duckduckgo';
 
   async search(
-    query: string,
-    options: WebSearchOptions = {}
+    _query: string,
+    _options: WebSearchOptions = {}
   ): Promise<WebSearchResult[]> {
     // Note: This is a placeholder implementation
     // In production, you would use a proper DuckDuckGo search library

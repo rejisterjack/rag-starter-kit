@@ -1,35 +1,37 @@
 /**
  * LLM Provider Module
- * Export all LLM provider implementations and types
+ * Exports all LLM-related functionality
  */
 
-// Types
-export type {
-  LLMMessage,
-  LLMOptions,
-  LLMTokenUsage,
-  LLMResponse,
-  StreamingLLMResponse,
-  LLMProvider,
-  OpenAIConfig,
-  OllamaConfig,
-  LLMConfig,
-} from './types';
-
-// Errors
-export {
-  LLMError,
-  RateLimitError,
-  ModelUnavailableError,
-} from './types';
-
 // Providers
-export { OpenAIProvider, OPENAI_MODELS } from './openai';
-export { OllamaProvider, OLLAMA_MODELS } from './ollama';
+export {
+  OpenAIProvider,
+  OPENAI_MODELS,
+} from './openai';
 
-// Factory functions
+export {
+  OllamaProvider,
+  OLLAMA_MODELS,
+} from './ollama';
+
+// Factory
 export {
   createLLMProvider,
   createProviderFromEnv,
   getDefaultConfig,
 } from './factory';
+
+// Types
+export type {
+  LLMMessage,
+  LLMOptions,
+  LLMResponse,
+  StreamingLLMResponse,
+  LLMProvider,
+  LLMConfig,
+  OpenAIConfig,
+  OllamaConfig,
+  LLMError,
+  RateLimitError,
+  ModelUnavailableError,
+} from './types';

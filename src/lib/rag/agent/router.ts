@@ -7,7 +7,6 @@
 
 import { z } from 'zod';
 import { createProviderFromEnv } from '@/lib/ai/llm';
-import type { Message } from '@/types';
 
 // ============================================================================
 // Types
@@ -34,6 +33,12 @@ export interface RouterConfig {
   fallbackType?: QueryType;
 }
 
+// Simple message type for classification (only needs role and content)
+export interface SimpleMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
 // ============================================================================
 // Classification Schema
 // ============================================================================
@@ -57,7 +62,7 @@ const ClassificationSchema = z.object({
 
 interface FewShotExample {
   query: string;
-  history: Message[];
+  history: SimpleMessage[];
   classification: QueryClassification;
 }
 
@@ -114,18 +119,12 @@ const fewShotExamples: FewShotExample[] = [
     query: "Compare Q1 and Q2 performance",
     history: [
       {
-        id: '1',
         role: 'user',
         content: 'Upload the Q1 financial report',
-        createdAt: new Date(),
-        chatId: 'chat-1',
       },
       {
-        id: '2',
         role: 'assistant',
         content: 'I have processed the Q1 report. What would you like to know?',
-        createdAt: new Date(),
-        chatId: 'chat-1',
       },
     ],
     classification: {
@@ -167,7 +166,7 @@ export class QueryRouter {
    */
   async classify(
     query: string,
-    history: Message[] = []
+    history: SimpleMessage[] = []
   ): Promise<QueryClassification> {
     try {
       const llm = createProviderFromEnv();
@@ -214,7 +213,7 @@ export class QueryRouter {
    * Classify multiple queries in batch (for efficiency)
    */
   async classifyBatch(
-    queries: Array<{ query: string; history?: Message[] }>
+    queries: Array<{ query: string; history?: SimpleMessage[] }>
   ): Promise<QueryClassification[]> {
     return Promise.all(
       queries.map((q) => this.classify(q.query, q.history ?? []))
@@ -226,7 +225,7 @@ export class QueryRouter {
    */
   async shouldUseRAG(
     query: string,
-    history: Message[] = []
+    history: SimpleMessage[] = []
   ): Promise<boolean> {
     const classification = await this.classify(query, history);
     return classification.type === QueryType.RETRIEVE || 
@@ -238,7 +237,7 @@ export class QueryRouter {
    */
   async getSuggestedTools(
     query: string,
-    history: Message[] = []
+    history: SimpleMessage[] = []
   ): Promise<string[]> {
     const classification = await this.classify(query, history);
     return classification.suggestedTools ?? [];
@@ -291,7 +290,7 @@ Respond with a JSON object containing:
     return messages;
   }
 
-  private formatQueryForClassification(query: string, history: Message[]): string {
+  private formatQueryForClassification(query: string, history: SimpleMessage[]): string {
     let formatted = `Query: "${query}"`;
     
     if (history.length > 0) {
@@ -363,7 +362,7 @@ export function createQueryRouter(config?: RouterConfig): QueryRouter {
  */
 export async function classifyQuery(
   query: string,
-  history?: Message[]
+  history?: SimpleMessage[]
 ): Promise<QueryClassification> {
   const router = createQueryRouter();
   return router.classify(query, history);

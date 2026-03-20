@@ -2,7 +2,7 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
 import { prisma } from '@/lib/db';
-import { logAuditEvent, AuditEvent, AuditSeverity } from '@/lib/audit/audit-logger';
+import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
 
 // =============================================================================
 // Rate Limit Configuration
@@ -43,6 +43,12 @@ export const rateLimits = {
   
   // Voice endpoints
   voice: { limit: 30, window: '1 h', prefix: 'voice' },
+  
+  // Agent endpoints
+  agent: { limit: 50, window: '1 h', prefix: 'agent' },
+  
+  // Export endpoints
+  export: { limit: 10, window: '1 h', prefix: 'export' },
 } as const;
 
 export type RateLimitType = keyof typeof rateLimits;

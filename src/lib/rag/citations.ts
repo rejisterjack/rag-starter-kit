@@ -370,7 +370,7 @@ export function replaceCitationsWithLinks(
   text: string,
   getLinkHref: (citationId: string) => string
 ): string {
-  return text.replace(/\[(\d+)\]/g, (match, num) => {
+  return text.replace(/\[(\d+)\]/g, (_, num) => {
     const href = getLinkHref(num);
     return `[${num}](${href})`;
   });

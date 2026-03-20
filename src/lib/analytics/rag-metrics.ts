@@ -46,6 +46,16 @@ export interface RAGMetrics {
   userSatisfaction: number;
 }
 
+export enum MetricType {
+  QUERY_CLASSIFICATION = 'query_classification',
+  RETRIEVAL_LATENCY = 'retrieval_latency',
+  GENERATION_LATENCY = 'generation_latency',
+  TOTAL_LATENCY = 'total_latency',
+  TOKEN_USAGE = 'token_usage',
+  RETRIEVAL_ACCURACY = 'retrieval_accuracy',
+  USER_SATISFACTION = 'user_satisfaction',
+}
+
 export interface DateRange {
   start: Date;
   end: Date;
@@ -344,6 +354,34 @@ export async function getDashboardMetrics(
     topQueries,
     modelUsage,
   };
+}
+
+// ============================================================================
+// Simple Metric Recording
+// ============================================================================
+
+export async function recordMetric({
+  type,
+  value,
+  labels,
+}: {
+  type: MetricType;
+  value: number;
+  labels?: Record<string, string>;
+}): Promise<void> {
+  try {
+    await prisma.metric.create({
+      data: {
+        type,
+        value,
+        labels: labels ?? {},
+        timestamp: new Date(),
+      },
+    });
+  } catch (error) {
+    // Silently fail - metrics should not break the app
+    console.warn('Failed to record metric:', error);
+  }
 }
 
 // ============================================================================

@@ -20,8 +20,8 @@ import {
 import { useVoiceInput, useVoiceCommands } from "@/hooks/use-voice";
 import { VoiceSettingsPanel } from "@/components/voice/voice-settings";
 import { VoiceTranscriptPanel } from "@/components/voice/voice-transcript-panel";
-import { VoiceWaveform, PulsingDot } from "@/components/voice/voice-waveform";
-import type { VoiceSettings, SupportedLanguage } from "@/lib/voice";
+import { PulsingDot } from "@/components/voice/voice-waveform";
+import type { VoiceSettings } from "@/lib/voice";
 
 interface MessageInputVoiceProps {
   onSend: (message: string, files?: File[]) => void;
@@ -178,7 +178,7 @@ export function MessageInputVoice({
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  const handleTyping = useEffect(() => {
+  useEffect(() => {
     onTyping?.(message.length > 0);
   }, [message, onTyping]);
 
@@ -383,7 +383,7 @@ export function MessageInputVoice({
             fullTranscript={fullTranscript}
             confidence={confidence}
             error={voiceError}
-            onTranscriptChange={(text) => {
+            onTranscriptChange={(_text) => {
               // Update the voice transcript
             }}
             onSend={handleVoiceSend}

@@ -13,7 +13,6 @@ import { cookies } from 'next/headers';
 
 import {
   processLogoutResponse,
-  initiateLogout,
   getWorkspaceSamlConfig,
 } from '@/lib/auth/saml/provider';
 import { SamlError } from '@/lib/auth/saml/config';
@@ -266,7 +265,7 @@ async function handleLogoutResponse(
  */
 async function createLogoutResponse(
   config: NonNullable<Awaited<ReturnType<typeof getWorkspaceSamlConfig>>>,
-  baseUrl: string,
+  _baseUrl: string,
   status: 'success' | 'partial' | 'error'
 ): Promise<string> {
   const statusCode = status === 'success' 

@@ -171,7 +171,7 @@ test.describe('Workspaces', () => {
 
     // Get workspace A documents
     await page.goto('/documents');
-    const workspaceADocs = await page.locator('[data-testid="document-item"]').count();
+    // const workspaceADocs = await page.locator('[data-testid="document-item"]').count();
 
     // Switch to workspace B
     await page.click('[data-testid="workspace-switcher"]');
@@ -179,7 +179,7 @@ test.describe('Workspaces', () => {
 
     // Get workspace B documents
     await page.goto('/documents');
-    const workspaceBDocs = await page.locator('[data-testid="document-item"]').count();
+    // const workspaceBDocs = await page.locator('[data-testid="document-item"]').count();
 
     // Document counts should be different (assuming test data)
     // Or at least the workspace context should be different

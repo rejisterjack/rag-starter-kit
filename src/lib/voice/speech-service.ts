@@ -5,15 +5,11 @@
 
 import {
   type SpeechRecognitionOptions,
-  type SpeechRecognitionResult,
   type SpeechRecognitionError,
   type TTSVoice,
   type TTSSynthesisOptions,
-  type TTSEventType,
   type VoiceCommand,
-  type SupportedLanguage,
   type AudioLevelData,
-  type RecordingState,
   type SpeechRecognitionErrorType,
 } from './types';
 import {

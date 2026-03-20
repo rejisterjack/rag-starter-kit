@@ -10,7 +10,7 @@
  * - Audit logging
  */
 
-import { streamText, type Message } from 'ai';
+import { streamText, type LanguageModel } from 'ai';
 import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
@@ -20,7 +20,7 @@ import { createProviderFromEnv, type LLMMessage } from '@/lib/ai/llm';
 import { buildSystemPromptWithContext } from '@/lib/ai/prompts/templates';
 import { CitationHandler, sourcesToChunks } from '@/lib/rag/citations';
 import { ConversationMemory } from '@/lib/rag/memory';
-import { estimateMessageTokens } from '@/lib/rag/token-budget';
+// import { estimateMessageTokens } from '@/lib/rag/token-budget';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 import { 
   checkApiRateLimit, 
@@ -229,38 +229,13 @@ export async function POST(req: Request) {
         model: getModel(config.model),
         messages: llmMessages,
         temperature: config.temperature,
-        maxTokens: config.maxTokens,
+        maxOutputTokens: config.maxTokens,
         onFinish: async (completion) => {
           // Save assistant response to database
           if (effectiveConversationId) {
-            // Extract citations from response
-            const citations = citationHandler.extractCitations(
-              completion.text,
-              citationMap
-            );
-
             await memory.addMessage(effectiveConversationId, {
               role: 'assistant',
               content: completion.text,
-              sources: citations.map((c) => ({
-                id: c.chunkId,
-                content: c.content,
-                similarity: c.score,
-                metadata: {
-                  documentId: c.documentId,
-                  documentName: c.documentName,
-                  page: c.page,
-                  chunkIndex: 0,
-                  totalChunks: 0,
-                },
-              })),
-              tokensUsed: completion.usage
-                ? {
-                    prompt: completion.usage.promptTokens,
-                    completion: completion.usage.completionTokens,
-                    total: completion.usage.totalTokens,
-                  }
-                : undefined,
             });
           }
 
@@ -272,9 +247,9 @@ export async function POST(req: Request) {
                 workspaceId,
                 endpoint: '/api/chat',
                 method: 'POST',
-                tokensPrompt: completion.usage.promptTokens,
-                tokensCompletion: completion.usage.completionTokens,
-                tokensTotal: completion.usage.totalTokens,
+                tokensPrompt: completion.usage.inputTokens ?? 0,
+                tokensCompletion: completion.usage.outputTokens ?? 0,
+                tokensTotal: (completion.usage.inputTokens ?? 0) + (completion.usage.outputTokens ?? 0),
                 latencyMs: Date.now() - startTime,
               },
             });
@@ -291,7 +266,7 @@ export async function POST(req: Request) {
         similarity: s.similarity,
       }));
 
-      const response = result.toDataStreamResponse({
+      const response = result.toTextStreamResponse({
         headers: {
           'X-Message-Sources': JSON.stringify(sourcesMetadata),
           'X-Model-Used': config.model,
@@ -564,10 +539,10 @@ import { createOllama } from 'ollama-ai-provider';
 /**
  * Get the appropriate model based on configuration
  */
-function getModel(modelName: string) {
+function getModel(modelName: string): LanguageModel {
   // Check if it's an OpenAI model
   if (modelName.startsWith('gpt-') || modelName.startsWith('text-')) {
-    return openai(modelName);
+    return openai(modelName) as unknown as LanguageModel;
   }
 
   // Check if it's an Ollama model
@@ -576,11 +551,11 @@ function getModel(modelName: string) {
     const ollama = createOllama({
       baseURL: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434/api',
     });
-    return ollama(modelName);
+    return ollama(modelName) as unknown as LanguageModel;
   }
 
   // Default to OpenAI
-  return openai(modelName);
+  return openai(modelName) as unknown as LanguageModel;
 }
 
 /**

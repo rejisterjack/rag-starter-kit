@@ -60,10 +60,14 @@ export async function GET(
       const domain = email.split('@')[1]?.toLowerCase();
       const workspace = await prisma.workspace.findUnique({
         where: { id: workspaceId },
-        select: { ssoDomain: true },
+        select: { settings: true },
       });
 
-      if (workspace?.ssoDomain && domain !== workspace.ssoDomain.toLowerCase()) {
+      // Extract SSO domain from workspace settings
+      const workspaceSettings = workspace?.settings as { ssoDomain?: string } | null;
+      const ssoDomain = workspaceSettings?.ssoDomain;
+
+      if (ssoDomain && domain !== ssoDomain.toLowerCase()) {
         return NextResponse.json(
           { error: 'Email domain does not match workspace SSO domain' },
           { status: 403 }

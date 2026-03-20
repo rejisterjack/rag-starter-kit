@@ -72,7 +72,7 @@ const DEMO_SOURCES: Source[] = [
   },
 ];
 
-export default function ChatPage(): React.JSX.Element {
+export default function ChatPage(): React.ReactElement {
   const [documents, setDocuments] = useState<Document[]>(DEMO_DOCUMENTS);
   const [sources, setSources] = useState<Source[]>(DEMO_SOURCES);
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);

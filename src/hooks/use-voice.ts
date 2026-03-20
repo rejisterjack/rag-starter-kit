@@ -13,7 +13,6 @@ import {
   isSpeechSynthesisSupported,
   type SpeechRecognitionOptions,
   type SpeechRecognitionError,
-  type SupportedLanguage,
   type TTSVoice,
   type TTSSynthesisOptions,
   type VoiceCommand,

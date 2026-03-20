@@ -7,7 +7,7 @@ export interface WhiteLabelConfig {
 }
 
 export class WhiteLabelManager {
-  async getConfig(workspaceId?: string): Promise<WhiteLabelConfig> {
+  async getConfig(_workspaceId?: string): Promise<WhiteLabelConfig> {
     return {
       brandName: 'RAG Starter Kit',
       primaryColor: '#3b82f6',

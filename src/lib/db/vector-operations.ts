@@ -161,7 +161,6 @@ export async function createIVFFlatIndex(
   const {
     tableName,
     columnName,
-    dimensions,
     lists,
     distanceMetric = 'cosine',
   } = options;

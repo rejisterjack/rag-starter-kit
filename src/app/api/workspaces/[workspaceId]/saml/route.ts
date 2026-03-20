@@ -21,10 +21,8 @@ import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
 import {
   SamlConfigSchema,
   UpdateSamlConfigSchema,
-  generateSPMetadata,
   getSamlUrls,
   parseIdPMetadata,
-  type SPMetadataConfig,
 } from '@/lib/auth/saml/config';
 import {
   getWorkspaceSamlConfig,
@@ -37,7 +35,7 @@ import {
 // =============================================================================
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ workspaceId: string }> }
 ): Promise<Response> {
   try {
@@ -395,7 +393,7 @@ export async function PUT(
 // =============================================================================
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ workspaceId: string }> }
 ): Promise<Response> {
   try {

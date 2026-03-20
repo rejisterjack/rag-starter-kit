@@ -10,7 +10,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -70,7 +69,7 @@ export function MemberList({
   currentUserId,
   currentUserRole,
   onUpdate,
-}: MemberListProps): JSX.Element {
+}: MemberListProps): React.ReactElement {
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
   const canManageMembers = ['OWNER', 'ADMIN'].includes(currentUserRole);

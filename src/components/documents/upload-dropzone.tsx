@@ -629,7 +629,7 @@ export function useUpload(options: UseUploadOptions = {}) {
   const submitUrl = useCallback(async (url: string) => {
     const uploadFile: UploadFile = {
       id: Math.random().toString(36).substr(2, 9),
-      file: new File([], url),
+      file: new (globalThis as typeof globalThis & { File: typeof File }).File([], url),
       name: new URL(url).hostname,
       size: 0,
       type: 'text/html',

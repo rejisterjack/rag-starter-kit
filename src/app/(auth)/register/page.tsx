@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 
-export default function RegisterPage(): JSX.Element {
+export default function RegisterPage(): React.ReactElement {
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(false);

@@ -133,6 +133,7 @@ export function OfflineMessageComposer({
       const timer = setTimeout(() => setShowPendingToast(false), 5000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [pendingMessages.length]);
 
   const sendPendingMessages = async () => {

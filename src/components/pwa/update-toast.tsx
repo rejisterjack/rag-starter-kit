@@ -70,6 +70,7 @@ export function UpdateToast({
       }, autoHideDelay);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [updateComplete, autoHideDelay]);
 
   const handleUpdate = useCallback(async () => {

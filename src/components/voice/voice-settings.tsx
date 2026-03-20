@@ -5,7 +5,7 @@
  * Settings panel for voice preferences
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Mic, Volume2, Globe, Settings2, Zap, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -59,9 +59,9 @@ export function VoiceSettingsPanel({
     ...initialSettings,
   });
   const [isOpen, setIsOpen] = useState(false);
-  const [testVoiceText, setTestVoiceText] = useState('Hello! This is a test of the voice settings.');
+  const [testVoiceText] = useState('Hello! This is a test of the voice settings.');
 
-  const { voices, currentVoice, speak, isSpeaking, setVoice, setRate, setPitch } = useVoiceOutput();
+  const { voices, speak, isSpeaking, setVoice, setRate, setPitch } = useVoiceOutput();
 
   // Filter voices by selected language
   const availableVoices = voices.filter(v => 

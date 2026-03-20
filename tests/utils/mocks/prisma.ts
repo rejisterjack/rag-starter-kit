@@ -162,7 +162,7 @@ export const createMockPrismaClient = (): DeepMockProxy<PrismaClient> => {
  * Type helper for deep mock proxy
  */
 export type DeepMockProxy<T> = {
-  [K in keyof T]: T[K] extends (...args: infer A) => infer R
+  [K in keyof T]: T[K] extends (...args: infer _A) => infer _R
     ? MockFunction<T[K]>
     : T[K] extends object
     ? DeepMockProxy<T[K]>

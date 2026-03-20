@@ -24,7 +24,7 @@ import {
   Loader2,
 } from 'lucide-react';
 
-import { ExportDialog, ExportDialogOptions } from './export-dialog';
+import { ExportDialog, type ExportOptions, type ExportOptions as ExportDialogOptions } from './export-dialog';
 import type { ExportFormat } from '@/lib/export';
 
 // =============================================================================
@@ -37,7 +37,7 @@ export interface ExportButtonProps {
   workspaceId?: string;
   workspaceName?: string;
   variant?: 'button' | 'dropdown' | 'icon';
-  onExport?: (format: 'pdf' | 'word' | 'markdown', options?: ExportDialogOptions) => Promise<void>;
+  onExport?: (format: 'pdf' | 'markdown' | 'html' | 'json', options?: ExportDialogOptions) => Promise<void>;
   showLabel?: boolean;
   className?: string;
   disabled?: boolean;
@@ -63,7 +63,7 @@ export function ExportButton({
   const [exportFormat, setExportFormat] = useState<ExportFormat | null>(null);
 
   const handleQuickExport = useCallback(
-    async (format: 'pdf' | 'word' | 'markdown') => {
+    async (format: 'pdf' | 'markdown' | 'html' | 'json') => {
       if (!onExport) return;
 
       setIsExporting(true);
@@ -73,13 +73,8 @@ export function ExportButton({
         await onExport(format, {
           format,
           includeCitations: true,
-          citationStyle: 'inline-numbered',
-          includeMetadata: true,
+          citationStyle: 'numbered',
           includeSources: true,
-          watermark: false,
-          includeTableOfContents: false,
-          pageSize: 'A4',
-          language: 'en',
         });
       } finally {
         setIsExporting(false);
@@ -90,17 +85,18 @@ export function ExportButton({
   );
 
   const handleAdvancedExport = useCallback(
-    async (options: ExportDialogOptions) => {
-      if (!onExport) return;
+    async (options: ExportDialogOptions): Promise<Blob> => {
+      if (!onExport) return new Blob([]);
 
       await onExport(options.format, options);
+      return new Blob([]);
     },
     [onExport]
   );
 
   // Quick export items
   const quickExportItems: Array<{
-    format: 'pdf' | 'word' | 'markdown';
+    format: 'pdf' | 'markdown' | 'html' | 'json';
     label: string;
     icon: typeof FileText;
     shortcut: string;
@@ -112,7 +108,7 @@ export function ExportButton({
       shortcut: 'PDF',
     },
     {
-      format: 'word',
+      format: 'markdown',
       label: 'Export as Word',
       icon: FileType2,
       shortcut: 'DOCX',
@@ -154,11 +150,8 @@ export function ExportButton({
         <ExportDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
-          mode="single"
-          chatId={chatId}
-          chatTitle={chatTitle}
-          workspaceId={workspaceId}
-          workspaceName={workspaceName}
+          conversationId={chatId}
+          conversationTitle={chatTitle || 'Chat'}
           onExport={handleAdvancedExport}
         />
       </TooltipProvider>
@@ -215,11 +208,8 @@ export function ExportButton({
         <ExportDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
-          mode="single"
-          chatId={chatId}
-          chatTitle={chatTitle}
-          workspaceId={workspaceId}
-          workspaceName={workspaceName}
+          conversationId={chatId}
+          conversationTitle={chatTitle || 'Chat'}
           onExport={handleAdvancedExport}
         />
       </>
@@ -252,11 +242,8 @@ export function ExportButton({
       <ExportDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        mode="single"
-        chatId={chatId}
-        chatTitle={chatTitle}
-        workspaceId={workspaceId}
-        workspaceName={workspaceName}
+        conversationId={chatId}
+        conversationTitle={chatTitle || 'Chat'}
         onExport={handleAdvancedExport}
       />
     </>
@@ -283,9 +270,10 @@ export function BulkExportButton({
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleExport = useCallback(
-    async (options: ExportDialogOptions, filters?: unknown) => {
-      if (!onExport) return;
-      await onExport(options, filters);
+    async (options: ExportOptions): Promise<Blob> => {
+      if (!onExport) return new Blob([]);
+      await onExport(options as ExportDialogOptions);
+      return new Blob([]);
     },
     [onExport]
   );
@@ -305,9 +293,8 @@ export function BulkExportButton({
       <ExportDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        mode="bulk"
-        workspaceId={workspaceId}
-        workspaceName={workspaceName}
+        conversationId={workspaceId || 'bulk'}
+        conversationTitle={workspaceName || 'Bulk Export'}
         onExport={handleExport}
       />
     </>

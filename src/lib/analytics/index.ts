@@ -12,6 +12,8 @@ export {
   getRetrievalQuality,
   getRetrievalAccuracy,
   getDashboardMetrics,
+  recordMetric,
+  MetricType,
   type RAGEvent,
   type RAGMetrics,
   type DateRange,

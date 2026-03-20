@@ -183,7 +183,7 @@ export const {
     },
 
     // Sign In Callback - Additional validation
-    async signIn({ user, account, profile }) {
+    async signIn({ account }) {
       // Allow OAuth sign-ins
       if (account?.provider === 'github' || account?.provider === 'google') {
         return true;

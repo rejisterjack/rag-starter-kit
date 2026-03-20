@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Webhook, Plus, Trash2, Copy, Check } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +25,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+// import { cn } from '@/lib/utils';
 
 interface WebhookConfig {
   id: string;
@@ -60,7 +60,7 @@ export function WebhookManager({
   onCreate,
   onUpdate,
   onDelete,
-  onRegenerateSecret,
+  onRegenerateSecret: _onRegenerateSecret,
 }: WebhookManagerProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newWebhook, setNewWebhook] = useState({
@@ -68,7 +68,7 @@ export function WebhookManager({
     url: '',
     events: [] as string[],
   });
-  const [revealedSecrets, setRevealedSecrets] = useState<Set<string>>(new Set());
+
 
   const handleCreate = async () => {
     if (!newWebhook.name || !newWebhook.url || newWebhook.events.length === 0) {

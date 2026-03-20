@@ -7,7 +7,7 @@
  */
 
 import { prisma } from '@/lib/db';
-import { createHash, randomBytes } from 'crypto';
+import { randomBytes } from 'crypto';
 import type { Message } from '@/types';
 
 // ============================================================================

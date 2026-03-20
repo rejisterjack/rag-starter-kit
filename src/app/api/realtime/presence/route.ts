@@ -389,7 +389,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 // DELETE Handler - Remove Presence
 // =============================================================================
 
-export async function DELETE(req: NextRequest): Promise<NextResponse> {
+export async function DELETE(_req: NextRequest): Promise<NextResponse> {
   try {
     // Authenticate user
     const session = await auth();

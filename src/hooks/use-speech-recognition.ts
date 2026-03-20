@@ -7,7 +7,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   SpeechRecognitionService,
-  SpeechRecognitionResult,
   SpeechRecognitionError,
   SpeechRecognitionOptions,
   isSpeechRecognitionSupported,

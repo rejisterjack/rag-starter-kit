@@ -133,7 +133,7 @@ function generateSparklineData(length: number = 7): number[] {
   return Array.from({ length }, () => Math.floor(Math.random() * 100) + 50);
 }
 
-export default function AnalyticsPage(): React.JSX.Element {
+export default function AnalyticsPage(): React.ReactElement {
   const [activeTab, setActiveTab] = React.useState("overview");
   const { range, preset, setRange } = useDateRange("last7days");
   const { tick } = useRealtimeData({ refreshInterval: 5000 });

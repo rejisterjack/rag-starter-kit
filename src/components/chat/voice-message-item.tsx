@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from "react";
-import { User, Bot, Pencil, Trash2, Check, X, Copy, Volume2 } from "lucide-react";
+import { User, Bot, Pencil, Trash2, Check, X, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -29,8 +29,8 @@ import { Label } from "@/components/ui/label";
 import { Markdown } from "./markdown";
 import { CitationList, type Source } from "./citations";
 import { SpeakButton } from "@/components/voice/speak-button";
-import { useVoiceOutput } from "@/hooks/use-voice";
-import type { VoiceSettings, SupportedLanguage } from "@/lib/voice";
+// import { useVoiceOutput } from "@/hooks/use-voice";
+import type { VoiceSettings } from "@/lib/voice";
 
 export interface Message {
   id: string;
@@ -331,7 +331,7 @@ export function VoiceMessageList({
   speakingMessageId,
   onSpeakingChange,
 }: VoiceMessageListProps) {
-  const [currentSpeakingId, setCurrentSpeakingId] = useState<string | null>(speakingMessageId ?? null);
+  const [_currentSpeakingId, setCurrentSpeakingId] = useState<string | null>(speakingMessageId ?? null);
 
   // Sync with external speaking state
   useEffect(() => {

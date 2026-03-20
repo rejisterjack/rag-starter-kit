@@ -351,7 +351,7 @@ export async function withRetry<T>(
  */
 export class FallbackLLMProvider implements LLMProvider {
   private currentProviderIndex = 0;
-  private _config: { maxRetriesPerProvider?: number; switchOnError?: boolean };
+
 
   constructor(
     private providers: LLMProvider[],

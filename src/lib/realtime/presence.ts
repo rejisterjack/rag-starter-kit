@@ -383,7 +383,7 @@ export async function getTypingUsers(roomId: string): Promise<TypingState[]> {
   const now = Date.now();
   const users: TypingState[] = [];
 
-  for (const [userId, value] of Object.entries(data)) {
+  for (const [, value] of Object.entries(data)) {
     try {
       const typingState: TypingState = JSON.parse(value);
       // Only include if within typing window
@@ -450,7 +450,7 @@ export async function getCursorsInRoom(roomId: string): Promise<CursorState[]> {
   const now = Date.now();
   const cursors: CursorState[] = [];
 
-  for (const [userId, value] of Object.entries(data)) {
+  for (const [, value] of Object.entries(data)) {
     try {
       const cursorState: CursorState = JSON.parse(value);
       // Only include if within cursor window

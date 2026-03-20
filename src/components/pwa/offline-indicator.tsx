@@ -60,6 +60,7 @@ export function OfflineIndicator({
       }, autoHideDelay);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [wasOffline, autoHideDelay]);
 
   const handleReconnect = () => {

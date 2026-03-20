@@ -108,7 +108,7 @@ export function SSOLoginButton({
   showAlways = false,
   buttonText = 'Sign in with SSO',
   className = '',
-}: SSOLoginButtonProps): JSX.Element {
+}: SSOLoginButtonProps): React.ReactNode {
   const [isLoading, setIsLoading] = useState(false);
   const [domainResult, setDomainResult] = useState<DomainLookupResult | null>(null);
   const [showProviderDialog, setShowProviderDialog] = useState(false);
@@ -309,12 +309,12 @@ interface CompactSSOButtonProps {
 }
 
 export function CompactSSOButton({
-  workspaceId,
+  workspaceId: _workspaceId,
   workspaceName,
   workspaceLogo,
   onClick,
   isLoading = false,
-}: CompactSSOButtonProps): JSX.Element {
+}: CompactSSOButtonProps): React.ReactElement {
   return (
     <Button
       variant="outline"

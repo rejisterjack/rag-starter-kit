@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 
-export default function HomePage(): JSX.Element {
+export default function HomePage(): React.ReactElement {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-background to-muted/20 px-4">
       <div className="mx-auto max-w-3xl text-center">
@@ -47,7 +47,7 @@ interface FeatureCardProps {
   description: string;
 }
 
-function FeatureCard({ title, description }: FeatureCardProps): JSX.Element {
+function FeatureCard({ title, description }: FeatureCardProps): React.ReactElement {
   return (
     <div className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm transition-colors hover:bg-accent/50">
       <h3 className="mb-2 font-semibold">{title}</h3>

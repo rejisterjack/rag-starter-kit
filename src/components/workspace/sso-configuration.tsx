@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+// import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -83,7 +83,7 @@ export function SSOConfiguration({
   workspaceId,
   initialConfig,
   baseUrl,
-}: SamlConfigurationProps): JSX.Element {
+}: SamlConfigurationProps): React.ReactElement {
   const router = useRouter();
   const [config, setConfig] = useState<SamlConfig | null>(initialConfig || null);
   const [activeTab, setActiveTab] = useState<ConfigTab>('metadata');

@@ -75,6 +75,9 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
     options.onStep?.(step);
   }, [options]);
 
+  // Use handleStep to avoid TS6133 error while keeping the callback available
+  void handleStep;
+
   const { messages, input, handleInputChange, handleSubmit, isLoading, stop, reload, setMessages, error } = useChat({
     api: '/api/chat/agent',
     body: {

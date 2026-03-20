@@ -415,7 +415,7 @@ export const cachedChats = {
    * Clear old chats (not accessed in the last X days)
    */
   async clearOld(maxAgeDays: number = 30): Promise<number> {
-    const db = await getDB();
+    await getDB();
     const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
 
     const allChats = await this.getAll();

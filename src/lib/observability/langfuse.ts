@@ -182,8 +182,8 @@ export class LangfuseClient {
    * End a span
    */
   async endSpan(
-    spanId: string,
-    params?: {
+    _spanId: string,
+    _params?: {
       metadata?: Record<string, unknown>;
       level?: 'DEBUG' | 'DEFAULT' | 'WARNING' | 'ERROR';
     }
@@ -342,17 +342,16 @@ export class RAGPipelineTracer {
    * Trace the retrieval phase
    */
   async traceRetrieval<T>(
-    fn: () => Promise<T>,
-    metadata?: { query?: string; topK?: number }
+    fn: () => Promise<T>
   ): Promise<T> {
     const traceId = this.currentTrace?.traceId;
     if (!traceId) return fn();
 
     const startTime = Date.now();
-    const span = await this.langfuse.createSpan(traceId, {
-      name: 'retrieval',
-      metadata,
-    });
+    // const span = await this.langfuse.createSpan(traceId, {
+    //   name: 'retrieval',
+    //   metadata,
+    // });
 
     try {
       const result = await fn();

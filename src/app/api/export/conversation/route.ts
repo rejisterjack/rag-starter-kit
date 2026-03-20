@@ -71,11 +71,7 @@ export async function POST(req: Request) {
       include: {
         messages: {
           orderBy: { createdAt: 'asc' },
-          include: {
-            sources: true,
-          },
         },
-        workspace: true,
       },
     });
 
@@ -111,12 +107,12 @@ export async function POST(req: Request) {
     });
 
     // Format messages for export
-    const messages = chat.messages.map((msg) => ({
+    const messages = chat.messages.map((msg: typeof chat.messages[0]) => ({
       id: msg.id,
       role: msg.role as 'user' | 'assistant' | 'system',
       content: msg.content,
       createdAt: msg.createdAt,
-      citations: includeCitations ? msg.sources?.map((s) => ({
+      citations: includeCitations ? (msg.sources as Array<{id: string; content: string; metadata?: {documentName?: string; page?: number}; similarity?: number}> | null)?.map((s: {id: string; content: string; metadata?: {documentName?: string; page?: number}; similarity?: number}) => ({
         id: s.id,
         content: s.content,
         documentName: s.metadata?.documentName || 'Unknown',
@@ -131,7 +127,7 @@ export async function POST(req: Request) {
     let filename: string;
 
     const title = chat.title || 'Conversation';
-    const workspaceName = chat.workspace?.name;
+    const workspaceName = undefined; // workspace relation not included
 
     switch (format) {
       case 'json':

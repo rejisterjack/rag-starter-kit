@@ -115,7 +115,6 @@ export function VoiceTranscriptPanel({
   };
 
   const hasTranscript = fullTranscript.length > 0;
-  const displayConfidence = confidence ?? 0;
 
   return (
     <div

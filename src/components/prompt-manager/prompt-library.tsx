@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, Edit, Trash2, Plus, Star, GitBranch } from 'lucide-react';
+import { Copy, Edit, Trash2, Plus, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,7 +58,7 @@ export function PromptLibrary({
   const [search, setSearch] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
+  const [, setEditingPrompt] = useState<Prompt | null>(null);
   const [newPrompt, setNewPrompt] = useState({
     name: '',
     description: '',
