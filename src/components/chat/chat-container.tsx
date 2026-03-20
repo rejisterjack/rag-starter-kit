@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import React, { useState, useCallback } from "react";
-import { Menu, PanelLeft, Settings, Moon, Sun, Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Menu, Moon, PanelLeft, Plus, Settings, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import type React from 'react';
+import { useCallback, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,14 +12,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useTheme } from "next-themes";
-import { MessageList } from "./message-list";
-import { MessageInput } from "./message-input";
-import { EmptyState } from "./empty-state";
-import { SourcesPanel, InlineSourcesPanel } from "./sources-panel";
-import { type Message } from "./message-item";
-import { type Source } from "./citations";
+} from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
+import type { Source } from './citations';
+import { EmptyState } from './empty-state';
+import { MessageInput } from './message-input';
+import type { Message } from './message-item';
+import { MessageList } from './message-list';
+import { InlineSourcesPanel, SourcesPanel } from './sources-panel';
 
 interface ChatContainerProps {
   messages: Message[];
@@ -59,27 +60,26 @@ export function ChatContainer({
   const [isSourcesInlineCollapsed, setIsSourcesInlineCollapsed] = useState(true);
   const [, setSelectedSource] = useState<Source | null>(null);
 
-  const handleCitationClick = useCallback((index: number) => {
-    const source = sources.find((s) => s.index === index);
-    if (source) {
-      setSelectedSource(source);
-      setIsSourcesPanelOpen(true);
-    }
-  }, [sources]);
+  const handleCitationClick = useCallback(
+    (index: number) => {
+      const source = sources.find((s) => s.index === index);
+      if (source) {
+        setSelectedSource(source);
+        setIsSourcesPanelOpen(true);
+      }
+    },
+    [sources]
+  );
 
   const hasMessages = messages.length > 0 || isStreaming;
 
   return (
-    <div className={cn("flex h-screen bg-background", className)}>
+    <div className={cn('flex h-screen bg-background', className)}>
       {/* Mobile sidebar */}
       {sidebar && (
         <Sheet>
           <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute left-4 top-4 z-50 lg:hidden"
-            >
+            <Button variant="ghost" size="icon" className="absolute left-4 top-4 z-50 lg:hidden">
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
@@ -90,9 +90,7 @@ export function ChatContainer({
       )}
 
       {/* Desktop sidebar */}
-      {sidebar && (
-        <div className="hidden w-80 border-r lg:block">{sidebar}</div>
-      )}
+      {sidebar && <div className="hidden w-80 border-r lg:block">{sidebar}</div>}
 
       {/* Main chat area */}
       <div className="flex flex-1 flex-col min-w-0">
@@ -105,12 +103,7 @@ export function ChatContainer({
 
           <div className="flex items-center gap-2">
             {onNewChat && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-2"
-                onClick={onNewChat}
-              >
+              <Button variant="ghost" size="sm" className="gap-2" onClick={onNewChat}>
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">New chat</span>
               </Button>
@@ -132,13 +125,9 @@ export function ChatContainer({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             >
-              {theme === "dark" ? (
-                <Sun className="h-5 w-5" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
 
             {/* Settings */}

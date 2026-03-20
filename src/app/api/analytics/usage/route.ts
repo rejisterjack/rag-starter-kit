@@ -7,16 +7,15 @@
  */
 
 import { NextResponse } from 'next/server';
-
-import { auth } from '@/lib/auth';
-import { checkPermission, Permission } from '@/lib/workspace/permissions';
-import {
-  checkApiRateLimit,
-  getRateLimitIdentifier,
-  addRateLimitHeaders,
-} from '@/lib/security/rate-limiter';
 import { getUsageStats } from '@/lib/analytics/dashboard-service';
 import { logAuditEvent } from '@/lib/audit/audit-logger';
+import { auth } from '@/lib/auth';
+import {
+  addRateLimitHeaders,
+  checkApiRateLimit,
+  getRateLimitIdentifier,
+} from '@/lib/security/rate-limiter';
+import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // =============================================================================
 // GET Handler
@@ -29,10 +28,7 @@ export async function GET(req: Request) {
     // Step 1: Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -63,7 +59,7 @@ export async function GET(req: Request) {
 
     // Step 3: Parse query parameters
     const { searchParams } = new URL(req.url);
-    
+
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
     const requestedWorkspaceId = searchParams.get('workspaceId');
@@ -74,7 +70,7 @@ export async function GET(req: Request) {
 
     if (fromParam) {
       fromDate = new Date(fromParam);
-      if (isNaN(fromDate.getTime())) {
+      if (Number.isNaN(fromDate.getTime())) {
         return NextResponse.json(
           {
             error: 'Invalid from date format',
@@ -88,7 +84,7 @@ export async function GET(req: Request) {
 
     if (toParam) {
       toDate = new Date(toParam);
-      if (isNaN(toDate.getTime())) {
+      if (Number.isNaN(toDate.getTime())) {
         return NextResponse.json(
           {
             error: 'Invalid to date format',
@@ -143,11 +139,7 @@ export async function GET(req: Request) {
       effectiveWorkspaceId = requestedWorkspaceId;
     } else if (userWorkspaceId) {
       // Use user's default workspace
-      const hasAccess = await checkPermission(
-        userId,
-        userWorkspaceId,
-        Permission.READ_API_USAGE
-      );
+      const hasAccess = await checkPermission(userId, userWorkspaceId, Permission.READ_API_USAGE);
 
       if (hasAccess) {
         effectiveWorkspaceId = userWorkspaceId;
@@ -197,8 +189,6 @@ export async function GET(req: Request) {
 
     return response;
   } catch (error) {
-    console.error('Analytics usage error:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     return NextResponse.json(

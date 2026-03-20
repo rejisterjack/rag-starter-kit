@@ -1,9 +1,9 @@
 /**
  * Workspace SAML Configuration API
- * 
+ *
  * Manage SAML SSO configuration for workspaces.
  * Requires admin or owner permissions.
- * 
+ *
  * Endpoints:
  * - GET: Get SAML configuration
  * - POST: Create/update SAML configuration
@@ -11,24 +11,23 @@
  * - DELETE: Remove SAML configuration
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
-import { checkPermission, Permission } from '@/lib/workspace/permissions';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
 import {
-  SamlConfigSchema,
-  UpdateSamlConfigSchema,
   getSamlUrls,
   parseIdPMetadata,
+  SamlConfigSchema,
+  UpdateSamlConfigSchema,
 } from '@/lib/auth/saml/config';
 import {
   getWorkspaceSamlConfig,
-  upsertSamlConfig,
   rotateCertificate,
+  upsertSamlConfig,
 } from '@/lib/auth/saml/provider';
+import { prisma } from '@/lib/db';
+import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // =============================================================================
 // GET - Retrieve SAML configuration
@@ -43,10 +42,7 @@ export async function GET(
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     // Check permission to view settings
@@ -57,19 +53,13 @@ export async function GET(
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: 'Permission denied' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 
     const config = await getWorkspaceSamlConfig(workspaceId);
 
     if (!config) {
-      return NextResponse.json(
-        { error: 'SAML configuration not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'SAML configuration not found' }, { status: 404 });
     }
 
     // Return configuration without sensitive data
@@ -94,12 +84,8 @@ export async function GET(
       // Include certificate fingerprint for verification
       certificateFingerprint: generateCertFingerprint(config.certificate),
     });
-  } catch (error) {
-    console.error('Failed to get SAML configuration:', error);
-    return NextResponse.json(
-      { error: 'Failed to retrieve SAML configuration' },
-      { status: 500 }
-    );
+  } catch (_error) {
+    return NextResponse.json({ error: 'Failed to retrieve SAML configuration' }, { status: 500 });
   }
 }
 
@@ -112,12 +98,20 @@ const CreateSamlConfigSchema = SamlConfigSchema.extend({
   metadataUrl: z.string().url().optional(),
   // Allow raw metadata XML
   metadataXml: z.string().optional(),
-}).refine((data) => {
-  // Require either metadata or manual configuration
-  return !!(data.metadataUrl || data.metadataXml || (data.idpEntityId && data.entryPoint && data.certificate));
-}, {
-  message: 'Either metadata URL/XML or manual configuration (entityId, entryPoint, certificate) is required',
-});
+}).refine(
+  (data) => {
+    // Require either metadata or manual configuration
+    return !!(
+      data.metadataUrl ||
+      data.metadataXml ||
+      (data.idpEntityId && data.entryPoint && data.certificate)
+    );
+  },
+  {
+    message:
+      'Either metadata URL/XML or manual configuration (entityId, entryPoint, certificate) is required',
+  }
+);
 
 export async function POST(
   request: NextRequest,
@@ -128,10 +122,7 @@ export async function POST(
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     // Check admin permission
@@ -142,14 +133,11 @@ export async function POST(
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: 'Permission denied' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 
     const body = await request.json();
-    
+
     // Parse and validate request
     const validationResult = CreateSamlConfigSchema.safeParse({
       ...body,
@@ -192,8 +180,13 @@ export async function POST(
         }
 
         metadataXml = await response.text();
+      } else if (data.metadataXml) {
+        metadataXml = data.metadataXml;
       } else {
-        metadataXml = data.metadataXml!;
+        return NextResponse.json(
+          { error: 'Metadata XML is required when metadata URL is not provided' },
+          { status: 400 }
+        );
       }
 
       // Parse metadata
@@ -257,8 +250,6 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error('Failed to create SAML configuration:', error);
-    
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation failed', details: error.format() },
@@ -266,10 +257,7 @@ export async function POST(
       );
     }
 
-    return NextResponse.json(
-      { error: 'Failed to create SAML configuration' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to create SAML configuration' }, { status: 500 });
   }
 }
 
@@ -286,10 +274,7 @@ export async function PUT(
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     const hasPermission = await checkPermission(
@@ -299,14 +284,11 @@ export async function PUT(
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: 'Permission denied' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 
     const body = await request.json();
-    
+
     // Parse and validate request
     const validationResult = UpdateSamlConfigSchema.safeParse(body);
 
@@ -322,7 +304,7 @@ export async function PUT(
     // Check if this is a certificate rotation request
     if (data.certificate && !data.entryPoint && !data.idpEntityId) {
       await rotateCertificate(workspaceId, data.certificate);
-      
+
       await logAuditEvent({
         event: AuditEvent.WORKSPACE_SETTINGS_CHANGED,
         userId: session.user.id,
@@ -379,12 +361,8 @@ export async function PUT(
         active: updated.active,
       },
     });
-  } catch (error) {
-    console.error('Failed to update SAML configuration:', error);
-    return NextResponse.json(
-      { error: 'Failed to update SAML configuration' },
-      { status: 500 }
-    );
+  } catch (_error) {
+    return NextResponse.json({ error: 'Failed to update SAML configuration' }, { status: 500 });
   }
 }
 
@@ -401,10 +379,7 @@ export async function DELETE(
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     const hasPermission = await checkPermission(
@@ -414,10 +389,7 @@ export async function DELETE(
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: 'Permission denied' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 
     // Delete the SAML configuration
@@ -447,12 +419,8 @@ export async function DELETE(
       success: true,
       message: 'SAML configuration removed',
     });
-  } catch (error) {
-    console.error('Failed to delete SAML configuration:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete SAML configuration' },
-      { status: 500 }
-    );
+  } catch (_error) {
+    return NextResponse.json({ error: 'Failed to delete SAML configuration' }, { status: 500 });
   }
 }
 
@@ -479,12 +447,12 @@ function generateCertFingerprint(cert: string): string {
 
     // Decode base64
     const decoded = Buffer.from(cleanCert, 'base64');
-    
+
     // Create SHA-256 fingerprint
-    const crypto = require('crypto');
+    const crypto = require('node:crypto');
     const hash = crypto.createHash('sha256');
     hash.update(decoded);
-    
+
     // Format as colon-separated hex
     return hash.digest('hex').toUpperCase().match(/.{2}/g)?.join(':') || '';
   } catch {

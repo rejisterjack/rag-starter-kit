@@ -1,20 +1,34 @@
 /**
  * Document Fixtures
- * 
+ *
  * Sample documents for testing document processing, ingestion, and RAG pipeline.
  */
 
-import type { Document, Chunk } from '@prisma/client';
+import type { Document, DocumentStatus } from '@prisma/client';
+
+// =============================================================================
+// Document Type Extensions
+// =============================================================================
+
+type DocumentWithMetadata = Document & {
+  type: string;
+  status: DocumentStatus;
+  metadata: Record<string, unknown>;
+};
+
+// =============================================================================
+// Document Fixtures
+// =============================================================================
 
 /**
  * Sample PDF document metadata
  */
-export const samplePDFDocument: Partial<Document> = {
+export const samplePDFDocument: Partial<DocumentWithMetadata> = {
   id: 'doc-001',
   name: 'annual-report-2024.pdf',
   type: 'application/pdf',
   size: 2_500_000, // 2.5MB
-  status: 'processed',
+  status: 'COMPLETED',
   workspaceId: 'workspace-001',
   userId: 'user-001',
   createdAt: new Date('2024-01-15T10:00:00Z'),
@@ -30,12 +44,12 @@ export const samplePDFDocument: Partial<Document> = {
 /**
  * Sample Word document metadata
  */
-export const sampleWordDocument: Partial<Document> = {
+export const sampleWordDocument: Partial<DocumentWithMetadata> = {
   id: 'doc-002',
   name: 'project-specs.docx',
   type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   size: 500_000,
-  status: 'processed',
+  status: 'COMPLETED',
   workspaceId: 'workspace-001',
   userId: 'user-001',
   createdAt: new Date('2024-01-16T14:00:00Z'),
@@ -51,12 +65,12 @@ export const sampleWordDocument: Partial<Document> = {
 /**
  * Sample text document metadata
  */
-export const sampleTextDocument: Partial<Document> = {
+export const sampleTextDocument: Partial<DocumentWithMetadata> = {
   id: 'doc-003',
   name: 'meeting-notes.txt',
   type: 'text/plain',
   size: 15_000,
-  status: 'processed',
+  status: 'COMPLETED',
   workspaceId: 'workspace-002',
   userId: 'user-002',
   createdAt: new Date('2024-01-17T09:00:00Z'),
@@ -71,12 +85,12 @@ export const sampleTextDocument: Partial<Document> = {
 /**
  * Sample document in processing state
  */
-export const sampleProcessingDocument: Partial<Document> = {
+export const sampleProcessingDocument: Partial<DocumentWithMetadata> = {
   id: 'doc-004',
   name: 'large-file.pdf',
   type: 'application/pdf',
   size: 50_000_000,
-  status: 'processing',
+  status: 'PROCESSING',
   workspaceId: 'workspace-001',
   userId: 'user-001',
   createdAt: new Date('2024-01-18T08:00:00Z'),
@@ -87,12 +101,12 @@ export const sampleProcessingDocument: Partial<Document> = {
 /**
  * Sample document with error state
  */
-export const sampleErrorDocument: Partial<Document> = {
+export const sampleErrorDocument: Partial<DocumentWithMetadata> = {
   id: 'doc-005',
   name: 'corrupted.pdf',
   type: 'application/pdf',
   size: 0,
-  status: 'error',
+  status: 'FAILED',
   workspaceId: 'workspace-001',
   userId: 'user-001',
   createdAt: new Date('2024-01-19T11:00:00Z'),
@@ -101,6 +115,10 @@ export const sampleErrorDocument: Partial<Document> = {
     error: 'Failed to parse PDF: Invalid file format',
   },
 };
+
+// =============================================================================
+// Sample Document Content
+// =============================================================================
 
 /**
  * Sample extracted text content (simulating PDF extraction result)
@@ -183,7 +201,7 @@ Request body:
 /**
  * Collection of all sample documents
  */
-export const sampleDocuments: Partial<Document>[] = [
+export const sampleDocuments: Partial<DocumentWithMetadata>[] = [
   samplePDFDocument,
   sampleWordDocument,
   sampleTextDocument,
@@ -191,36 +209,52 @@ export const sampleDocuments: Partial<Document>[] = [
   sampleErrorDocument,
 ];
 
+// =============================================================================
+// Mock File Helpers
+// =============================================================================
+
 /**
- * Mock File objects for testing file uploads
+ * Create a mock File object for testing
  */
-export const createMockFile = (
+export function createMockFile(
   name: string,
   type: string,
   _size: number
-): File => {
+): File {
   const blob = new Blob(['mock content'], { type });
   return new File([blob], name, { type });
-};
+}
 
+/**
+ * Mock PDF file
+ */
 export const mockPDFFile = createMockFile(
   'test-document.pdf',
   'application/pdf',
   1_000_000
 );
 
+/**
+ * Mock Word file
+ */
 export const mockWordFile = createMockFile(
   'test-document.docx',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   500_000
 );
 
+/**
+ * Mock text file
+ */
 export const mockTextFile = createMockFile(
   'test-document.txt',
   'text/plain',
   10_000
 );
 
+/**
+ * Mock image file (for testing invalid types)
+ */
 export const mockImageFile = createMockFile(
   'test-image.png',
   'image/png',

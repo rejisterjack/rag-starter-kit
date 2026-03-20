@@ -5,7 +5,23 @@
  * Falls back to console logging in development if not configured.
  */
 
-import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface NodemailerLike {
+  createTransport(options: {
+    host?: string;
+    port?: number;
+    secure?: boolean;
+    auth?: { user?: string; pass?: string };
+  }): {
+    sendMail(options: {
+      from: string;
+      to: string;
+      subject: string;
+      html: string;
+      text: string;
+    }): Promise<unknown>;
+  };
+}
 
 export interface EmailTemplate {
   subject: string;
@@ -92,8 +108,6 @@ export class EmailService {
   // ===========================================================================
 
   welcomeEmail(userName: string, loginUrl: string): EmailTemplate {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
     return {
       subject: 'Welcome to RAG Starter Kit!',
       html: `
@@ -122,7 +136,6 @@ export class EmailService {
     inviteUrl: string;
     expiresAt: Date;
   }): EmailTemplate {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const expiresDate = expiresAt.toLocaleDateString();
 
     return {
@@ -217,9 +230,10 @@ export class EmailService {
     template: EmailTemplate
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const nodemailer = await import('nodemailer');
+      // Dynamic import for optional nodemailer dependency
+      const nodemailer = (await eval("import('nodemailer')")) as unknown as NodemailerLike;
 
-      const transporter = nodemailer.createTransporter({
+      const transporter = nodemailer.createTransport({
         host: this.config.smtpHost,
         port: this.config.smtpPort || 587,
         secure: this.config.smtpSecure || false,

@@ -6,13 +6,14 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
-import { cn } from '@/lib/utils';
-import type { RoomMember, RealtimeMessage } from '@/lib/realtime/types';
+import { CheckCircle2, Clock, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import type React from 'react';
+import { useMemo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Wifi, WifiOff, RefreshCw, CheckCircle2, Clock } from 'lucide-react';
+import type { RealtimeMessage, RoomMember } from '@/lib/realtime/types';
+import { cn } from '@/lib/utils';
 
 // =============================================================================
 // Types
@@ -48,7 +49,7 @@ interface MessageSyncBadgeProps {
 function getInitials(name: string): string {
   return name
     .split(' ')
-    .map(n => n[0])
+    .map((n) => n[0])
     .join('')
     .toUpperCase()
     .slice(0, 2);
@@ -65,7 +66,7 @@ function getRelativeTime(date: Date): string {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const seconds = Math.floor(diff / 1000);
-  
+
   if (seconds < 60) return 'Just now';
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
@@ -108,18 +109,14 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
             <Wifi className="h-3 w-3" />
             <span>Live</span>
             {lastSyncAt && (
-              <span className="text-muted-foreground">
-                • {getRelativeTime(lastSyncAt)}
-              </span>
+              <span className="text-muted-foreground">• {getRelativeTime(lastSyncAt)}</span>
             )}
           </div>
         </TooltipTrigger>
         <TooltipContent side="bottom">
           <p>Connected to real-time updates</p>
           {lastSyncAt && (
-            <p className="text-xs text-muted-foreground">
-              Last synced: {formatTime(lastSyncAt)}
-            </p>
+            <p className="text-xs text-muted-foreground">Last synced: {formatTime(lastSyncAt)}</p>
           )}
         </TooltipContent>
       </Tooltip>
@@ -131,17 +128,11 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
 // Message Sync Badge
 // =============================================================================
 
-export const MessageSyncBadge: React.FC<MessageSyncBadgeProps> = ({
-  pendingCount,
-  className,
-}) => {
+export const MessageSyncBadge: React.FC<MessageSyncBadgeProps> = ({ pendingCount, className }) => {
   if (pendingCount === 0) return null;
 
   return (
-    <Badge 
-      variant="secondary" 
-      className={cn('gap-1 text-xs animate-pulse', className)}
-    >
+    <Badge variant="secondary" className={cn('gap-1 text-xs animate-pulse', className)}>
       <Clock className="h-3 w-3" />
       {pendingCount} pending
     </Badge>
@@ -163,7 +154,7 @@ export const LiveChatIndicator: React.FC<LiveChatIndicatorProps> = ({
   variant = 'default',
 }) => {
   const otherUsers = useMemo(() => {
-    return users.filter(u => u.user.id !== currentUserId);
+    return users.filter((u) => u.user.id !== currentUserId);
   }, [users, currentUserId]);
 
   const viewerCount = otherUsers.length;
@@ -172,15 +163,13 @@ export const LiveChatIndicator: React.FC<LiveChatIndicatorProps> = ({
   if (variant === 'compact') {
     return (
       <div className={cn('flex items-center gap-2', className)}>
-        <SyncStatusIndicator 
-          isConnected={isConnected} 
+        <SyncStatusIndicator
+          isConnected={isConnected}
           isSyncing={isSyncing}
           lastSyncAt={lastSyncAt}
         />
         {viewerCount > 0 && (
-          <span className="text-xs text-muted-foreground">
-            • {viewerCount} viewing
-          </span>
+          <span className="text-xs text-muted-foreground">• {viewerCount} viewing</span>
         )}
       </div>
     );
@@ -191,22 +180,19 @@ export const LiveChatIndicator: React.FC<LiveChatIndicatorProps> = ({
     return (
       <div className={cn('space-y-2', className)}>
         <div className="flex items-center justify-between">
-          <SyncStatusIndicator 
-            isConnected={isConnected} 
+          <SyncStatusIndicator
+            isConnected={isConnected}
             isSyncing={isSyncing}
             lastSyncAt={lastSyncAt}
           />
           <MessageSyncBadge pendingCount={pendingMessages} />
         </div>
-        
+
         {viewerCount > 0 && (
           <div className="flex items-center gap-2 pt-2 border-t">
             <div className="flex -space-x-1.5">
-              {otherUsers.slice(0, 4).map(user => (
-                <Avatar 
-                  key={user.user.id} 
-                  className="h-5 w-5 border-2 border-background"
-                >
+              {otherUsers.slice(0, 4).map((user) => (
+                <Avatar key={user.user.id} className="h-5 w-5 border-2 border-background">
                   <AvatarImage src={user.user.image || undefined} />
                   <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
                     {getInitials(user.user.name)}
@@ -215,10 +201,9 @@ export const LiveChatIndicator: React.FC<LiveChatIndicatorProps> = ({
               ))}
             </div>
             <span className="text-xs text-muted-foreground">
-              {viewerCount === 1 
-                ? `${otherUsers[0].user.name} is viewing` 
-                : `${viewerCount} people viewing`
-              }
+              {viewerCount === 1
+                ? `${otherUsers[0].user.name} is viewing`
+                : `${viewerCount} people viewing`}
             </span>
           </div>
         )}
@@ -230,16 +215,14 @@ export const LiveChatIndicator: React.FC<LiveChatIndicatorProps> = ({
   return (
     <div className={cn('flex items-center gap-3', className)}>
       {/* Connection Status */}
-      <SyncStatusIndicator 
-        isConnected={isConnected} 
+      <SyncStatusIndicator
+        isConnected={isConnected}
         isSyncing={isSyncing}
         lastSyncAt={lastSyncAt}
       />
 
       {/* Divider */}
-      {(viewerCount > 0 || pendingMessages > 0) && (
-        <span className="text-muted-foreground">|</span>
-      )}
+      {(viewerCount > 0 || pendingMessages > 0) && <span className="text-muted-foreground">|</span>}
 
       {/* Viewing Users */}
       {viewerCount > 0 && (
@@ -249,8 +232,8 @@ export const LiveChatIndicator: React.FC<LiveChatIndicatorProps> = ({
               <div className="flex items-center gap-1.5">
                 <div className="flex -space-x-1.5">
                   {otherUsers.slice(0, 3).map((user, i) => (
-                    <Avatar 
-                      key={user.user.id} 
+                    <Avatar
+                      key={user.user.id}
                       className="h-5 w-5 border-2 border-background"
                       style={{ zIndex: 3 - i }}
                     >
@@ -262,16 +245,13 @@ export const LiveChatIndicator: React.FC<LiveChatIndicatorProps> = ({
                   ))}
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {viewerCount === 1 
-                    ? '1 viewing' 
-                    : `${viewerCount} viewing`
-                  }
+                  {viewerCount === 1 ? '1 viewing' : `${viewerCount} viewing`}
                 </span>
               </div>
             </TooltipTrigger>
             <TooltipContent side="bottom">
               <div className="space-y-1">
-                {otherUsers.map(user => (
+                {otherUsers.map((user) => (
                   <div key={user.user.id} className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-green-500" />
                     <span className="text-sm">{user.user.name}</span>
@@ -284,9 +264,7 @@ export const LiveChatIndicator: React.FC<LiveChatIndicatorProps> = ({
       )}
 
       {/* Pending Messages */}
-      {pendingMessages > 0 && (
-        <MessageSyncBadge pendingCount={pendingMessages} />
-      )}
+      {pendingMessages > 0 && <MessageSyncBadge pendingCount={pendingMessages} />}
     </div>
   );
 };
@@ -313,7 +291,7 @@ export const LiveMessageStatus: React.FC<LiveMessageStatusProps> = ({
   className,
 }) => {
   const isOwnMessage = message.user.id === currentUserId;
-  const otherReaders = readBy.filter(u => u.user.id !== currentUserId);
+  const otherReaders = readBy.filter((u) => u.user.id !== currentUserId);
 
   if (!isOwnMessage) return null;
 
@@ -334,7 +312,7 @@ export const LiveMessageStatus: React.FC<LiveMessageStatusProps> = ({
             {otherReaders.length > 0 && (
               <TooltipContent side="bottom">
                 <p className="text-xs">Read by:</p>
-                {otherReaders.map(reader => (
+                {otherReaders.map((reader) => (
                   <p key={reader.user.id} className="text-xs text-muted-foreground">
                     {reader.user.name}
                   </p>
@@ -371,7 +349,7 @@ export const RealtimeActivityBadge: React.FC<RealtimeActivityBadgeProps> = ({
   className,
 }) => {
   return (
-    <Badge 
+    <Badge
       variant={isActive ? 'default' : 'secondary'}
       className={cn(
         'gap-1.5 text-xs font-medium',

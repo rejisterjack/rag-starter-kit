@@ -3,34 +3,25 @@
  * Provides unified interface for Speech-to-Text and Text-to-Speech
  */
 
-import {
-  type SpeechRecognitionOptions,
-  type SpeechRecognitionError,
-  type TTSVoice,
-  type TTSSynthesisOptions,
-  type VoiceCommand,
-  type AudioLevelData,
-  type SpeechRecognitionErrorType,
-} from './types';
+import type {
+  SpeechRecognitionOptions,
+  SpeechRecognitionError,
+  TTSVoice,
+  TTSSynthesisOptions,
+  VoiceCommand,
+  AudioLevelData,
+  SpeechRecognitionErrorType,
+  SpeechRecognitionEvent,
+  SpeechRecognitionErrorEvent,
+  SpeechRecognitionInstance,
+} from '@/types';
+
 import {
   checkBrowserSupport,
   isSpeechRecognitionSupported,
   isSpeechSynthesisSupported,
   requestMicrophonePermission,
 } from './browser-support';
-
-// =============================================================================
-// Type Declarations for Web Speech API
-// =============================================================================
-
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
-    SpeechGrammarList: typeof SpeechGrammarList;
-    webkitSpeechGrammarList: typeof SpeechGrammarList;
-  }
-}
 
 // =============================================================================
 // Event Types
@@ -63,12 +54,12 @@ type SpeechServiceEventHandler = (event: unknown) => void;
 // =============================================================================
 
 export class SpeechService {
-  private recognition: SpeechRecognition | null = null;
+  private recognition: SpeechRecognitionInstance | null = null;
   private synthesis: SpeechSynthesis | null = null;
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
   private microphoneStream: MediaStream | null = null;
-  private audioLevelInterval: NodeJS.Timeout | null = null;
+  private audioLevelInterval: ReturnType<typeof setInterval> | null = null;
   
   private eventListeners: Map<SpeechServiceEventType, Set<SpeechServiceEventHandler>> = new Map();
   private commands: Map<string, VoiceCommand> = new Map();
@@ -76,9 +67,9 @@ export class SpeechService {
   private interimBuffer = '';
   private isListening = false;
   private isSpeaking = false;
-  private currentLanguage: SupportedLanguage = 'en-US';
+  private currentLanguage = 'en-US';
   private options: SpeechRecognitionOptions = {};
-  private audioDataArray: Uint8Array | null = null;
+  private audioDataArray: Uint8Array<ArrayBuffer> | null = null;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -98,8 +89,10 @@ export class SpeechService {
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    this.recognition = new SpeechRecognition();
-    this.setupRecognitionListeners();
+    if (SpeechRecognition) {
+      this.recognition = new SpeechRecognition();
+      this.setupRecognitionListeners();
+    }
   }
 
   private initializeSpeechSynthesis(): void {
@@ -130,7 +123,7 @@ export class SpeechService {
         // Small delay before restarting
         setTimeout(() => {
           if (this.options.continuous) {
-            this.startListening();
+            void this.startListening();
           }
         }, 100);
       }
@@ -265,8 +258,13 @@ export class SpeechService {
 
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const result = event.results[i];
-      const transcript = result[0].transcript;
-      const confidence = result[0].confidence;
+      if (!result) continue;
+      
+      const transcriptItem = result[0];
+      if (!transcriptItem) continue;
+      
+      const transcript = transcriptItem.transcript ?? '';
+      const confidence = transcriptItem.confidence ?? 0;
 
       if (result.isFinal) {
         finalTranscript += transcript;
@@ -362,7 +360,11 @@ export class SpeechService {
       const voices = this.getVoices();
       const voice = voices.find(v => v.voiceURI === options.voice?.voiceURI);
       if (voice) {
-        utterance.voice = voice as SpeechSynthesisVoice;
+        const speechVoices = this.synthesis.getVoices();
+        const speechVoice = speechVoices.find(sv => sv.voiceURI === voice.voiceURI);
+        if (speechVoice) {
+          utterance.voice = speechVoice;
+        }
       }
     }
 
@@ -481,7 +483,8 @@ export class SpeechService {
         }
       });
 
-      this.audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      this.audioContext = new AudioContextClass();
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;
       this.analyser.smoothingTimeConstant = 0.8;
@@ -512,7 +515,7 @@ export class SpeechService {
     }
 
     if (this.audioContext && this.audioContext.state !== 'closed') {
-      this.audioContext.close();
+      void this.audioContext.close();
       this.audioContext = null;
     }
 
@@ -668,7 +671,7 @@ export class SpeechService {
     return (this.transcriptBuffer + this.interimBuffer).trim();
   }
 
-  get language(): SupportedLanguage {
+  get language(): string {
     return this.currentLanguage;
   }
 
@@ -680,7 +683,11 @@ export class SpeechService {
     return isSpeechRecognitionSupported() || isSpeechSynthesisSupported();
   }
 
-  static checkSupport() {
+  static checkSupport(): {
+    speechRecognition: boolean;
+    speechSynthesis: boolean;
+    supportLevel: 'full' | 'partial' | 'none';
+  } {
     return checkBrowserSupport();
   }
 }

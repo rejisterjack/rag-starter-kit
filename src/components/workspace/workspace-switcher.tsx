@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Building2, Check, ChevronDown, Plus, Settings } from 'lucide-react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -51,8 +52,8 @@ export function WorkspaceSwitcher({
         router.refresh();
         setIsOpen(false);
       }
-    } catch (error) {
-      console.error('Failed to switch workspace:', error);
+    } catch (_error) {
+      // Failed to switch workspace - error is intentionally ignored
     }
   };
 
@@ -78,17 +79,18 @@ export function WorkspaceSwitcher({
         >
           <div className="flex items-center gap-2 overflow-hidden">
             {currentWorkspace?.avatar ? (
-              <img
+              <Image
                 src={currentWorkspace.avatar}
                 alt=""
+                width={20}
+                height={20}
                 className="h-5 w-5 rounded-md object-cover"
+                unoptimized
               />
             ) : (
               <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}
-            <span className="truncate">
-              {currentWorkspace?.name ?? 'Select Workspace'}
-            </span>
+            <span className="truncate">{currentWorkspace?.name ?? 'Select Workspace'}</span>
           </div>
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </Button>
@@ -96,20 +98,20 @@ export function WorkspaceSwitcher({
       <DropdownMenuContent className="w-64" align="start">
         <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        
+
         {currentWorkspace && (
           <>
             <DropdownMenuGroup>
-              <DropdownMenuItem
-                className="flex items-center justify-between"
-                disabled
-              >
+              <DropdownMenuItem className="flex items-center justify-between" disabled>
                 <div className="flex items-center gap-2 overflow-hidden">
                   {currentWorkspace.avatar ? (
-                    <img
+                    <Image
                       src={currentWorkspace.avatar}
                       alt=""
+                      width={20}
+                      height={20}
                       className="h-5 w-5 rounded-md object-cover"
+                      unoptimized
                     />
                   ) : (
                     <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -133,10 +135,13 @@ export function WorkspaceSwitcher({
                   className="flex items-center gap-2"
                 >
                   {workspace.avatar ? (
-                    <img
+                    <Image
                       src={workspace.avatar}
                       alt=""
+                      width={20}
+                      height={20}
                       className="h-5 w-5 rounded-md object-cover"
+                      unoptimized
                     />
                   ) : (
                     <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />

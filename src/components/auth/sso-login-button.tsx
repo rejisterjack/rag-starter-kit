@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Building2, Shield, Fingerprint } from 'lucide-react';
+import { Building2, Fingerprint, Loader2, Shield } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -51,7 +51,13 @@ interface SSOLoginButtonProps {
 // Provider Icons
 // =============================================================================
 
-const ProviderIcon = ({ provider, className = 'h-4 w-4' }: { provider?: string; className?: string }) => {
+const ProviderIcon = ({
+  provider,
+  className = 'h-4 w-4',
+}: {
+  provider?: string;
+  className?: string;
+}) => {
   switch (provider) {
     case 'google_workspace':
       return (
@@ -113,6 +119,32 @@ export function SSOLoginButton({
   const [domainResult, setDomainResult] = useState<DomainLookupResult | null>(null);
   const [showProviderDialog, setShowProviderDialog] = useState(false);
 
+  // Handle specific SSO method selection
+  const handleSSOMethod = useCallback(
+    (method: SSOMethod) => {
+      setIsLoading(true);
+
+      const workspaceId = domainResult?.workspaceId;
+      if (!workspaceId) {
+        setIsLoading(false);
+        return;
+      }
+
+      onSSOSelected?.(method, workspaceId);
+
+      // Construct redirect URL
+      let redirectUrl: string;
+      if (method.type === 'saml') {
+        redirectUrl = `/api/auth/saml/${workspaceId}/login?email=${encodeURIComponent(email)}`;
+      } else {
+        redirectUrl = `/api/auth/oauth/${method.id}?workspace=${workspaceId}`;
+      }
+
+      window.location.href = redirectUrl;
+    },
+    [domainResult, email, onSSOSelected]
+  );
+
   // Check domain when email changes
   useEffect(() => {
     const checkDomain = async () => {
@@ -126,14 +158,12 @@ export function SSOLoginButton({
         if (response.ok) {
           const result: DomainLookupResult = await response.json();
           setDomainResult(result);
-          
+
           if (result.found) {
             onSSODetected?.(result);
           }
         }
-      } catch (error) {
-        console.error('Domain lookup failed:', error);
-      }
+      } catch (_error) {}
     };
 
     const timeoutId = setTimeout(checkDomain, 300); // Debounce
@@ -156,30 +186,7 @@ export function SSOLoginButton({
       // Multiple methods - show selection dialog
       setShowProviderDialog(true);
     }
-  }, [domainResult]);
-
-  // Handle specific SSO method selection
-  const handleSSOMethod = useCallback((method: SSOMethod) => {
-    setIsLoading(true);
-    
-    const workspaceId = domainResult?.workspaceId;
-    if (!workspaceId) {
-      setIsLoading(false);
-      return;
-    }
-
-    onSSOSelected?.(method, workspaceId);
-
-    // Construct redirect URL
-    let redirectUrl: string;
-    if (method.type === 'saml') {
-      redirectUrl = `/api/auth/saml/${workspaceId}/login?email=${encodeURIComponent(email)}`;
-    } else {
-      redirectUrl = `/api/auth/oauth/${method.id}?workspace=${workspaceId}`;
-    }
-
-    window.location.href = redirectUrl;
-  }, [domainResult, email, onSSOSelected]);
+  }, [domainResult, handleSSOMethod]);
 
   // Don't show if no SSO detected and showAlways is false
   if (!showAlways && !domainResult?.found) {
@@ -197,11 +204,8 @@ export function SSOLoginButton({
         {isLoading ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : domainResult?.workspaceLogo ? (
-          <img
-            src={domainResult.workspaceLogo}
-            alt=""
-            className="mr-2 h-4 w-4 object-contain"
-          />
+          // biome-ignore lint/performance/noImgElement: External logos cannot use Next.js Image
+          <img src={domainResult.workspaceLogo} alt="" className="mr-2 h-4 w-4 object-contain" />
         ) : domainResult?.found && domainResult.ssoMethods.length === 1 ? (
           <ProviderIcon provider={domainResult.ssoMethods[0].provider} />
         ) : (
@@ -220,7 +224,7 @@ export function SSOLoginButton({
             <DialogDescription>
               {domainResult?.found
                 ? `Select how you want to sign in to ${domainResult.workspaceName}`
-                : 'Select your organization\'s sign-in method'}
+                : "Select your organization's sign-in method"}
             </DialogDescription>
           </DialogHeader>
 
@@ -265,15 +269,10 @@ export function SSOLoginButton({
                     <span className="w-full border-t" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Or
-                    </span>
+                    <span className="bg-background px-2 text-muted-foreground">Or</span>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  onClick={() => setShowProviderDialog(false)}
-                >
+                <Button variant="ghost" onClick={() => setShowProviderDialog(false)}>
                   Continue with email and password
                 </Button>
               </>
@@ -292,7 +291,7 @@ export function SSOLoginButton({
 /**
  * Create the domain lookup API route at:
  * /app/api/auth/domain-lookup/route.ts
- * 
+ *
  * This should import from @/lib/auth/domain-routing and use lookupDomainCached
  */
 
@@ -315,22 +314,14 @@ export function CompactSSOButton({
   onClick,
   isLoading = false,
 }: CompactSSOButtonProps): React.ReactElement {
+  // _workspaceId is intentionally unused - kept for API consistency
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={onClick}
-      disabled={isLoading}
-      className="gap-2"
-    >
+    <Button variant="outline" size="sm" onClick={onClick} disabled={isLoading} className="gap-2">
       {isLoading ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : workspaceLogo ? (
-        <img
-          src={workspaceLogo}
-          alt=""
-          className="h-4 w-4 object-contain"
-        />
+        // biome-ignore lint/performance/noImgElement: External logos cannot use Next.js Image
+        <img src={workspaceLogo} alt="" className="h-4 w-4 object-contain" />
       ) : (
         <Building2 className="h-4 w-4" />
       )}

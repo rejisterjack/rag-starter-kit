@@ -1,33 +1,32 @@
-"use client";
+'use client';
 
-import React from "react";
 import {
-  FileText,
-  FileSpreadsheet,
-  FileImage,
-  FileCode,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
   File,
+  FileCode,
+  FileImage,
+  FileSpreadsheet,
+  FileText,
   MoreHorizontal,
   RefreshCw,
   Trash2,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatDate, formatRelativeTime } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+} from 'lucide-react';
+import type React from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Progress } from "@/components/ui/progress";
+} from '@/components/ui/dropdown-menu';
+import { Progress } from '@/components/ui/progress';
+import { cn, formatDate, formatRelativeTime } from '@/lib/utils';
 
-export type DocumentStatus = "pending" | "processing" | "completed" | "error";
+export type DocumentStatus = 'pending' | 'processing' | 'completed' | 'error';
 
 export interface Document {
   id: string;
@@ -51,16 +50,16 @@ interface DocumentCardProps {
 }
 
 const FILE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  "application/pdf": FileText,
-  "text/plain": FileText,
-  "text/markdown": FileText,
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": FileText,
-  "application/msword": FileText,
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": FileSpreadsheet,
-  "text/csv": FileSpreadsheet,
-  "image/": FileImage,
-  "text/html": FileCode,
-  "application/json": FileCode,
+  'application/pdf': FileText,
+  'text/plain': FileText,
+  'text/markdown': FileText,
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': FileText,
+  'application/msword': FileText,
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': FileSpreadsheet,
+  'text/csv': FileSpreadsheet,
+  'image/': FileImage,
+  'text/html': FileCode,
+  'application/json': FileCode,
 };
 
 function getFileIcon(type: string) {
@@ -73,37 +72,37 @@ function getFileIcon(type: string) {
 }
 
 function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 B";
+  if (bytes === 0) return '0 B';
   const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
+  const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  return `${parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`;
 }
 
 function StatusBadge({ status, progress }: { status: DocumentStatus; progress?: number }) {
   switch (status) {
-    case "completed":
+    case 'completed':
       return (
         <Badge variant="success" className="gap-1">
           <CheckCircle2 className="h-3 w-3" />
           Ready
         </Badge>
       );
-    case "processing":
+    case 'processing':
       return (
         <Badge variant="secondary" className="gap-1">
           <RefreshCw className="h-3 w-3 animate-spin" />
-          Processing{progress !== undefined ? ` ${Math.round(progress)}%` : ""}
+          Processing{progress !== undefined ? ` ${Math.round(progress)}%` : ''}
         </Badge>
       );
-    case "pending":
+    case 'pending':
       return (
         <Badge variant="outline" className="gap-1">
           <Clock className="h-3 w-3" />
           Pending
         </Badge>
       );
-    case "error":
+    case 'error':
       return (
         <Badge variant="destructive" className="gap-1">
           <AlertCircle className="h-3 w-3" />
@@ -126,9 +125,9 @@ export function DocumentCard({
   return (
     <div
       className={cn(
-        "group relative rounded-lg border bg-card p-3 transition-all",
-        "hover:border-primary/50 hover:shadow-sm",
-        isSelected && "border-primary ring-1 ring-primary",
+        'group relative rounded-lg border bg-card p-3 transition-all',
+        'hover:border-primary/50 hover:shadow-sm',
+        isSelected && 'border-primary ring-1 ring-primary',
         className
       )}
       onClick={() => onPreview?.(document)}
@@ -160,7 +159,7 @@ export function DocumentCard({
                 <DropdownMenuItem onClick={() => onPreview?.(document)}>
                   Preview document
                 </DropdownMenuItem>
-                {document.status === "error" && onReingest && (
+                {document.status === 'error' && onReingest && (
                   <DropdownMenuItem onClick={() => onReingest(document.id)}>
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Re-ingest
@@ -193,20 +192,16 @@ export function DocumentCard({
           <div className="mt-2 space-y-2">
             <StatusBadge status={document.status} progress={document.progress} />
 
-            {document.status === "processing" && document.progress !== undefined && (
+            {document.status === 'processing' && document.progress !== undefined && (
               <Progress value={document.progress} className="h-1" />
             )}
 
-            {document.status === "completed" && document.chunkCount !== undefined && (
-              <p className="text-xs text-muted-foreground">
-                {document.chunkCount} chunks indexed
-              </p>
+            {document.status === 'completed' && document.chunkCount !== undefined && (
+              <p className="text-xs text-muted-foreground">{document.chunkCount} chunks indexed</p>
             )}
 
-            {document.status === "error" && document.errorMessage && (
-              <p className="text-xs text-destructive line-clamp-2">
-                {document.errorMessage}
-              </p>
+            {document.status === 'error' && document.errorMessage && (
+              <p className="text-xs text-destructive line-clamp-2">{document.errorMessage}</p>
             )}
           </div>
         </div>

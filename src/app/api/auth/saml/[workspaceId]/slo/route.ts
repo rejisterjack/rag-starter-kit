@@ -1,23 +1,19 @@
 /**
  * SAML Single Logout (SLO) Endpoint
- * 
+ *
  * Handles both logout requests from IdP (SP receiving logout) and
  * logout responses from IdP (SP initiated logout).
- * 
+ *
  * Implements SAML 2.0 Single Logout Profile for coordinated
  * session termination across all participating services.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-
-import {
-  processLogoutResponse,
-  getWorkspaceSamlConfig,
-} from '@/lib/auth/saml/provider';
-import { SamlError } from '@/lib/auth/saml/config';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
+import { type NextRequest, NextResponse } from 'next/server';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth, signOut } from '@/lib/auth';
+import { SamlError } from '@/lib/auth/saml/config';
+import { getWorkspaceSamlConfig, processLogoutResponse } from '@/lib/auth/saml/provider';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,20 +38,12 @@ export async function POST(
     const config = await getWorkspaceSamlConfig(workspaceId);
 
     if (!config) {
-      return NextResponse.json(
-        { error: 'SAML configuration not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'SAML configuration not found' }, { status: 404 });
     }
 
     // Handle LogoutRequest from IdP (IdP-initiated logout)
     if (samlRequest) {
-      return await handleLogoutRequest(
-        config,
-        baseUrl,
-        samlRequest,
-        relayState
-      );
+      return await handleLogoutRequest(config, baseUrl, samlRequest, relayState);
     }
 
     // Handle LogoutResponse from IdP (response to SP-initiated logout)
@@ -63,13 +51,8 @@ export async function POST(
       return await handleLogoutResponse(config, baseUrl, samlResponse);
     }
 
-    return NextResponse.json(
-      { error: 'No SAMLRequest or SAMLResponse found' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'No SAMLRequest or SAMLResponse found' }, { status: 400 });
   } catch (error) {
-    console.error('SAML SLO processing failed:', error);
-
     if (error instanceof SamlError) {
       return NextResponse.json(
         { error: error.message, code: error.code },
@@ -77,10 +60,7 @@ export async function POST(
       );
     }
 
-    return NextResponse.json(
-      { error: 'Single logout failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Single logout failed' }, { status: 500 });
   }
 }
 
@@ -101,35 +81,20 @@ export async function GET(
     const config = await getWorkspaceSamlConfig(workspaceId);
 
     if (!config) {
-      return NextResponse.json(
-        { error: 'SAML configuration not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'SAML configuration not found' }, { status: 404 });
     }
 
     if (samlRequest) {
-      return await handleLogoutRequest(
-        config,
-        getBaseUrl(request),
-        samlRequest,
-        relayState
-      );
+      return await handleLogoutRequest(config, getBaseUrl(request), samlRequest, relayState);
     }
 
     if (samlResponse) {
       return await handleLogoutResponse(config, getBaseUrl(request), samlResponse);
     }
 
-    return NextResponse.json(
-      { error: 'No SAMLRequest or SAMLResponse found' },
-      { status: 400 }
-    );
-  } catch (error) {
-    console.error('SAML SLO processing failed:', error);
-    return NextResponse.json(
-      { error: 'Single logout failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'No SAMLRequest or SAMLResponse found' }, { status: 400 });
+  } catch (_error) {
+    return NextResponse.json({ error: 'Single logout failed' }, { status: 500 });
   }
 }
 
@@ -143,10 +108,7 @@ async function handleLogoutRequest(
   relayState?: string
 ): Promise<Response> {
   if (!config) {
-    return NextResponse.json(
-      { error: 'Configuration error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Configuration error' }, { status: 500 });
   }
 
   // Parse and validate the logout request
@@ -156,7 +118,7 @@ async function handleLogoutRequest(
   try {
     // Decode the request (SAMLRequest is typically deflated and base64 encoded)
     const decodedRequest = Buffer.from(samlRequest, 'base64').toString('utf-8');
-    
+
     // Extract NameID and SessionIndex from the logout request
     // This would normally involve proper XML parsing and signature validation
     const nameIdMatch = decodedRequest.match(/<NameID[^>]*>([^<]+)<\/NameID>/);
@@ -167,7 +129,7 @@ async function handleLogoutRequest(
 
     // Get current session and validate
     const session = await auth();
-    
+
     // Log the logout
     await logAuditEvent({
       event: AuditEvent.USER_LOGOUT,
@@ -188,11 +150,7 @@ async function handleLogoutRequest(
 
     // Generate LogoutResponse to send back to IdP
     // In production, use samlify to create a properly signed response
-    const logoutResponse = await createLogoutResponse(
-      config,
-      baseUrl,
-      'success'
-    );
+    const logoutResponse = await createLogoutResponse(config, baseUrl, 'success');
 
     // If the original binding was POST, return a form auto-submit
     // If redirect, redirect back to IdP
@@ -207,17 +165,13 @@ async function handleLogoutRequest(
     }
 
     // Return HTML form for POST binding
-    return new Response(
-      createAutoSubmitForm(config.logoutUrl || '', logoutResponse, relayState),
-      {
-        headers: {
-          'Content-Type': 'text/html',
-          'Cache-Control': 'no-store',
-        },
-      }
-    );
-  } catch (error) {
-    console.error('Logout request handling failed:', error);
+    return new Response(createAutoSubmitForm(config.logoutUrl || '', logoutResponse, relayState), {
+      headers: {
+        'Content-Type': 'text/html',
+        'Cache-Control': 'no-store',
+      },
+    });
+  } catch (_error) {
     throw new SamlError('Failed to process logout request', 'SLO_FAILED');
   }
 }
@@ -231,10 +185,7 @@ async function handleLogoutResponse(
   samlResponse: string
 ): Promise<Response> {
   if (!config) {
-    return NextResponse.json(
-      { error: 'Configuration error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Configuration error' }, { status: 500 });
   }
 
   // Process the logout response
@@ -268,9 +219,10 @@ async function createLogoutResponse(
   _baseUrl: string,
   status: 'success' | 'partial' | 'error'
 ): Promise<string> {
-  const statusCode = status === 'success' 
-    ? 'urn:oasis:names:tc:SAML:2.0:status:Success'
-    : 'urn:oasis:names:tc:SAML:2.0:status:PartialLogout';
+  const statusCode =
+    status === 'success'
+      ? 'urn:oasis:names:tc:SAML:2.0:status:Success'
+      : 'urn:oasis:names:tc:SAML:2.0:status:PartialLogout';
 
   const responseId = `_${crypto.randomUUID().replace(/-/g, '')}`;
   const issueInstant = new Date().toISOString();

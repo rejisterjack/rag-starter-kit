@@ -87,14 +87,17 @@ export class LangfuseClient {
   private async initialize(): Promise<void> {
     try {
       // Dynamic import to avoid requiring langfuse as a hard dependency
-      const { Langfuse } = await import('langfuse');
+      // @ts-ignore - langfuse is an optional dependency
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { Langfuse } = await import('langfuse') as any;
       
       if (!this.config) {
         console.warn('Langfuse config not provided');
         return;
       }
 
-      this.client = new Langfuse({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.client = new (Langfuse as any)({
         publicKey: this.config.publicKey,
         secretKey: this.config.secretKey,
         baseUrl: this.config.baseUrl,

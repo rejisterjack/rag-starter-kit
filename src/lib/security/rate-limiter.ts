@@ -1,8 +1,8 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
-
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
+import { logger } from '@/lib/logger';
 
 // =============================================================================
 // Rate Limit Configuration
@@ -18,35 +18,35 @@ export const rateLimits = {
   // Chat endpoints
   chat: { limit: 50, window: '1 h', prefix: 'chat' },
   chatStream: { limit: 50, window: '1 h', prefix: 'chat_stream' },
-  
+
   // Ingestion endpoints
   ingest: { limit: 10, window: '1 h', prefix: 'ingest' },
   ingestUrl: { limit: 20, window: '1 h', prefix: 'ingest_url' },
-  
+
   // API endpoints
   api: { limit: 100, window: '1 m', prefix: 'api' },
   apiKey: { limit: 1000, window: '1 m', prefix: 'api_key' },
-  
+
   // Authentication endpoints
   login: { limit: 5, window: '5 m', prefix: 'login' },
   register: { limit: 3, window: '1 h', prefix: 'register' },
   passwordReset: { limit: 3, window: '1 h', prefix: 'password_reset' },
-  
+
   // Workspace endpoints
   workspace: { limit: 50, window: '1 m', prefix: 'workspace' },
-  
+
   // Document endpoints
   documents: { limit: 30, window: '1 m', prefix: 'documents' },
-  
+
   // Admin endpoints
   admin: { limit: 100, window: '1 m', prefix: 'admin' },
-  
+
   // Voice endpoints
   voice: { limit: 30, window: '1 h', prefix: 'voice' },
-  
+
   // Agent endpoints
   agent: { limit: 50, window: '1 h', prefix: 'agent' },
-  
+
   // Export endpoints
   export: { limit: 10, window: '1 h', prefix: 'export' },
 } as const;
@@ -76,15 +76,18 @@ export class RateLimiter {
    */
   private getLimiter(config: RateLimitConfig): Ratelimit {
     const key = `${config.prefix}:${config.limit}:${config.window}`;
-    
+
     if (!this.limits.has(key)) {
       const limiter = new Ratelimit({
         redis: this.redis,
-        limiter: Ratelimit.slidingWindow(config.limit, config.window as `${number} ${'s' | 'm' | 'h' | 'd'}`),
+        limiter: Ratelimit.slidingWindow(
+          config.limit,
+          config.window as `${number} ${'s' | 'm' | 'h' | 'd'}`
+        ),
         analytics: true,
         prefix: `ratelimit:${config.prefix}`,
       });
-      
+
       this.limits.set(key, limiter);
     }
 
@@ -136,7 +139,9 @@ export class RateLimiter {
     try {
       return await this.checkLimit(identifier, config);
     } catch (error) {
-      console.error('Redis rate limit error, falling back to database:', error);
+      logger.error('Redis rate limit error, falling back to database', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
       return this.checkLimitDatabase(identifier, config, options);
     }
   }
@@ -164,22 +169,20 @@ export class RateLimiter {
     const resetAt = new Date(now.getTime() + windowMs);
 
     // Get or create rate limit record
-    let rateLimit = await prisma.rateLimit.findUnique({
+    let rateLimit = await prisma.rateLimit.findFirst({
       where: {
-        identifier_endpoint: {
-          identifier,
-          endpoint: options?.endpoint || 'default',
-        },
+        key: identifier,
+        type: options?.endpoint || 'default',
       },
     });
 
     // Reset if window has passed
-    if (rateLimit && rateLimit.resetAt < now) {
+    if (rateLimit && rateLimit.windowStart < now) {
       rateLimit = await prisma.rateLimit.update({
         where: { id: rateLimit.id },
         data: {
-          count: 0,
-          resetAt,
+          requests: 0,
+          windowStart: now,
         },
       });
     }
@@ -188,13 +191,11 @@ export class RateLimiter {
     if (!rateLimit) {
       rateLimit = await prisma.rateLimit.create({
         data: {
-          identifier,
-          endpoint: options?.endpoint || 'default',
+          key: identifier,
           type: options?.userId ? 'USER' : options?.workspaceId ? 'WORKSPACE' : 'IP',
-          count: 0,
-          resetAt,
+          requests: 0,
+          windowStart: now,
           userId: options?.userId,
-          workspaceId: options?.workspaceId,
         },
       });
     }
@@ -202,11 +203,11 @@ export class RateLimiter {
     // Increment count
     const updated = await prisma.rateLimit.update({
       where: { id: rateLimit.id },
-      data: { count: { increment: 1 } },
+      data: { requests: { increment: 1 } },
     });
 
-    const success = updated.count <= rateConfig.limit;
-    const remaining = Math.max(0, rateConfig.limit - updated.count);
+    const success = updated.requests <= rateConfig.limit;
+    const remaining = Math.max(0, rateConfig.limit - updated.requests);
 
     // Log rate limit hit
     if (!success) {
@@ -255,21 +256,20 @@ export class RateLimiter {
   /**
    * Reset rate limit for an identifier
    */
-  async resetLimit(
-    identifier: string,
-    config: RateLimitConfig | RateLimitType
-  ): Promise<void> {
+  async resetLimit(identifier: string, config: RateLimitConfig | RateLimitType): Promise<void> {
     const rateConfig = typeof config === 'string' ? rateLimits[config] : config;
-    
+
     try {
       await this.redis.del(`ratelimit:${rateConfig.prefix}:${identifier}`);
     } catch (error) {
-      console.error('Failed to reset rate limit in Redis:', error);
+      logger.error('Failed to reset rate limit in Redis', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
     }
 
     // Also reset in database
     await prisma.rateLimit.deleteMany({
-      where: { identifier },
+      where: { key: identifier },
     });
   }
 
@@ -295,7 +295,9 @@ export class RateLimiter {
         reset: result.reset,
       };
     } catch (error) {
-      console.error('Failed to get rate limit status:', error);
+      logger.error('Failed to get rate limit status', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
       return null;
     }
   }
@@ -376,10 +378,7 @@ export function getRateLimitIdentifier(
 /**
  * Apply rate limit to response headers
  */
-export function addRateLimitHeaders(
-  headers: Headers,
-  result: RateLimitResult
-): void {
+export function addRateLimitHeaders(headers: Headers, result: RateLimitResult): void {
   headers.set('X-RateLimit-Limit', result.limit.toString());
   headers.set('X-RateLimit-Remaining', result.remaining.toString());
   headers.set('X-RateLimit-Reset', Math.ceil(result.reset / 1000).toString());

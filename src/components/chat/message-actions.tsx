@@ -1,32 +1,18 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
 import {
-  Copy,
   Check,
-  Pencil,
-  Trash2,
-  GitBranch,
-  Sparkles,
-  MoreHorizontal,
+  Copy,
   CornerUpRight,
+  GitBranch,
   GitCompare,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  MoreHorizontal,
+  Pencil,
+  Sparkles,
+  Trash2,
+} from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -34,10 +20,19 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 // =============================================================================
 // Types
@@ -46,7 +41,7 @@ import { Label } from "@/components/ui/label";
 interface MessageActionsProps {
   messageId: string;
   messageContent: string;
-  messageRole: "user" | "assistant" | "system";
+  messageRole: 'user' | 'assistant' | 'system';
   isEditing?: boolean;
   isForking?: boolean;
   showBranchActions?: boolean;
@@ -84,11 +79,11 @@ export function MessageActions({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isBranchDialogOpen, setIsBranchDialogOpen] = useState(false);
   const [editedContent, setEditedContent] = useState(messageContent);
-  const [branchName, setBranchName] = useState("");
+  const [branchName, setBranchName] = useState('');
   const [regenerateResponse, setRegenerateResponse] = useState(true);
 
-  const isUser = messageRole === "user";
-  const isAssistant = messageRole === "assistant";
+  const isUser = messageRole === 'user';
+  const isAssistant = messageRole === 'assistant';
 
   // =============================================================================
   // Handlers
@@ -122,7 +117,7 @@ export function MessageActions({
     if (onBranchWithName) {
       await onBranchWithName(branchName.trim() || undefined);
       setIsBranchDialogOpen(false);
-      setBranchName("");
+      setBranchName('');
     } else if (onBranch) {
       onBranch();
       setIsBranchDialogOpen(false);
@@ -134,26 +129,17 @@ export function MessageActions({
   // =============================================================================
 
   return (
-    <div className={cn("flex items-center gap-1", className)}>
+    <div className={cn('flex items-center gap-1', className)}>
       <TooltipProvider>
         {/* Copy Button */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={handleCopy}
-            >
-              {copied ? (
-                <Check className="h-4 w-4 text-green-500" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopy}>
+              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{copied ? "Copied!" : "Copy message"}</p>
+            <p>{copied ? 'Copied!' : 'Copy message'}</p>
           </TooltipContent>
         </Tooltip>
 
@@ -235,8 +221,8 @@ export function MessageActions({
             </DialogTitle>
             <DialogDescription>
               {onEditAndRegenerate
-                ? "Edit your message and optionally regenerate the AI response."
-                : "Edit your message."}
+                ? 'Edit your message and optionally regenerate the AI response.'
+                : 'Edit your message.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -246,7 +232,7 @@ export function MessageActions({
               className="min-h-[120px] resize-y"
               placeholder="Enter your message..."
             />
-            
+
             {onEditAndRegenerate && isUser && (
               <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                 <div className="flex items-center gap-3">
@@ -264,9 +250,7 @@ export function MessageActions({
                     </p>
                   </div>
                 </div>
-                {regenerateResponse && (
-                  <Sparkles className="h-5 w-5 text-yellow-500" />
-                )}
+                {regenerateResponse && <Sparkles className="h-5 w-5 text-yellow-500" />}
               </div>
             )}
           </div>
@@ -275,15 +259,15 @@ export function MessageActions({
               Cancel
             </Button>
             {onEditAndRegenerate ? (
-              <Button 
+              <Button
                 onClick={handleEditAndRegenerate}
                 disabled={!editedContent.trim() || editedContent === messageContent}
               >
                 <Sparkles className="mr-2 h-4 w-4" />
-                {regenerateResponse ? "Edit & Regenerate" : "Save Edit"}
+                {regenerateResponse ? 'Edit & Regenerate' : 'Save Edit'}
               </Button>
             ) : (
-              <Button 
+              <Button
                 onClick={handleEdit}
                 disabled={!editedContent.trim() || editedContent === messageContent}
               >
@@ -304,8 +288,8 @@ export function MessageActions({
               Create New Branch
             </DialogTitle>
             <DialogDescription>
-              Create a new conversation branch starting from this message. 
-              This message and all following messages will be copied to the new branch.
+              Create a new conversation branch starting from this message. This message and all
+              following messages will be copied to the new branch.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -355,7 +339,7 @@ export function MessageActions({
 interface MessageActionsBarProps {
   messageId: string;
   messageContent: string;
-  messageRole: "user" | "assistant" | "system";
+  messageRole: 'user' | 'assistant' | 'system';
   messageIndex: number;
   totalMessages: number;
   onCopy?: () => void;
@@ -398,11 +382,11 @@ export function MessageActionsBar({
   };
 
   const isLastMessage = messageIndex === totalMessages - 1;
-  const isUser = messageRole === "user";
+  const isUser = messageRole === 'user';
 
   return (
     <TooltipProvider>
-      <div className={cn("flex items-center gap-1", className)}>
+      <div className={cn('flex items-center gap-1', className)}>
         {/* Copy */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -415,7 +399,7 @@ export function MessageActionsBar({
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{copied ? "Copied!" : "Copy"}</p>
+            <p>{copied ? 'Copied!' : 'Copy'}</p>
           </TooltipContent>
         </Tooltip>
 
@@ -423,7 +407,12 @@ export function MessageActionsBar({
         {isUser && onEdit && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(messageContent)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => onEdit(messageContent)}
+              >
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
@@ -470,7 +459,12 @@ export function MessageActionsBar({
         {!isUser && onRegenerateFromHere && isLastMessage && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRegenerateFromHere}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onRegenerateFromHere}
+              >
                 <Sparkles className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>

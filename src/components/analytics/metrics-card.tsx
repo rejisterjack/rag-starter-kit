@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
+import type * as React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 export interface MetricData {
   value: number | string;
@@ -27,15 +27,15 @@ export interface MetricsCardProps extends React.HTMLAttributes<HTMLDivElement> {
   loading?: boolean;
   sparklineData?: number[];
   icon?: React.ReactNode;
-  variant?: "default" | "success" | "warning" | "danger" | "info";
+  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info';
 }
 
 const variantStyles = {
-  default: "",
-  success: "border-green-200 dark:border-green-800",
-  warning: "border-yellow-200 dark:border-yellow-800",
-  danger: "border-red-200 dark:border-red-800",
-  info: "border-blue-200 dark:border-blue-800",
+  default: '',
+  success: 'border-green-200 dark:border-green-800',
+  warning: 'border-yellow-200 dark:border-yellow-800',
+  danger: 'border-red-200 dark:border-red-800',
+  info: 'border-blue-200 dark:border-blue-800',
 };
 
 function Sparkline({
@@ -63,28 +63,28 @@ function Sparkline({
 
   const strokeColor =
     trend === undefined
-      ? "hsl(var(--muted-foreground))"
+      ? 'hsl(var(--muted-foreground))'
       : trend >= 0
-        ? "hsl(142, 76%, 36%)"
-        : "hsl(0, 84%, 60%)";
+        ? 'hsl(142, 76%, 36%)'
+        : 'hsl(0, 84%, 60%)';
 
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className={cn("w-16 h-6", className)}
+      className={cn('w-16 h-6', className)}
       preserveAspectRatio="none"
     >
       <polyline
         fill="none"
         stroke={strokeColor}
         strokeWidth="2"
-        points={points.join(" ")}
+        points={points.join(' ')}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <circle
-        cx={points[points.length - 1].split(",")[0]}
-        cy={points[points.length - 1].split(",")[1]}
+        cx={points[points.length - 1].split(',')[0]}
+        cy={points[points.length - 1].split(',')[1]}
         r="2"
         fill={strokeColor}
       />
@@ -96,16 +96,16 @@ function formatValue(
   value: number | string,
   options: { prefix?: string; suffix?: string; decimals?: number } = {}
 ): string {
-  const { prefix = "", suffix = "", decimals } = options;
+  const { prefix = '', suffix = '', decimals } = options;
 
   let formatted: string;
-  if (typeof value === "number") {
+  if (typeof value === 'number') {
     if (decimals !== undefined) {
       formatted = value.toFixed(decimals);
     } else if (value >= 1000000) {
-      formatted = (value / 1000000).toFixed(1) + "M";
+      formatted = `${(value / 1000000).toFixed(1)}M`;
     } else if (value >= 1000) {
-      formatted = (value / 1000).toFixed(1) + "K";
+      formatted = `${(value / 1000).toFixed(1)}K`;
     } else {
       formatted = value.toString();
     }
@@ -116,13 +116,7 @@ function formatValue(
   return `${prefix}${formatted}${suffix}`;
 }
 
-function TrendIndicator({
-  trend,
-  trendLabel,
-}: {
-  trend: number;
-  trendLabel?: string;
-}) {
+function TrendIndicator({ trend, trendLabel }: { trend: number; trendLabel?: string }) {
   const isPositive = trend > 0;
   const isNeutral = trend === 0;
 
@@ -130,10 +124,10 @@ function TrendIndicator({
     <div className="flex items-center gap-1.5">
       <span
         className={cn(
-          "inline-flex items-center text-xs font-medium",
-          isPositive && "text-green-600 dark:text-green-400",
-          isNeutral && "text-muted-foreground",
-          !isPositive && !isNeutral && "text-red-600 dark:text-red-400"
+          'inline-flex items-center text-xs font-medium',
+          isPositive && 'text-green-600 dark:text-green-400',
+          isNeutral && 'text-muted-foreground',
+          !isPositive && !isNeutral && 'text-red-600 dark:text-red-400'
         )}
       >
         {isPositive && <ArrowUp className="h-3 w-3 mr-0.5" />}
@@ -141,9 +135,7 @@ function TrendIndicator({
         {!isPositive && !isNeutral && <ArrowDown className="h-3 w-3 mr-0.5" />}
         {Math.abs(trend).toFixed(1)}%
       </span>
-      {trendLabel && (
-        <span className="text-xs text-muted-foreground">{trendLabel}</span>
-      )}
+      {trendLabel && <span className="text-xs text-muted-foreground">{trendLabel}</span>}
     </div>
   );
 }
@@ -160,7 +152,7 @@ export function MetricsCard({
   loading = false,
   sparklineData,
   icon,
-  variant = "default",
+  variant = 'default',
   className,
   ...props
 }: MetricsCardProps) {
@@ -182,9 +174,7 @@ export function MetricsCard({
   return (
     <Card className={cn(variantStyles[variant], className)} {...props}>
       <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         {icon && (
           <div className="h-8 w-8 rounded-md bg-muted/50 flex items-center justify-center text-muted-foreground">
             {icon}
@@ -197,9 +187,7 @@ export function MetricsCard({
             <div className="text-2xl font-bold tracking-tight">
               {formatValue(value, { prefix, suffix, decimals })}
             </div>
-            {trend !== undefined && (
-              <TrendIndicator trend={trend} trendLabel={trendLabel} />
-            )}
+            {trend !== undefined && <TrendIndicator trend={trend} trendLabel={trendLabel} />}
             {description && !trend && (
               <p className="text-xs text-muted-foreground">{description}</p>
             )}
@@ -223,18 +211,14 @@ export function MetricsCardGroup({
   columns?: 2 | 3 | 4 | 5 | 6;
 }) {
   const gridCols = {
-    2: "grid-cols-1 sm:grid-cols-2",
-    3: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-    4: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4",
-    5: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5",
-    6: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6",
+    2: 'grid-cols-1 sm:grid-cols-2',
+    3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+    4: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
+    5: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5',
+    6: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6',
   };
 
-  return (
-    <div className={cn("grid gap-4", gridCols[columns], className)}>
-      {children}
-    </div>
-  );
+  return <div className={cn('grid gap-4', gridCols[columns], className)}>{children}</div>;
 }
 
 export default MetricsCard;

@@ -4,11 +4,15 @@
  * Used when Web Speech API is not available
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
-import { checkApiRateLimit, getRateLimitIdentifier, addRateLimitHeaders } from '@/lib/security/rate-limiter';
+import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { auth } from '@/lib/auth';
+import {
+  addRateLimitHeaders,
+  checkApiRateLimit,
+  getRateLimitIdentifier,
+} from '@/lib/security/rate-limiter';
 
 // =============================================================================
 // Configuration
@@ -55,10 +59,7 @@ export async function POST(req: NextRequest) {
     // Step 1: Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -74,12 +75,12 @@ export async function POST(req: NextRequest) {
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
-        { 
-          error: 'Rate limit exceeded', 
+        {
+          error: 'Rate limit exceeded',
           code: 'RATE_LIMIT',
           resetAt: new Date(rateLimitResult.reset).toISOString(),
         },
-        { 
+        {
           status: 429,
           headers: {
             'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
 
     // Step 4: Validate audio file
     const audioFile = formData.get('audio') as File | null;
-    
+
     if (!audioFile) {
       return NextResponse.json(
         { error: 'No audio file provided', code: 'MISSING_AUDIO' },
@@ -112,8 +113,8 @@ export async function POST(req: NextRequest) {
     // Check file size
     if (audioFile.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { 
-          error: 'Audio file too large', 
+        {
+          error: 'Audio file too large',
           code: 'FILE_TOO_LARGE',
           details: `Maximum file size is ${MAX_FILE_SIZE / 1024 / 1024}MB`,
         },
@@ -124,8 +125,8 @@ export async function POST(req: NextRequest) {
     // Check file type
     if (!SUPPORTED_FORMATS.includes(audioFile.type)) {
       return NextResponse.json(
-        { 
-          error: 'Unsupported audio format', 
+        {
+          error: 'Unsupported audio format',
           code: 'UNSUPPORTED_FORMAT',
           details: `Supported formats: ${SUPPORTED_FORMATS.join(', ')}`,
         },
@@ -135,7 +136,7 @@ export async function POST(req: NextRequest) {
 
     // Step 5: Parse and validate options
     const options: Record<string, unknown> = {};
-    
+
     try {
       const language = formData.get('language') as string | null;
       const prompt = formData.get('prompt') as string | null;
@@ -150,8 +151,8 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       if (error instanceof z.ZodError) {
         return NextResponse.json(
-          { 
-            error: 'Invalid options', 
+          {
+            error: 'Invalid options',
             code: 'VALIDATION_ERROR',
             details: error.issues,
           },
@@ -164,7 +165,7 @@ export async function POST(req: NextRequest) {
     const openaiFormData = new FormData();
     openaiFormData.append('file', audioFile);
     openaiFormData.append('model', WHISPER_MODEL);
-    
+
     if (options.language) {
       openaiFormData.append('language', options.language as string);
     }
@@ -179,18 +180,17 @@ export async function POST(req: NextRequest) {
     const openaiResponse = await fetch(WHISPER_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: openaiFormData,
     });
 
     if (!openaiResponse.ok) {
       const errorData = await openaiResponse.json().catch(() => ({}));
-      console.error('Whisper API error:', errorData);
 
       return NextResponse.json(
-        { 
-          error: 'Transcription failed', 
+        {
+          error: 'Transcription failed',
           code: 'TRANSCRIPTION_ERROR',
           details: errorData.error?.message || 'Unknown error from Whisper API',
         },
@@ -230,13 +230,10 @@ export async function POST(req: NextRequest) {
     addRateLimitHeaders(response.headers, rateLimitResult);
 
     return response;
-
   } catch (error) {
-    console.error('Voice transcription error:', error);
-
     return NextResponse.json(
-      { 
-        error: 'Internal server error', 
+      {
+        error: 'Internal server error',
         code: 'INTERNAL_ERROR',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
@@ -360,5 +357,3 @@ export async function GET() {
     },
   });
 }
-
-

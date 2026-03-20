@@ -5,34 +5,32 @@
 
 // Install prompt components
 export {
-  InstallPrompt,
   FloatingInstallButton,
+  InstallPrompt,
   IOSInstallHint,
-} from "./install-prompt";
+} from './install-prompt';
 
 // Offline indicator components
 export {
-  OfflineIndicator,
-  NetworkStatusBadge,
   ConnectionDot,
+  NetworkStatusBadge,
+  OfflineIndicator,
   OfflineSkeleton,
-} from "./offline-indicator";
-
-// Update notification components
-export {
-  UpdateToast,
-  UpdateBanner,
-  VersionInfo,
-  CheckUpdateButton,
-} from "./update-toast";
-
+} from './offline-indicator';
 // Offline message composer components
 export {
-  OfflineMessageComposer,
   OfflineInput,
+  OfflineMessageComposer,
   PendingMessagesBadge,
-} from "./offline-message-composer";
+} from './offline-message-composer';
+export { PWAProvider } from './pwa-provider';
 
 // PWA infrastructure
-export { PWAScripts } from "./pwa-scripts";
-export { PWAProvider } from "./pwa-provider";
+export { PWAScripts } from './pwa-scripts';
+// Update notification components
+export {
+  CheckUpdateButton,
+  UpdateBanner,
+  UpdateToast,
+  VersionInfo,
+} from './update-toast';

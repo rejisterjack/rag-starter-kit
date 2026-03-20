@@ -3,26 +3,41 @@
  * Uses Query Router + ReAct Agent + Multi-Step Reasoning for intelligent query handling
  */
 
-import { streamText, type LanguageModel } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { type LanguageModel, streamText } from 'ai';
 import { NextResponse } from 'next/server';
-
+import { createOllama } from 'ollama-ai-provider';
+import { createProviderFromEnv, type LLMMessage } from '@/lib/ai/llm';
+import { MetricType, recordMetric } from '@/lib/analytics/rag-metrics';
+import { trackTokenUsage } from '@/lib/analytics/token-tracking';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { createQueryRouter, QueryType, createReActAgent } from '@/lib/rag/agent';
-import { calculatorTool, searchDocumentsTool, documentSummaryTool, currentTimeTool } from '@/lib/rag/tools';
-import { createProviderFromEnv, type LLMMessage } from '@/lib/ai/llm';
-import { ConversationMemory } from '@/lib/rag/memory';
+import {
+  createQueryRouter,
+  createReActAgent,
+  type QueryClassification,
+  QueryType,
+} from '@/lib/rag/agent';
+import type { ReActStep } from '@/lib/rag/agent/react';
 import { CitationHandler, sourcesToChunks } from '@/lib/rag/citations';
-import { checkPermission, Permission } from '@/lib/workspace/permissions';
-import { checkApiRateLimit, getRateLimitIdentifier, addRateLimitHeaders } from '@/lib/security/rate-limiter';
+import { ConversationMemory } from '@/lib/rag/memory';
+import {
+  calculatorTool,
+  createWebSearchTool,
+  getDefaultWebSearchProvider,
+  currentTimeTool,
+  documentSummaryTool,
+  searchDocumentsTool,
+} from '@/lib/rag/tools';
 import { validateChatInput } from '@/lib/security/input-validator';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
-import { recordMetric, MetricType } from '@/lib/analytics/rag-metrics';
-import { trackTokenUsage } from '@/lib/analytics/token-tracking';
+import {
+  addRateLimitHeaders,
+  checkApiRateLimit,
+  getRateLimitIdentifier,
+} from '@/lib/security/rate-limiter';
+import { checkPermission, Permission } from '@/lib/workspace/permissions';
 import type { RAGConfig } from '@/types';
-import { openai } from '@ai-sdk/openai';
-import { createOllama } from 'ollama-ai-provider';
-import { createWebSearchToolFromEnv } from '@/lib/rag/tools';
 
 const defaultConfig: RAGConfig = {
   chunkSize: 1000,
@@ -71,10 +86,7 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -89,12 +101,12 @@ export async function POST(req: Request) {
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
-        { 
-          error: 'Rate limit exceeded', 
+        {
+          error: 'Rate limit exceeded',
           code: 'RATE_LIMIT',
           resetAt: new Date(rateLimitResult.reset).toISOString(),
         },
-        { 
+        {
           status: 429,
           headers: {
             'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
@@ -130,7 +142,7 @@ export async function POST(req: Request) {
       );
     }
 
-    let validatedInput;
+    let validatedInput: ReturnType<typeof validateChatInput>;
     try {
       validatedInput = validateChatInput(body);
     } catch (error) {
@@ -143,7 +155,13 @@ export async function POST(req: Request) {
       throw error;
     }
 
-    const { messages, chatId, conversationId, config: userConfig, stream: shouldStream } = validatedInput;
+    const {
+      messages,
+      chatId,
+      conversationId,
+      config: userConfig,
+      stream: shouldStream,
+    } = validatedInput;
     const config = { ...defaultConfig, ...userConfig };
     const effectiveConversationId = conversationId ?? chatId;
     const userMessage = messages[messages.length - 1].content;
@@ -155,18 +173,12 @@ export async function POST(req: Request) {
       const chat = await prisma.chat.findFirst({
         where: {
           id: effectiveConversationId,
-          OR: [
-            { userId },
-            { workspaceId: workspaceId ?? '' },
-          ],
+          OR: [{ userId }, { workspaceId: workspaceId ?? '' }],
         },
       });
 
       if (!chat) {
-        return NextResponse.json(
-          { error: 'Chat not found', code: 'NOT_FOUND' },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: 'Chat not found', code: 'NOT_FOUND' }, { status: 404 });
       }
 
       const recentMessages = await memory.getRecentMessages(effectiveConversationId, 10);
@@ -216,59 +228,115 @@ export async function POST(req: Request) {
     switch (classification.type) {
       case QueryType.DIRECT_ANSWER:
         response = await handleDirectAnswer({
-          userMessage, history, userId, workspaceId, effectiveConversationId,
-          config, shouldStream, rateLimitResult, requestId, startTime,
+          userMessage,
+          history,
+          userId,
+          workspaceId,
+          effectiveConversationId,
+          config,
+          shouldStream,
+          rateLimitResult,
+          requestId,
+          startTime,
         });
         break;
 
       case QueryType.CALCULATE:
         response = await handleCalculation({
-          userMessage, history, userId, workspaceId, effectiveConversationId,
-          config, shouldStream, rateLimitResult, requestId, startTime, classification,
+          userMessage,
+          history,
+          userId,
+          workspaceId,
+          effectiveConversationId,
+          config,
+          shouldStream,
+          rateLimitResult,
+          requestId,
+          startTime,
+          classification,
         });
         break;
 
       case QueryType.WEB_SEARCH:
         response = await handleWebSearch({
-          userMessage, history, userId, workspaceId, effectiveConversationId,
-          config, shouldStream, rateLimitResult, requestId, startTime, classification,
+          userMessage,
+          history,
+          userId,
+          workspaceId,
+          effectiveConversationId,
+          config,
+          shouldStream,
+          rateLimitResult,
+          requestId,
+          startTime,
+          classification,
         });
         break;
 
       case QueryType.RETRIEVE:
         if (classification.confidence >= REACT_THRESHOLD) {
           response = await handleReAct({
-            userMessage, history, userId, workspaceId, effectiveConversationId,
-            config, shouldStream, rateLimitResult, requestId, startTime, classification,
+            userMessage,
+            history,
+            userId,
+            workspaceId,
+            effectiveConversationId,
+            config,
+            shouldStream,
+            rateLimitResult,
+            requestId,
+            startTime,
+            classification,
           });
         } else {
           response = await handleDirectRetrieval({
-            userMessage, history, userId, workspaceId, effectiveConversationId,
-            config, shouldStream, rateLimitResult, requestId, startTime,
+            userMessage,
+            history,
+            userId,
+            workspaceId,
+            effectiveConversationId,
+            config,
+            shouldStream,
+            rateLimitResult,
+            requestId,
+            startTime,
           });
         }
         break;
 
       case QueryType.CLARIFY:
         response = await handleClarification({
-          userMessage, history, classification, userId, workspaceId,
-          effectiveConversationId, rateLimitResult, requestId,
+          userMessage,
+          history,
+          classification,
+          userId,
+          workspaceId,
+          effectiveConversationId,
+          rateLimitResult,
+          requestId,
         });
         break;
 
       default:
         response = await handleReAct({
-          userMessage, history, userId, workspaceId, effectiveConversationId,
-          config, shouldStream, rateLimitResult, requestId, startTime, classification,
+          userMessage,
+          history,
+          userId,
+          workspaceId,
+          effectiveConversationId,
+          config,
+          shouldStream,
+          rateLimitResult,
+          requestId,
+          startTime,
+          classification,
         });
     }
 
     return response;
-
   } catch (error) {
-    console.error('Agentic chat error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
+
     return NextResponse.json(
       {
         error: 'Failed to process agentic chat request',
@@ -282,8 +350,18 @@ export async function POST(req: Request) {
 }
 
 async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
-  const { userMessage, history, userId, workspaceId, effectiveConversationId, config, shouldStream, rateLimitResult, requestId } = params;
-  
+  const {
+    userMessage,
+    history,
+    userId,
+    workspaceId,
+    effectiveConversationId,
+    config,
+    shouldStream,
+    rateLimitResult,
+    requestId,
+  } = params;
+
   const llmProvider = createProviderFromEnv();
   const memory = new ConversationMemory(prisma);
 
@@ -314,7 +392,7 @@ async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
           });
         }
         await trackTokenUsage({
-          userId: userId!,
+          userId,
           workspaceId: workspaceId ?? '',
           conversationId: effectiveConversationId ?? '',
           promptTokens: completion.usage?.inputTokens ?? 0,
@@ -347,7 +425,7 @@ async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
     }
 
     await trackTokenUsage({
-      userId: userId!,
+      userId,
       workspaceId: workspaceId ?? '',
       conversationId: effectiveConversationId ?? '',
       promptTokens: response.usage.promptTokens,
@@ -368,19 +446,18 @@ async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
   }
 }
 
-async function handleCalculation(params: HandlerParams & { classification: any }): Promise<Response> {
+async function handleCalculation(
+  params: HandlerParams & { classification: QueryClassification }
+): Promise<Response> {
   const { userMessage, history, userId, workspaceId, effectiveConversationId, config } = params;
-  
-  const agent = createReActAgent([
-    calculatorTool,
-    currentTimeTool,
-  ], {
+
+  const agent = createReActAgent([calculatorTool, currentTimeTool], {
     model: config.model,
   });
 
   const result = await agent.execute(userMessage, {
     workspaceId: workspaceId ?? '',
-    userId: userId!,
+    userId,
     history: history as unknown as import('@/types').Message[],
   });
 
@@ -395,7 +472,7 @@ async function handleCalculation(params: HandlerParams & { classification: any }
   }
 
   await trackTokenUsage({
-    userId: userId!,
+    userId,
     workspaceId: workspaceId ?? '',
     conversationId: effectiveConversationId ?? '',
     promptTokens: result.tokensUsed.prompt,
@@ -415,20 +492,19 @@ async function handleCalculation(params: HandlerParams & { classification: any }
   });
 }
 
-async function handleWebSearch(params: HandlerParams & { classification: any }): Promise<Response> {
+async function handleWebSearch(
+  params: HandlerParams & { classification: QueryClassification }
+): Promise<Response> {
   const { userMessage, history, userId, workspaceId, effectiveConversationId, config } = params;
-  
-  const webSearch = await createWebSearchToolFromEnv();
-  const agent = createReActAgent([
-    webSearch,
-    currentTimeTool,
-  ], {
+
+  const webSearch = createWebSearchTool(getDefaultWebSearchProvider());
+  const agent = createReActAgent([webSearch, currentTimeTool], {
     model: config.model,
   });
 
   const result = await agent.execute(userMessage, {
     workspaceId: workspaceId ?? '',
-    userId: userId!,
+    userId,
     history: history as unknown as import('@/types').Message[],
   });
 
@@ -443,7 +519,7 @@ async function handleWebSearch(params: HandlerParams & { classification: any }):
   }
 
   await trackTokenUsage({
-    userId: userId!,
+    userId,
     workspaceId: workspaceId ?? '',
     conversationId: effectiveConversationId ?? '',
     promptTokens: result.tokensUsed.prompt,
@@ -465,8 +541,18 @@ async function handleWebSearch(params: HandlerParams & { classification: any }):
 }
 
 async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
-  const { userMessage, history, userId, workspaceId, effectiveConversationId, config, shouldStream, rateLimitResult, requestId } = params;
-  
+  const {
+    userMessage,
+    history,
+    userId,
+    workspaceId,
+    effectiveConversationId,
+    config,
+    shouldStream,
+    rateLimitResult,
+    requestId,
+  } = params;
+
   const { retrieveSources } = await import('@/lib/rag/retrieval');
   const sources = await retrieveSources(userMessage, userId, config);
 
@@ -499,7 +585,7 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
       maxOutputTokens: config.maxTokens,
       onFinish: async (completion) => {
         citationHandler.extractCitations(completion.text, citationMap);
-        
+
         if (effectiveConversationId) {
           await memory.addMessage(effectiveConversationId, {
             role: 'assistant',
@@ -508,7 +594,7 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
         }
 
         await trackTokenUsage({
-          userId: userId!,
+          userId,
           workspaceId: workspaceId ?? '',
           conversationId: effectiveConversationId ?? '',
           promptTokens: completion.usage?.inputTokens ?? 0,
@@ -548,7 +634,7 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
     }
 
     await trackTokenUsage({
-      userId: userId!,
+      userId,
       workspaceId: workspaceId ?? '',
       conversationId: effectiveConversationId ?? '',
       promptTokens: response.usage.promptTokens,
@@ -570,18 +656,22 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
   }
 }
 
-async function handleReAct(params: HandlerParams & { classification: any }): Promise<Response> {
-  const { userMessage, history: _history, userId, workspaceId, effectiveConversationId, config } = params;
-  
-  const tools = [
-    calculatorTool,
-    searchDocumentsTool,
-    documentSummaryTool,
-    currentTimeTool,
-  ];
+async function handleReAct(
+  params: HandlerParams & { classification: QueryClassification }
+): Promise<Response> {
+  const {
+    userMessage,
+    history: _history,
+    userId,
+    workspaceId,
+    effectiveConversationId,
+    config,
+  } = params;
+
+  const tools = [calculatorTool, searchDocumentsTool, documentSummaryTool, currentTimeTool];
 
   try {
-    const webSearch = await createWebSearchToolFromEnv();
+    const webSearch = createWebSearchTool(getDefaultWebSearchProvider());
     tools.push(webSearch);
   } catch {
     // Web search not configured
@@ -593,7 +683,7 @@ async function handleReAct(params: HandlerParams & { classification: any }): Pro
 
   const result = await agent.execute(userMessage, {
     workspaceId: workspaceId ?? '',
-    userId: userId!,
+    userId,
   });
 
   const memory = new ConversationMemory(prisma);
@@ -607,7 +697,7 @@ async function handleReAct(params: HandlerParams & { classification: any }): Pro
   }
 
   await trackTokenUsage({
-    userId: userId!,
+    userId,
     workspaceId: workspaceId ?? '',
     conversationId: effectiveConversationId ?? '',
     promptTokens: result.tokensUsed.prompt,
@@ -622,7 +712,7 @@ async function handleReAct(params: HandlerParams & { classification: any }): Pro
       strategy: 'react',
       steps: result.steps,
       sources: result.sources,
-      toolCalls: result.steps.filter((s: any) => s.action?.tool).length,
+      toolCalls: result.steps.filter((s: ReActStep) => s.action).length,
       latency: result.latency,
       usage: { totalTokens: result.tokensUsed },
     },
@@ -630,10 +720,12 @@ async function handleReAct(params: HandlerParams & { classification: any }): Pro
 }
 
 async function handleClarification(
-  params: Omit<HandlerParams, 'config' | 'shouldStream' | 'startTime'> & { classification: any }
+  params: Omit<HandlerParams, 'config' | 'shouldStream' | 'startTime'> & {
+    classification: QueryClassification;
+  }
 ): Promise<Response> {
   const { userMessage, classification, effectiveConversationId, rateLimitResult } = params;
-  
+
   const memory = new ConversationMemory(prisma);
 
   if (effectiveConversationId) {

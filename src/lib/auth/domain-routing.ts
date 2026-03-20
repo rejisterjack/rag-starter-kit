@@ -1,13 +1,13 @@
 /**
  * Domain-based Auto-routing for SSO
- * 
+ *
  * Automatically detects workspace from email domain and routes to appropriate
  * SSO provider. Falls back to password login for unknown domains.
  */
 
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
-import { AuditEvent } from '@/lib/audit/audit-logger';
-import { logAuditEvent } from '@/lib/audit/audit-logger';
+import { logger } from '@/lib/logger';
 
 // =============================================================================
 // Types
@@ -56,11 +56,11 @@ export function extractDomain(email: string): string | null {
   try {
     const parts = email.toLowerCase().trim().split('@');
     if (parts.length !== 2) return null;
-    
+
     const domain = parts[1];
     // Basic domain validation
     if (!domain.includes('.') || domain.length < 4) return null;
-    
+
     return domain;
   } catch {
     return null;
@@ -72,7 +72,7 @@ export function extractDomain(email: string): string | null {
  */
 export async function lookupDomain(email: string): Promise<DomainLookupResult> {
   const domain = extractDomain(email);
-  
+
   if (!domain) {
     return {
       found: false,
@@ -93,9 +93,6 @@ export async function lookupDomain(email: string): Promise<DomainLookupResult> {
     },
     include: {
       samlConnection: true,
-      oauthConnections: {
-        where: { active: true },
-      },
     },
   });
 
@@ -113,7 +110,7 @@ export async function lookupDomain(email: string): Promise<DomainLookupResult> {
   const ssoMethods: SSOMethod[] = [];
 
   // Check SAML
-  if (workspace.samlConnection?.active) {
+  if (workspace.samlConnection?.enabled) {
     ssoMethods.push({
       type: 'saml',
       name: 'SSO',
@@ -121,15 +118,7 @@ export async function lookupDomain(email: string): Promise<DomainLookupResult> {
     });
   }
 
-  // Check OAuth providers
-  for (const oauth of workspace.oauthConnections) {
-    ssoMethods.push({
-      type: 'oauth',
-      provider: oauth.provider as SSOMethod['provider'],
-      name: oauth.name,
-      id: oauth.id,
-    });
-  }
+  // Note: oauthConnections not in schema - skipping OAuth providers
 
   // Parse workspace settings
   const settings = (workspace.settings as Record<string, unknown>) || {};
@@ -138,7 +127,7 @@ export async function lookupDomain(email: string): Promise<DomainLookupResult> {
     found: true,
     workspaceId: workspace.id,
     workspaceName: workspace.name,
-    workspaceLogo: workspace.avatar || undefined,
+    workspaceLogo: (workspace.logoUrl as string | undefined) || undefined,
     ssoMethods,
     forceSSO: settings.forceSSO === true,
     jitProvisioning: settings.jitProvisioning !== false, // Default true
@@ -164,7 +153,7 @@ export function getSSORedirectUrl(
   email?: string
 ): string {
   const params = new URLSearchParams();
-  
+
   if (email) {
     params.set('email', email);
   }
@@ -204,7 +193,7 @@ export async function getAuthRoute(
   if (lookup.forceSSO) {
     const primaryMethod = lookup.ssoMethods[0];
     const params = new URLSearchParams();
-    
+
     if (returnUrl) {
       params.set('returnUrl', returnUrl);
     }
@@ -232,7 +221,8 @@ export async function getAuthRoute(
  */
 export function isValidDomain(domain: string): boolean {
   // Simple domain validation regex
-  const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+  const domainRegex =
+    /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
   return domainRegex.test(domain.toLowerCase());
 }
 
@@ -296,7 +286,9 @@ export async function setWorkspaceSSODomain(
 
     return { success: true };
   } catch (error) {
-    console.error('Failed to set SSO domain:', error);
+    logger.error('Failed to set SSO domain', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
     return { success: false, error: 'Failed to update domain' };
   }
 }
@@ -364,15 +356,13 @@ export function invalidateDomainCache(domain?: string): void {
  */
 export function normalizeEmail(email: string): string {
   const [localPart, domain] = email.toLowerCase().trim().split('@');
-  
+
   if (!domain) return email.toLowerCase().trim();
 
   // Handle Gmail-specific normalization
   if (domain === 'gmail.com' || domain === 'googlemail.com') {
     // Remove dots and plus addressing
-    const normalizedLocal = localPart
-      .replace(/\./g, '')
-      .split('+')[0];
+    const normalizedLocal = localPart.replace(/\./g, '').split('+')[0];
     return `${normalizedLocal}@gmail.com`;
   }
 

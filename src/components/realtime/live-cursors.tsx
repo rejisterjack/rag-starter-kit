@@ -6,16 +6,11 @@
 
 'use client';
 
-import React, { useMemo, useRef, useEffect, useState } from 'react';
-import { cn } from '@/lib/utils';
-import type { UserInfo, CursorPosition } from '@/lib/realtime/types';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { CursorPosition, UserInfo } from '@/lib/realtime/types';
+import { cn } from '@/lib/utils';
 
 // =============================================================================
 // Types
@@ -108,10 +103,8 @@ const Cursor: React.FC<CursorProps> = ({
   useEffect(() => {
     const animate = () => {
       // Lerp towards target position
-      currentPos.current.x +=
-        (targetPos.current.x - currentPos.current.x) * smoothFactor;
-      currentPos.current.y +=
-        (targetPos.current.y - currentPos.current.y) * smoothFactor;
+      currentPos.current.x += (targetPos.current.x - currentPos.current.x) * smoothFactor;
+      currentPos.current.y += (targetPos.current.y - currentPos.current.y) * smoothFactor;
 
       setRenderPos({ ...currentPos.current });
       animationFrame.current = requestAnimationFrame(animate);
@@ -194,9 +187,7 @@ const Cursor: React.FC<CursorProps> = ({
           <TooltipContent side="top">
             <p className="text-sm font-medium">{user.name}</p>
             {position.elementId && (
-              <p className="text-xs text-muted-foreground">
-                Editing: {position.elementId}
-              </p>
+              <p className="text-xs text-muted-foreground">Editing: {position.elementId}</p>
             )}
           </TooltipContent>
         </Tooltip>
@@ -253,10 +244,7 @@ export const LiveCursors: React.FC<LiveCursorsProps> = ({
 
   return (
     <div
-      className={cn(
-        'absolute inset-0 pointer-events-none overflow-hidden',
-        className
-      )}
+      className={cn('absolute inset-0 pointer-events-none overflow-hidden', className)}
       style={{
         // Ensure cursors are positioned relative to the container
         position: containerRef?.current ? 'absolute' : 'fixed',
@@ -285,11 +273,7 @@ interface CursorListProps {
   className?: string;
 }
 
-export const CursorList: React.FC<CursorListProps> = ({
-  cursors,
-  currentUserId,
-  className,
-}) => {
+export const CursorList: React.FC<CursorListProps> = ({ cursors, currentUserId, className }) => {
   const activeUsers = useMemo(() => {
     const now = Date.now();
     const users: Array<{ user: UserInfo; color: string }> = [];
@@ -349,42 +333,36 @@ interface CursorActivityIndicatorProps {
   className?: string;
 }
 
-export const CursorActivityIndicator: React.FC<CursorActivityIndicatorProps> =
-  ({ cursors, currentUserId, className }) => {
-    const activeCount = useMemo(() => {
-      const now = Date.now();
-      let count = 0;
+export const CursorActivityIndicator: React.FC<CursorActivityIndicatorProps> = ({
+  cursors,
+  currentUserId,
+  className,
+}) => {
+  const activeCount = useMemo(() => {
+    const now = Date.now();
+    let count = 0;
 
-      for (const [userId, cursor] of cursors.entries()) {
-        if (userId !== currentUserId && now - cursor.timestamp < 30000) {
-          count++;
-        }
+    for (const [userId, cursor] of cursors.entries()) {
+      if (userId !== currentUserId && now - cursor.timestamp < 30000) {
+        count++;
       }
+    }
 
-      return count;
-    }, [cursors, currentUserId]);
+    return count;
+  }, [cursors, currentUserId]);
 
-    if (activeCount === 0) return null;
+  if (activeCount === 0) return null;
 
-    return (
-      <div
-        className={cn(
-          'flex items-center gap-1.5 text-xs text-muted-foreground',
-          className
-        )}
-      >
-        <span className="relative flex h-2 w-2">
-          <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
-        </span>
-        <span>
-          {activeCount === 1
-            ? '1 active cursor'
-            : `${activeCount} active cursors`}
-        </span>
-      </div>
-    );
-  };
+  return (
+    <div className={cn('flex items-center gap-1.5 text-xs text-muted-foreground', className)}>
+      <span className="relative flex h-2 w-2">
+        <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+      </span>
+      <span>{activeCount === 1 ? '1 active cursor' : `${activeCount} active cursors`}</span>
+    </div>
+  );
+};
 
 // =============================================================================
 // Cursor Container (Wraps content and tracks mouse)
@@ -428,11 +406,7 @@ export const CursorContainer: React.FC<CursorContainerProps> = ({
   );
 
   return (
-    <div
-      ref={containerRef}
-      className={cn('relative', className)}
-      onMouseMove={handleMouseMove}
-    >
+    <div ref={containerRef} className={cn('relative', className)} onMouseMove={handleMouseMove}>
       {children}
     </div>
   );

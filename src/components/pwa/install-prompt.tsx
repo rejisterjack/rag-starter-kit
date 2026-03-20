@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { Download, X, Share2, MoreVertical } from "lucide-react";
+import { Download, MoreVertical, Share2, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -11,14 +11,14 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { useInstallPrompt, usePWA } from "@/hooks/use-pwa";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/card';
+import { useInstallPrompt, usePWA } from '@/hooks/use-pwa';
+import { cn } from '@/lib/utils';
 
 /**
  * Install prompt variants
  */
-type PromptVariant = "banner" | "card" | "minimal";
+type PromptVariant = 'banner' | 'card' | 'minimal';
 
 /**
  * Props for InstallPrompt component
@@ -29,7 +29,7 @@ interface InstallPromptProps {
   /** Custom className */
   className?: string;
   /** Position for banner variant */
-  position?: "top" | "bottom";
+  position?: 'top' | 'bottom';
   /** Delay before showing (ms) */
   delay?: number;
   /** Auto-hide after duration (ms), 0 for no auto-hide */
@@ -39,27 +39,31 @@ interface InstallPromptProps {
 /**
  * Install prompt banner/card component
  * Shows when app is installable with platform-specific instructions
- * 
+ *
  * @example
  * ```tsx
  * // Banner at bottom (default)
  * <InstallPrompt />
- * 
+ *
  * // Card variant
  * <InstallPrompt variant="card" />
- * 
+ *
  * // Top banner
  * <InstallPrompt position="top" />
  * ```
  */
 export function InstallPrompt({
-  variant = "banner",
+  variant = 'banner',
   className,
-  position = "bottom",
+  position = 'bottom',
   delay = 2000,
   autoHide = 0,
 }: InstallPromptProps) {
-  const { isInstallable: isAvailable, promptInstall: showPrompt, dismissInstall: dismiss } = useInstallPrompt();
+  const {
+    isInstallable: isAvailable,
+    promptInstall: showPrompt,
+    dismissInstall: dismiss,
+  } = useInstallPrompt();
   const { platform, isIOS } = usePWA();
   const [isVisible, setIsVisible] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
@@ -73,14 +77,6 @@ export function InstallPrompt({
     return undefined;
   }, [isAvailable, delay]);
 
-  useEffect(() => {
-    if (autoHide > 0 && isVisible) {
-      const timer = setTimeout(handleDismiss, autoHide);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [autoHide, isVisible]);
-
   const handleDismiss = useCallback(() => {
     setIsClosing(true);
     // Delay actual dismiss to allow animation
@@ -91,9 +87,17 @@ export function InstallPrompt({
     }, 300);
   }, [dismiss]);
 
+  useEffect(() => {
+    if (autoHide > 0 && isVisible) {
+      const timer = setTimeout(handleDismiss, autoHide);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [autoHide, isVisible, handleDismiss]);
+
   const handleInstall = useCallback(async () => {
     // iOS/Safari requires manual installation
-    if (platform === "ios" || isIOS) {
+    if (platform === 'ios' || isIOS) {
       setShowInstructions(true);
       return;
     }
@@ -102,14 +106,14 @@ export function InstallPrompt({
   }, [platform, isIOS, showPrompt]);
 
   const getInstallInstructions = (): string[] => {
-    if (platform === "ios") {
+    if (platform === 'ios') {
       return [
         'Tap the Share button in Safari (the square with an arrow)',
         'Scroll down and tap "Add to Home Screen"',
         'Tap "Add" in the top right corner',
       ];
     }
-    if (platform === "android") {
+    if (platform === 'android') {
       return [
         'Tap the menu (three dots) in Chrome',
         'Tap "Add to Home screen" or "Install app"',
@@ -132,10 +136,7 @@ export function InstallPrompt({
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in"
         onClick={() => setShowInstructions(false)}
       >
-        <div
-          className="animate-slide-up"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="animate-slide-up" onClick={(e) => e.stopPropagation()}>
           <Card className="w-full max-w-md">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -174,18 +175,20 @@ export function InstallPrompt({
   }
 
   // Banner Variant
-  if (variant === "banner") {
+  if (variant === 'banner') {
     if (!isVisible) return null;
-    
+
     return (
       <div
         className={cn(
-          "fixed left-0 right-0 z-50 border-b bg-background/95 px-4 py-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/60",
-          "transition-all duration-300 ease-out",
-          position === "top" ? "top-0 border-t-0" : "bottom-0 border-t",
-          isClosing 
-            ? position === "top" ? "-translate-y-full opacity-0" : "translate-y-full opacity-0"
-            : "translate-y-0 opacity-100",
+          'fixed left-0 right-0 z-50 border-b bg-background/95 px-4 py-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/60',
+          'transition-all duration-300 ease-out',
+          position === 'top' ? 'top-0 border-t-0' : 'bottom-0 border-t',
+          isClosing
+            ? position === 'top'
+              ? '-translate-y-full opacity-0'
+              : 'translate-y-full opacity-0'
+            : 'translate-y-0 opacity-100',
           className
         )}
       >
@@ -221,14 +224,14 @@ export function InstallPrompt({
   }
 
   // Card Variant
-  if (variant === "card") {
+  if (variant === 'card') {
     if (!isVisible) return null;
-    
+
     return (
       <div
         className={cn(
-          "w-full max-w-sm transition-all duration-300",
-          isClosing ? "scale-95 opacity-0" : "scale-100 opacity-100",
+          'w-full max-w-sm transition-all duration-300',
+          isClosing ? 'scale-95 opacity-0' : 'scale-100 opacity-100',
           className
         )}
       >
@@ -269,13 +272,13 @@ export function InstallPrompt({
 
   // Minimal Variant
   if (!isVisible) return null;
-  
+
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-full border bg-background px-4 py-2 shadow-lg",
-        "transition-all duration-300",
-        isClosing ? "opacity-0 scale-95" : "opacity-100 scale-100",
+        'flex items-center gap-2 rounded-full border bg-background px-4 py-2 shadow-lg',
+        'transition-all duration-300',
+        isClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100',
         className
       )}
     >
@@ -284,12 +287,7 @@ export function InstallPrompt({
       <Button size="sm" className="h-7 px-3 text-xs" onClick={handleInstall}>
         Install
       </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        className="h-6 w-6"
-        onClick={handleDismiss}
-      >
+      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleDismiss}>
         <X className="h-3 w-3" />
       </Button>
     </div>
@@ -301,13 +299,17 @@ export function InstallPrompt({
  * Shows a fixed button that expands to show install options
  */
 export function FloatingInstallButton({ className }: { className?: string }) {
-  const { isInstallable: isAvailable, promptInstall: showPrompt, dismissInstall: dismiss } = useInstallPrompt();
+  const {
+    isInstallable: isAvailable,
+    promptInstall: showPrompt,
+    dismissInstall: dismiss,
+  } = useInstallPrompt();
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (!isAvailable) return null;
 
   return (
-    <div className={cn("fixed bottom-6 right-6 z-50", className)}>
+    <div className={cn('fixed bottom-6 right-6 z-50', className)}>
       {isExpanded ? (
         <div className="flex flex-col gap-2 rounded-2xl border bg-background p-2 shadow-xl animate-fade-in">
           <Button
@@ -360,8 +362,8 @@ export function IOSInstallHint({ className }: { className?: string }) {
 
   useEffect(() => {
     // Show for iOS Safari users who haven't installed
-    if ((platform === "ios" || isIOS) && isAvailable) {
-      const hasSeenHint = localStorage.getItem("pwa:ios-hint-seen");
+    if ((platform === 'ios' || isIOS) && isAvailable) {
+      const hasSeenHint = localStorage.getItem('pwa:ios-hint-seen');
       if (!hasSeenHint) {
         const timer = setTimeout(() => setIsVisible(true), 3000);
         return () => clearTimeout(timer);
@@ -375,7 +377,7 @@ export function IOSInstallHint({ className }: { className?: string }) {
     setTimeout(() => {
       setIsVisible(false);
       setIsClosing(false);
-      localStorage.setItem("pwa:ios-hint-seen", "true");
+      localStorage.setItem('pwa:ios-hint-seen', 'true');
     }, 300);
   };
 
@@ -384,9 +386,9 @@ export function IOSInstallHint({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "fixed bottom-4 left-4 right-4 z-50 rounded-2xl border bg-background p-4 shadow-xl",
-        "transition-all duration-300",
-        isClosing ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0",
+        'fixed bottom-4 left-4 right-4 z-50 rounded-2xl border bg-background p-4 shadow-xl',
+        'transition-all duration-300',
+        isClosing ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0',
         className
       )}
     >
@@ -397,17 +399,11 @@ export function IOSInstallHint({ className }: { className?: string }) {
         <div className="flex-1">
           <p className="font-medium">Install on your iPhone</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Tap{" "}
-            <Share2 className="mx-1 inline h-4 w-4" />
+            Tap <Share2 className="mx-1 inline h-4 w-4" />
             then &quot;Add to Home Screen&quot;
           </p>
         </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8 shrink-0"
-          onClick={handleDismiss}
-        >
+        <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={handleDismiss}>
           <X className="h-4 w-4" />
         </Button>
       </div>

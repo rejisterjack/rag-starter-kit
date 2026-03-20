@@ -9,6 +9,12 @@ import { generateChatCompletion } from '@/lib/ai';
 import { estimateTokens } from '@/lib/ai';
 import type { RetrievedChunk, CompressionConfig } from './types';
 
+// Message type for AI completions
+interface ChatMessage {
+  role: 'system' | 'user';
+  content: string;
+}
+
 /**
  * Default configuration for contextual compression
  */
@@ -159,14 +165,16 @@ export class ContextualCompressor {
       .replace('{query}', query)
       .replace('{chunk}', content);
 
+    const messages: ChatMessage[] = [
+      {
+        role: 'system',
+        content: 'You are a precise document compressor. Extract only relevant sentences.',
+      },
+      { role: 'user', content: prompt },
+    ];
+    
     const { text } = await generateChatCompletion(
-      [
-        {
-          role: 'system',
-          content: 'You are a precise document compressor. Extract only relevant sentences.',
-        },
-        { role: 'user', content: prompt },
-      ],
+      messages as unknown as Parameters<typeof generateChatCompletion>[0],
       { temperature: 0.3, maxTokens: this.config.maxTokensPerChunk * 2 }
     );
 
@@ -203,14 +211,16 @@ export class ContextualCompressor {
       .replace('{query}', query)
       .replace('{chunk}', content);
 
+    const messages: ChatMessage[] = [
+      {
+        role: 'system',
+        content: 'You are a concise summarizer. Focus on query-relevant information.',
+      },
+      { role: 'user', content: prompt },
+    ];
+    
     const { text } = await generateChatCompletion(
-      [
-        {
-          role: 'system',
-          content: 'You are a concise summarizer. Focus on query-relevant information.',
-        },
-        { role: 'user', content: prompt },
-      ],
+      messages as unknown as Parameters<typeof generateChatCompletion>[0],
       { temperature: 0.3, maxTokens: this.config.maxTokensPerChunk }
     );
 

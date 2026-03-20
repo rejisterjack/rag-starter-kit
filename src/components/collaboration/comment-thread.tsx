@@ -1,18 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import { MessageSquare, Send, MoreHorizontal, Check, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { Check, Loader2, MessageSquare, MoreHorizontal, Send } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 interface Comment {
@@ -60,7 +60,7 @@ export function CommentThread({
       const mentions = extractMentions(newComment);
       await onAddComment(newComment, mentions);
       setNewComment('');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to add comment');
     } finally {
       setIsSubmitting(false);
@@ -74,7 +74,7 @@ export function CommentThread({
       await onEditComment(commentId, editContent);
       setEditingId(null);
       setEditContent('');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to edit comment');
     }
   };
@@ -84,7 +84,7 @@ export function CommentThread({
 
     try {
       await onDeleteComment(commentId);
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to delete comment');
     }
   };
@@ -123,10 +123,7 @@ export function CommentThread({
           comments.map((comment) => (
             <div
               key={comment.id}
-              className={cn(
-                'group flex gap-3 p-3 rounded-lg',
-                isResolved && 'opacity-60'
-              )}
+              className={cn('group flex gap-3 p-3 rounded-lg', isResolved && 'opacity-60')}
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="text-xs">
@@ -154,10 +151,7 @@ export function CommentThread({
                       className="text-sm"
                     />
                     <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleEdit(comment.id)}
-                      >
+                      <Button size="sm" onClick={() => handleEdit(comment.id)}>
                         Save
                       </Button>
                       <Button
@@ -247,12 +241,7 @@ export function CommentThread({
 
       {/* Resolve Button */}
       {onResolve && comments.length > 0 && !isResolved && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={onResolve}
-        >
+        <Button variant="outline" size="sm" className="w-full" onClick={onResolve}>
           <Check className="h-4 w-4 mr-1" />
           Mark as Resolved
         </Button>

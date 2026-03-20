@@ -62,7 +62,7 @@ export class OpenAIProvider implements LLMProvider {
           content: m.content,
         })),
         temperature: options.temperature,
-        maxTokens: options.maxTokens,
+        maxOutputTokens: options.maxTokens,
         topP: options.topP,
         frequencyPenalty: options.frequencyPenalty,
         presencePenalty: options.presencePenalty,
@@ -71,9 +71,9 @@ export class OpenAIProvider implements LLMProvider {
       return {
         content: result.text,
         usage: {
-          promptTokens: result.usage?.promptTokens ?? 0,
-          completionTokens: result.usage?.completionTokens ?? 0,
-          totalTokens: result.usage?.totalTokens ?? 0,
+          promptTokens: (result.usage as { promptTokens?: number })?.promptTokens ?? 0,
+          completionTokens: (result.usage as { completionTokens?: number })?.completionTokens ?? 0,
+          totalTokens: (result.usage as { totalTokens?: number })?.totalTokens ?? 0,
         },
         model: modelName,
         finishReason: result.finishReason ?? 'unknown',
@@ -94,18 +94,18 @@ export class OpenAIProvider implements LLMProvider {
           content: m.content,
         })),
         temperature: options.temperature,
-        maxTokens: options.maxTokens,
+        maxOutputTokens: options.maxTokens,
         topP: options.topP,
         frequencyPenalty: options.frequencyPenalty,
         presencePenalty: options.presencePenalty,
       });
 
       // Create a promise that resolves with usage when streaming completes
-      const usagePromise = result.usage.then((usage) => ({
+      const usagePromise = result.usage.then((usage: { promptTokens?: number; completionTokens?: number; totalTokens?: number }) => ({
         promptTokens: usage?.promptTokens ?? 0,
         completionTokens: usage?.completionTokens ?? 0,
         totalTokens: usage?.totalTokens ?? 0,
-      }));
+      })) as Promise<{ promptTokens: number; completionTokens: number; totalTokens: number }>;
 
       return {
         content: result.textStream,
@@ -139,12 +139,12 @@ export class OpenAIProvider implements LLMProvider {
         };
       } catch (error) {
         if (error instanceof RateLimitError) {
-          console.warn(`Rate limit hit for model ${model}, trying fallback...`);
+          // Rate limit hit - trying fallback
           lastError = error;
           continue;
         }
         if (error instanceof ModelUnavailableError) {
-          console.warn(`Model ${model} unavailable, trying fallback...`);
+          // Model unavailable - trying fallback
           lastError = error;
           continue;
         }
@@ -182,8 +182,8 @@ export class OpenAIProvider implements LLMProvider {
         };
       } catch (error) {
         if (error instanceof RateLimitError || error instanceof ModelUnavailableError) {
-          console.warn(`Model ${model} failed (${(error as LLMError).code}), trying fallback...`);
-          lastError = error as Error;
+          // Model failed - trying fallback
+          lastError = error instanceof Error ? error : new Error(String(error));
           continue;
         }
         throw error;

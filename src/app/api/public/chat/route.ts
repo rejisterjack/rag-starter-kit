@@ -205,8 +205,6 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    console.error('Public chat API error:', error);
-
     // Log error
     await logAuditEvent({
       event: AuditEvent.CHAT_MESSAGE_SENT,

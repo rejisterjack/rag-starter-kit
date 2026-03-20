@@ -14,7 +14,7 @@
 // import { z } from 'zod';
 import type { Message, Source } from '@/types';
 import { createProviderFromEnv } from '@/lib/ai/llm';
-import type { Tool, ToolResult } from '../tools/types';
+import type { Tool } from '../tools/types';
 // import type { ReActStep } from './react';
 
 // ============================================================================

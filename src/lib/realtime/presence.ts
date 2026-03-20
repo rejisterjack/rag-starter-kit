@@ -495,9 +495,9 @@ export async function cleanupStalePresence(): Promise<{
   let cleanedRooms = 0;
 
   // Scan for presence keys
-  let cursor = 0;
+  let cursor: string | number = '0';
   do {
-    const result = await redis.scan(cursor, {
+    const result: [string, string[]] = await redis.scan(cursor, {
       match: `${KEY_PREFIX}user:*`,
       count: 100,
     });
@@ -529,7 +529,7 @@ export async function cleanupStalePresence(): Promise<{
         }
       }
     }
-  } while (cursor !== 0);
+  } while (cursor !== '0');
 
   return { cleanedUsers, cleanedRooms };
 }
@@ -554,9 +554,9 @@ export async function getPresenceStats(): Promise<{
 
   // Count online users
   let totalOnline = 0;
-  let cursor = 0;
+  let cursor: string | number = '0';
   do {
-    const result = await redis.scan(cursor, {
+    const result: [string, string[]] = await redis.scan(cursor, {
       match: `${KEY_PREFIX}user:*`,
       count: 100,
     });
@@ -568,13 +568,13 @@ export async function getPresenceStats(): Promise<{
         totalOnline++;
       }
     }
-  } while (cursor !== 0);
+  } while (cursor !== '0');
 
   // Count typing users (across all rooms)
   let typingUsers = 0;
-  cursor = 0;
+  cursor = '0';
   do {
-    const result = await redis.scan(cursor, {
+    const result: [string, string[]] = await redis.scan(cursor, {
       match: `${KEY_PREFIX}typing:*`,
       count: 100,
     });
@@ -585,13 +585,13 @@ export async function getPresenceStats(): Promise<{
       const count = await redis.hlen(key);
       typingUsers += count;
     }
-  } while (cursor !== 0);
+  } while (cursor !== '0');
 
   // Count active cursors (across all rooms)
   let activeCursors = 0;
-  cursor = 0;
+  cursor = '0';
   do {
-    const result = await redis.scan(cursor, {
+    const result: [string, string[]] = await redis.scan(cursor, {
       match: `${KEY_PREFIX}cursor:*`,
       count: 100,
     });
@@ -602,7 +602,7 @@ export async function getPresenceStats(): Promise<{
       const count = await redis.hlen(key);
       activeCursors += count;
     }
-  } while (cursor !== 0);
+  } while (cursor !== '0');
 
   return { totalOnline, typingUsers, activeCursors };
 }

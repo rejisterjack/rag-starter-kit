@@ -1,7 +1,7 @@
 /**
  * Chat API Route with Streaming Support
  * Handles chat messages with RAG context and streaming responses
- * 
+ *
  * Security Features:
  * - Authentication check
  * - Workspace access validation
@@ -10,25 +10,24 @@
  * - Audit logging
  */
 
-import { streamText, type LanguageModel } from 'ai';
+import { type LanguageModel, streamText } from 'ai';
 import { NextResponse } from 'next/server';
-
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
-import { retrieveSources } from '@/lib/rag/retrieval';
 import { createProviderFromEnv, type LLMMessage } from '@/lib/ai/llm';
 import { buildSystemPromptWithContext } from '@/lib/ai/prompts/templates';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 import { CitationHandler, sourcesToChunks } from '@/lib/rag/citations';
 import { ConversationMemory } from '@/lib/rag/memory';
+import { retrieveSources } from '@/lib/rag/retrieval';
+import { validateChatInput } from '@/lib/security/input-validator';
+import {
+  addRateLimitHeaders,
+  checkApiRateLimit,
+  getRateLimitIdentifier,
+} from '@/lib/security/rate-limiter';
 // import { estimateMessageTokens } from '@/lib/rag/token-budget';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
-import { 
-  checkApiRateLimit, 
-  getRateLimitIdentifier, 
-  addRateLimitHeaders 
-} from '@/lib/security/rate-limiter';
-import { validateChatInput } from '@/lib/security/input-validator';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
 import type { RAGConfig } from '@/types';
 
 // =============================================================================
@@ -57,10 +56,7 @@ export async function POST(req: Request) {
     // Step 1: Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -76,12 +72,12 @@ export async function POST(req: Request) {
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
-        { 
-          error: 'Rate limit exceeded', 
+        {
+          error: 'Rate limit exceeded',
           code: 'RATE_LIMIT',
           resetAt: new Date(rateLimitResult.reset).toISOString(),
         },
-        { 
+        {
           status: 429,
           headers: {
             'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
@@ -124,7 +120,7 @@ export async function POST(req: Request) {
     }
 
     // Step 5: Validate input
-    let validatedInput;
+    let validatedInput: ReturnType<typeof validateChatInput>;
     try {
       validatedInput = validateChatInput(body);
     } catch (error) {
@@ -137,7 +133,13 @@ export async function POST(req: Request) {
       throw error;
     }
 
-    const { messages, chatId, conversationId, config: userConfig, stream: shouldStream } = validatedInput;
+    const {
+      messages,
+      chatId,
+      conversationId,
+      config: userConfig,
+      stream: shouldStream,
+    } = validatedInput;
     const config = { ...defaultConfig, ...userConfig };
     const effectiveConversationId = conversationId ?? chatId;
     const userMessage = messages[messages.length - 1].content;
@@ -151,24 +153,15 @@ export async function POST(req: Request) {
       const chat = await prisma.chat.findFirst({
         where: {
           id: effectiveConversationId,
-          OR: [
-            { userId },
-            { workspaceId: workspaceId ?? '' },
-          ],
+          OR: [{ userId }, { workspaceId: workspaceId ?? '' }],
         },
       });
 
       if (!chat) {
-        return NextResponse.json(
-          { error: 'Chat not found', code: 'NOT_FOUND' },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: 'Chat not found', code: 'NOT_FOUND' }, { status: 404 });
       }
 
-      const recentMessages = await memory.getRecentMessages(
-        effectiveConversationId,
-        10
-      );
+      const recentMessages = await memory.getRecentMessages(effectiveConversationId, 10);
       history = recentMessages
         .filter((m) => m.role !== 'system')
         .map((m) => ({
@@ -183,8 +176,7 @@ export async function POST(req: Request) {
     // Step 8: Build context with citations
     const citationHandler = new CitationHandler();
     const chunks = sourcesToChunks(sources);
-    const { context, citationMap } =
-      citationHandler.formatContextWithCitations(chunks);
+    const { context, citationMap } = citationHandler.formatContextWithCitations(chunks);
 
     // Step 9: Build system prompt
     const systemPrompt = buildSystemPromptWithContext(context, {
@@ -249,7 +241,8 @@ export async function POST(req: Request) {
                 method: 'POST',
                 tokensPrompt: completion.usage.inputTokens ?? 0,
                 tokensCompletion: completion.usage.outputTokens ?? 0,
-                tokensTotal: (completion.usage.inputTokens ?? 0) + (completion.usage.outputTokens ?? 0),
+                tokensTotal:
+                  (completion.usage.inputTokens ?? 0) + (completion.usage.outputTokens ?? 0),
                 latencyMs: Date.now() - startTime,
               },
             });
@@ -286,10 +279,7 @@ export async function POST(req: Request) {
       });
 
       // Extract citations
-      const citations = citationHandler.extractCitations(
-        response.content,
-        citationMap
-      );
+      const citations = citationHandler.extractCitations(response.content, citationMap);
 
       // Save assistant response
       if (effectiveConversationId) {
@@ -352,12 +342,11 @@ export async function POST(req: Request) {
       return jsonResponse;
     }
   } catch (error) {
-    console.error('Chat API error:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const statusCode = error instanceof Error && 'code' in error
-      ? getErrorStatusCode((error as { code: string }).code)
-      : 500;
+    const statusCode =
+      error instanceof Error && 'code' in error
+        ? getErrorStatusCode((error as { code: string }).code)
+        : 500;
 
     return NextResponse.json(
       {
@@ -379,10 +368,7 @@ export async function GET(req: Request) {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -406,18 +392,12 @@ export async function GET(req: Request) {
     const chat = await prisma.chat.findFirst({
       where: {
         id: effectiveId,
-        OR: [
-          { userId },
-          { workspaceId: session.user.workspaceId ?? '' },
-        ],
+        OR: [{ userId }, { workspaceId: session.user.workspaceId ?? '' }],
       },
     });
 
     if (!chat) {
-      return NextResponse.json(
-        { error: 'Chat not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Chat not found', code: 'NOT_FOUND' }, { status: 404 });
     }
 
     const memory = new ConversationMemory(prisma);
@@ -436,8 +416,7 @@ export async function GET(req: Request) {
         count: messages.length,
       },
     });
-  } catch (error) {
-    console.error('Failed to get chat history:', error);
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Failed to retrieve chat history', code: 'INTERNAL_ERROR' },
       { status: 500 }
@@ -454,10 +433,7 @@ export async function DELETE(req: Request) {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -478,28 +454,19 @@ export async function DELETE(req: Request) {
     const chat = await prisma.chat.findFirst({
       where: {
         id: chatId,
-        OR: [
-          { userId },
-          workspaceId ? { workspaceId } : {},
-        ],
+        OR: [{ userId }, workspaceId ? { workspaceId } : {}],
       },
     });
 
     if (!chat) {
-      return NextResponse.json(
-        { error: 'Chat not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Chat not found', code: 'NOT_FOUND' }, { status: 404 });
     }
 
     // Check delete permission for workspace chats
     if (chat.workspaceId && chat.userId !== userId) {
       const canDelete = await checkPermission(userId, chat.workspaceId, Permission.DELETE_CHATS);
       if (!canDelete) {
-        return NextResponse.json(
-          { error: 'Access denied', code: 'FORBIDDEN' },
-          { status: 403 }
-        );
+        return NextResponse.json({ error: 'Access denied', code: 'FORBIDDEN' }, { status: 403 });
       }
     }
 
@@ -520,8 +487,7 @@ export async function DELETE(req: Request) {
       success: true,
       data: { message: 'Chat deleted successfully' },
     });
-  } catch (error) {
-    console.error('Failed to delete chat:', error);
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Failed to delete chat', code: 'INTERNAL_ERROR' },
       { status: 500 }

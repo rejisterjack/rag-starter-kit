@@ -135,16 +135,8 @@ export async function checkPermissions(
   // Get role permissions
   const rolePermissions = ROLE_PERMISSIONS[membership.role];
 
-  // Check custom permissions override
-  const customPermissions = membership.permissions as Record<string, boolean> | null;
-  
   // Check if user has all required permissions
   const missingPermissions = permissions.filter((permission) => {
-    // Check custom override first
-    if (customPermissions?.[permission] !== undefined) {
-      return !customPermissions[permission];
-    }
-    // Fall back to role-based permissions
     return !rolePermissions.includes(permission);
   });
 
@@ -208,25 +200,7 @@ export async function getUserPermissions(
     return [];
   }
 
-  const rolePermissions = [...ROLE_PERMISSIONS[membership.role]];
-  const customPermissions = membership.permissions as Record<string, boolean> | null;
-
-  // Apply custom overrides
-  if (customPermissions) {
-    Object.entries(customPermissions).forEach(([permission, allowed]) => {
-      const perm = permission as Permission;
-      if (allowed && !rolePermissions.includes(perm)) {
-        rolePermissions.push(perm);
-      } else if (!allowed && rolePermissions.includes(perm)) {
-        const index = rolePermissions.indexOf(perm);
-        if (index > -1) {
-          rolePermissions.splice(index, 1);
-        }
-      }
-    });
-  }
-
-  return rolePermissions;
+  return ROLE_PERMISSIONS[membership.role];
 }
 
 /**

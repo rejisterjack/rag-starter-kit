@@ -52,11 +52,7 @@ export {
   type ParsedHTML,
   type HTMLMetadata,
   type HTMLSection,
-  type HTMLParseOptions,
-  extractArticle,
-  resolveUrl,
-  isArticle,
-  HTMLParserError,
+  scrapeURL as scrapeHTML, // Alias for consistency
 } from './html';
 
 // URL Scraper

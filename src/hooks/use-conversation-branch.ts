@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export interface ConversationBranch {
@@ -23,8 +23,22 @@ export interface BranchTreeNode extends ConversationBranch {
 }
 
 export interface BranchComparison {
-  branchA: ConversationBranch & { messages: Array<{id: string; role: 'user' | 'assistant' | 'system'; content: string; createdAt: Date}> };
-  branchB: ConversationBranch & { messages: Array<{id: string; role: 'user' | 'assistant' | 'system'; content: string; createdAt: Date}> };
+  branchA: ConversationBranch & {
+    messages: Array<{
+      id: string;
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+      createdAt: Date;
+    }>;
+  };
+  branchB: ConversationBranch & {
+    messages: Array<{
+      id: string;
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+      createdAt: Date;
+    }>;
+  };
   divergencePoint: string | null;
   differences: Array<{
     messageIndex: number;
@@ -39,7 +53,7 @@ export interface UseConversationBranchReturn {
   currentBranch: ConversationBranch | null;
   isLoading: boolean;
   error: Error | null;
-  
+
   // Actions
   forkConversation: (messageId: string, name?: string) => Promise<ConversationBranch>;
   switchBranch: (branchId: string) => Promise<void>;
@@ -47,7 +61,7 @@ export interface UseConversationBranchReturn {
   deleteBranch: (branchId: string) => Promise<void>;
   compareBranches: (branchAId: string, branchBId: string) => Promise<BranchComparison>;
   editMessage: (messageId: string, newContent: string) => Promise<void>;
-  
+
   // Refresh
   refreshBranches: () => Promise<void>;
 }
@@ -70,12 +84,13 @@ export function useConversationBranch(
     try {
       const response = await fetch(`/api/chat/branch?conversationId=${options.conversationId}`);
       if (!response.ok) throw new Error('Failed to fetch branches');
-      
+
       const data = await response.json();
       setBranches(data.branches);
       setCurrentBranch(data.branches.find((b: ConversationBranch) => b.isActive) || null);
     } catch (err) {
-      setError(err as Error);
+      const fetchError = err instanceof Error ? err : new Error(String(err));
+      setError(fetchError);
       toast.error('Failed to load branches');
     } finally {
       setIsLoading(false);
@@ -86,91 +101,111 @@ export function useConversationBranch(
     fetchBranches();
   }, [fetchBranches]);
 
-  const forkConversation = useCallback(async (messageId: string, name?: string): Promise<ConversationBranch> => {
-    const response = await fetch('/api/chat/branch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        conversationId: options.conversationId,
-        messageId,
-        name: name || `Branch ${branches.length + 1}`,
-      }),
-    });
+  const forkConversation = useCallback(
+    async (messageId: string, name?: string): Promise<ConversationBranch> => {
+      const response = await fetch('/api/chat/branch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: options.conversationId,
+          messageId,
+          name: name || `Branch ${branches.length + 1}`,
+        }),
+      });
 
-    if (!response.ok) throw new Error('Failed to create branch');
-    
-    const data = await response.json();
-    await fetchBranches();
-    toast.success('Branch created');
-    return data.branch;
-  }, [options.conversationId, branches.length, fetchBranches]);
+      if (!response.ok) throw new Error('Failed to create branch');
 
-  const switchBranch = useCallback(async (branchId: string) => {
-    const response = await fetch('/api/chat/branch', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        conversationId: options.conversationId,
-        branchId,
-        action: 'switch',
-      }),
-    });
+      const data = await response.json();
+      await fetchBranches();
+      toast.success('Branch created');
+      return data.branch;
+    },
+    [options.conversationId, branches.length, fetchBranches]
+  );
 
-    if (!response.ok) throw new Error('Failed to switch branch');
-    
-    await fetchBranches();
-    const branch = branches.find((b) => b.id === branchId);
-    if (branch) {
-      options.onBranchChange?.(branch);
-    }
-    toast.success('Switched branch');
-  }, [options, branches, fetchBranches]);
+  const switchBranch = useCallback(
+    async (branchId: string) => {
+      const response = await fetch('/api/chat/branch', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: options.conversationId,
+          branchId,
+          action: 'switch',
+        }),
+      });
 
-  const renameBranch = useCallback(async (branchId: string, name: string) => {
-    const response = await fetch('/api/chat/branch', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ branchId, name }),
-    });
+      if (!response.ok) throw new Error('Failed to switch branch');
 
-    if (!response.ok) throw new Error('Failed to rename branch');
-    await fetchBranches();
-    toast.success('Branch renamed');
-  }, [fetchBranches]);
+      await fetchBranches();
+      const branch = branches.find((b) => b.id === branchId);
+      if (branch) {
+        options.onBranchChange?.(branch);
+      }
+      toast.success('Switched branch');
+    },
+    [options, branches, fetchBranches]
+  );
 
-  const deleteBranch = useCallback(async (branchId: string) => {
-    const response = await fetch(`/api/chat/branch?branchId=${branchId}`, {
-      method: 'DELETE',
-    });
+  const renameBranch = useCallback(
+    async (branchId: string, name: string) => {
+      const response = await fetch('/api/chat/branch', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ branchId, name }),
+      });
 
-    if (!response.ok) throw new Error('Failed to delete branch');
-    await fetchBranches();
-    toast.success('Branch deleted');
-  }, [fetchBranches]);
+      if (!response.ok) throw new Error('Failed to rename branch');
+      await fetchBranches();
+      toast.success('Branch renamed');
+    },
+    [fetchBranches]
+  );
 
-  const compareBranches = useCallback(async (branchAId: string, branchBId: string): Promise<BranchComparison> => {
-    const response = await fetch(`/api/chat/branch/compare?branchA=${branchAId}&branchB=${branchBId}`);
-    if (!response.ok) throw new Error('Failed to compare branches');
-    
-    const data = await response.json();
-    return data.comparison;
-  }, []);
+  const deleteBranch = useCallback(
+    async (branchId: string) => {
+      const response = await fetch(`/api/chat/branch?branchId=${branchId}`, {
+        method: 'DELETE',
+      });
 
-  const editMessage = useCallback(async (messageId: string, newContent: string) => {
-    const response = await fetch('/api/chat/branch', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        conversationId: options.conversationId,
-        messageId,
-        newContent,
-        action: 'edit',
-      }),
-    });
+      if (!response.ok) throw new Error('Failed to delete branch');
+      await fetchBranches();
+      toast.success('Branch deleted');
+    },
+    [fetchBranches]
+  );
 
-    if (!response.ok) throw new Error('Failed to edit message');
-    toast.success('Message updated');
-  }, [options.conversationId]);
+  const compareBranches = useCallback(
+    async (branchAId: string, branchBId: string): Promise<BranchComparison> => {
+      const response = await fetch(
+        `/api/chat/branch/compare?branchA=${branchAId}&branchB=${branchBId}`
+      );
+      if (!response.ok) throw new Error('Failed to compare branches');
+
+      const data = await response.json();
+      return data.comparison;
+    },
+    []
+  );
+
+  const editMessage = useCallback(
+    async (messageId: string, newContent: string) => {
+      const response = await fetch('/api/chat/branch', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: options.conversationId,
+          messageId,
+          newContent,
+          action: 'edit',
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to edit message');
+      toast.success('Message updated');
+    },
+    [options.conversationId]
+  );
 
   return {
     branches,

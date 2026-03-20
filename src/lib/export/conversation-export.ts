@@ -1,6 +1,6 @@
 /**
  * Conversation Export
- * 
+ *
  * Export conversations to various formats including PDF and Markdown.
  */
 
@@ -38,11 +38,7 @@ export async function exportConversationToMarkdown(
   conversationId: string,
   options: ExportOptions = {}
 ): Promise<string> {
-  const {
-    includeMetadata = true,
-    includeSources = true,
-    dateFormat = 'locale',
-  } = options;
+  const { includeMetadata = true, includeSources = true, dateFormat = 'locale' } = options;
 
   const conversation = await prisma.chat.findUnique({
     where: { id: conversationId },
@@ -79,9 +75,9 @@ export async function exportConversationToMarkdown(
   lines.push('');
 
   for (const message of conversation.messages) {
-    const role = message.role === 'USER' ? 'User' : 
-                 message.role === 'ASSISTANT' ? 'Assistant' : 'System';
-    
+    const role =
+      message.role === 'USER' ? 'User' : message.role === 'ASSISTANT' ? 'Assistant' : 'System';
+
     lines.push(`### ${role} (${formatDate(message.createdAt, dateFormat)})`);
     lines.push('');
     lines.push(message.content);
@@ -89,7 +85,7 @@ export async function exportConversationToMarkdown(
 
     // Include sources if available
     if (includeSources && message.sources) {
-      const sources = message.sources as Source[];
+      const sources = (message.sources as unknown as Source[]) ?? [];
       if (sources.length > 0) {
         lines.push('**Sources:**');
         lines.push('');
@@ -101,7 +97,9 @@ export async function exportConversationToMarkdown(
           if (source.similarity) {
             lines.push(`   - Relevance: ${(source.similarity * 100).toFixed(1)}%`);
           }
-          lines.push(`   - Content: "${source.content.slice(0, 200)}${source.content.length > 200 ? '...' : ''}"`);
+          lines.push(
+            `   - Content: "${source.content.slice(0, 200)}${source.content.length > 200 ? '...' : ''}"`
+          );
           lines.push('');
         });
       }
@@ -134,72 +132,51 @@ export async function exportConversationsToMarkdown(
 
 /**
  * Export conversation to PDF format
- * Note: Requires a PDF generation library like puppeteer or pdfkit
+ * Uses @react-pdf/renderer for actual PDF generation
  */
 export async function exportConversationToPDF(
   conversationId: string,
   options: ExportOptions = {}
 ): Promise<Buffer> {
-  // For now, we'll create a simple text-based PDF
-  // In production, you'd use a proper PDF library
-  const markdown = await exportConversationToMarkdown(conversationId, options);
-  
-  // Create a simple PDF-like structure (this is a placeholder)
-  // In production, use: puppeteer, pdfkit, or @react-pdf/renderer
-  const pdfContent = `
-%PDF-1.4
-1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
-endobj
+  // Import the PDF generator dynamically
+  const { generatePDF } = await import('./pdf-generator');
 
-2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
-endobj
+  const conversation = await prisma.chat.findUnique({
+    where: { id: conversationId },
+    include: {
+      messages: {
+        orderBy: { createdAt: 'asc' },
+      },
+    },
+  });
 
-3 0 obj
-<<
-/Type /Page
-/Parent 2 0 R
-/MediaBox [0 0 612 792]
-/Contents 4 0 R
->>
-endobj
+  if (!conversation) {
+    throw new Error(`Conversation not found: ${conversationId}`);
+  }
 
-4 0 obj
-<<
-/Length ${markdown.length}
->>
-stream
-${markdown}
-endstream
-endobj
+  // Convert to ExportConversation format
+  const exportConversation = {
+    id: conversation.id,
+    title: conversation.title,
+    messages: conversation.messages.map((m) => ({
+      id: m.id,
+      role: m.role as 'user' | 'assistant' | 'system',
+      content: m.content,
+      createdAt: m.createdAt,
+      sources: [],
+    })),
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt,
+  };
 
-xref
-0 5
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000214 00000 n 
-
-trailer
-<<
-/Size 5
-/Root 1 0 R
->>
-startxref
-${300 + markdown.length}
-%%EOF
-`;
-
-  return Buffer.from(pdfContent);
+  // Generate PDF using the proper PDF generator
+  return generatePDF(exportConversation, {
+    ...options,
+    format: 'pdf',
+    pageSize: 'A4',
+    includeHeader: true,
+    includeFooter: true,
+  });
 }
 
 /**
@@ -209,11 +186,7 @@ export async function exportConversationToHTML(
   conversationId: string,
   options: ExportOptions = {}
 ): Promise<string> {
-  const {
-    includeMetadata = true,
-    includeSources = true,
-    dateFormat = 'locale',
-  } = options;
+  const { includeMetadata = true, includeSources = true, dateFormat = 'locale' } = options;
 
   const conversation = await prisma.chat.findUnique({
     where: { id: conversationId },
@@ -283,8 +256,8 @@ export async function exportConversationToHTML(
 
   for (const message of conversation.messages) {
     const roleClass = message.role.toLowerCase();
-    const roleLabel = message.role === 'USER' ? 'User' : 
-                      message.role === 'ASSISTANT' ? 'Assistant' : 'System';
+    const roleLabel =
+      message.role === 'USER' ? 'User' : message.role === 'ASSISTANT' ? 'Assistant' : 'System';
 
     htmlParts.push(`
   <div class="message ${roleClass}">
@@ -293,11 +266,11 @@ export async function exportConversationToHTML(
 `);
 
     if (includeSources && message.sources) {
-      const sources = message.sources as Source[];
+      const sources = (message.sources as unknown as Source[]) ?? [];
       if (sources.length > 0) {
         htmlParts.push(`    <div class="sources">
       <strong>Sources:</strong>`);
-        
+
         sources.forEach((source, index) => {
           htmlParts.push(`
       <div class="source">
@@ -351,14 +324,23 @@ export async function exportConversationToJSON(
   const exportData: ExportedConversation = {
     id: conversation.id,
     title: conversation.title,
-    messages: conversation.messages.map((msg: { id: string; content: string; role: string; createdAt: Date; chatId: string; sources?: unknown }) => ({
-      id: msg.id,
-      content: msg.content,
-      role: msg.role as 'user' | 'assistant' | 'system',
-      createdAt: msg.createdAt,
-      chatId: msg.chatId,
-      sources: includeSources ? (msg.sources as Source[] | undefined) : undefined,
-    })),
+    messages: conversation.messages.map(
+      (msg: {
+        id: string;
+        content: string;
+        role: string;
+        createdAt: Date;
+        chatId: string;
+        sources?: unknown;
+      }) => ({
+        id: msg.id,
+        content: msg.content,
+        role: msg.role as 'user' | 'assistant' | 'system',
+        createdAt: msg.createdAt,
+        chatId: msg.chatId,
+        sources: includeSources ? (msg.sources as Source[] | undefined) : undefined,
+      })
+    ),
     createdAt: conversation.createdAt,
     updatedAt: conversation.updatedAt,
   };
@@ -397,9 +379,7 @@ export async function exportConversationToCSV(
     const timestamp = message.createdAt.toISOString();
     const role = message.role;
     const content = escapeCsv(message.content);
-    const sourceCount = message.sources 
-      ? (message.sources as Source[]).length 
-      : 0;
+    const sourceCount = message.sources ? ((message.sources as unknown) as Source[]).length : 0;
 
     lines.push(`${timestamp},${role},"${content}",${sourceCount}`);
   }
@@ -448,10 +428,7 @@ function escapeHtml(text: string): string {
 }
 
 function escapeCsv(text: string): string {
-  return text
-    .replace(/"/g, '""')
-    .replace(/\n/g, '\\n')
-    .replace(/\r/g, '');
+  return text.replace(/"/g, '""').replace(/\n/g, '\\n').replace(/\r/g, '');
 }
 
 function formatContent(content: string): string {

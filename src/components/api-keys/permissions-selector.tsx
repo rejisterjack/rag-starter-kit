@@ -1,8 +1,8 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface Permission {
@@ -14,22 +14,72 @@ interface Permission {
 
 const PERMISSIONS: Permission[] = [
   // Chat
-  { id: 'chat:read', label: 'Read Chats', description: 'View conversation history', category: 'chat' },
-  { id: 'chat:write', label: 'Send Messages', description: 'Send messages and create chats', category: 'chat' },
-  { id: 'chat:delete', label: 'Delete Chats', description: 'Delete conversations', category: 'chat' },
-  
+  {
+    id: 'chat:read',
+    label: 'Read Chats',
+    description: 'View conversation history',
+    category: 'chat',
+  },
+  {
+    id: 'chat:write',
+    label: 'Send Messages',
+    description: 'Send messages and create chats',
+    category: 'chat',
+  },
+  {
+    id: 'chat:delete',
+    label: 'Delete Chats',
+    description: 'Delete conversations',
+    category: 'chat',
+  },
+
   // Documents
-  { id: 'documents:read', label: 'Read Documents', description: 'View uploaded documents', category: 'documents' },
-  { id: 'documents:write', label: 'Upload Documents', description: 'Upload new documents', category: 'documents' },
-  { id: 'documents:delete', label: 'Delete Documents', description: 'Remove documents', category: 'documents' },
-  
+  {
+    id: 'documents:read',
+    label: 'Read Documents',
+    description: 'View uploaded documents',
+    category: 'documents',
+  },
+  {
+    id: 'documents:write',
+    label: 'Upload Documents',
+    description: 'Upload new documents',
+    category: 'documents',
+  },
+  {
+    id: 'documents:delete',
+    label: 'Delete Documents',
+    description: 'Remove documents',
+    category: 'documents',
+  },
+
   // Workspaces
-  { id: 'workspaces:read', label: 'Read Workspaces', description: 'View workspace information', category: 'workspaces' },
-  { id: 'workspaces:write', label: 'Manage Workspaces', description: 'Create and modify workspaces', category: 'workspaces' },
-  
+  {
+    id: 'workspaces:read',
+    label: 'Read Workspaces',
+    description: 'View workspace information',
+    category: 'workspaces',
+  },
+  {
+    id: 'workspaces:write',
+    label: 'Manage Workspaces',
+    description: 'Create and modify workspaces',
+    category: 'workspaces',
+  },
+
   // Admin
-  { id: 'admin:users', label: 'Manage Users', description: 'Add/remove workspace members', category: 'admin' },
-  { id: 'admin:analytics', label: 'View Analytics', description: 'Access analytics and usage data', category: 'admin' },
+  {
+    id: 'admin:users',
+    label: 'Manage Users',
+    description: 'Add/remove workspace members',
+    category: 'admin',
+  },
+  {
+    id: 'admin:analytics',
+    label: 'View Analytics',
+    description: 'Access analytics and usage data',
+    category: 'admin',
+  },
 ];
 
 interface PermissionsSelectorProps {
@@ -38,11 +88,7 @@ interface PermissionsSelectorProps {
   className?: string;
 }
 
-export function PermissionsSelector({
-  selected,
-  onChange,
-  className,
-}: PermissionsSelectorProps) {
+export function PermissionsSelector({ selected, onChange, className }: PermissionsSelectorProps) {
   const togglePermission = (permissionId: string) => {
     onChange(
       selected.includes(permissionId)
@@ -88,15 +134,10 @@ export function PermissionsSelector({
                     onCheckedChange={() => togglePermission(permission.id)}
                   />
                   <div className="grid gap-0.5">
-                    <Label
-                      htmlFor={permission.id}
-                      className="text-sm font-medium cursor-pointer"
-                    >
+                    <Label htmlFor={permission.id} className="text-sm font-medium cursor-pointer">
                       {permission.label}
                     </Label>
-                    <p className="text-xs text-muted-foreground">
-                      {permission.description}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{permission.description}</p>
                   </div>
                 </div>
               ))}

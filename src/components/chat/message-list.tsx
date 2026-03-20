@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import React, { useRef, useEffect, useCallback } from "react";
-import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, Loader2 } from "lucide-react";
-import { MessageItem, type Message } from "./message-item";
-import { StreamingMessage } from "./streaming-message";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ChevronDown, Loader2 } from 'lucide-react';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { type Message, MessageItem } from './message-item';
+import { StreamingMessage } from './streaming-message';
 
 interface MessageListProps {
   messages: Message[];
@@ -26,7 +26,7 @@ interface MessageListProps {
 export function MessageList({
   messages,
   isStreaming = false,
-  streamingContent = "",
+  streamingContent = '',
   isLoading = false,
   hasMore = false,
   onLoadMore,
@@ -42,13 +42,11 @@ export function MessageList({
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
-      const viewport = scrollRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]"
-      );
+      const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (viewport) {
         viewport.scrollTo({
           top: viewport.scrollHeight,
-          behavior: "smooth",
+          behavior: 'smooth',
         });
       }
     }
@@ -56,9 +54,7 @@ export function MessageList({
 
   const handleScroll = useCallback(() => {
     if (scrollRef.current) {
-      const viewport = scrollRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]"
-      );
+      const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (viewport) {
         const { scrollTop, scrollHeight, clientHeight } = viewport as HTMLElement;
         const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
@@ -73,32 +69,23 @@ export function MessageList({
     if (autoScroll) {
       scrollToBottom();
     }
-  }, [messages, streamingContent, autoScroll, scrollToBottom]);
+  }, [autoScroll, scrollToBottom]);
 
   return (
-    <div className={cn("relative flex-1", className)}>
-      <ScrollArea
-        ref={scrollRef}
-        className="h-full"
-        onScroll={handleScroll}
-      >
+    <div className={cn('relative flex-1', className)}>
+      <ScrollArea ref={scrollRef} className="h-full" onScroll={handleScroll}>
         <div className="flex flex-col">
           {/* Load more button */}
           {hasMore && (
             <div className="flex justify-center py-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onLoadMore}
-                disabled={isLoading}
-              >
+              <Button variant="outline" size="sm" onClick={onLoadMore} disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Loading...
                   </>
                 ) : (
-                  "Load more messages"
+                  'Load more messages'
                 )}
               </Button>
             </div>
@@ -126,10 +113,7 @@ export function MessageList({
 
           {/* Streaming message */}
           {isStreaming && (
-            <StreamingMessage
-              content={streamingContent}
-              onCancel={onCancelStreaming}
-            />
+            <StreamingMessage content={streamingContent} onCancel={onCancelStreaming} />
           )}
 
           {/* Bottom padding */}

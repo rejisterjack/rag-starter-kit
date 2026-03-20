@@ -10,6 +10,12 @@
 import { generateChatCompletion } from '@/lib/ai';
 import type { RetrievalFilters, SelfQueryResult } from './types';
 
+// Message type for AI completions
+interface ChatMessage {
+  role: 'system' | 'user';
+  content: string;
+}
+
 /**
  * System prompt for self-query transformation
  */
@@ -95,11 +101,13 @@ export class SelfQueryTransformer {
         .replace('{current_date}', new Date().toISOString())
         .replace('{query}', query);
 
+      const messages: ChatMessage[] = [
+        { role: 'system', content: this.systemPrompt },
+        { role: 'user', content: prompt },
+      ];
+      
       const { text } = await generateChatCompletion(
-        [
-          { role: 'system', content: this.systemPrompt },
-          { role: 'user', content: prompt },
-        ],
+        messages as unknown as Parameters<typeof generateChatCompletion>[0],
         { temperature: 0.1 } // Low temperature for deterministic output
       );
 

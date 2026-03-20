@@ -1,15 +1,28 @@
 /**
  * Chunk Fixtures
- * 
+ *
  * Sample chunks for testing chunking strategies and RAG retrieval.
  */
 
-import type { Chunk } from '@prisma/client';
+import type { DocumentChunk } from '@prisma/client';
+
+// =============================================================================
+// Chunk Type Extensions
+// =============================================================================
+
+interface ChunkWithMetadata extends Omit<DocumentChunk, 'metadata' | 'embedding'> {
+  metadata: Record<string, unknown>;
+  embedding?: number[];
+}
+
+// =============================================================================
+// Financial Document Chunks
+// =============================================================================
 
 /**
  * Sample text chunks from a financial document
  */
-export const sampleFinancialChunks: Partial<Chunk>[] = [
+export const sampleFinancialChunks: Partial<ChunkWithMetadata>[] = [
   {
     id: 'chunk-001',
     documentId: 'doc-001',
@@ -82,10 +95,14 @@ export const sampleFinancialChunks: Partial<Chunk>[] = [
   },
 ];
 
+// =============================================================================
+// Technical Documentation Chunks
+// =============================================================================
+
 /**
  * Sample text chunks from technical documentation
  */
-export const sampleTechnicalChunks: Partial<Chunk>[] = [
+export const sampleTechnicalChunks: Partial<ChunkWithMetadata>[] = [
   {
     id: 'chunk-006',
     documentId: 'doc-002',
@@ -140,10 +157,14 @@ export const sampleTechnicalChunks: Partial<Chunk>[] = [
   },
 ];
 
+// =============================================================================
+// Hierarchical Chunks
+// =============================================================================
+
 /**
  * Sample chunks with hierarchical structure (parent-child relationships)
  */
-export const sampleHierarchicalChunks: Partial<Chunk>[] = [
+export const sampleHierarchicalChunks: Partial<ChunkWithMetadata>[] = [
   {
     id: 'chunk-parent-001',
     documentId: 'doc-003',
@@ -185,10 +206,14 @@ export const sampleHierarchicalChunks: Partial<Chunk>[] = [
   },
 ];
 
+// =============================================================================
+// Semantic Search Chunks
+// =============================================================================
+
 /**
  * Sample chunks for semantic search testing
  */
-export const sampleSemanticSearchChunks: Partial<Chunk>[] = [
+export const sampleSemanticSearchChunks: Partial<ChunkWithMetadata>[] = [
   {
     id: 'chunk-semantic-001',
     documentId: 'doc-004',
@@ -223,52 +248,68 @@ export const sampleSemanticSearchChunks: Partial<Chunk>[] = [
   },
 ];
 
+// =============================================================================
+// Embedding Helpers
+// =============================================================================
+
 /**
  * Chunks with embeddings for testing vector search
  */
-export const createChunksWithEmbeddings = (dimension: number = 1536): Array<Partial<Chunk> & { embedding: number[] }> => {
+export function createChunksWithEmbeddings(
+  dimension: number = 1536
+): Array<Partial<ChunkWithMetadata> & { embedding: number[] }> {
   return sampleFinancialChunks.map((chunk, i) => ({
     ...chunk,
     embedding: Array(dimension).fill(0).map(() => Math.sin(i + Math.random())),
   }));
-};
+}
+
+// =============================================================================
+// Collection
+// =============================================================================
 
 /**
  * Collection of all sample chunks
  */
-export const allSampleChunks: Partial<Chunk>[] = [
+export const allSampleChunks: Partial<ChunkWithMetadata>[] = [
   ...sampleFinancialChunks,
   ...sampleTechnicalChunks,
   ...sampleHierarchicalChunks,
   ...sampleSemanticSearchChunks,
 ];
 
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
 /**
  * Helper to create a chunk with specific content
  */
-export const createChunk = (
+export function createChunk(
   content: string,
-  overrides: Partial<Chunk> = {}
-): Partial<Chunk> => ({
-  id: `chunk-${Date.now()}`,
-  documentId: 'doc-default',
-  content,
-  metadata: {},
-  index: 0,
-  createdAt: new Date(),
-  ...overrides,
-});
+  overrides: Partial<ChunkWithMetadata> = {}
+): Partial<ChunkWithMetadata> {
+  return {
+    id: `chunk-${Date.now()}`,
+    documentId: 'doc-default',
+    content,
+    metadata: {},
+    index: 0,
+    createdAt: new Date(),
+    ...overrides,
+  };
+}
 
 /**
  * Helper to create multiple chunks from text
  */
-export const createChunksFromText = (
+export function createChunksFromText(
   text: string,
   chunkSize: number = 500,
   documentId: string = 'doc-default'
-): Partial<Chunk>[] => {
+): Partial<ChunkWithMetadata>[] {
   const words = text.split(/\s+/);
-  const chunks: Partial<Chunk>[] = [];
+  const chunks: Partial<ChunkWithMetadata>[] = [];
   let currentChunk: string[] = [];
   let index = 0;
 
@@ -294,4 +335,4 @@ export const createChunksFromText = (
   }
 
   return chunks;
-};
+}

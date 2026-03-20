@@ -2,7 +2,7 @@
  * Document Ingestion Pipeline
  *
  * Orchestrates the full document processing workflow:
- * 1. Validate - Check file size, type, virus scan placeholder
+ * 1. Validate - Check file size, type, virus scan (ClamAV integration)
  * 2. Parse - Extract text based on document type
  * 3. Chunk - Apply chunking strategy (semantic/hierarchical)
  * 4. Embed - Generate embeddings for each chunk
@@ -10,6 +10,7 @@
  */
 
 import { prisma } from '@/lib/db';
+import type { Prisma } from '@prisma/client';
 import { ChunkingEngine } from '@/lib/rag/chunking';
 import { createEmbeddings } from '@/lib/rag/engine';
 import { virusScanner } from '@/lib/security/virus-scanner';
@@ -60,7 +61,7 @@ export interface PipelineOptions {
   chunkOverlap?: number;
   maxFileSize?: number; // bytes
   allowedTypes?: DocumentType[];
-  enableVirusScan?: boolean; // placeholder
+  enableVirusScan?: boolean; // Enable ClamAV virus scanning
   retryAttempts?: number;
   retryDelay?: number; // ms
   onProgress?: ProgressCallback;
@@ -512,7 +513,6 @@ export class IngestionPipeline {
    */
   async parseURL(url: string): Promise<ParsedDocument> {
     const scraped = await scrapeURL(url, {
-      extractMainContent: true,
       waitForNetworkIdle: true,
       scrollToBottom: false,
     });
@@ -658,7 +658,7 @@ export class IngestionPipeline {
         metadata: {
           ...parsed.metadata,
           ...input.metadata,
-        },
+        } as Prisma.InputJsonValue,
       },
     });
 
@@ -700,7 +700,9 @@ export class IngestionPipeline {
       where: { id: document.id },
       data: {
         status: 'COMPLETED',
-        chunkCount: chunks.length,
+        metadata: {
+          chunkCount: chunks.length,
+        },
       },
     });
 

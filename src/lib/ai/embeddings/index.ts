@@ -6,8 +6,8 @@
  */
 
 import {
-  EmbeddingProvider,
-  EmbeddingConfig,
+  type EmbeddingProvider,
+  type EmbeddingConfig,
   OPENAI_MODELS,
   OLLAMA_MODELS,
 } from './types';

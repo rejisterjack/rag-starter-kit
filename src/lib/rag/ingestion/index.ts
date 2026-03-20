@@ -5,13 +5,11 @@
  * Now integrated with the new embedding providers and vector store.
  */
 
-import * as cheerio from 'cheerio';
-import mammoth from 'mammoth';
-import * as pdfParse from 'pdf-parse';
-
 import { createChunks } from '@/lib/rag/chunking';
 import { prisma, batchInsertChunks, validateChunks } from '@/lib/db';
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
+import { parseHTML as parseHTMLContent } from './parsers/html';
+import { logger } from '@/lib/logger';
 import type { DocumentType, IngestionOptions } from '@/types';
 
 // ============================================================================
@@ -23,10 +21,14 @@ import type { DocumentType, IngestionOptions } from '@/types';
  */
 export async function parsePDF(buffer: Buffer): Promise<string> {
   try {
-    const data = await pdfParse(buffer);
+    // Dynamic import for pdf-parse
+    const pdfModule = await import('pdf-parse');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parseFn = (pdfModule as unknown as { default: (buffer: Buffer) => Promise<{ text: string }> }).default;
+    const data = await parseFn(buffer);
     return data.text;
   } catch (error) {
-    console.error('PDF parsing error:', error);
+    logger.error('PDF parsing error', { error: error instanceof Error ? error.message : 'Unknown' });
     throw new Error('Failed to parse PDF file');
   }
 }
@@ -36,10 +38,14 @@ export async function parsePDF(buffer: Buffer): Promise<string> {
  */
 export async function parseDOCX(buffer: Buffer): Promise<string> {
   try {
+    // Dynamic import for mammoth
+    const mammothModule = await import('mammoth');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mammoth = mammothModule as unknown as { extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }> };
     const result = await mammoth.extractRawText({ buffer });
     return result.value;
   } catch (error) {
-    console.error('DOCX parsing error:', error);
+    logger.error('DOCX parsing error', { error: error instanceof Error ? error.message : 'Unknown' });
     throw new Error('Failed to parse DOCX file');
   }
 }
@@ -49,22 +55,10 @@ export async function parseDOCX(buffer: Buffer): Promise<string> {
  */
 export async function parseHTML(buffer: Buffer): Promise<string> {
   try {
-    const html = buffer.toString('utf-8');
-    const $ = cheerio.load(html);
-    
-    // Remove script and style elements
-    $('script, style, nav, footer, header').remove();
-    
-    // Get text content
-    const text = $('body').text();
-    
-    // Clean up whitespace
-    return text
-      .replace(/\s+/g, ' ')
-      .replace(/\n\s*\n/g, '\n\n')
-      .trim();
+    const parsed = parseHTMLContent(buffer);
+    return parsed.text;
   } catch (error) {
-    console.error('HTML parsing error:', error);
+    logger.error('HTML parsing error', { error: error instanceof Error ? error.message : 'Unknown' });
     throw new Error('Failed to parse HTML file');
   }
 }
@@ -182,7 +176,7 @@ export async function processDocument(
     }
     
     // Step 1: Create chunks
-    console.log(`[Ingestion] Creating chunks for document ${documentId}...`);
+    logger.info(`Creating chunks for document`, { documentId });
     const chunks = await createChunks(
       documentId,
       document.content,
@@ -192,7 +186,7 @@ export async function processDocument(
       }
     );
 
-    console.log(`[Ingestion] Created ${chunks.length} chunks`);
+    logger.info(`Created chunks`, { documentId, count: chunks.length });
 
     if (ingestionJob) {
       await prisma.ingestionJob.update({
@@ -202,7 +196,7 @@ export async function processDocument(
     }
     
     // Step 2: Generate embeddings in batches
-    console.log(`[Ingestion] Generating embeddings for ${chunks.length} chunks...`);
+    logger.info(`Generating embeddings`, { documentId, chunkCount: chunks.length });
     
     const chunkTexts = chunks.map((c) => c.content);
     let embeddings: number[][];
@@ -210,13 +204,13 @@ export async function processDocument(
     try {
       embeddings = await embeddingProvider.embedDocuments(chunkTexts);
     } catch (error) {
-      console.error('[Ingestion] Embedding generation failed:', error);
+      logger.error('Embedding generation failed', { documentId, error: error instanceof Error ? error.message : 'Unknown' });
       throw new Error(
         `Failed to generate embeddings: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
 
-    console.log(`[Ingestion] Generated ${embeddings.length} embeddings`);
+    logger.info(`Generated embeddings`, { documentId, count: embeddings.length });
 
     if (ingestionJob) {
       await prisma.ingestionJob.update({
@@ -226,24 +220,32 @@ export async function processDocument(
     }
     
     // Step 3: Prepare chunk data for insertion
-    const chunkData = chunks.map((chunk, index) => ({
-      documentId: chunk.documentId,
-      content: chunk.content,
-      embedding: embeddings[index] ?? [],
-      index: chunk.index,
-      start: chunk.metadata.start,
-      end: chunk.metadata.end,
-      page: chunk.metadata.page,
-      section: chunk.metadata.section,
-    }));
+    interface ChunkMetadata {
+      start: number;
+      end: number;
+      page?: number;
+      section?: string;
+    }
+    
+    const chunkData = chunks.map((chunk, index) => {
+      const metadata = chunk.metadata as ChunkMetadata;
+      return {
+        documentId: chunk.documentId,
+        content: chunk.content,
+        embedding: embeddings[index] ?? [],
+        index: chunk.index,
+        start: metadata.start,
+        end: metadata.end,
+        page: metadata.page,
+        section: metadata.section,
+      };
+    });
 
     // Validate chunks before insertion
     const { valid, invalid } = validateChunks(chunkData);
     
     if (invalid.length > 0) {
-      console.warn(`[Ingestion] ${invalid.length} invalid chunks found:`,
-        invalid.map((i) => i.reason)
-      );
+      logger.warn(`Invalid chunks found`, { documentId, count: invalid.length, reasons: invalid.map((i) => i.reason) });
     }
 
     if (valid.length === 0) {
@@ -251,7 +253,7 @@ export async function processDocument(
     }
     
     // Step 4: Store chunks with embeddings using batch operations
-    console.log(`[Ingestion] Storing ${valid.length} chunks in vector database...`);
+    logger.info(`Storing chunks in vector database`, { documentId, count: valid.length });
     
     const insertResult = await batchInsertChunks(prisma, valid, {
       batchSize: options.batchSize ?? 50,
@@ -262,19 +264,21 @@ export async function processDocument(
           prisma.ingestionJob.update({
             where: { id: ingestionJob.id },
             data: { progress: Math.min(progress, 95) },
-          }).catch(console.error);
+          }).catch((err: Error) => logger.error('Failed to update job progress', { error: err.message }));
         }
       },
     });
 
-    console.log(
-      `[Ingestion] Insert complete: ${insertResult.successCount} success, ` +
-      `${insertResult.failureCount} failed in ${insertResult.durationMs}ms`
-    );
+    logger.info(`Insert complete`, { 
+      documentId, 
+      successCount: insertResult.successCount, 
+      failureCount: insertResult.failureCount,
+      durationMs: insertResult.durationMs 
+    });
 
     // Log any errors
     if (insertResult.errors.length > 0) {
-      console.warn('[Ingestion] Insert errors:', insertResult.errors);
+      logger.warn('Insert errors', { documentId, errors: insertResult.errors });
     }
     
     // Step 5: Update document status
@@ -310,9 +314,9 @@ export async function processDocument(
       });
     }
     
-    console.log(`[Ingestion] Document ${documentId} processed in ${processingTime}ms`);
+    logger.info(`Document processed`, { documentId, processingTimeMs: processingTime });
   } catch (error) {
-    console.error(`[Ingestion] Error processing document ${documentId}:`, error);
+    logger.error(`Error processing document`, { documentId, error: error instanceof Error ? error.message : 'Unknown' });
     
     // Update document status to failed
     await prisma.document.update({

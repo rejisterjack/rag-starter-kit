@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { FileText, Download, Loader2 } from 'lucide-react';
+import { Download, FileText, Loader2 } from 'lucide-react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -20,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface ExportDialogProps {
@@ -44,12 +44,28 @@ export function ExportDialog({
   conversationId: _conversationId,
   conversationTitle,
   onExport,
-}: ExportDialogProps) {
+}: ExportDialogProps): React.ReactElement {
   const [format, setFormat] = useState<ExportOptions['format']>('pdf');
   const [includeCitations, setIncludeCitations] = useState(true);
   const [includeSources, setIncludeSources] = useState(true);
   const [citationStyle, setCitationStyle] = useState<'numbered' | 'footnote'>('numbered');
   const [isExporting, setIsExporting] = useState(false);
+
+  const getFileExtension = useCallback((fmt: string): string => {
+    switch (fmt) {
+      case 'pdf':
+        return 'pdf';
+      case 'markdown':
+        return 'md';
+      case 'html':
+        return 'html';
+      case 'json':
+        return 'json';
+      default:
+        return 'txt';
+    }
+  }, []);
+
   const handleExport = useCallback(async () => {
     setIsExporting(true);
     try {
@@ -61,7 +77,7 @@ export function ExportDialog({
       };
 
       const blob = await onExport(options);
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -74,30 +90,46 @@ export function ExportDialog({
 
       toast.success('Export completed successfully');
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       toast.error('Failed to export conversation');
     } finally {
       setIsExporting(false);
     }
-  }, [format, includeCitations, includeSources, citationStyle, onExport, conversationTitle, onOpenChange]);
-
-  const getFileExtension = (fmt: string): string => {
-    switch (fmt) {
-      case 'pdf': return 'pdf';
-      case 'markdown': return 'md';
-      case 'html': return 'html';
-      case 'json': return 'json';
-      default: return 'txt';
-    }
-  };
+  }, [
+    format,
+    includeCitations,
+    includeSources,
+    citationStyle,
+    onExport,
+    conversationTitle,
+    onOpenChange,
+    getFileExtension,
+  ]);
 
   const getFormatLabel = (fmt: string): string => {
     switch (fmt) {
-      case 'pdf': return 'PDF Document';
-      case 'markdown': return 'Markdown';
-      case 'html': return 'HTML Page';
-      case 'json': return 'JSON Data';
-      default: return fmt;
+      case 'pdf':
+        return 'PDF Document';
+      case 'markdown':
+        return 'Markdown';
+      case 'html':
+        return 'HTML Page';
+      case 'json':
+        return 'JSON Data';
+      default:
+        return fmt;
+    }
+  };
+
+  const handleCitationsChange = (checked: boolean | 'indeterminate'): void => {
+    if (typeof checked === 'boolean') {
+      setIncludeCitations(checked);
+    }
+  };
+
+  const handleSourcesChange = (checked: boolean | 'indeterminate'): void => {
+    if (typeof checked === 'boolean') {
+      setIncludeSources(checked);
     }
   };
 
@@ -155,18 +187,18 @@ export function ExportDialog({
                 <Checkbox
                   id="citations"
                   checked={includeCitations}
-                  onCheckedChange={(checked: boolean) => setIncludeCitations(checked)}
+                  onCheckedChange={handleCitationsChange}
                 />
                 <Label htmlFor="citations" className="text-sm font-normal">
                   Include citations
                 </Label>
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="sources"
                   checked={includeSources}
-                  onCheckedChange={(checked: boolean) => setIncludeSources(checked)}
+                  onCheckedChange={handleSourcesChange}
                 />
                 <Label htmlFor="sources" className="text-sm font-normal">
                   Include full source references
@@ -178,7 +210,10 @@ export function ExportDialog({
           {includeCitations && (
             <div className="space-y-2">
               <Label>Citation Style</Label>
-              <Select value={citationStyle} onValueChange={(v) => setCitationStyle(v as 'numbered' | 'footnote')}>
+              <Select
+                value={citationStyle}
+                onValueChange={(v) => setCitationStyle(v as 'numbered' | 'footnote')}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

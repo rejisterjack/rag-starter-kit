@@ -1,12 +1,11 @@
 'use client';
 
+import { Copy, Edit, Plus, Star, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Copy, Edit, Trash2, Plus, Star } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -16,13 +15,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 interface Prompt {
@@ -119,7 +113,7 @@ export function PromptLibrary({
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 min-w-[200px]"
         />
-        
+
         <Dialog open={isCreating} onOpenChange={setIsCreating}>
           <DialogTrigger asChild>
             <Button>
@@ -172,7 +166,10 @@ export function PromptLibrary({
                   onChange={(e) =>
                     setNewPrompt((p) => ({
                       ...p,
-                      tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean),
+                      tags: e.target.value
+                        .split(',')
+                        .map((t) => t.trim())
+                        .filter(Boolean),
                     }))
                   }
                   placeholder="coding, review, technical"
@@ -220,9 +217,7 @@ export function PromptLibrary({
               <div className="flex items-start justify-between">
                 <div>
                   <CardTitle className="text-base">{prompt.name}</CardTitle>
-                  {prompt.description && (
-                    <CardDescription>{prompt.description}</CardDescription>
-                  )}
+                  {prompt.description && <CardDescription>{prompt.description}</CardDescription>}
                 </div>
                 <div className="flex gap-1">
                   <Button
@@ -249,7 +244,7 @@ export function PromptLibrary({
                   </Badge>
                 ))}
               </div>
-              
+
               <p className="text-sm text-muted-foreground line-clamp-3">
                 {prompt.template.slice(0, 150)}
                 {prompt.template.length > 150 && '...'}
@@ -259,18 +254,16 @@ export function PromptLibrary({
                 <div className="flex flex-wrap gap-1">
                   {prompt.variables.map((v) => (
                     <code key={v} className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                      {'{{'}{v}{'}}'}
+                      {'{{'}
+                      {v}
+                      {'}}'}
                     </code>
                   ))}
                 </div>
               )}
 
               <div className="flex gap-2 pt-2">
-                <Button
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => onUse(prompt, {})}
-                >
+                <Button size="sm" className="flex-1" onClick={() => onUse(prompt, {})}>
                   Use
                 </Button>
                 <Button

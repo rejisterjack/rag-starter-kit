@@ -1,15 +1,9 @@
-"use client";
+'use client';
 
-import React from "react";
-import { FileText, ExternalLink } from "lucide-react";
-import { cn } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
+import { ExternalLink, FileText } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 interface CitationLinkProps {
   index: number;
@@ -25,12 +19,12 @@ export function CitationLink({ index, onClick }: CitationLinkProps) {
             <button
               onClick={() => onClick?.(index)}
               className={cn(
-                "inline-flex items-center justify-center rounded-full",
-                "min-w-[18px] h-[18px] px-1 mx-0.5",
-                "text-[10px] font-semibold",
-                "bg-primary/10 text-primary hover:bg-primary/20",
-                "transition-colors cursor-pointer",
-                "focus:outline-none focus:ring-2 focus:ring-primary/20"
+                'inline-flex items-center justify-center rounded-full',
+                'min-w-[18px] h-[18px] px-1 mx-0.5',
+                'text-[10px] font-semibold',
+                'bg-primary/10 text-primary hover:bg-primary/20',
+                'transition-colors cursor-pointer',
+                'focus:outline-none focus:ring-2 focus:ring-primary/20'
               )}
               aria-label={`Citation ${index}`}
             >
@@ -62,23 +56,15 @@ interface CitationListProps {
   className?: string;
 }
 
-export function CitationList({
-  sources,
-  onSourceClick,
-  className,
-}: CitationListProps) {
+export function CitationList({ sources, onSourceClick, className }: CitationListProps) {
   if (!sources.length) return null;
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn('space-y-3', className)}>
       <h4 className="text-sm font-semibold text-foreground">Sources</h4>
       <div className="space-y-2">
         {sources.map((source) => (
-          <CitationCard
-            key={source.id}
-            source={source}
-            onClick={() => onSourceClick?.(source)}
-          />
+          <CitationCard key={source.id} source={source} onClick={() => onSourceClick?.(source)} />
         ))}
       </div>
     </div>
@@ -95,10 +81,10 @@ export function CitationCard({ source, onClick }: CitationCardProps) {
     <div
       onClick={onClick}
       className={cn(
-        "group relative rounded-lg border bg-card p-3",
-        "transition-all duration-200",
-        "hover:border-primary/50 hover:shadow-sm",
-        onClick && "cursor-pointer"
+        'group relative rounded-lg border bg-card p-3',
+        'transition-all duration-200',
+        'hover:border-primary/50 hover:shadow-sm',
+        onClick && 'cursor-pointer'
       )}
     >
       <div className="flex items-start gap-3">
@@ -111,9 +97,7 @@ export function CitationCard({ source, onClick }: CitationCardProps) {
           {/* Document info */}
           <div className="flex items-center gap-2">
             <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            <span className="truncate text-xs font-medium">
-              {source.documentName}
-            </span>
+            <span className="truncate text-xs font-medium">{source.documentName}</span>
             {source.pageNumber && (
               <Badge variant="secondary" className="text-[10px] h-4 px-1">
                 p.{source.pageNumber}
@@ -122,9 +106,7 @@ export function CitationCard({ source, onClick }: CitationCardProps) {
           </div>
 
           {/* Chunk preview */}
-          <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">
-            {source.chunkText}
-          </p>
+          <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">{source.chunkText}</p>
 
           {/* Relevance score */}
           <div className="mt-2 flex items-center gap-2">

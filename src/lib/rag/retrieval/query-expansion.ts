@@ -60,6 +60,12 @@ Original Query: {query}
 
 Sub-queries (one per line, without numbering):`;
 
+// Message type for AI completions
+interface ChatMessage {
+  role: 'system' | 'user';
+  content: string;
+}
+
 /**
  * Query Expander class
  * Implements multiple query expansion techniques
@@ -88,14 +94,16 @@ export class QueryExpander {
       .replace(/{num_variations}/g, String(this.expansionConfig.numVariations));
 
     try {
+      const messages: ChatMessage[] = [
+        {
+          role: 'system',
+          content: 'You are a helpful assistant that generates query variations for better document retrieval.',
+        },
+        { role: 'user', content: prompt },
+      ];
+      
       const { text } = await generateChatCompletion(
-        [
-          {
-            role: 'system',
-            content: 'You are a helpful assistant that generates query variations for better document retrieval.',
-          },
-          { role: 'user', content: prompt },
-        ],
+        messages as unknown as Parameters<typeof generateChatCompletion>[0],
         { temperature: this.expansionConfig.temperature }
       );
 
@@ -162,20 +170,24 @@ export class QueryExpander {
       return generateEmbedding(query);
     }
 
-    const prompt = (this.hydeConfig.promptTemplate ?? defaultHyDEConfig.promptTemplate!).replace(
-      '{query}',
-      query
-    );
+    const promptTemplate = this.hydeConfig.promptTemplate ?? defaultHyDEConfig.promptTemplate;
+    if (!promptTemplate) {
+      return generateEmbedding(query);
+    }
+    
+    const prompt = promptTemplate.replace('{query}', query);
 
     try {
+      const messages: ChatMessage[] = [
+        {
+          role: 'system',
+          content: 'You are an expert at writing detailed, factual documents.',
+        },
+        { role: 'user', content: prompt },
+      ];
+      
       const { text: hypotheticalDoc } = await generateChatCompletion(
-        [
-          {
-            role: 'system',
-            content: 'You are an expert at writing detailed, factual documents.',
-          },
-          { role: 'user', content: prompt },
-        ],
+        messages as unknown as Parameters<typeof generateChatCompletion>[0],
         { temperature: this.hydeConfig.temperature, maxTokens: 500 }
       );
 
@@ -197,20 +209,24 @@ export class QueryExpander {
    * @returns Hypothetical document text
    */
   async generateHypotheticalDocument(query: string): Promise<string> {
-    const prompt = (this.hydeConfig.promptTemplate ?? defaultHyDEConfig.promptTemplate!).replace(
-      '{query}',
-      query
-    );
+    const promptTemplate = this.hydeConfig.promptTemplate ?? defaultHyDEConfig.promptTemplate;
+    if (!promptTemplate) {
+      return query;
+    }
+    
+    const prompt = promptTemplate.replace('{query}', query);
 
     try {
+      const messages: ChatMessage[] = [
+        {
+          role: 'system',
+          content: 'You are an expert at writing detailed, factual documents.',
+        },
+        { role: 'user', content: prompt },
+      ];
+      
       const { text } = await generateChatCompletion(
-        [
-          {
-            role: 'system',
-            content: 'You are an expert at writing detailed, factual documents.',
-          },
-          { role: 'user', content: prompt },
-        ],
+        messages as unknown as Parameters<typeof generateChatCompletion>[0],
         { temperature: this.hydeConfig.temperature, maxTokens: 500 }
       );
 
@@ -232,14 +248,16 @@ export class QueryExpander {
     const prompt = SUB_QUERY_PROMPT.replace('{query}', query);
 
     try {
+      const messages: ChatMessage[] = [
+        {
+          role: 'system',
+          content: 'You are an expert at breaking down complex questions into simpler parts.',
+        },
+        { role: 'user', content: prompt },
+      ];
+      
       const { text } = await generateChatCompletion(
-        [
-          {
-            role: 'system',
-            content: 'You are an expert at breaking down complex questions into simpler parts.',
-          },
-          { role: 'user', content: prompt },
-        ],
+        messages as unknown as Parameters<typeof generateChatCompletion>[0],
         { temperature: 0.5 }
       );
 
@@ -270,7 +288,7 @@ export class QueryExpander {
   }> {
     const [multiQueries, hydeEmbedding, subQueries] = await Promise.all([
       this.expandMultiQuery(query),
-      this.expandHyDE(query).catch((err) => {
+      this.expandHyDE(query).catch((err: Error) => {
         console.error('HyDE expansion failed:', err);
         return undefined;
       }),

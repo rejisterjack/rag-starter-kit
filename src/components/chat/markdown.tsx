@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import React from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
-import { cn } from "@/lib/utils";
-import { CodeBlock } from "./code-block";
-import { CitationLink } from "./citations";
+import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import rehypeHighlight from 'rehype-highlight';
+import remarkGfm from 'remark-gfm';
+import { cn } from '@/lib/utils';
+import { CitationLink } from './citations';
+import { CodeBlock } from './code-block';
 
 interface MarkdownProps {
   content: string;
@@ -25,15 +25,15 @@ export function Markdown({ content, className, onCitationClick }: MarkdownProps)
   }, [content]);
 
   return (
-    <div className={cn("prose prose-sm dark:prose-invert max-w-none", className)}>
+    <div className={cn('prose prose-sm dark:prose-invert max-w-none', className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
         components={{
           // Custom code block rendering
           code({ className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className || "");
-            const language = match ? match[1] : "";
+            const match = /language-(\w+)/.exec(className || '');
+            const language = match ? match[1] : '';
             const isInline = !className;
 
             if (isInline) {
@@ -49,21 +49,19 @@ export function Markdown({ content, className, onCitationClick }: MarkdownProps)
 
             return (
               <CodeBlock language={language} {...props}>
-                {String(children).replace(/\n$/, "")}
+                {String(children).replace(/\n$/, '')}
               </CodeBlock>
             );
           },
 
           // Custom link rendering - open in new tab
           a({ href, children, ...props }) {
-            const isExternal = href?.startsWith("http");
+            const isExternal = href?.startsWith('http');
             return (
               <a
                 href={href}
                 className="text-primary hover:underline underline-offset-4"
-                {...(isExternal
-                  ? { target: "_blank", rel: "noopener noreferrer" }
-                  : {})}
+                {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                 {...props}
               >
                 {children}
@@ -75,7 +73,7 @@ export function Markdown({ content, className, onCitationClick }: MarkdownProps)
           p({ children }) {
             // Process children to find citation patterns
             const processedChildren = React.Children.map(children, (child) => {
-              if (typeof child === "string") {
+              if (typeof child === 'string') {
                 // Split by citation pattern and render citations as links
                 const parts = child.split(CITATION_REGEX);
                 if (parts.length === 1) return child;
@@ -105,9 +103,7 @@ export function Markdown({ content, className, onCitationClick }: MarkdownProps)
           table({ children }) {
             return (
               <div className="my-6 w-full overflow-y-auto">
-                <table className="w-full border-collapse text-sm">
-                  {children}
-                </table>
+                <table className="w-full border-collapse text-sm">{children}</table>
               </div>
             );
           },
@@ -122,24 +118,16 @@ export function Markdown({ content, className, onCitationClick }: MarkdownProps)
             );
           },
           td({ children }) {
-            return (
-              <td className="border-b border-border px-4 py-2">{children}</td>
-            );
+            return <td className="border-b border-border px-4 py-2">{children}</td>;
           },
 
           // List styling
           ul({ children }) {
-            return (
-              <ul className="my-4 ml-6 list-disc marker:text-muted-foreground">
-                {children}
-              </ul>
-            );
+            return <ul className="my-4 ml-6 list-disc marker:text-muted-foreground">{children}</ul>;
           },
           ol({ children }) {
             return (
-              <ol className="my-4 ml-6 list-decimal marker:text-muted-foreground">
-                {children}
-              </ol>
+              <ol className="my-4 ml-6 list-decimal marker:text-muted-foreground">{children}</ol>
             );
           },
           li({ children }) {
@@ -148,32 +136,16 @@ export function Markdown({ content, className, onCitationClick }: MarkdownProps)
 
           // Heading styling
           h1({ children }) {
-            return (
-              <h1 className="mt-8 mb-4 text-2xl font-bold tracking-tight">
-                {children}
-              </h1>
-            );
+            return <h1 className="mt-8 mb-4 text-2xl font-bold tracking-tight">{children}</h1>;
           },
           h2({ children }) {
-            return (
-              <h2 className="mt-8 mb-4 text-xl font-semibold tracking-tight">
-                {children}
-              </h2>
-            );
+            return <h2 className="mt-8 mb-4 text-xl font-semibold tracking-tight">{children}</h2>;
           },
           h3({ children }) {
-            return (
-              <h3 className="mt-6 mb-3 text-lg font-semibold tracking-tight">
-                {children}
-              </h3>
-            );
+            return <h3 className="mt-6 mb-3 text-lg font-semibold tracking-tight">{children}</h3>;
           },
           h4({ children }) {
-            return (
-              <h4 className="mt-6 mb-3 text-base font-semibold tracking-tight">
-                {children}
-              </h4>
-            );
+            return <h4 className="mt-6 mb-3 text-base font-semibold tracking-tight">{children}</h4>;
           },
 
           // Blockquote styling

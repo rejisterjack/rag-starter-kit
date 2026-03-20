@@ -15,7 +15,7 @@ import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
 // type Chat = import('@prisma/client').Chat;
 // type MessageRole = import('@prisma/client').MessageRole;
 
-import { PDFGenerator } from './pdf-generator';
+import { PDFGenerator, type PDFGenerationOptions } from './pdf-generator';
 import { WordGenerator } from './word-generator';
 import { MarkdownGenerator } from './markdown-generator';
 import { ExportStorage, generateExportFilename } from './storage';
@@ -610,7 +610,7 @@ export class ExportService {
   ): Promise<{ buffer: Buffer; mimeType: string }> {
     switch (options.format) {
       case 'pdf': {
-        const generator = new PDFGenerator(options, (p) =>
+        const generator = new PDFGenerator(options as PDFGenerationOptions, (p) =>
           onProgress({
             progress: p.progress,
             currentStep: p.currentStep,

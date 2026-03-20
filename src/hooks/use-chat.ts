@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState, useCallback, useRef, useEffect } from "react";
-import { type Message } from "@/components/chat/message-item";
-import { type Source } from "@/components/chat/citations";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Source } from '@/components/chat/citations';
+import type { Message } from '@/components/chat/message-item';
 
 export interface UseChatOptions {
   conversationId?: string;
@@ -32,10 +32,10 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const { conversationId, onError, onFinish } = options;
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingContent, setStreamingContent] = useState("");
+  const [streamingContent, setStreamingContent] = useState('');
   const [error, setError] = useState<Error | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -54,10 +54,8 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     if (!conversationId) return;
 
     try {
-      const response = await fetch(
-        `/api/chat/${conversationId}/messages?page=${pageNum}`
-      );
-      if (!response.ok) throw new Error("Failed to load messages");
+      const response = await fetch(`/api/chat/${conversationId}/messages?page=${pageNum}`);
+      if (!response.ok) throw new Error('Failed to load messages');
 
       const data = await response.json();
 
@@ -70,9 +68,9 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       setHasMore(data.hasMore);
       setPage(pageNum);
     } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setError(error);
-      onError?.(error);
+      const fetchError = err instanceof Error ? err : new Error(String(err));
+      setError(fetchError);
+      onError?.(fetchError);
     }
   };
 
@@ -91,13 +89,13 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       // Create optimistic user message
       const userMessage: Message = {
         id: `temp-${Date.now()}`,
-        role: "user",
+        role: 'user',
         content,
         createdAt: new Date(),
       };
 
       setMessages((prev) => [...prev, userMessage]);
-      setInput("");
+      setInput('');
 
       try {
         // Upload files if any
@@ -108,13 +106,13 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
         // Start streaming
         setIsStreaming(true);
-        setStreamingContent("");
+        setStreamingContent('');
 
         abortControllerRef.current = new AbortController();
 
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             message: content,
             conversationId,
@@ -124,13 +122,13 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         });
 
         if (!response.ok) {
-          throw new Error("Failed to send message");
+          throw new Error('Failed to send message');
         }
 
         const reader = response.body?.getReader();
-        if (!reader) throw new Error("No response body");
+        if (!reader) throw new Error('No response body');
 
-        let fullContent = "";
+        let fullContent = '';
         const decoder = new TextDecoder();
 
         // Read stream
@@ -139,7 +137,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           if (done) break;
 
           const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
+          const lines = chunk.split('\n');
 
           for (const line of lines) {
             if (!line.trim()) continue;
@@ -147,18 +145,18 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
             try {
               const data = JSON.parse(line);
 
-              if (data.type === "token") {
+              if (data.type === 'token') {
                 fullContent += data.content;
                 setStreamingContent(fullContent);
-              } else if (data.type === "sources") {
+              } else if (data.type === 'sources') {
                 setSources(data.sources);
-              } else if (data.type === "error") {
+              } else if (data.type === 'error') {
                 throw new Error(data.message);
-              } else if (data.type === "done") {
+              } else if (data.type === 'done') {
                 // Final message received
                 const assistantMessage: Message = {
                   id: data.messageId || `msg-${Date.now()}`,
-                  role: "assistant",
+                  role: 'assistant',
                   content: fullContent,
                   createdAt: new Date(),
                   sources: data.sources,
@@ -173,27 +171,27 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
                 onFinish?.(assistantMessage);
               }
-            } catch (e) {
+            } catch {
               // Ignore parsing errors for non-JSON lines
             }
           }
         }
       } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") {
+        if (err instanceof Error && err.name === 'AbortError') {
           // User cancelled
           return;
         }
 
-        const error = err instanceof Error ? err : new Error(String(err));
-        setError(error);
-        onError?.(error);
+        const messageError = err instanceof Error ? err : new Error(String(err));
+        setError(messageError);
+        onError?.(messageError);
 
         // Remove optimistic message on error
         setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
       } finally {
         setIsLoading(false);
         setIsStreaming(false);
-        setStreamingContent("");
+        setStreamingContent('');
         abortControllerRef.current = null;
       }
     },
@@ -205,10 +203,10 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
     for (const file of files) {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append('file', file);
 
-      const response = await fetch("/api/upload", {
-        method: "POST",
+      const response = await fetch('/api/upload', {
+        method: 'POST',
         body: formData,
       });
 
@@ -231,13 +229,13 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     const lastUserMessage = messages
       .slice()
       .reverse()
-      .find((m) => m.role === "user");
+      .find((m) => m.role === 'user');
 
     if (lastUserMessage) {
       // Remove last assistant message if exists
       setMessages((prev) => {
         const lastIndex = prev.length - 1;
-        if (prev[lastIndex]?.role === "assistant") {
+        if (prev[lastIndex]?.role === 'assistant') {
           return prev.slice(0, lastIndex);
         }
         return prev;
@@ -253,9 +251,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
   const editMessage = useCallback(
     async (id: string, newContent: string) => {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === id ? { ...m, content: newContent } : m))
-      );
+      setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content: newContent } : m)));
 
       // Find and delete all messages after this one, then resend
       const messageIndex = messages.findIndex((m) => m.id === id);

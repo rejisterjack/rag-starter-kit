@@ -1,11 +1,11 @@
 /**
  * Web Search Tool
- * 
- * Placeholder for web search integration.
- * Provides interfaces for popular search APIs like Tavily, SerpAPI, etc.
+ *
+ * Provides interfaces for popular search APIs like Tavily, SerpAPI, DuckDuckGo.
  */
 
 import { z } from 'zod';
+
 import { createTool, createSuccessResult, createErrorResult } from './types';
 import type { Source } from '@/types';
 
@@ -49,7 +49,7 @@ export class TavilyProvider implements WebSearchProvider {
     this.apiKey = apiKey;
   }
 
-  async search(): Promise<WebSearchResult[]> {
+  async search(query: string, options: WebSearchOptions = {}): Promise<WebSearchResult[]> {
     const response = await fetch(`${this.baseUrl}/search`, {
       method: 'POST',
       headers: {
@@ -71,20 +71,17 @@ export class TavilyProvider implements WebSearchProvider {
     }
 
     const data = await response.json();
-    
-    return (data.results || []).map((r: {
-      title: string;
-      url: string;
-      content: string;
-      published_date?: string;
-    }) => ({
-      title: r.title,
-      url: r.url,
-      snippet: r.content,
-      content: r.content,
-      publishedDate: r.published_date,
-      source: 'tavily',
-    }));
+
+    return (data.results || []).map(
+      (r: { title: string; url: string; content: string; published_date?: string }) => ({
+        title: r.title,
+        url: r.url,
+        snippet: r.content,
+        content: r.content,
+        publishedDate: r.published_date,
+        source: 'tavily',
+      })
+    );
   }
 }
 
@@ -101,10 +98,7 @@ export class SerpAPIProvider implements WebSearchProvider {
     this.apiKey = apiKey;
   }
 
-  async search(
-    _query: string,
-    _options: WebSearchOptions = {}
-  ): Promise<WebSearchResult[]> {
+  async search(query: string, options: WebSearchOptions = {}): Promise<WebSearchResult[]> {
     const params = new URLSearchParams({
       q: query,
       api_key: this.apiKey,
@@ -129,68 +123,168 @@ export class SerpAPIProvider implements WebSearchProvider {
     }
 
     const data = await response.json();
-    
-    return (data.organic_results || []).map((r: {
-      title: string;
-      link: string;
-      snippet: string;
-    }) => ({
-      title: r.title,
-      url: r.link,
-      snippet: r.snippet,
-      source: 'serpapi',
-    }));
-  }
-}
 
-// ============================================================================
-// DuckDuckGo Provider (No API key required)
-// ============================================================================
-
-export class DuckDuckGoProvider implements WebSearchProvider {
-  name = 'duckduckgo';
-
-  async search(
-    _query: string,
-    _options: WebSearchOptions = {}
-  ): Promise<WebSearchResult[]> {
-    // Note: This is a placeholder implementation
-    // In production, you would use a proper DuckDuckGo search library
-    // like duck-duck-scrape or similar
-    
-    throw new Error(
-      'DuckDuckGo provider requires the duck-duck-scrape package. ' +
-      'Install it with: npm install duck-duck-scrape'
+    return (data.organic_results || []).map(
+      (r: { title: string; link: string; snippet: string }) => ({
+        title: r.title,
+        url: r.link,
+        snippet: r.snippet,
+        source: 'serpapi',
+      })
     );
   }
 }
 
 // ============================================================================
-// Mock Provider (for testing/development)
+// DuckDuckGo Provider (No API key required)
+// Uses DuckDuckGo's instant answer API
 // ============================================================================
 
-export class MockWebSearchProvider implements WebSearchProvider {
-  name = 'mock';
+export class DuckDuckGoProvider implements WebSearchProvider {
+  name = 'duckduckgo';
 
-  async search(
-    query: string,
-    options: WebSearchOptions = {}
-  ): Promise<WebSearchResult[]> {
-    // Return mock results for development/testing
-    return [
-      {
-        title: `Mock result for: ${query}`,
-        url: 'https://example.com/mock',
-        snippet: `This is a mock search result for "${query}". In production, this would be replaced with real search results from your configured provider.`,
-        source: 'mock',
-      },
-      {
-        title: 'Another mock result',
-        url: 'https://example.com/mock2',
-        snippet: 'This demonstrates the web search tool structure without making actual API calls.',
-        source: 'mock',
-      },
-    ].slice(0, options.maxResults ?? 5);
+  async search(query: string, options: WebSearchOptions = {}): Promise<WebSearchResult[]> {
+    // Use DuckDuckGo's HTML interface for web results
+    const maxResults = options.maxResults ?? 5;
+    
+    try {
+      // Fetch DuckDuckGo HTML results page
+      const params = new URLSearchParams({
+        q: query,
+        kl: 'us-en', // Region
+        safe: 'off',
+      });
+      
+      const response = await fetch(`https://html.duckduckgo.com/html/?${params}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'text/html',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`DuckDuckGo search failed: ${response.statusText}`);
+      }
+
+      const html = await response.text();
+      const results = this.parseDuckDuckGoResults(html);
+      
+      return results.slice(0, maxResults);
+    } catch (error) {
+      // Fallback to instant answers API if HTML parsing fails
+      return this.fetchInstantAnswers(query, maxResults);
+    }
+  }
+
+  private parseDuckDuckGoResults(html: string): WebSearchResult[] {
+    const results: WebSearchResult[] = [];
+    
+    // Parse DuckDuckGo HTML results
+    // Result format: <div class="result">...</div>
+    const resultRegex = /<div class="result[^"]*"[^>]*>[\s\S]*?<\/div>\s*(?=<div class="result"|<div id="links")/gi;
+    const titleRegex = /<a[^>]*class="result__a"[^>]*>([\s\S]*?)<\/a>/i;
+    const urlRegex = /<a[^>]*href="([^"]+)"/i;
+    const snippetRegex = /<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/i;
+    
+    const matches = html.match(resultRegex) || [];
+    
+    for (const resultHtml of matches.slice(0, 10)) {
+      const titleMatch = resultHtml.match(titleRegex);
+      const urlMatch = resultHtml.match(urlRegex);
+      const snippetMatch = resultHtml.match(snippetRegex);
+      
+      if (titleMatch && urlMatch) {
+        const title = this.cleanHtml(titleMatch[1]);
+        let url = urlMatch[1];
+        const snippet = snippetMatch ? this.cleanHtml(snippetMatch[1]) : '';
+        
+        // Handle DuckDuckGo redirect URLs
+        if (url.startsWith('//')) {
+          url = 'https:' + url;
+        } else if (url.startsWith('/l/?')) {
+          // Extract actual URL from redirect
+          const uddgMatch = url.match(/uddg=([^&]+)/);
+          if (uddgMatch) {
+            url = decodeURIComponent(uddgMatch[1]);
+          }
+        }
+        
+        results.push({
+          title,
+          url,
+          snippet,
+          source: 'duckduckgo',
+        });
+      }
+    }
+    
+    return results;
+  }
+
+  private cleanHtml(html: string): string {
+    return html
+      .replace(/<[^>]+>/g, '') // Remove HTML tags
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&#x27;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      .trim();
+  }
+
+  private async fetchInstantAnswers(query: string, maxResults: number): Promise<WebSearchResult[]> {
+    try {
+      const params = new URLSearchParams({
+        q: query,
+        format: 'json',
+        no_html: '1',
+        skip_disambig: '1',
+      });
+      
+      const response = await fetch(`https://api.duckduckgo.com/?${params}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; RAGBot/1.0)',
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        return [];
+      }
+
+      const data = await response.json();
+      const results: WebSearchResult[] = [];
+
+      // Add abstract if available
+      if (data.AbstractText) {
+        results.push({
+          title: data.Heading || query,
+          url: data.AbstractURL || `https://duckduckgo.com/?q=${encodeURIComponent(query)}`,
+          snippet: data.AbstractText,
+          source: 'duckduckgo',
+        });
+      }
+
+      // Add related topics
+      if (data.RelatedTopics) {
+        const topics = Array.isArray(data.RelatedTopics) ? data.RelatedTopics : [data.RelatedTopics];
+        for (const topic of topics.slice(0, maxResults - 1)) {
+          if (topic.Text && topic.FirstURL) {
+            results.push({
+              title: topic.Name || topic.Text.slice(0, 50),
+              url: topic.FirstURL,
+              snippet: topic.Text,
+              source: 'duckduckgo',
+            });
+          }
+        }
+      }
+
+      return results;
+    } catch {
+      return [];
+    }
   }
 }
 
@@ -231,88 +325,64 @@ The tool returns search results with titles, URLs, and snippets.`,
           includeAnswer: true,
         });
 
-        // Convert to sources format
-        const sources: Source[] = results.map((result, index) => ({
-          id: `web-${index}`,
-          content: includeContent && result.content 
-            ? result.content 
-            : `${result.title}\n${result.snippet}`,
+        if (results.length === 0) {
+          return createErrorResult('No results found for the query');
+        }
+
+        // Format results as text
+        const formattedResults = results
+          .map((r, i) => {
+            let text = `${i + 1}. ${r.title}\n   URL: ${r.url}\n   ${r.snippet}`;
+            if (includeContent && r.content) {
+              text += `\n   Content: ${r.content.slice(0, 500)}...`;
+            }
+            return text;
+          })
+          .join('\n\n');
+
+        // Convert to Source format for citations
+        const sources: Source[] = results.map((r, i) => ({
+          id: `web-${i}`,
+          content: `${r.title}\n${r.snippet}`,
           metadata: {
-            documentId: `web-${index}`,
-            documentName: result.title,
-            source: result.source || provider.name,
-            url: result.url,
-            publishedDate: result.publishedDate,
-            chunkIndex: index,
+            documentId: r.url,
+            documentName: r.title,
+            source: r.source || 'web',
+            url: r.url,
+            chunkIndex: i,
             totalChunks: results.length,
           },
+          similarity: 1 - i * 0.1, // Decreasing relevance
         }));
 
-        return createSuccessResult({
-          query,
-          results: results.map((r) => ({
-            title: r.title,
-            url: r.url,
-            snippet: r.snippet,
-            publishedDate: r.publishedDate,
-          })),
-          totalResults: results.length,
-        }, sources);
+        return createSuccessResult(
+          `Found ${results.length} results:\n\n${formattedResults}`,
+          sources
+        );
       } catch (error) {
         return createErrorResult(
-          error instanceof Error ? error.message : 'Web search failed'
+          `Web search failed: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
       }
     },
   });
 }
 
-// ============================================================================
-// Factory Functions
-// ============================================================================
-
 /**
- * Create web search provider from environment variables
+ * Get the default web search provider based on environment variables
  */
-export function createWebSearchProviderFromEnv(): WebSearchProvider {
-  const provider = process.env.WEB_SEARCH_PROVIDER ?? 'mock';
+export function getDefaultWebSearchProvider(): WebSearchProvider {
+  const tavilyKey = process.env.TAVILY_API_KEY;
+  const serpKey = process.env.SERPAPI_KEY;
 
-  switch (provider) {
-    case 'tavily':
-      const tavilyKey = process.env.TAVILY_API_KEY;
-      if (!tavilyKey) {
-        console.warn('TAVILY_API_KEY not set, falling back to mock provider');
-        return new MockWebSearchProvider();
-      }
-      return new TavilyProvider(tavilyKey);
-
-    case 'serpapi':
-      const serpKey = process.env.SERPAPI_KEY;
-      if (!serpKey) {
-        console.warn('SERPAPI_KEY not set, falling back to mock provider');
-        return new MockWebSearchProvider();
-      }
-      return new SerpAPIProvider(serpKey);
-
-    case 'duckduckgo':
-      return new DuckDuckGoProvider();
-
-    case 'mock':
-    default:
-      return new MockWebSearchProvider();
+  if (tavilyKey) {
+    return new TavilyProvider(tavilyKey);
   }
+
+  if (serpKey) {
+    return new SerpAPIProvider(serpKey);
+  }
+
+  // Default to DuckDuckGo (no API key required)
+  return new DuckDuckGoProvider();
 }
-
-/**
- * Create default web search tool from environment
- */
-export function createWebSearchToolFromEnv() {
-  const provider = createWebSearchProviderFromEnv();
-  return createWebSearchTool(provider);
-}
-
-// ============================================================================
-// Default Export
-// ============================================================================
-
-export const webSearchTool = createWebSearchToolFromEnv();

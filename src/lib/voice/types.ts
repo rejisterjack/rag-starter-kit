@@ -385,7 +385,7 @@ export interface AudioLevelData {
   /** Current volume level (0-1) */
   level: number;
   /** Frequency data for visualization */
-  frequencyData?: Uint8Array;
+  frequencyData?: Uint8Array<ArrayBuffer>;
   /** Whether audio is currently detected */
   isSpeaking: boolean;
 }

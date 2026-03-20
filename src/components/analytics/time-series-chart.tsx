@@ -1,8 +1,5 @@
-"use client";
+'use client';
 
-import * as React from "react";
-
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Area,
   AreaChart,
@@ -16,9 +13,10 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from "recharts";
+} from 'recharts';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-export type ChartType = "line" | "area" | "bar";
+export type ChartType = 'line' | 'area' | 'bar';
 
 export interface TimeSeriesData {
   date: string;
@@ -29,7 +27,7 @@ export interface SeriesConfig {
   key: string;
   name: string;
   color: string;
-  type?: "line" | "area" | "bar";
+  type?: 'line' | 'area' | 'bar';
 }
 
 export interface TimeSeriesChartProps {
@@ -71,16 +69,9 @@ function ChartTooltip({
           const seriesConfig = series.find((s) => s.key === entry.dataKey);
           return (
             <div key={index} className="flex items-center gap-2 text-sm">
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: entry.color }}
-              />
-              <span className="text-muted-foreground">
-                {seriesConfig?.name || entry.dataKey}:
-              </span>
-              <span className="font-medium">
-                {valueFormatter(entry.value)}
-              </span>
+              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+              <span className="text-muted-foreground">{seriesConfig?.name || entry.dataKey}:</span>
+              <span className="font-medium">{valueFormatter(entry.value)}</span>
             </div>
           );
         })}
@@ -94,7 +85,7 @@ export function TimeSeriesChart({
   series,
   title,
   description,
-  type = "area",
+  type = 'area',
   showLegend = true,
   showGrid = true,
   height = 300,
@@ -109,19 +100,12 @@ export function TimeSeriesChart({
       <Card className={className}>
         {(title || description) && (
           <CardHeader>
-            {title && (
-              <div className="h-5 w-40 bg-muted animate-pulse rounded" />
-            )}
-            {description && (
-              <div className="h-4 w-60 bg-muted animate-pulse rounded mt-2" />
-            )}
+            {title && <div className="h-5 w-40 bg-muted animate-pulse rounded" />}
+            {description && <div className="h-4 w-60 bg-muted animate-pulse rounded mt-2" />}
           </CardHeader>
         )}
         <CardContent>
-          <div
-            className="w-full bg-muted animate-pulse rounded"
-            style={{ height }}
-          />
+          <div className="w-full bg-muted animate-pulse rounded" style={{ height }} />
         </CardContent>
       </Card>
     );
@@ -154,23 +138,15 @@ export function TimeSeriesChart({
         />
       ),
       grid: showGrid && (
-        <CartesianGrid
-          strokeDasharray="3 3"
-          vertical={false}
-          stroke="hsl(var(--border))"
-        />
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
       ),
       tooltip: (
-        <Tooltip
-          content={
-            <ChartTooltip valueFormatter={valueFormatter} series={series} />
-          }
-        />
+        <Tooltip content={<ChartTooltip valueFormatter={valueFormatter} series={series} />} />
       ),
     };
 
     switch (type) {
-      case "bar":
+      case 'bar':
         return (
           <BarChart {...commonProps}>
             {commonAxisProps.grid}
@@ -185,13 +161,13 @@ export function TimeSeriesChart({
                 name={s.name}
                 fill={s.color}
                 radius={[4, 4, 0, 0]}
-                stackId={stacked ? "stack" : undefined}
+                stackId={stacked ? 'stack' : undefined}
               />
             ))}
           </BarChart>
         );
 
-      case "line":
+      case 'line':
         return (
           <LineChart {...commonProps}>
             {commonAxisProps.grid}
@@ -213,8 +189,6 @@ export function TimeSeriesChart({
             ))}
           </LineChart>
         );
-
-      case "area":
       default:
         return (
           <AreaChart {...commonProps}>
@@ -240,7 +214,7 @@ export function TimeSeriesChart({
                 stroke={s.color}
                 fill={`url(#gradient-${s.key})`}
                 strokeWidth={2}
-                stackId={stacked ? "stack" : undefined}
+                stackId={stacked ? 'stack' : undefined}
               />
             ))}
           </AreaChart>

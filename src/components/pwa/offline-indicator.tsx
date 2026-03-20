@@ -1,20 +1,20 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { WifiOff, Wifi, CloudOff, RefreshCw } from "lucide-react";
+import { CloudOff, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-import { Button } from "@/components/ui/button";
-import { useOfflineStatus } from "@/hooks/use-pwa";
-import { cn } from "@/lib/utils";
+import { Button } from '@/components/ui/button';
+import { useOfflineStatus } from '@/hooks/use-pwa';
+import { cn } from '@/lib/utils';
 
 /**
  * Props for OfflineIndicator component
  */
 interface OfflineIndicatorProps {
   /** Visual variant */
-  variant?: "banner" | "toast" | "minimal";
+  variant?: 'banner' | 'toast' | 'minimal';
   /** Position for banner variant */
-  position?: "top" | "bottom";
+  position?: 'top' | 'bottom';
   /** Custom className */
   className?: string;
   /** Show reconnect button */
@@ -26,22 +26,22 @@ interface OfflineIndicatorProps {
 /**
  * Offline status indicator component
  * Shows when the app loses network connectivity
- * 
+ *
  * @example
  * ```tsx
  * // Banner at top (default)
  * <OfflineIndicator />
- * 
+ *
  * // Toast variant
  * <OfflineIndicator variant="toast" />
- * 
+ *
  * // Minimal badge
  * <OfflineIndicator variant="minimal" />
  * ```
  */
 export function OfflineIndicator({
-  variant = "banner",
-  position = "top",
+  variant = 'banner',
+  position = 'top',
   className,
   showReconnect = true,
   autoHideDelay = 5000,
@@ -68,15 +68,15 @@ export function OfflineIndicator({
   };
 
   // Banner variant
-  if (variant === "banner") {
+  if (variant === 'banner') {
     return (
       <>
         {isOffline && (
           <div
             className={cn(
-              "fixed left-0 right-0 z-50 flex items-center justify-center gap-3 border-b bg-destructive/95 px-4 py-2 text-destructive-foreground shadow-lg backdrop-blur",
-              "transition-all duration-300 ease-out",
-              position === "top" ? "top-0" : "bottom-0 border-t",
+              'fixed left-0 right-0 z-50 flex items-center justify-center gap-3 border-b bg-destructive/95 px-4 py-2 text-destructive-foreground shadow-lg backdrop-blur',
+              'transition-all duration-300 ease-out',
+              position === 'top' ? 'top-0' : 'bottom-0 border-t',
               className
             )}
           >
@@ -84,9 +84,7 @@ export function OfflineIndicator({
             <span className="text-sm font-medium">
               You&apos;re offline
               {formattedOfflineDuration && (
-                <span className="ml-1 opacity-80">
-                  ({formattedOfflineDuration})
-                </span>
+                <span className="ml-1 opacity-80">({formattedOfflineDuration})</span>
               )}
             </span>
             {showReconnect && (
@@ -107,10 +105,10 @@ export function OfflineIndicator({
         {showReconnected && !isOffline && (
           <div
             className={cn(
-              "fixed left-0 right-0 z-50 flex items-center justify-center gap-2 border-b bg-green-600/95 px-4 py-2 text-white shadow-lg backdrop-blur",
-              "transition-all duration-300 ease-out",
-              position === "top" ? "top-0" : "bottom-0 border-t",
-              isHiding ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100",
+              'fixed left-0 right-0 z-50 flex items-center justify-center gap-2 border-b bg-green-600/95 px-4 py-2 text-white shadow-lg backdrop-blur',
+              'transition-all duration-300 ease-out',
+              position === 'top' ? 'top-0' : 'bottom-0 border-t',
+              isHiding ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100',
               className
             )}
           >
@@ -123,14 +121,14 @@ export function OfflineIndicator({
   }
 
   // Toast variant
-  if (variant === "toast") {
+  if (variant === 'toast') {
     return (
       <>
         {isOffline && (
           <div
             className={cn(
-              "fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border bg-background p-4 shadow-lg",
-              "animate-slide-in-from-bottom",
+              'fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border bg-background p-4 shadow-lg',
+              'animate-slide-in-from-bottom',
               className
             )}
           >
@@ -139,9 +137,7 @@ export function OfflineIndicator({
             </div>
             <div className="min-w-0">
               <p className="font-medium">You&apos;re offline</p>
-              <p className="text-sm text-muted-foreground">
-                Changes will sync when you reconnect
-              </p>
+              <p className="text-sm text-muted-foreground">Changes will sync when you reconnect</p>
             </div>
             {showReconnect && (
               <Button
@@ -160,9 +156,9 @@ export function OfflineIndicator({
         {showReconnected && !isOffline && (
           <div
             className={cn(
-              "fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border bg-background p-4 shadow-lg",
-              "transition-all duration-300",
-              isHiding ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0",
+              'fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border bg-background p-4 shadow-lg',
+              'transition-all duration-300',
+              isHiding ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0',
               className
             )}
           >
@@ -171,9 +167,7 @@ export function OfflineIndicator({
             </div>
             <div>
               <p className="font-medium">Back online!</p>
-              <p className="text-sm text-muted-foreground">
-                You&apos;re connected again
-              </p>
+              <p className="text-sm text-muted-foreground">You&apos;re connected again</p>
             </div>
           </div>
         )}
@@ -183,11 +177,11 @@ export function OfflineIndicator({
 
   // Minimal variant - small badge
   if (!isOffline) return null;
-  
+
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive animate-fade-in",
+        'inline-flex items-center gap-1.5 rounded-full border bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive animate-fade-in',
         className
       )}
     >
@@ -208,7 +202,7 @@ export function NetworkStatusBadge({ className }: { className?: string }) {
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive animate-fade-in",
+          'inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive animate-fade-in',
           className
         )}
       >
@@ -224,7 +218,7 @@ export function NetworkStatusBadge({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-400",
+        'inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-400',
         className
       )}
     >
@@ -246,19 +240,19 @@ export function ConnectionDot({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "relative flex h-3 w-3",
-        isOffline ? "text-destructive" : "text-green-500",
+        'relative flex h-3 w-3',
+        isOffline ? 'text-destructive' : 'text-green-500',
         className
       )}
-      title={isOffline ? "Offline" : "Online"}
+      title={isOffline ? 'Offline' : 'Online'}
     >
       {!isOffline && (
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-75" />
       )}
       <span
         className={cn(
-          "relative inline-flex h-3 w-3 rounded-full",
-          isOffline ? "bg-destructive" : "bg-current"
+          'relative inline-flex h-3 w-3 rounded-full',
+          isOffline ? 'bg-destructive' : 'bg-current'
         )}
       />
     </span>
@@ -273,7 +267,7 @@ export function OfflineSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-8 text-center",
+        'flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-8 text-center',
         className
       )}
     >

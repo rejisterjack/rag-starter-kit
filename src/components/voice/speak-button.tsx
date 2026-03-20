@@ -1,21 +1,16 @@
-"use client";
+'use client';
 
 /**
  * Speak Button Component
  * Speaker button to read text aloud with play/stop functionality
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { Volume2, VolumeX, Pause, Play, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Loader2, Pause, Play, Volume2, VolumeX } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button, type ButtonProps } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useVoiceOutput } from '@/hooks/use-voice';
+import { cn } from '@/lib/utils';
 import type { SupportedLanguage } from '@/lib/voice';
 
 interface SpeakButtonProps extends Omit<ButtonProps, 'onClick'> {
@@ -64,15 +59,7 @@ export function SpeakButton({
   disabled,
   ...props
 }: SpeakButtonProps) {
-  const {
-    isSpeaking,
-    isPaused,
-    isSupported,
-    speak,
-    cancel,
-    pause,
-    resume,
-  } = useVoiceOutput({
+  const { isSpeaking, isPaused, isSupported, speak, cancel, pause, resume } = useVoiceOutput({
     defaultRate: rate,
     defaultPitch: pitch,
     onSpeakingStart: onSpeakStart,
@@ -81,13 +68,30 @@ export function SpeakButton({
 
   const [isLoading, setIsLoading] = useState(false);
 
+  const handleSpeak = useCallback(() => {
+    if (!isSupported) return;
+
+    setIsLoading(true);
+
+    // Clean text for speech (remove markdown, etc.)
+    const cleanText = text
+      .replace(/[#*_`~[\]()|-]/g, '') // Remove markdown characters
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+
+    speak(cleanText, {
+      lang: language,
+    });
+
+    setIsLoading(false);
+  }, [isSupported, text, language, speak]);
+
   // Auto-play on mount if enabled
   useEffect(() => {
     if (autoPlay && isSupported && text) {
       handleSpeak();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPlay, isSupported]);
+  }, [autoPlay, isSupported, text, handleSpeak]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -95,24 +99,6 @@ export function SpeakButton({
       cancel();
     };
   }, [cancel]);
-
-  const handleSpeak = useCallback(() => {
-    if (!isSupported) return;
-    
-    setIsLoading(true);
-    
-    // Clean text for speech (remove markdown, etc.)
-    const cleanText = text
-      .replace(/[#*_`~\[\]\(\)|\-]/g, '') // Remove markdown characters
-      .replace(/\s+/g, ' ') // Normalize whitespace
-      .trim();
-
-    speak(cleanText, {
-      lang: language,
-    });
-    
-    setIsLoading(false);
-  }, [isSupported, text, language, speak]);
 
   const handleToggle = useCallback(() => {
     if (isSpeaking) {
@@ -135,14 +121,14 @@ export function SpeakButton({
     if (isLoading) {
       return <Loader2 className="h-4 w-4 animate-spin" />;
     }
-    
+
     if (isSpeaking) {
       if (allowPause && isPaused) {
         return <Play className="h-4 w-4" />;
       }
       return <VolumeX className="h-4 w-4" />;
     }
-    
+
     return <Volume2 className="h-4 w-4" />;
   };
 
@@ -207,11 +193,7 @@ export function SpeakButton({
               {...props}
             >
               {getIcon()}
-              {!iconOnly && (
-                <span className="ml-2">
-                  {isSpeaking ? 'Stop' : label || 'Speak'}
-                </span>
-              )}
+              {!iconOnly && <span className="ml-2">{isSpeaking ? 'Stop' : label || 'Speak'}</span>}
             </Button>
 
             {/* Pause button */}
@@ -223,11 +205,7 @@ export function SpeakButton({
                 className="h-8 w-8"
                 aria-label={isPaused ? 'Resume' : 'Pause'}
               >
-                {isPaused ? (
-                  <Play className="h-4 w-4" />
-                ) : (
-                  <Pause className="h-4 w-4" />
-                )}
+                {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
               </Button>
             )}
           </div>
@@ -273,10 +251,10 @@ export function SpeakText({
 
   useEffect(() => {
     if (autoPlay) {
-      const cleanText = text.replace(/[#*_`~\[\]\(\)|\-]/g, '').trim();
+      const cleanText = text.replace(/[#*_`~[\]()|-]/g, '').trim();
       speak(cleanText, { lang: language });
     }
-    
+
     return () => {
       cancel();
     };
@@ -284,14 +262,7 @@ export function SpeakText({
 
   if (!showButton) return null;
 
-  return (
-    <SpeakButton
-      text={text}
-      language={language}
-      rate={rate}
-      className={className}
-    />
-  );
+  return <SpeakButton text={text} language={language} rate={rate} className={className} />;
 }
 
 // =============================================================================
@@ -325,7 +296,7 @@ export function VoiceMessageReader({
   onReadMessage,
 }: VoiceMessageReaderProps) {
   const [readingIndex, setReadingIndex] = useState<number | null>(null);
-  
+
   const { isSpeaking, speak } = useVoiceOutput({
     defaultRate: rate,
     onSpeakingEnd: () => {
@@ -356,17 +327,20 @@ export function VoiceMessageReader({
     return -1;
   };
 
-  const readMessage = useCallback((index: number) => {
-    const message = messages[index];
-    if (!message || message.role !== 'assistant') return;
+  const readMessage = useCallback(
+    (index: number) => {
+      const message = messages[index];
+      if (!message || message.role !== 'assistant') return;
 
-    const cleanText = message.content
-      .replace(/[#*_`~\[\]\(\)|\-]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+      const cleanText = message.content
+        .replace(/[#*_`~[\]()|-]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-    speak(cleanText, { lang: language });
-  }, [messages, language, speak]);
+      speak(cleanText, { lang: language });
+    },
+    [messages, language, speak]
+  );
 
   // Auto-read when new assistant message arrives
   useEffect(() => {

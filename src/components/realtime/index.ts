@@ -2,30 +2,27 @@
  * Real-time collaboration components exports
  */
 
-export { 
-  TypingIndicator, 
-  CompactTypingIndicator, 
-  BubbleTypingIndicator 
-} from './typing-indicator';
-
-export { 
-  PresenceIndicator, 
+export {
+  CollaborativeCursors,
+  CursorActivityIndicator,
+  CursorList,
+} from './collaborative-cursors';
+export {
+  LiveChatIndicator,
+  LiveMessageStatus,
+  MessageSyncBadge,
+  RealtimeActivityBadge,
+  SyncStatusIndicator,
+} from './live-chat-indicator';
+export {
+  CompactPresenceIndicator,
+  PresenceIndicator,
+  PresenceList,
   PresenceStatusIndicator,
   UserPresenceBadge,
-  CompactPresenceIndicator,
-  PresenceList,
 } from './presence-indicator';
-
-export { 
-  CollaborativeCursors,
-  CursorList,
-  CursorActivityIndicator,
-} from './collaborative-cursors';
-
-export { 
-  LiveChatIndicator,
-  SyncStatusIndicator,
-  MessageSyncBadge,
-  LiveMessageStatus,
-  RealtimeActivityBadge,
-} from './live-chat-indicator';
+export {
+  BubbleTypingIndicator,
+  CompactTypingIndicator,
+  TypingIndicator,
+} from './typing-indicator';

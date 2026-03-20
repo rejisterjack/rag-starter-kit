@@ -4,11 +4,15 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+interface NavigatorWithStandalone extends Navigator {
+  standalone?: boolean;
 }
 
 export interface PWAStatus {
@@ -51,11 +55,11 @@ export function usePWA(): UsePWAReturn {
 
     // Check if PWA is supported
     const isSupported = 'serviceWorker' in navigator && 'BeforeInstallPromptEvent' in window;
-    
+
     // Check if running in standalone mode
-    const isStandalone = 
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true;
+    const nav = window.navigator as NavigatorWithStandalone;
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true;
 
     // Detect platform
     const userAgent = window.navigator.userAgent.toLowerCase();
@@ -128,8 +132,8 @@ export function usePWA(): UsePWAReturn {
             }
           });
         })
-        .catch((error) => {
-          console.error('SW registration failed:', error);
+        .catch(() => {
+          // Silently handle service worker registration failure
         });
 
       // Listen for messages from SW
@@ -155,7 +159,7 @@ export function usePWA(): UsePWAReturn {
 
     deferredPrompt.current.prompt();
     const { outcome } = await deferredPrompt.current.userChoice;
-    
+
     deferredPrompt.current = null;
     setStatus((prev) => ({ ...prev, canInstall: false }));
 
@@ -227,8 +231,8 @@ export function useServiceWorker(): {
             }
           });
         })
-        .catch((error) => {
-          console.error('SW registration failed:', error);
+        .catch(() => {
+          // Silently handle service worker registration failure
         });
 
       // Listen for messages from SW
@@ -247,14 +251,14 @@ export function useServiceWorker(): {
 
   const update = useCallback(async (): Promise<void> => {
     setIsUpdating(true);
-    
+
     if (swRegistration.current?.waiting) {
       swRegistration.current.waiting.postMessage({ type: 'SKIP_WAITING' });
     }
-    
+
     // Wait a bit for the service worker to activate
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    
+
     // Reload the page to use the new service worker
     window.location.reload();
   }, []);
@@ -314,12 +318,12 @@ export function useOfflineStatus(): {
 
   const formattedOfflineDuration = useMemo(() => {
     if (!offlineSince) return null;
-    
+
     const now = new Date();
     const diffMs = now.getTime() - offlineSince.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
-    
+
     if (diffHours > 0) {
       return `${diffHours}h ${diffMins % 60}m`;
     }
@@ -356,10 +360,10 @@ export function useInstallPrompt(): {
     if (typeof window === 'undefined') return;
 
     // Check if running in standalone mode
-    const standalone = 
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true;
-    
+    const nav = window.navigator as NavigatorWithStandalone;
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true;
+
     setIsStandalone(standalone);
     setIsInstalled(standalone);
 
@@ -391,7 +395,7 @@ export function useInstallPrompt(): {
 
     deferredPrompt.current.prompt();
     const { outcome } = await deferredPrompt.current.userChoice;
-    
+
     deferredPrompt.current = null;
     setIsInstallable(false);
 
@@ -409,6 +413,12 @@ export function useInstallPrompt(): {
     isStandalone,
     promptInstall,
     dismissInstall,
+  };
+}
+
+interface ServiceWorkerRegistrationWithSync extends ServiceWorkerRegistration {
+  sync?: {
+    register(tag: string): Promise<void>;
   };
 }
 
@@ -433,7 +443,7 @@ export function useBackgroundSync(): {
 
     // Check if Background Sync is supported
     setIsSupported('serviceWorker' in navigator && 'SyncManager' in window);
-    
+
     setIsOnline(navigator.onLine);
 
     const handleOnline = () => {
@@ -461,8 +471,8 @@ export function useBackgroundSync(): {
       if (action) {
         try {
           await action();
-        } catch (error) {
-          console.error('Background sync action failed:', error);
+        } catch {
+          // Silently handle background sync action failures
         }
       }
       setPendingCount(actionQueue.current.length);
@@ -480,18 +490,22 @@ export function useBackgroundSync(): {
     }
   }, []);
 
-  const registerSync = useCallback(async (tag: string): Promise<void> => {
-    if (!isSupported || !navigator.serviceWorker?.ready) return;
-    
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      if ('sync' in registration) {
-        await (registration as ServiceWorkerRegistration & { sync: { register(tag: string): Promise<void> } }).sync.register(tag);
+  const registerSync = useCallback(
+    async (tag: string): Promise<void> => {
+      if (!isSupported || !navigator.serviceWorker?.ready) return;
+
+      try {
+        const registration = (await navigator.serviceWorker
+          .ready) as ServiceWorkerRegistrationWithSync;
+        if (registration.sync) {
+          await registration.sync.register(tag);
+        }
+      } catch {
+        // Silently handle sync registration failures
       }
-    } catch (error) {
-      console.error('Failed to register sync:', error);
-    }
-  }, [isSupported]);
+    },
+    [isSupported]
+  );
 
   return {
     isOnline,

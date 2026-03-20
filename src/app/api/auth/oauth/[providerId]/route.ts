@@ -1,17 +1,13 @@
 /**
  * OAuth Provider Initiation Endpoint
- * 
+ *
  * Initiates OAuth 2.0 / OIDC authentication flow.
  * Generates state parameter and redirects to the IdP authorization endpoint.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
-import {
-  generateAuthUrl,
-  generateState,
-  getOAuthProviderById,
-} from '@/lib/auth/oauth/providers';
+import { generateAuthUrl, generateState, getOAuthProviderById } from '@/lib/auth/oauth/providers';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,10 +22,7 @@ export async function GET(
     const returnUrl = searchParams.get('returnUrl') || '/chat';
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { error: 'Workspace ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Workspace ID is required' }, { status: 400 });
     }
 
     const baseUrl = getBaseUrl(request);
@@ -38,17 +31,11 @@ export async function GET(
     const provider = await getOAuthProviderById(providerId);
 
     if (!provider) {
-      return NextResponse.json(
-        { error: 'OAuth provider not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'OAuth provider not found' }, { status: 404 });
     }
 
     if (!provider.active) {
-      return NextResponse.json(
-        { error: 'OAuth provider is disabled' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'OAuth provider is disabled' }, { status: 403 });
     }
 
     // Validate workspace matches provider
@@ -71,7 +58,7 @@ export async function GET(
     const response = NextResponse.redirect(authUrl, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate',
-        'Pragma': 'no-cache',
+        Pragma: 'no-cache',
       },
     });
 
@@ -84,12 +71,8 @@ export async function GET(
     });
 
     return response;
-  } catch (error) {
-    console.error('OAuth initiation failed:', error);
-    return NextResponse.json(
-      { error: 'Failed to initiate OAuth flow' },
-      { status: 500 }
-    );
+  } catch (_error) {
+    return NextResponse.json({ error: 'Failed to initiate OAuth flow' }, { status: 500 });
   }
 }
 

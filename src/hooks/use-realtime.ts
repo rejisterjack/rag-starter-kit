@@ -6,21 +6,21 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
-  RealtimeService,
-  createRealtimeService,
-  type RealtimeClientConfig,
-  type RoomMember,
-  type UserInfo,
-  type RealtimeMessage,
-  type TypingEvent,
-  type PresenceEvent,
   type CursorPosition,
-  type NotificationEvent,
+  createRealtimeService,
   DEFAULT_REALTIME_CONFIG,
+  type NotificationEvent,
+  type PresenceEvent,
+  type RealtimeClientConfig,
+  type RealtimeMessage,
+  type RealtimeService,
+  type RoomMember,
+  type TypingEvent,
+  type UserInfo,
 } from '@/lib/realtime';
 
 // =============================================================================
@@ -46,11 +46,11 @@ interface UseRealtimeReturn {
   isConnecting: boolean;
   error: Error | null;
   reconnectAttempts: number;
-  
+
   // Room state
   currentRoomId: string | null;
   onlineUsers: RoomMember[];
-  
+
   // Actions
   connect: () => Promise<void>;
   disconnect: () => void;
@@ -80,10 +80,10 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
   } = options;
 
   const { data: session } = useSession();
-  
+
   // Service ref to maintain instance across renders
   const serviceRef = useRef<RealtimeService | null>(null);
-  
+
   // State
   const [connectionState, setConnectionState] = useState<{
     isConnected: boolean;
@@ -96,7 +96,7 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     error: null,
     reconnectAttempts: 0,
   });
-  
+
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(initialRoomId || null);
   const [onlineUsers, setOnlineUsers] = useState<RoomMember[]>([]);
 
@@ -128,30 +128,44 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     // Connection events
     unsubscribers.push(
       service.on('connected', () => {
-        setConnectionState((prev: { isConnected: boolean; isConnecting: boolean; error: Error | null; reconnectAttempts: number }) => ({
-          ...prev,
-          isConnected: true,
-          isConnecting: false,
-          error: null,
-          reconnectAttempts: 0,
-        }));
+        setConnectionState(
+          (prev: {
+            isConnected: boolean;
+            isConnecting: boolean;
+            error: Error | null;
+            reconnectAttempts: number;
+          }) => ({
+            ...prev,
+            isConnected: true,
+            isConnecting: false,
+            error: null,
+            reconnectAttempts: 0,
+          })
+        );
       })
     );
 
     unsubscribers.push(
       service.on('disconnected', () => {
-        setConnectionState((prev: { isConnected: boolean; isConnecting: boolean; error: Error | null; reconnectAttempts: number }) => ({
-          ...prev,
-          isConnected: false,
-          isConnecting: false,
-        }));
+        setConnectionState(
+          (prev: {
+            isConnected: boolean;
+            isConnecting: boolean;
+            error: Error | null;
+            reconnectAttempts: number;
+          }) => ({
+            ...prev,
+            isConnected: false,
+            isConnecting: false,
+          })
+        );
       })
     );
 
     unsubscribers.push(
       service.on('error', ({ error, message }: { error?: Error; message?: string }) => {
         const err = error || new Error(message || 'Unknown error');
-        setConnectionState(prev => ({
+        setConnectionState((prev) => ({
           ...prev,
           error: err,
         }));
@@ -182,16 +196,19 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     // Presence events
     unsubscribers.push(
       service.on('presenceJoin', (event: PresenceEvent) => {
-        setOnlineUsers(prev => {
-          const exists = prev.some(u => u.user.id === event.user.id);
+        setOnlineUsers((prev) => {
+          const exists = prev.some((u) => u.user.id === event.user.id);
           if (exists) return prev;
-          return [...prev, {
-            socketId: '',
-            user: event.user,
-            joinedAt: new Date(event.timestamp),
-            isTyping: false,
-            lastActivity: new Date(event.timestamp),
-          }];
+          return [
+            ...prev,
+            {
+              socketId: '',
+              user: event.user,
+              joinedAt: new Date(event.timestamp),
+              isTyping: false,
+              lastActivity: new Date(event.timestamp),
+            },
+          ];
         });
         onPresence?.(event);
       })
@@ -199,7 +216,7 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
 
     unsubscribers.push(
       service.on('presenceLeave', (event: PresenceEvent) => {
-        setOnlineUsers(prev => prev.filter(u => u.user.id !== event.user.id));
+        setOnlineUsers((prev) => prev.filter((u) => u.user.id !== event.user.id));
         onPresence?.(event);
       })
     );
@@ -215,13 +232,18 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     }
 
     return () => {
-      unsubscribers.forEach(unsub => unsub());
+      unsubscribers.forEach((unsub) => unsub());
     };
   }, [service, onMessage, onTyping, onPresence, onCursor, onNotification, onError]);
 
   // Auto-connect
   useEffect(() => {
-    if (autoConnect && session?.user?.id && !connectionState.isConnected && !connectionState.isConnecting) {
+    if (
+      autoConnect &&
+      session?.user?.id &&
+      !connectionState.isConnected &&
+      !connectionState.isConnecting
+    ) {
       connect();
     }
   }, [autoConnect, session?.user?.id, connectionState.isConnected, connectionState.isConnecting]);
@@ -236,20 +258,34 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
   // Actions
   const connect = useCallback(async (): Promise<void> => {
     if (!service || !session?.user?.id) return;
-    
-    setConnectionState((prev: { isConnected: boolean; isConnecting: boolean; error: Error | null; reconnectAttempts: number }) => ({ ...prev, isConnecting: true, error: null }));
-    
+
+    setConnectionState(
+      (prev: {
+        isConnected: boolean;
+        isConnecting: boolean;
+        error: Error | null;
+        reconnectAttempts: number;
+      }) => ({ ...prev, isConnecting: true, error: null })
+    );
+
     try {
       await service.connect({
         userId: session.user.id,
       });
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      setConnectionState((prev: { isConnected: boolean; isConnecting: boolean; error: Error | null; reconnectAttempts: number }) => ({
-        ...prev,
-        isConnecting: false,
-        error: err,
-      }));
+      setConnectionState(
+        (prev: {
+          isConnected: boolean;
+          isConnecting: boolean;
+          error: Error | null;
+          reconnectAttempts: number;
+        }) => ({
+          ...prev,
+          isConnecting: false,
+          error: err,
+        })
+      );
       throw err;
     }
   }, [service, session?.user?.id]);
@@ -266,38 +302,53 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     setOnlineUsers([]);
   }, [service]);
 
-  const joinRoom = useCallback(async (
-    roomId: string, 
-    type: 'workspace' | 'conversation' | 'private' = roomType
-  ): Promise<void> => {
-    if (!service) return;
-    
-    setCurrentRoomId(roomId);
-    await service.joinRoom(roomId, type);
-  }, [service, roomType]);
+  const joinRoom = useCallback(
+    async (
+      roomId: string,
+      type: 'workspace' | 'conversation' | 'private' = roomType
+    ): Promise<void> => {
+      if (!service) return;
 
-  const leaveRoom = useCallback((roomId: string): void => {
-    service?.leaveRoom(roomId);
-    if (currentRoomId === roomId) {
-      setCurrentRoomId(null);
-      setOnlineUsers([]);
-    }
-  }, [service, currentRoomId]);
+      setCurrentRoomId(roomId);
+      await service.joinRoom(roomId, type);
+    },
+    [service, roomType]
+  );
 
-  const sendMessage = useCallback((content: string, parentId?: string): void => {
-    if (!service || !currentRoomId) return;
-    service.sendMessage(currentRoomId, content, parentId);
-  }, [service, currentRoomId]);
+  const leaveRoom = useCallback(
+    (roomId: string): void => {
+      service?.leaveRoom(roomId);
+      if (currentRoomId === roomId) {
+        setCurrentRoomId(null);
+        setOnlineUsers([]);
+      }
+    },
+    [service, currentRoomId]
+  );
 
-  const editMessage = useCallback((messageId: string, content: string): void => {
-    if (!service || !currentRoomId) return;
-    service.editMessage(currentRoomId, messageId, content);
-  }, [service, currentRoomId]);
+  const sendMessage = useCallback(
+    (content: string, parentId?: string): void => {
+      if (!service || !currentRoomId) return;
+      service.sendMessage(currentRoomId, content, parentId);
+    },
+    [service, currentRoomId]
+  );
 
-  const deleteMessage = useCallback((messageId: string): void => {
-    if (!service || !currentRoomId) return;
-    service.deleteMessage(currentRoomId, messageId);
-  }, [service, currentRoomId]);
+  const editMessage = useCallback(
+    (messageId: string, content: string): void => {
+      if (!service || !currentRoomId) return;
+      service.editMessage(currentRoomId, messageId, content);
+    },
+    [service, currentRoomId]
+  );
+
+  const deleteMessage = useCallback(
+    (messageId: string): void => {
+      if (!service || !currentRoomId) return;
+      service.deleteMessage(currentRoomId, messageId);
+    },
+    [service, currentRoomId]
+  );
 
   return {
     isConnected: connectionState.isConnected,
@@ -338,7 +389,7 @@ export function useTypingIndicator(
   options: UseTypingIndicatorOptions
 ): UseTypingIndicatorReturn {
   const { roomId, delay = 5000 } = options;
-  
+
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState<TypingEvent[]>([]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -347,19 +398,19 @@ export function useTypingIndicator(
     if (!service) return;
 
     const unsubscribe = service.on('typing', (event: TypingEvent) => {
-      setTypingUsers(prev => {
+      setTypingUsers((prev) => {
         if (event.isTyping) {
-          const filtered = prev.filter(u => u.user.id !== event.user.id);
+          const filtered = prev.filter((u) => u.user.id !== event.user.id);
           return [...filtered, event];
         } else {
-          return prev.filter(u => u.user.id !== event.user.id);
+          return prev.filter((u) => u.user.id !== event.user.id);
         }
       });
 
       // Auto-remove after delay
       if (event.isTyping) {
         setTimeout(() => {
-          setTypingUsers(prev => prev.filter(u => u.user.id !== event.user.id));
+          setTypingUsers((prev) => prev.filter((u) => u.user.id !== event.user.id));
         }, delay + 1000);
       }
     });
@@ -369,7 +420,7 @@ export function useTypingIndicator(
 
   const startTyping = useCallback(() => {
     if (!service || isTyping) return;
-    
+
     setIsTyping(true);
     service.startTyping(roomId);
 
@@ -377,7 +428,7 @@ export function useTypingIndicator(
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
-    
+
     typingTimeoutRef.current = setTimeout(() => {
       stopTyping();
     }, delay);
@@ -385,10 +436,10 @@ export function useTypingIndicator(
 
   const stopTyping = useCallback(() => {
     if (!service || !isTyping) return;
-    
+
     setIsTyping(false);
     service.stopTyping(roomId);
-    
+
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = null;
@@ -409,9 +460,10 @@ export function useTypingIndicator(
 
   return {
     isTyping,
-    typingUsers: useMemo(() => 
-      typingUsers.filter(u => Date.now() - u.timestamp < delay),
-    [typingUsers, delay]),
+    typingUsers: useMemo(
+      () => typingUsers.filter((u) => Date.now() - u.timestamp < delay),
+      [typingUsers, delay]
+    ),
     startTyping,
     stopTyping,
   };
@@ -446,23 +498,26 @@ export function usePresence(
 
     const unsubscribeJoin = service.on('presenceJoin', (event: PresenceEvent) => {
       if (event.roomId === roomId) {
-        setOnlineUsers(prev => {
-          const exists = prev.some(u => u.user.id === event.user.id);
+        setOnlineUsers((prev) => {
+          const exists = prev.some((u) => u.user.id === event.user.id);
           if (exists) return prev;
-          return [...prev, {
-            socketId: '',
-            user: event.user,
-            joinedAt: new Date(event.timestamp),
-            isTyping: false,
-            lastActivity: new Date(event.timestamp),
-          }];
+          return [
+            ...prev,
+            {
+              socketId: '',
+              user: event.user,
+              joinedAt: new Date(event.timestamp),
+              isTyping: false,
+              lastActivity: new Date(event.timestamp),
+            },
+          ];
         });
       }
     });
 
     const unsubscribeLeave = service.on('presenceLeave', (event: PresenceEvent) => {
       if (event.roomId === roomId) {
-        setOnlineUsers(prev => prev.filter(u => u.user.id !== event.user.id));
+        setOnlineUsers((prev) => prev.filter((u) => u.user.id !== event.user.id));
       }
     });
 
@@ -472,9 +527,12 @@ export function usePresence(
     };
   }, [service, roomId]);
 
-  const isUserOnline = useCallback((userId: string): boolean => {
-    return onlineUsers.some(u => u.user.id === userId);
-  }, [onlineUsers]);
+  const isUserOnline = useCallback(
+    (userId: string): boolean => {
+      return onlineUsers.some((u) => u.user.id === userId);
+    },
+    [onlineUsers]
+  );
 
   return {
     onlineUsers,
@@ -514,34 +572,33 @@ export function useCursorSync(
   useEffect(() => {
     if (!service) return;
 
-    const unsubscribe = service.on('cursor', (event: { 
-      user: UserInfo; 
-      position: CursorPosition; 
-      timestamp: number;
-    }) => {
-      setCursors(prev => {
-        const next = new Map(prev);
-        next.set(event.user.id, {
-          user: event.user,
-          position: event.position,
-          timestamp: event.timestamp,
+    const unsubscribe = service.on(
+      'cursor',
+      (event: { user: UserInfo; position: CursorPosition; timestamp: number }) => {
+        setCursors((prev) => {
+          const next = new Map(prev);
+          next.set(event.user.id, {
+            user: event.user,
+            position: event.position,
+            timestamp: event.timestamp,
+          });
+          return next;
         });
-        return next;
-      });
 
-      // Auto-remove stale cursors after 30 seconds
-      setTimeout(() => {
-        setCursors(prev => {
-          const cursor = prev.get(event.user.id);
-          if (cursor && Date.now() - cursor.timestamp > 30000) {
-            const next = new Map(prev);
-            next.delete(event.user.id);
-            return next;
-          }
-          return prev;
-        });
-      }, 30000);
-    });
+        // Auto-remove stale cursors after 30 seconds
+        setTimeout(() => {
+          setCursors((prev) => {
+            const cursor = prev.get(event.user.id);
+            if (cursor && Date.now() - cursor.timestamp > 30000) {
+              const next = new Map(prev);
+              next.delete(event.user.id);
+              return next;
+            }
+            return prev;
+          });
+        }, 30000);
+      }
+    );
 
     return unsubscribe;
   }, [service]);
@@ -571,9 +628,12 @@ export function useCursorSync(
     return () => container.removeEventListener('mousemove', handleMouseMove);
   }, [service, roomId, containerRef]);
 
-  const updateCursor = useCallback((position: CursorPosition) => {
-    service?.updateCursor(roomId, position);
-  }, [service, roomId]);
+  const updateCursor = useCallback(
+    (position: CursorPosition) => {
+      service?.updateCursor(roomId, position);
+    },
+    [service, roomId]
+  );
 
   return {
     cursors,

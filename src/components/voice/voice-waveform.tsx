@@ -17,7 +17,7 @@ export function VoiceWaveform({
   color = 'currentColor',
 }: VoiceWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -132,11 +132,11 @@ interface PulsingDotProps {
   className?: string;
 }
 
-export function PulsingDot({ 
-  variant = 'default', 
-  size = 'md', 
-  isActive = true, 
-  className 
+export function PulsingDot({
+  variant = 'default',
+  size = 'md',
+  isActive = true,
+  className,
 }: PulsingDotProps) {
   const sizeClasses = {
     sm: 'w-2 h-2',

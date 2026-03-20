@@ -1,20 +1,16 @@
 /**
  * SAML Service Provider Metadata Endpoint
- * 
+ *
  * Returns the SP metadata XML that can be provided to Identity Providers
  * for configuration. This metadata contains the ACS URL, entity ID,
  * and supported bindings.
- * 
+ *
  * @see SAML 2.0 Metadata Specification
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
-import {
-  generateSPMetadata,
-  type SPMetadataConfig,
-  getSamlUrls,
-} from '@/lib/auth/saml/config';
+import { generateSPMetadata, getSamlUrls, type SPMetadataConfig } from '@/lib/auth/saml/config';
 import { getWorkspaceSamlConfig } from '@/lib/auth/saml/provider';
 
 export const dynamic = 'force-dynamic';
@@ -34,10 +30,7 @@ export async function GET(
     const config = await getWorkspaceSamlConfig(workspaceId);
 
     if (!config) {
-      return NextResponse.json(
-        { error: 'SAML configuration not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'SAML configuration not found' }, { status: 404 });
     }
 
     const urls = getSamlUrls(workspaceId, baseUrl);
@@ -86,12 +79,8 @@ export async function GET(
         'X-Content-Type-Options': 'nosniff',
       },
     });
-  } catch (error) {
-    console.error('SAML metadata generation failed:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate metadata' },
-      { status: 500 }
-    );
+  } catch (_error) {
+    return NextResponse.json({ error: 'Failed to generate metadata' }, { status: 500 });
   }
 }
 

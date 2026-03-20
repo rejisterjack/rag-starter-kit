@@ -1,9 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import { Copy, Eye, EyeOff, RefreshCw, Trash2, MoreHorizontal } from 'lucide-react';
 import { format } from 'date-fns';
+import { Copy, Eye, EyeOff, MoreHorizontal, RefreshCw, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Table,
   TableBody,
@@ -12,15 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 interface ApiKey {
@@ -138,9 +138,7 @@ export function ApiKeyList({
                   {format(new Date(apiKey.createdAt), 'MMM d, yyyy')}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {apiKey.lastUsedAt
-                    ? format(new Date(apiKey.lastUsedAt), 'MMM d, yyyy')
-                    : 'Never'}
+                  {apiKey.lastUsedAt ? format(new Date(apiKey.lastUsedAt), 'MMM d, yyyy') : 'Never'}
                 </TableCell>
                 <TableCell>{apiKey.requestCount.toLocaleString()}</TableCell>
                 <TableCell>

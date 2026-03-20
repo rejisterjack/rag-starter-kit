@@ -2,11 +2,8 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import {
-  removeMember,
-  updateMemberRole,
-} from '@/lib/workspace/workspace';
 import { canManageMembers } from '@/lib/workspace/permissions';
+import { removeMember, updateMemberRole } from '@/lib/workspace/workspace';
 
 interface RouteParams {
   params: Promise<{ workspaceId: string; memberId: string }>;
@@ -88,8 +85,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       success: true,
       data: { message: 'Member role updated successfully' },
     });
-  } catch (error) {
-    console.error('Update member error:', error);
+  } catch (_error) {
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to update member' } },
       { status: 500 }
@@ -143,11 +139,7 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
     }
 
     // Remove member
-    const result = await removeMember(
-      workspaceId,
-      member.userId,
-      session.user.id
-    );
+    const result = await removeMember(workspaceId, member.userId, session.user.id);
 
     if (!result.success) {
       return NextResponse.json(
@@ -160,8 +152,7 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       success: true,
       data: { message: 'Member removed successfully' },
     });
-  } catch (error) {
-    console.error('Remove member error:', error);
+  } catch (_error) {
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to remove member' } },
       { status: 500 }

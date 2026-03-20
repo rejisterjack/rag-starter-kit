@@ -1,15 +1,38 @@
 /**
  * Workspace Fixtures
- * 
+ *
  * Sample workspaces for testing multi-tenancy and collaboration features.
  */
 
-import type { Workspace, Membership } from '@prisma/client';
+import type { Workspace, WorkspaceMember, WorkspaceRole, MemberStatus } from '@prisma/client';
+
+// =============================================================================
+// Workspace Types
+// =============================================================================
+
+type WorkspacePlan = 'free' | 'pro' | 'enterprise';
+
+type WorkspaceWithPlan = Workspace & {
+  plan: WorkspacePlan;
+  storageUsed: number;
+  memberCount: number;
+  documentCount: number;
+  deletedAt?: Date | null;
+};
+
+type MembershipWithRole = WorkspaceMember & {
+  role: WorkspaceRole | 'owner' | 'admin' | 'member' | 'viewer';
+  invitedEmail: string | null;
+};
+
+// =============================================================================
+// Workspace Fixtures
+// =============================================================================
 
 /**
  * Personal workspace fixture
  */
-export const personalWorkspace: Partial<Workspace> = {
+export const personalWorkspace: Partial<WorkspaceWithPlan> = {
   id: 'workspace-001',
   name: 'Personal Workspace',
   slug: 'personal-workspace',
@@ -25,7 +48,7 @@ export const personalWorkspace: Partial<Workspace> = {
 /**
  * Team workspace fixture
  */
-export const teamWorkspace: Partial<Workspace> = {
+export const teamWorkspace: Partial<WorkspaceWithPlan> = {
   id: 'workspace-002',
   name: 'Engineering Team',
   slug: 'engineering-team',
@@ -41,7 +64,7 @@ export const teamWorkspace: Partial<Workspace> = {
 /**
  * Enterprise workspace fixture
  */
-export const enterpriseWorkspace: Partial<Workspace> = {
+export const enterpriseWorkspace: Partial<WorkspaceWithPlan> = {
   id: 'workspace-003',
   name: 'Acme Corp',
   slug: 'acme-corp',
@@ -57,7 +80,7 @@ export const enterpriseWorkspace: Partial<Workspace> = {
 /**
  * Archived workspace fixture
  */
-export const archivedWorkspace: Partial<Workspace> = {
+export const archivedWorkspace: Partial<WorkspaceWithPlan> = {
   id: 'workspace-004',
   name: 'Old Project',
   slug: 'old-project',
@@ -74,75 +97,86 @@ export const archivedWorkspace: Partial<Workspace> = {
 /**
  * Collection of all workspace fixtures
  */
-export const allWorkspaces: Partial<Workspace>[] = [
+export const allWorkspaces: Partial<WorkspaceWithPlan>[] = [
   personalWorkspace,
   teamWorkspace,
   enterpriseWorkspace,
   archivedWorkspace,
 ];
 
+// =============================================================================
+// Membership Fixtures
+// =============================================================================
+
 /**
- * Membership fixtures
+ * Owner membership fixture
  */
-export const ownerMembership: Partial<Membership> = {
+export const ownerMembership: Partial<MembershipWithRole> = {
   id: 'membership-001',
   userId: 'user-001',
   workspaceId: 'workspace-001',
-  role: 'owner',
+  role: 'OWNER',
+  status: 'ACTIVE' as MemberStatus,
   invitedEmail: null,
   joinedAt: new Date('2024-01-01'),
-  createdAt: new Date('2024-01-01'),
-  updatedAt: new Date('2024-01-01'),
 };
 
-export const adminMembership: Partial<Membership> = {
+/**
+ * Admin membership fixture
+ */
+export const adminMembership: Partial<MembershipWithRole> = {
   id: 'membership-002',
   userId: 'user-002',
   workspaceId: 'workspace-002',
-  role: 'admin',
+  role: 'ADMIN',
+  status: 'ACTIVE' as MemberStatus,
   invitedEmail: null,
   joinedAt: new Date('2023-12-01'),
-  createdAt: new Date('2023-12-01'),
-  updatedAt: new Date('2024-01-15'),
 };
 
-export const memberMembership: Partial<Membership> = {
+/**
+ * Member membership fixture
+ */
+export const memberMembership: Partial<MembershipWithRole> = {
   id: 'membership-003',
   userId: 'user-003',
   workspaceId: 'workspace-002',
-  role: 'member',
+  role: 'MEMBER',
+  status: 'ACTIVE' as MemberStatus,
   invitedEmail: null,
   joinedAt: new Date('2023-12-15'),
-  createdAt: new Date('2023-12-15'),
-  updatedAt: new Date('2024-01-10'),
 };
 
-export const viewerMembership: Partial<Membership> = {
+/**
+ * Viewer membership fixture
+ */
+export const viewerMembership: Partial<MembershipWithRole> = {
   id: 'membership-004',
   userId: 'user-004',
   workspaceId: 'workspace-002',
-  role: 'viewer',
+  role: 'VIEWER',
+  status: 'ACTIVE' as MemberStatus,
   invitedEmail: null,
   joinedAt: new Date('2024-01-01'),
-  createdAt: new Date('2024-01-01'),
-  updatedAt: new Date('2024-01-01'),
 };
 
-export const pendingMembership: Partial<Membership> = {
+/**
+ * Pending membership fixture
+ */
+export const pendingMembership: Partial<MembershipWithRole> = {
   id: 'membership-005',
   userId: 'user-005',
   workspaceId: 'workspace-003',
-  role: 'member',
+  role: 'MEMBER',
+  status: 'PENDING' as MemberStatus,
   invitedEmail: 'pending@example.com',
-  joinedAt: null, // Not joined yet
-  createdAt: new Date('2024-01-20'),
-  updatedAt: new Date('2024-01-20'),
+  joinedAt: undefined, // Not joined yet
 };
 
 /**
  * Collection of all membership fixtures
  */
-export const allMemberships: Partial<Membership>[] = [
+export const allMemberships: Partial<MembershipWithRole>[] = [
   ownerMembership,
   adminMembership,
   memberMembership,
@@ -150,42 +184,62 @@ export const allMemberships: Partial<Membership>[] = [
   pendingMembership,
 ];
 
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
 /**
  * Create a mock workspace with custom properties
  */
-export const createMockWorkspace = (overrides: Partial<Workspace> = {}): Partial<Workspace> => ({
-  id: `workspace-${Date.now()}`,
-  name: 'Test Workspace',
-  slug: `test-workspace-${Date.now()}`,
-  description: 'A test workspace',
-  plan: 'free',
-  storageUsed: 0,
-  memberCount: 1,
-  documentCount: 0,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  ...overrides,
-});
+export function createMockWorkspace(
+  overrides: Partial<WorkspaceWithPlan> = {}
+): Partial<WorkspaceWithPlan> {
+  const now = Date.now();
+  return {
+    id: `workspace-${now}`,
+    name: 'Test Workspace',
+    slug: `test-workspace-${now}`,
+    description: 'A test workspace',
+    plan: 'free',
+    storageUsed: 0,
+    memberCount: 1,
+    documentCount: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
 
 /**
  * Create a mock membership with custom properties
  */
-export const createMockMembership = (overrides: Partial<Membership> = {}): Partial<Membership> => ({
-  id: `membership-${Date.now()}`,
-  userId: 'user-001',
-  workspaceId: 'workspace-001',
-  role: 'member',
-  invitedEmail: null,
-  joinedAt: new Date(),
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  ...overrides,
-});
+export function createMockMembership(
+  overrides: Partial<MembershipWithRole> = {}
+): Partial<MembershipWithRole> {
+  return {
+    id: `membership-${Date.now()}`,
+    userId: 'user-001',
+    workspaceId: 'workspace-001',
+    role: 'MEMBER',
+    status: 'ACTIVE' as MemberStatus,
+    invitedEmail: null,
+    joinedAt: new Date(),
+    ...overrides,
+  };
+}
 
-/**
- * Workspace plan limits
- */
-export const planLimits = {
+// =============================================================================
+// Plan Limits
+// =============================================================================
+
+export interface PlanLimit {
+  maxMembers: number;
+  maxStorage: number;
+  maxDocuments: number;
+  features: string[];
+}
+
+export const planLimits: Record<WorkspacePlan, PlanLimit> = {
   free: {
     maxMembers: 3,
     maxStorage: 100 * 1024 * 1024, // 100MB
@@ -206,10 +260,22 @@ export const planLimits = {
   },
 };
 
-/**
- * Role permissions
- */
-export const rolePermissions = {
+// =============================================================================
+// Role Permissions
+// =============================================================================
+
+export interface RolePermissions {
+  canManageWorkspace: boolean;
+  canManageMembers: boolean;
+  canManageBilling: boolean;
+  canDeleteWorkspace: boolean;
+  canUploadDocuments: boolean;
+  canDeleteDocuments: boolean;
+  canViewAnalytics: boolean;
+  canManageIntegrations: boolean;
+}
+
+export const rolePermissions: Record<string, RolePermissions> = {
   owner: {
     canManageWorkspace: true,
     canManageMembers: true,

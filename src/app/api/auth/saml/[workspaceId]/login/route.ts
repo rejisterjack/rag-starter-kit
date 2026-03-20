@@ -1,16 +1,15 @@
 /**
  * SAML Login Initiation Endpoint
- * 
+ *
  * Initiates the SAML authentication flow by generating a SAML request
  * and redirecting the user to the Identity Provider's login page.
- * 
+ *
  * Supports SP-initiated SSO with optional relay state for deep linking.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-
-import { initiateLogin, getWorkspaceSamlConfig } from '@/lib/auth/saml/provider';
+import { type NextRequest, NextResponse } from 'next/server';
 import { SamlError } from '@/lib/auth/saml/config';
+import { getWorkspaceSamlConfig, initiateLogin } from '@/lib/auth/saml/provider';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +23,7 @@ export async function GET(
   try {
     const { workspaceId } = await params;
     const searchParams = request.nextUrl.searchParams;
-    
+
     // Get optional parameters
     const email = searchParams.get('email');
     const returnUrl = searchParams.get('returnUrl') || '/chat';
@@ -49,10 +48,7 @@ export async function GET(
     }
 
     if (!config.active) {
-      return NextResponse.json(
-        { error: 'SAML SSO is currently disabled' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'SAML SSO is currently disabled' }, { status: 403 });
     }
 
     // Validate email domain if provided
@@ -76,11 +72,7 @@ export async function GET(
     }
 
     // Initiate SAML login
-    const { redirectUrl, requestId } = await initiateLogin(
-      config,
-      baseUrl,
-      relayState
-    );
+    const { redirectUrl, requestId } = await initiateLogin(config, baseUrl, relayState);
 
     // Store request ID for validation (in production, use Redis with TTL)
     // This prevents replay attacks
@@ -90,12 +82,10 @@ export async function GET(
     return NextResponse.redirect(redirectUrl, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate',
-        'Pragma': 'no-cache',
+        Pragma: 'no-cache',
       },
     });
   } catch (error) {
-    console.error('SAML login initiation failed:', error);
-
     if (error instanceof SamlError) {
       return NextResponse.json(
         { error: error.message, code: error.code },
@@ -103,10 +93,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(
-      { error: 'Failed to initiate SAML login' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to initiate SAML login' }, { status: 500 });
   }
 }
 
@@ -128,7 +115,7 @@ async function storeSamlRequest(requestId: string, workspaceId: string): Promise
   const store = globalThis as unknown as {
     samlRequests?: Map<string, { workspaceId: string; createdAt: number }>;
   };
-  
+
   if (!store.samlRequests) {
     store.samlRequests = new Map();
   }
@@ -139,9 +126,12 @@ async function storeSamlRequest(requestId: string, workspaceId: string): Promise
   });
 
   // Auto-cleanup after 10 minutes
-  setTimeout(() => {
-    store.samlRequests?.delete(requestId);
-  }, 10 * 60 * 1000);
+  setTimeout(
+    () => {
+      store.samlRequests?.delete(requestId);
+    },
+    10 * 60 * 1000
+  );
 }
 
 // Import prisma for workspace lookup

@@ -1,40 +1,34 @@
-"use client";
+'use client';
 
 /**
  * Voice-enabled Message Item Component
  * Enhanced message item with text-to-speech support
  */
 
-import React, { useState, useCallback, useEffect } from "react";
-import { User, Bot, Pencil, Trash2, Check, X, Copy } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatRelativeTime } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Bot, Check, Copy, Pencil, Trash2, User, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Markdown } from "./markdown";
-import { CitationList, type Source } from "./citations";
-import { SpeakButton } from "@/components/voice/speak-button";
+} from '@/components/ui/dropdown-menu';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { SpeakButton } from '@/components/voice/speak-button';
+import { cn, formatRelativeTime } from '@/lib/utils';
 // import { useVoiceOutput } from "@/hooks/use-voice";
-import type { VoiceSettings } from "@/lib/voice";
+import type { VoiceSettings } from '@/lib/voice';
+import { CitationList, type Source } from './citations';
+import { Markdown } from './markdown';
 
 export interface Message {
   id: string;
-  role: "user" | "assistant" | "system";
+  role: 'user' | 'assistant' | 'system';
   content: string;
   createdAt: Date;
   sources?: Source[];
@@ -74,8 +68,8 @@ export function VoiceMessageItem({
   const [copied, setCopied] = useState(false);
   const [localAutoPlay, setLocalAutoPlay] = useState(autoPlay);
 
-  const isUser = message.role === "user";
-  const isAssistant = message.role === "assistant";
+  const isUser = message.role === 'user';
+  const isAssistant = message.role === 'assistant';
 
   const handleSaveEdit = () => {
     if (editContent.trim() && editContent !== message.content) {
@@ -105,21 +99,14 @@ export function VoiceMessageItem({
   }, [message.id, onSpeakEnd]);
 
   return (
-    <div
-      className={cn(
-        "group relative py-6",
-        isUser ? "bg-background" : "bg-muted/30"
-      )}
-    >
+    <div className={cn('group relative py-6', isUser ? 'bg-background' : 'bg-muted/30')}>
       <div className="mx-auto flex max-w-3xl gap-4 px-4">
         {/* Avatar */}
         <div className="flex shrink-0 flex-col items-center">
           <Avatar
             className={cn(
-              "h-8 w-8",
-              isUser
-                ? "bg-primary text-primary-foreground"
-                : "bg-green-600 text-white"
+              'h-8 w-8',
+              isUser ? 'bg-primary text-primary-foreground' : 'bg-green-600 text-white'
             )}
           >
             <AvatarFallback>
@@ -132,22 +119,21 @@ export function VoiceMessageItem({
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="mb-1 flex items-center gap-2">
-            <span className="text-sm font-semibold">
-              {isUser ? "You" : "Assistant"}
-            </span>
+            <span className="text-sm font-semibold">{isUser ? 'You' : 'Assistant'}</span>
             <span className="text-xs text-muted-foreground">
               {formatRelativeTime(message.createdAt)}
             </span>
             {message.model && (
-              <span className="text-xs text-muted-foreground">
-                · {message.model}
-              </span>
+              <span className="text-xs text-muted-foreground">· {message.model}</span>
             )}
-            
+
             {/* Auto-play toggle for assistant messages */}
             {isAssistant && (
               <div className="ml-auto flex items-center gap-2">
-                <Label htmlFor={`autoplay-${message.id}`} className="text-xs text-muted-foreground cursor-pointer">
+                <Label
+                  htmlFor={`autoplay-${message.id}`}
+                  className="text-xs text-muted-foreground cursor-pointer"
+                >
                   Auto-play
                 </Label>
                 <Switch
@@ -183,10 +169,7 @@ export function VoiceMessageItem({
           ) : (
             <>
               <div className="text-foreground">
-                <Markdown
-                  content={message.content}
-                  onCitationClick={onCitationClick}
-                />
+                <Markdown content={message.content} onCitationClick={onCitationClick} />
               </div>
 
               {/* Sources for assistant messages */}
@@ -234,12 +217,7 @@ export function VoiceMessageItem({
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={handleCopy}
-                    >
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopy}>
                       {copied ? (
                         <Check className="h-4 w-4 text-green-500" />
                       ) : (
@@ -248,7 +226,7 @@ export function VoiceMessageItem({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{copied ? "Copied!" : "Copy message"}</p>
+                    <p>{copied ? 'Copied!' : 'Copy message'}</p>
                   </TooltipContent>
                 </Tooltip>
 
@@ -331,27 +309,35 @@ export function VoiceMessageList({
   speakingMessageId,
   onSpeakingChange,
 }: VoiceMessageListProps) {
-  const [_currentSpeakingId, setCurrentSpeakingId] = useState<string | null>(speakingMessageId ?? null);
+  const [_currentSpeakingId, setCurrentSpeakingId] = useState<string | null>(
+    speakingMessageId ?? null
+  );
 
   // Sync with external speaking state
   useEffect(() => {
     setCurrentSpeakingId(speakingMessageId ?? null);
   }, [speakingMessageId]);
 
-  const handleSpeakStart = useCallback((messageId: string) => {
-    setCurrentSpeakingId(messageId);
-    onSpeakingChange?.(messageId);
-  }, [onSpeakingChange]);
+  const handleSpeakStart = useCallback(
+    (messageId: string) => {
+      setCurrentSpeakingId(messageId);
+      onSpeakingChange?.(messageId);
+    },
+    [onSpeakingChange]
+  );
 
-  const handleSpeakEnd = useCallback((messageId: string) => {
-    setCurrentSpeakingId(prev => {
-      if (prev === messageId) {
-        onSpeakingChange?.(null);
-        return null;
-      }
-      return prev;
-    });
-  }, [onSpeakingChange]);
+  const handleSpeakEnd = useCallback(
+    (messageId: string) => {
+      setCurrentSpeakingId((prev) => {
+        if (prev === messageId) {
+          onSpeakingChange?.(null);
+          return null;
+        }
+        return prev;
+      });
+    },
+    [onSpeakingChange]
+  );
 
   return (
     <div className="space-y-0">
@@ -363,10 +349,12 @@ export function VoiceMessageList({
           onDelete={onDelete}
           onCitationClick={onCitationClick}
           showSources={showSources}
-          autoPlay={autoPlaySettings?.enabled && 
-            message.role === 'assistant' && 
+          autoPlay={
+            autoPlaySettings?.enabled &&
+            message.role === 'assistant' &&
             index === messages.length - 1 &&
-            !message.isStreaming}
+            !message.isStreaming
+          }
           voiceSettings={autoPlaySettings?.voiceSettings}
           onSpeakStart={handleSpeakStart}
           onSpeakEnd={handleSpeakEnd}

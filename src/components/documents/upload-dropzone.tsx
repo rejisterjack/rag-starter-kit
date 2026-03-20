@@ -2,7 +2,7 @@
 
 /**
  * Upload Dropzone Component
- * 
+ *
  * Features:
  * - Drag & drop zone for file uploads
  * - File type icons
@@ -11,18 +11,19 @@
  * - Error display with retry
  */
 
-import React, { useCallback, useState, useRef } from 'react';
-import { 
-  FileText, 
-  File, 
-  Upload, 
-  X, 
-  CheckCircle, 
-  AlertCircle, 
-  Loader2,
+import {
+  AlertCircle,
+  CheckCircle,
+  File as FileIcon,
+  FileText,
   Globe,
+  Loader2,
   RefreshCw,
+  Upload,
+  X,
 } from 'lucide-react';
+import type React from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -89,7 +90,7 @@ const FILE_TYPE_ICONS: Record<string, React.ReactNode> = {
   'text/plain': <FileText className="h-8 w-8 text-gray-500" />,
   'text/markdown': <FileText className="h-8 w-8 text-purple-500" />,
   'text/html': <Globe className="h-8 w-8 text-orange-500" />,
-  'default': <File className="h-8 w-8 text-gray-400" />,
+  default: <FileIcon className="h-8 w-8 text-gray-400" />,
 };
 
 const FILE_TYPE_LABELS: Record<string, string> = {
@@ -128,22 +129,58 @@ export function UploadDropzone({
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+    return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
   // Get file icon
   const getFileIcon = (type: string): React.ReactNode => {
-    return FILE_TYPE_ICONS[type] || FILE_TYPE_ICONS['default'];
+    return FILE_TYPE_ICONS[type] || FILE_TYPE_ICONS.default;
   };
 
+  // Validate files - defined early for use in callbacks
+  const validateFiles = useCallback(
+    (filesToValidate: File[]): File[] => {
+      return filesToValidate.filter((file) => {
+        // Check file size
+        if (file.size > maxFileSize) {
+          return false;
+        }
+
+        // Check file type
+        const acceptedTypes = Object.keys(accept);
+        const isAccepted = acceptedTypes.some((type) => {
+          if (type.includes('*')) {
+            return file.type.startsWith(type.replace('/*', ''));
+          }
+          return file.type === type;
+        });
+
+        if (
+          !isAccepted &&
+          !Object.values(accept)
+            .flat()
+            .some((ext) => file.name.toLowerCase().endsWith(ext))
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+    },
+    [maxFileSize, accept]
+  );
+
   // Handle drag events
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!disabled) {
-      setIsDragOver(true);
-    }
-  }, [disabled]);
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!disabled) {
+        setIsDragOver(true);
+      }
+    },
+    [disabled]
+  );
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -151,64 +188,41 @@ export function UploadDropzone({
     setIsDragOver(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
 
-    if (disabled) return;
+      if (disabled) return;
 
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    const validFiles = validateFiles(droppedFiles);
-    
-    if (validFiles.length > 0) {
-      onFilesSelected(validFiles);
-    }
-  }, [disabled, onFilesSelected]);
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      const validFiles = validateFiles(droppedFiles);
+
+      if (validFiles.length > 0) {
+        onFilesSelected(validFiles);
+      }
+    },
+    [disabled, onFilesSelected, validateFiles]
+  );
 
   // Handle file input change
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
-    const validFiles = validateFiles(selectedFiles);
-    
-    if (validFiles.length > 0) {
-      onFilesSelected(validFiles);
-    }
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedFiles = Array.from(e.target.files || []);
+      const validFiles = validateFiles(selectedFiles);
 
-    // Reset input
-    if (inputRef.current) {
-      inputRef.current.value = '';
-    }
-  }, [onFilesSelected]);
-
-  // Validate files
-  const validateFiles = (filesToValidate: File[]): File[] => {
-    return filesToValidate.filter(file => {
-      // Check file size
-      if (file.size > maxFileSize) {
-        console.warn(`File ${file.name} exceeds size limit`);
-        return false;
+      if (validFiles.length > 0) {
+        onFilesSelected(validFiles);
       }
 
-      // Check file type
-      const acceptedTypes = Object.keys(accept);
-      const isAccepted = acceptedTypes.some(type => {
-        if (type.includes('*')) {
-          return file.type.startsWith(type.replace('/*', ''));
-        }
-        return file.type === type;
-      });
-
-      if (!isAccepted && !Object.values(accept).flat().some(ext => 
-        file.name.toLowerCase().endsWith(ext)
-      )) {
-        console.warn(`File type ${file.type} not accepted`);
-        return false;
+      // Reset input
+      if (inputRef.current) {
+        inputRef.current.value = '';
       }
-
-      return true;
-    });
-  };
+    },
+    [onFilesSelected, validateFiles]
+  );
 
   // Handle URL submit
   const handleUrlSubmit = (e: React.FormEvent) => {
@@ -285,7 +299,9 @@ export function UploadDropzone({
         <input
           ref={inputRef}
           type="file"
-          accept={Object.entries(accept).map(([type, exts]) => `${type},${exts.join(',')}`).join(',')}
+          accept={Object.entries(accept)
+            .map(([type, exts]) => `${type},${exts.join(',')}`)
+            .join(',')}
           multiple={multiple}
           disabled={disabled}
           onChange={handleFileChange}
@@ -296,11 +312,9 @@ export function UploadDropzone({
           <div className="rounded-full bg-gray-100 p-3">
             <Upload className="h-6 w-6 text-gray-600" />
           </div>
-          
+
           <div>
-            <p className="text-sm font-medium text-gray-900">
-              Drop files here or click to upload
-            </p>
+            <p className="text-sm font-medium text-gray-900">Drop files here or click to upload</p>
             <p className="mt-1 text-xs text-gray-500">
               Support for PDF, Word, Markdown, and Text files
             </p>
@@ -350,7 +364,6 @@ export function UploadDropzone({
                 placeholder="https://example.com/article"
                 disabled={disabled}
                 className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
-                autoFocus
               />
               <button
                 type="submit"
@@ -386,26 +399,30 @@ export function UploadDropzone({
                 file.status === 'error' && 'border-red-200 bg-red-50',
                 file.status === 'completed' && 'border-green-200 bg-green-50',
                 file.status === 'processing' && 'border-amber-200 bg-amber-50',
-                file.status !== 'error' && file.status !== 'completed' && file.status !== 'processing' && 'border-gray-200 bg-white'
+                file.status !== 'error' &&
+                  file.status !== 'completed' &&
+                  file.status !== 'processing' &&
+                  'border-gray-200 bg-white'
               )}
             >
               {/* File Icon */}
-              <div className="flex-shrink-0">
-                {getFileIcon(file.type)}
-              </div>
+              <div className="flex-shrink-0">{getFileIcon(file.type)}</div>
 
               {/* File Info */}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-gray-900">
-                  {file.name}
-                </p>
-                <p className={cn(
-                  'text-xs',
-                  file.status === 'error' && 'text-red-600',
-                  file.status === 'completed' && 'text-green-600',
-                  file.status === 'processing' && 'text-amber-600',
-                  file.status !== 'error' && file.status !== 'completed' && file.status !== 'processing' && 'text-gray-500'
-                )}>
+                <p className="truncate text-sm font-medium text-gray-900">{file.name}</p>
+                <p
+                  className={cn(
+                    'text-xs',
+                    file.status === 'error' && 'text-red-600',
+                    file.status === 'completed' && 'text-green-600',
+                    file.status === 'processing' && 'text-amber-600',
+                    file.status !== 'error' &&
+                      file.status !== 'completed' &&
+                      file.status !== 'processing' &&
+                      'text-gray-500'
+                  )}
+                >
                   {getStatusText(file)}
                 </p>
 
@@ -413,7 +430,10 @@ export function UploadDropzone({
                 {(file.status === 'uploading' || file.status === 'processing') && (
                   <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
                     <div
-                      className={cn('h-full transition-all duration-300', getProgressColor(file.status))}
+                      className={cn(
+                        'h-full transition-all duration-300',
+                        getProgressColor(file.status)
+                      )}
                       style={{ width: `${file.progress}%` }}
                     />
                   </div>
@@ -492,203 +512,225 @@ export function useUpload(options: UseUploadOptions = {}) {
   const { endpoint = '/api/ingest', workspaceId, onUploadComplete, onUploadError } = options;
   const [files, setFiles] = useState<UploadFile[]>([]);
 
-  // Add files to upload queue
-  const addFiles = useCallback((newFiles: File[]) => {
-    const uploadFiles: UploadFile[] = newFiles.map(file => ({
-      id: Math.random().toString(36).substr(2, 9),
-      file,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      status: 'idle',
-      progress: 0,
-    }));
+  // Poll for processing status - defined before uploadFile to avoid TDZ
+  const pollStatus = useCallback(
+    async (fileId: string, documentId: string) => {
+      const poll = async () => {
+        try {
+          const response = await fetch(`${endpoint}?id=${documentId}`);
+          if (!response.ok) throw new Error('Failed to fetch status');
 
-    setFiles(prev => [...prev, ...uploadFiles]);
+          const data = await response.json();
+          const status = data.data?.status;
+          const progress = data.data?.progress || 0;
 
-    // Start upload for each file
-    uploadFiles.forEach(uploadFile);
-  }, []);
+          setFiles((prev) =>
+            prev.map((f) =>
+              f.id === fileId
+                ? {
+                    ...f,
+                    status:
+                      status === 'completed'
+                        ? 'completed'
+                        : status === 'failed'
+                          ? 'error'
+                          : 'processing',
+                    progress: status === 'completed' ? 100 : 50 + progress / 2,
+                    error: data.data?.error,
+                  }
+                : f
+            )
+          );
 
-  // Upload a file
-  const uploadFile = useCallback(async (uploadFile: UploadFile) => {
-    setFiles(prev =>
-      prev.map(f =>
-        f.id === uploadFile.id
-          ? { ...f, status: 'uploading', progress: 0 }
-          : f
-      )
-    );
+          // Continue polling if still processing
+          if (status === 'processing' || status === 'pending') {
+            setTimeout(poll, 2000);
+          }
+        } catch {
+          // Retry on error
+          setTimeout(poll, 5000);
+        }
+      };
 
-    try {
-      const formData = new FormData();
-      formData.append('file', uploadFile.file);
-      if (workspaceId) {
-        formData.append('workspaceId', workspaceId);
-      }
+      poll();
+    },
+    [endpoint]
+  );
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Upload failed');
-      }
-
-      const data = await response.json();
-
-      setFiles(prev =>
-        prev.map(f =>
-          f.id === uploadFile.id
-            ? {
-                ...f,
-                status: 'processing',
-                progress: 0,
-                documentId: data.data?.document?.id,
-              }
-            : f
-        )
+  // Upload a file - defined before addFiles to avoid TDZ
+  const uploadFileFn = useCallback(
+    async (fileToUpload: UploadFile) => {
+      setFiles((prev) =>
+        prev.map((f) => (f.id === fileToUpload.id ? { ...f, status: 'uploading', progress: 0 } : f))
       );
 
-      onUploadComplete?.(uploadFile, data);
-
-      // Start polling for status
-      if (data.data?.document?.id) {
-        pollStatus(uploadFile.id, data.data.document.id);
-      }
-    } catch (error) {
-      setFiles(prev =>
-        prev.map(f =>
-          f.id === uploadFile.id
-            ? {
-                ...f,
-                status: 'error',
-                error: error instanceof Error ? error.message : 'Upload failed',
-              }
-            : f
-        )
-      );
-
-      onUploadError?.(uploadFile, error instanceof Error ? error : new Error('Upload failed'));
-    }
-  }, [endpoint, workspaceId, onUploadComplete, onUploadError]);
-
-  // Poll for processing status
-  const pollStatus = useCallback(async (fileId: string, documentId: string) => {
-    const poll = async () => {
       try {
-        const response = await fetch(`${endpoint}?id=${documentId}`);
-        if (!response.ok) throw new Error('Failed to fetch status');
+        const formData = new FormData();
+        formData.append('file', fileToUpload.file);
+        if (workspaceId) {
+          formData.append('workspaceId', workspaceId);
+        }
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error?.message || 'Upload failed');
+        }
 
         const data = await response.json();
-        const status = data.data?.status;
-        const progress = data.data?.progress || 0;
 
-        setFiles(prev =>
-          prev.map(f =>
-            f.id === fileId
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === fileToUpload.id
               ? {
                   ...f,
-                  status: status === 'completed' ? 'completed' : status === 'failed' ? 'error' : 'processing',
-                  progress: status === 'completed' ? 100 : 50 + (progress / 2),
-                  error: data.data?.error,
+                  status: 'processing',
+                  progress: 0,
+                  documentId: data.data?.document?.id,
                 }
               : f
           )
         );
 
-        // Continue polling if still processing
-        if (status === 'processing' || status === 'pending') {
-          setTimeout(poll, 2000);
-        }
-      } catch {
-        // Retry on error
-        setTimeout(poll, 5000);
-      }
-    };
+        onUploadComplete?.(fileToUpload, data);
 
-    poll();
-  }, [endpoint]);
+        // Start polling for status
+        if (data.data?.document?.id) {
+          pollStatus(fileToUpload.id, data.data.document.id);
+        }
+      } catch (err) {
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === fileToUpload.id
+              ? {
+                  ...f,
+                  status: 'error',
+                  error: err instanceof Error ? err.message : 'Upload failed',
+                }
+              : f
+          )
+        );
+
+        onUploadError?.(fileToUpload, err instanceof Error ? err : new Error('Upload failed'));
+      }
+    },
+    [endpoint, workspaceId, onUploadComplete, onUploadError, pollStatus]
+  );
+
+  // Add files to upload queue - defined last to use uploadFileFn
+  const addFiles = useCallback(
+    (newFiles: File[]) => {
+      const uploadFilesList: UploadFile[] = newFiles.map((file) => ({
+        id: Math.random().toString(36).substr(2, 9),
+        file,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        status: 'idle',
+        progress: 0,
+      }));
+
+      setFiles((prev) => [...prev, ...uploadFilesList]);
+
+      // Start upload for each file
+      uploadFilesList.forEach((file) => uploadFileFn(file));
+    },
+    [uploadFileFn]
+  );
 
   // Remove a file from the list
   const removeFile = useCallback((fileId: string) => {
-    setFiles(prev => prev.filter(f => f.id !== fileId));
+    setFiles((prev) => prev.filter((f) => f.id !== fileId));
   }, []);
 
   // Retry a failed upload
-  const retryFile = useCallback((fileId: string) => {
-    const file = files.find(f => f.id === fileId);
-    if (file) {
-      uploadFile(file);
-    }
-  }, [files, uploadFile]);
+  const retryFile = useCallback(
+    (fileId: string) => {
+      const file = files.find((f) => f.id === fileId);
+      if (file) {
+        uploadFileFn(file);
+      }
+    },
+    [files, uploadFileFn]
+  );
 
   // Submit URL for scraping
-  const submitUrl = useCallback(async (url: string) => {
-    const uploadFile: UploadFile = {
-      id: Math.random().toString(36).substr(2, 9),
-      file: new (globalThis as typeof globalThis & { File: typeof File }).File([], url),
-      name: new URL(url).hostname,
-      size: 0,
-      type: 'text/html',
-      status: 'uploading',
-      progress: 0,
-    };
+  const submitUrl = useCallback(
+    async (url: string) => {
+      // Helper to create a File object safely
+      const createPlaceholderFile = (filename: string): File => {
+        const blob = new Blob([''], { type: 'text/html' });
+        return new File([blob], filename, { type: 'text/html' });
+      };
 
-    setFiles(prev => [...prev, uploadFile]);
+      const newUploadFile: UploadFile = {
+        id: Math.random().toString(36).substr(2, 9),
+        file: createPlaceholderFile(url),
+        name: new URL(url).hostname,
+        size: 0,
+        type: 'text/html',
+        status: 'uploading',
+        progress: 0,
+      };
 
-    try {
-      const formData = new FormData();
-      formData.append('url', url);
-      if (workspaceId) {
-        formData.append('workspaceId', workspaceId);
+      setFiles((prev) => [...prev, newUploadFile]);
+
+      try {
+        const formData = new FormData();
+        formData.append('url', url);
+        if (workspaceId) {
+          formData.append('workspaceId', workspaceId);
+        }
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error?.message || 'Failed to queue URL');
+        }
+
+        const data = await response.json();
+
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === newUploadFile.id
+              ? {
+                  ...f,
+                  status: 'processing',
+                  progress: 0,
+                  documentId: data.data?.document?.id,
+                }
+              : f
+          )
+        );
+
+        // Start polling for status
+        if (data.data?.document?.id) {
+          pollStatus(newUploadFile.id, data.data.document.id);
+        }
+      } catch (err) {
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === newUploadFile.id
+              ? {
+                  ...f,
+                  status: 'error',
+                  error: err instanceof Error ? err.message : 'Failed to scrape URL',
+                }
+              : f
+          )
+        );
       }
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to queue URL');
-      }
-
-      const data = await response.json();
-
-      setFiles(prev =>
-        prev.map(f =>
-          f.id === uploadFile.id
-            ? {
-                ...f,
-                status: 'processing',
-                progress: 0,
-                documentId: data.data?.document?.id,
-              }
-            : f
-        )
-      );
-
-      // Start polling for status
-      if (data.data?.document?.id) {
-        pollStatus(uploadFile.id, data.data.document.id);
-      }
-    } catch (error) {
-      setFiles(prev =>
-        prev.map(f =>
-          f.id === uploadFile.id
-            ? {
-                ...f,
-                status: 'error',
-                error: error instanceof Error ? error.message : 'Failed to scrape URL',
-              }
-            : f
-        )
-      );
-    }
-  }, [endpoint, workspaceId, pollStatus]);
+    },
+    [endpoint, workspaceId, pollStatus]
+  );
 
   return {
     files,

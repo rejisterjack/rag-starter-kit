@@ -1,43 +1,38 @@
 /**
  * Document Ingestion API Routes
- * 
+ *
  * POST /api/ingest - Upload and queue documents for processing
  * GET /api/ingest?id=:id - Check processing status
  * DELETE /api/ingest?id=:id - Cancel processing
- * 
+ *
  * Security Features:
  * - Authentication check
  * - Workspace access validation with permission check (WRITE_DOCUMENTS)
  * - Rate limiting per user/workspace
- * - File validation (type, size, virus scan placeholder)
+ * - File validation (type, size, virus scan with ClamAV)
  * - Input sanitization
  * - Audit logging
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-
+import { type NextRequest, NextResponse } from 'next/server';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { inngest } from '@/lib/inngest/client';
+import { parseDOCX, parseHTML, parsePDF, parseText } from '@/lib/rag/ingestion';
+import { validateFile } from '@/lib/security/input-validator';
 import {
-  parsePDF,
-  parseDOCX,
-  parseText,
-  parseHTML,
-} from '@/lib/rag/ingestion';
-import { Permission, checkPermission } from '@/lib/workspace/permissions';
-import {
+  addRateLimitHeaders,
   checkApiRateLimit,
   getRateLimitIdentifier,
-  addRateLimitHeaders,
 } from '@/lib/security/rate-limiter';
-import { validateFile } from '@/lib/security/input-validator';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
+import { virusScanner } from '@/lib/security/virus-scanner';
+import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // Maximum file size: 50MB
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
-// Virus scan placeholder - implement with ClamAV or similar in production
+// Virus scan configuration - requires ClamAV when enabled
 const ENABLE_VIRUS_SCAN = process.env.ENABLE_VIRUS_SCAN === 'true';
 
 // =============================================================================
@@ -60,7 +55,10 @@ export async function POST(req: NextRequest) {
     const userId = session.user.id;
 
     // Step 2: Check rate limit
-    const rateLimitIdentifier = getRateLimitIdentifier(req, { userId, workspaceId: session.user.workspaceId });
+    const rateLimitIdentifier = getRateLimitIdentifier(req, {
+      userId,
+      workspaceId: session.user.workspaceId,
+    });
     const rateLimitResult = await checkApiRateLimit(rateLimitIdentifier, 'ingest', {
       userId,
       endpoint: '/api/ingest',
@@ -138,8 +136,6 @@ export async function POST(req: NextRequest) {
 
     return handleFileIngestion(file, userId, workspaceId, startTime, rateLimitResult);
   } catch (error) {
-    console.error('Ingest API error:', error);
-
     return NextResponse.json(
       {
         success: false,
@@ -192,7 +188,7 @@ async function handleFileIngestion(
     );
   }
 
-  // Step 3: Virus scan (placeholder)
+  // Step 3: Virus scan (ClamAV integration)
   if (ENABLE_VIRUS_SCAN) {
     const scanResult = await scanFileForViruses(file);
     if (!scanResult.clean) {
@@ -232,7 +228,7 @@ async function handleFileIngestion(
         success: false,
         error: {
           code: 'VALIDATION_FAILED',
-          message: validation.error!,
+          message: validation.error ?? 'Unknown validation error',
         },
       },
       { status: 400 }
@@ -286,7 +282,6 @@ async function handleFileIngestion(
         );
     }
   } catch (error) {
-    console.error('Document parsing error:', error);
     return NextResponse.json(
       {
         success: false,
@@ -304,10 +299,7 @@ async function handleFileIngestion(
   const targetId = workspaceId || userId;
   const existingDoc = await prisma.document.findFirst({
     where: {
-      OR: [
-        { userId: targetId },
-        { workspaceId: targetId },
-      ],
+      OR: [{ userId: targetId }, { workspaceId: targetId }],
       metadata: {
         path: ['contentHash'],
         equals: contentHash,
@@ -333,7 +325,7 @@ async function handleFileIngestion(
   const document = await prisma.document.create({
     data: {
       name: file.name,
-      contentType: validation.type!,
+      contentType: validation.type ?? 'UNKNOWN',
       size: file.size,
       status: 'PENDING',
       userId: targetId,
@@ -374,21 +366,24 @@ async function handleFileIngestion(
   });
 
   // Step 10: Return response with rate limit headers
-  const response = NextResponse.json({
-    success: true,
-    data: {
-      document: {
-        id: document.id,
-        name: document.name,
-        type: document.contentType,
-        size: document.size,
-        status: 'pending',
-        createdAt: document.createdAt.toISOString(),
+  const response = NextResponse.json(
+    {
+      success: true,
+      data: {
+        document: {
+          id: document.id,
+          name: document.name,
+          type: document.contentType,
+          size: document.size,
+          status: 'pending',
+          createdAt: document.createdAt.toISOString(),
+        },
+        message: 'Document uploaded and queued for processing',
+        processingTimeMs: Date.now() - startTime,
       },
-      message: 'Document uploaded and queued for processing',
-      processingTimeMs: Date.now() - startTime,
     },
-  }, { status: 201 });
+    { status: 201 }
+  );
 
   addRateLimitHeaders(response.headers, rateLimitResult);
   return response;
@@ -437,8 +432,8 @@ async function handleURLIngestion(
     // Check against allowed domains if configured
     const allowedDomains = process.env.ALLOWED_URL_DOMAINS?.split(',');
     if (allowedDomains?.length) {
-      const isAllowed = allowedDomains.some((domain) =>
-        validatedUrl.hostname === domain || validatedUrl.hostname.endsWith(`.${domain}`)
+      const isAllowed = allowedDomains.some(
+        (domain) => validatedUrl.hostname === domain || validatedUrl.hostname.endsWith(`.${domain}`)
       );
       if (!isAllowed) {
         return NextResponse.json(
@@ -507,21 +502,24 @@ async function handleURLIngestion(
     },
   });
 
-  const response = NextResponse.json({
-    success: true,
-    data: {
-      document: {
-        id: document.id,
-        name: document.name,
-        type: 'HTML',
-        url: url,
-        status: 'pending',
-        createdAt: document.createdAt.toISOString(),
+  const response = NextResponse.json(
+    {
+      success: true,
+      data: {
+        document: {
+          id: document.id,
+          name: document.name,
+          type: 'HTML',
+          url: url,
+          status: 'pending',
+          createdAt: document.createdAt.toISOString(),
+        },
+        message: 'URL queued for scraping and processing',
+        processingTimeMs: Date.now() - startTime,
       },
-      message: 'URL queued for scraping and processing',
-      processingTimeMs: Date.now() - startTime,
     },
-  }, { status: 201 });
+    { status: 201 }
+  );
 
   addRateLimitHeaders(response.headers, rateLimitResult);
   return response;
@@ -572,8 +570,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Check access - user can only see their own documents or workspace documents
-    const hasAccess = document.userId === userId || 
-      document.workspaceId === session.user.workspaceId;
+    const hasAccess =
+      document.userId === userId || document.workspaceId === session.user.workspaceId;
 
     if (!hasAccess) {
       return NextResponse.json(
@@ -584,7 +582,7 @@ export async function GET(req: NextRequest) {
 
     // Get job details
     const job = document.ingestionJob;
-    const metadata = document.metadata as Record<string, unknown> || {};
+    const metadata = (document.metadata as Record<string, unknown>) || {};
 
     // Calculate progress
     let progress = 0;
@@ -641,8 +639,6 @@ export async function GET(req: NextRequest) {
       data: status,
     });
   } catch (error) {
-    console.error('Status API error:', error);
-
     return NextResponse.json(
       {
         success: false,
@@ -698,8 +694,9 @@ export async function DELETE(req: NextRequest) {
 
     // Check access
     const hasDirectAccess = document.userId === userId;
-    const hasWorkspaceAccess = document.workspaceId && 
-      await checkPermission(userId, document.workspaceId, Permission.DELETE_DOCUMENTS);
+    const hasWorkspaceAccess =
+      document.workspaceId &&
+      (await checkPermission(userId, document.workspaceId, Permission.DELETE_DOCUMENTS));
 
     if (!hasDirectAccess && !hasWorkspaceAccess) {
       return NextResponse.json(
@@ -743,7 +740,7 @@ export async function DELETE(req: NextRequest) {
       data: {
         status: 'FAILED',
         metadata: {
-          ...(document.metadata as Record<string, unknown> || {}),
+          ...((document.metadata as Record<string, unknown>) || {}),
           cancelledAt: new Date().toISOString(),
           error: 'Processing cancelled by user',
         },
@@ -769,8 +766,6 @@ export async function DELETE(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Cancel API error:', error);
-
     return NextResponse.json(
       {
         success: false,
@@ -793,7 +788,7 @@ function formatBytes(bytes: number): string {
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
 }
 
 async function hashContent(content: string): Promise<string> {
@@ -810,7 +805,7 @@ async function hashContent(content: string): Promise<string> {
   let hash = 0;
   for (let i = 0; i < content.length; i++) {
     const char = content.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash;
   }
   return hash.toString(16);
@@ -822,23 +817,27 @@ interface VirusScanResult {
 }
 
 /**
- * Virus scan placeholder
- * In production, integrate with ClamAV, VirusTotal, or similar service
+ * Scan file for viruses using ClamAV or similar service
  */
 async function scanFileForViruses(file: File): Promise<VirusScanResult> {
-  // Placeholder implementation
-  // In production:
-  // 1. Upload file to virus scanning service
-  // 2. Wait for scan result
-  // 3. Return clean status and any threats found
-
+  // Check file extension as first line of defense
   const dangerousExtensions = ['.exe', '.dll', '.bat', '.cmd', '.sh', '.php', '.jsp'];
-  const hasDangerousExt = dangerousExtensions.some((ext) =>
-    file.name.toLowerCase().endsWith(ext)
-  );
+  const hasDangerousExt = dangerousExtensions.some((ext) => file.name.toLowerCase().endsWith(ext));
 
   if (hasDangerousExt) {
     return { clean: false, threat: 'Executable file detected' };
+  }
+
+  // Scan with ClamAV if enabled
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+  const scanResult = await virusScanner.scanFile(buffer, file.name);
+
+  if (!scanResult.clean) {
+    return {
+      clean: false,
+      threat: scanResult.threatName || 'Virus detected',
+    };
   }
 
   return { clean: true };

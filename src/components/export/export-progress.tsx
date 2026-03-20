@@ -1,21 +1,20 @@
 'use client';
 
-import React from 'react';
-import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Loader2,
+  Archive,
   CheckCircle2,
-  XCircle,
+  FileCode2,
   FileText,
   FileType2,
-  FileCode2,
-  Archive,
+  Loader2,
   X,
+  XCircle,
 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 
-import type { ExportProgress as ExportProgressType, ExportFormat } from '@/lib/export';
+import type { ExportFormat, ExportProgress as ExportProgressType } from '@/lib/export';
 import { cn } from '@/lib/utils';
 
 // =============================================================================
@@ -56,7 +55,6 @@ function getStatusColor(status: ExportProgressType['status']) {
       return 'text-red-500';
     case 'cancelled':
       return 'text-gray-500';
-    case 'processing':
     default:
       return 'text-blue-500';
   }
@@ -70,7 +68,6 @@ function getStatusIcon(status: ExportProgressType['status']) {
       return <XCircle className="h-5 w-5 text-red-500" />;
     case 'cancelled':
       return <X className="h-5 w-5 text-gray-500" />;
-    case 'processing':
     default:
       return <Loader2 className="h-5 w-5 animate-spin text-blue-500" />;
   }
@@ -109,9 +106,7 @@ export function ExportProgress({
         </div>
         <div className="text-center">
           <p className="font-medium text-lg">Export Complete!</p>
-          <p className="text-sm text-muted-foreground">
-            Your file is ready for download
-          </p>
+          <p className="text-sm text-muted-foreground">Your file is ready for download</p>
         </div>
       </div>
     );
@@ -126,9 +121,7 @@ export function ExportProgress({
         </div>
         <div className="text-center">
           <p className="font-medium text-lg">Export Cancelled</p>
-          <p className="text-sm text-muted-foreground">
-            The export was cancelled by the user
-          </p>
+          <p className="text-sm text-muted-foreground">The export was cancelled by the user</p>
         </div>
       </div>
     );
@@ -143,9 +136,7 @@ export function ExportProgress({
       {/* Icon and Status */}
       <div className="flex items-center gap-4">
         <div className="relative">
-          <div className="bg-primary/10 rounded-full p-3">
-            {getFormatIcon(format)}
-          </div>
+          <div className="bg-primary/10 rounded-full p-3">{getFormatIcon(format)}</div>
           {progress?.status === 'processing' && (
             <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5">
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -175,10 +166,7 @@ export function ExportProgress({
           <span className="text-muted-foreground">Progress</span>
           <span className="font-medium">{Math.round(progressValue)}%</span>
         </div>
-        <Progress
-          value={isIndeterminate ? undefined : progressValue}
-          className="h-2"
-        />
+        <Progress value={isIndeterminate ? undefined : progressValue} className="h-2" />
       </div>
 
       {/* Processing Steps */}
@@ -239,10 +227,7 @@ export interface CompactExportProgressProps {
   className?: string;
 }
 
-export function CompactExportProgress({
-  progress,
-  className,
-}: CompactExportProgressProps) {
+export function CompactExportProgress({ progress, className }: CompactExportProgressProps) {
   if (!progress) return null;
 
   return (
@@ -261,9 +246,7 @@ export function CompactExportProgress({
         <p className="truncate font-medium">{progress.currentStep}</p>
       </div>
 
-      <span className="text-muted-foreground tabular-nums">
-        {Math.round(progress.progress)}%
-      </span>
+      <span className="text-muted-foreground tabular-nums">{Math.round(progress.progress)}%</span>
     </div>
   );
 }

@@ -4,11 +4,28 @@
  */
 
 import { NextResponse } from 'next/server';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { checkPermission, Permission } from '@/lib/workspace/permissions';
+import type { ExportCitation, ExportMessage } from '@/lib/export/types';
+import type { Citation } from '@/lib/rag/citations';
 import { checkApiRateLimit, getRateLimitIdentifier } from '@/lib/security/rate-limiter';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
+import { checkPermission, Permission } from '@/lib/workspace/permissions';
+
+interface SourceItem {
+  id: string;
+  content: string;
+  metadata?: { documentId?: string; documentName?: string; page?: number };
+  similarity?: number;
+}
+
+interface MessageItem {
+  id: string;
+  role: string;
+  content: string;
+  createdAt: Date;
+  sources: unknown;
+}
 
 export async function POST(req: Request) {
   try {
@@ -30,10 +47,7 @@ export async function POST(req: Request) {
     });
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { error: 'Rate limit exceeded' },
-        { status: 429 }
-      );
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
 
     // Parse request
@@ -63,10 +77,7 @@ export async function POST(req: Request) {
     const chat = await prisma.chat.findFirst({
       where: {
         id: conversationId,
-        OR: [
-          { userId },
-          { workspaceId: workspaceId ?? '' },
-        ],
+        OR: [{ userId }, { workspaceId: workspaceId ?? '' }],
       },
       include: {
         messages: {
@@ -76,20 +87,14 @@ export async function POST(req: Request) {
     });
 
     if (!chat) {
-      return NextResponse.json(
-        { error: 'Conversation not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
     // Check export permission for workspace chats
     if (chat.workspaceId && chat.userId !== userId) {
       const canExport = await checkPermission(userId, chat.workspaceId, Permission.READ_DOCUMENTS);
       if (!canExport) {
-        return NextResponse.json(
-          { error: 'Access denied' },
-          { status: 403 }
-        );
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
       }
     }
 
@@ -107,19 +112,37 @@ export async function POST(req: Request) {
     });
 
     // Format messages for export
-    const messages = chat.messages.map((msg: typeof chat.messages[0]) => ({
-      id: msg.id,
-      role: msg.role as 'user' | 'assistant' | 'system',
-      content: msg.content,
-      createdAt: msg.createdAt,
-      citations: includeCitations ? (msg.sources as Array<{id: string; content: string; metadata?: {documentName?: string; page?: number}; similarity?: number}> | null)?.map((s: {id: string; content: string; metadata?: {documentName?: string; page?: number}; similarity?: number}) => ({
-        id: s.id,
-        content: s.content,
-        documentName: s.metadata?.documentName || 'Unknown',
-        page: s.metadata?.page,
-        similarity: s.similarity ?? 0,
-      })) : undefined,
-    }));
+    const messages: ExportMessage[] = chat.messages.map((msg) => {
+      const messageItem: MessageItem = {
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        createdAt: msg.createdAt,
+        sources: msg.sources,
+      };
+
+      const citations: ExportCitation[] | undefined = includeCitations
+        ? parseSources(messageItem.sources).map(
+            (s: SourceItem): ExportCitation => ({
+              id: s.id,
+              chunkId: s.id,
+              documentId: s.metadata?.documentId ?? s.id,
+              documentName: s.metadata?.documentName ?? 'Unknown',
+              page: s.metadata?.page,
+              content: s.content,
+              score: s.similarity ?? 0,
+            })
+          )
+        : undefined;
+
+      return {
+        id: messageItem.id,
+        role: validateRole(messageItem.role),
+        content: messageItem.content,
+        createdAt: messageItem.createdAt,
+        citations,
+      };
+    });
 
     // Generate export based on format
     let content: string | Buffer;
@@ -131,12 +154,16 @@ export async function POST(req: Request) {
 
     switch (format) {
       case 'json':
-        content = JSON.stringify({
-          title,
-          workspace: workspaceName,
-          exportedAt: new Date().toISOString(),
-          messages,
-        }, null, 2);
+        content = JSON.stringify(
+          {
+            title,
+            workspace: workspaceName,
+            exportedAt: new Date().toISOString(),
+            messages,
+          },
+          null,
+          2
+        );
         contentType = 'application/json';
         filename = `${title.replace(/\s+/g, '_')}.json`;
         break;
@@ -171,10 +198,7 @@ export async function POST(req: Request) {
         });
 
       default:
-        return NextResponse.json(
-          { error: 'Unsupported format' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Unsupported format' }, { status: 400 });
     }
 
     // Return file content
@@ -185,13 +209,8 @@ export async function POST(req: Request) {
         'X-RateLimit-Remaining': String(rateLimitResult.remaining),
       },
     });
-
-  } catch (error) {
-    console.error('Export error:', error);
-    return NextResponse.json(
-      { error: 'Failed to export conversation' },
-      { status: 500 }
-    );
+  } catch (_error) {
+    return NextResponse.json({ error: 'Failed to export conversation' }, { status: 500 });
   }
 }
 
@@ -199,7 +218,7 @@ export async function POST(req: Request) {
 function generateMarkdown(
   title: string,
   workspaceName: string | undefined,
-  messages: any[],
+  messages: ExportMessage[],
   includeCitations?: boolean
 ): string {
   let md = `---\n`;
@@ -219,7 +238,7 @@ function generateMarkdown(
 
       if (includeCitations && msg.citations?.length) {
         md += `**Sources:**\n`;
-        msg.citations.forEach((c: any) => {
+        msg.citations.forEach((c: Citation) => {
           md += `- [${c.id.slice(0, 8)}] ${c.documentName}${c.page ? ` (p.${c.page})` : ''}\n`;
         });
         md += `\n`;
@@ -232,7 +251,7 @@ function generateMarkdown(
 function generateHTML(
   title: string,
   workspaceName: string | undefined,
-  messages: any[],
+  messages: ExportMessage[],
   includeCitations?: boolean
 ): string {
   const messagesHTML = messages
@@ -251,7 +270,10 @@ function generateHTML(
         <div class="citations">
           <p><strong>Sources:</strong></p>
           ${msg.citations
-            .map((c: any) => `<span class="citation">[${c.id.slice(0, 8)}] ${c.documentName}</span>`)
+            .map(
+              (c: Citation) =>
+                `<span class="citation">[${c.id.slice(0, 8)}] ${c.documentName}</span>`
+            )
             .join('')}
         </div>
       `
@@ -299,4 +321,44 @@ function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+/**
+ * Validate message role
+ */
+function validateRole(role: string): 'user' | 'assistant' | 'system' {
+  if (role === 'user' || role === 'assistant' || role === 'system') {
+    return role;
+  }
+  return 'user';
+}
+
+/**
+ * Parse sources from unknown value
+ */
+function parseSources(sources: unknown): SourceItem[] {
+  if (typeof sources === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(sources);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(isSourceItem);
+      }
+    } catch {
+      // Fall through to return empty array
+    }
+  } else if (Array.isArray(sources)) {
+    return sources.filter(isSourceItem);
+  }
+  return [];
+}
+
+/**
+ * Type guard for SourceItem
+ */
+function isSourceItem(item: unknown): item is SourceItem {
+  if (typeof item !== 'object' || item === null) {
+    return false;
+  }
+  const source = item as Record<string, unknown>;
+  return typeof source.id === 'string' && typeof source.content === 'string';
 }

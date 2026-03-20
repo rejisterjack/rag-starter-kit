@@ -1,4 +1,6 @@
 import type { NextConfig } from "next";
+import type { webpack } from "next/dist/compiled/webpack/webpack";
+import type { Header } from "next/dist/lib/load-custom-routes";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -6,7 +8,7 @@ const nextConfig: NextConfig = {
     // ppr: true,  // Disabled - requires canary version
     // dynamicIO: true,  // Disabled - renamed to cacheComponents in newer versions
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer }): webpack.Configuration => {
     // Exclude playwright from client-side bundle
     if (!isServer) {
       config.resolve.fallback = {
@@ -34,14 +36,11 @@ const nextConfig: NextConfig = {
     ],
     formats: ["image/avif", "image/webp"],
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: false,
   },
   poweredByHeader: false,
-  async headers() {
+  async headers(): Promise<Header[]> {
     return [
       {
         source: "/api/:path*",

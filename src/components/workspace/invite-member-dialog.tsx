@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { Mail, UserPlus } from 'lucide-react';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -61,7 +61,7 @@ export function InviteMemberDialog({
       setSuccess(true);
       setEmail('');
       onInvite?.();
-      
+
       // Close dialog after a short delay
       setTimeout(() => {
         setIsOpen(false);
@@ -109,11 +109,7 @@ export function InviteMemberDialog({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="role">Role</Label>
-              <Select
-                value={role}
-                onValueChange={setRole}
-                disabled={isLoading}
-              >
+              <Select value={role} onValueChange={setRole} disabled={isLoading}>
                 <SelectTrigger id="role">
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
@@ -145,14 +141,8 @@ export function InviteMemberDialog({
                 </SelectContent>
               </Select>
             </div>
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
-            {success && (
-              <p className="text-sm text-green-600">
-                Invitation sent successfully!
-              </p>
-            )}
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            {success && <p className="text-sm text-green-600">Invitation sent successfully!</p>}
           </div>
           <DialogFooter>
             <Button

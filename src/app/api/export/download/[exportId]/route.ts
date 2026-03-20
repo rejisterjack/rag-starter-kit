@@ -4,10 +4,9 @@
  */
 
 import { NextResponse } from 'next/server';
-
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
-import { getExportService, getExportStorage, formatFileSize } from '@/lib/export';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
+import { formatFileSize, getExportService, getExportStorage } from '@/lib/export';
 
 // =============================================================================
 // Route Parameters
@@ -26,10 +25,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -40,10 +36,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
     const job = exportService.getJobStatus(exportId);
 
     if (!job) {
-      return NextResponse.json(
-        { error: 'Export not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Export not found', code: 'NOT_FOUND' }, { status: 404 });
     }
 
     // Verify user owns this export
@@ -59,10 +52,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
         severity: 'WARNING',
       });
 
-      return NextResponse.json(
-        { error: 'Access denied', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Access denied', code: 'FORBIDDEN' }, { status: 403 });
     }
 
     // Check if export is completed
@@ -80,10 +70,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
 
     // Check if export has expired
     if (new Date() > job.expiresAt) {
-      return NextResponse.json(
-        { error: 'Export has expired', code: 'EXPIRED' },
-        { status: 410 }
-      );
+      return NextResponse.json({ error: 'Export has expired', code: 'EXPIRED' }, { status: 410 });
     }
 
     // Retrieve file from storage
@@ -132,8 +119,6 @@ export async function GET(_req: Request, { params }: RouteParams) {
 
     return new NextResponse(buffer as unknown as BodyInit, { headers });
   } catch (error) {
-    console.error('Download export error:', error);
-
     return NextResponse.json(
       {
         error: 'Internal server error',

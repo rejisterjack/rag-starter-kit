@@ -361,10 +361,10 @@ export class RetrievalEngine {
   /**
    * Get preset configuration
    */
-  private getPreset(options: RetrievalOptions): typeof retrievalPresets.balanced {
+  private getPreset(options: RetrievalOptions): RetrievalPreset {
     // Check if options specify strategies
     if (options.strategies && options.strategies.length > 0) {
-      const presetName = options.strategies[0].type === 'vector' ? 'speed' :
+      const presetName: RetrievalPresetName = options.strategies[0].type === 'vector' ? 'speed' :
                         options.strategies[0].type === 'keyword' ? 'keyword' :
                         options.strategies[0].type === 'multi-query' ? 'research' :
                         'balanced';

@@ -15,6 +15,10 @@ import {
   Image,
 } from '@react-pdf/renderer';
 
+// Extract types from @react-pdf/renderer components
+type PDFPageProps = React.ComponentProps<typeof Page>;
+type PDFPageSize = PDFPageProps['size'];
+
 import type { ExportConversation, ExportOptions, ExportCitation } from '../types';
 
 // =============================================================================
@@ -396,7 +400,7 @@ export function PDFTemplate({ conversation, options, citations }: PDFTemplatePro
   return (
     <Document>
       {/* Cover Page */}
-      <Page size={options.pageSize ?? 'A4'} style={styles.page as Record<string, unknown>}>
+      <Page size={(options.pageSize ?? 'A4') as PDFPageSize} style={styles.page as PDFPageProps['style']}>
         {watermark && (
           <View style={styles.watermark}>
             <Text>CONFIDENTIAL</Text>
@@ -462,8 +466,8 @@ export function PDFTemplate({ conversation, options, citations }: PDFTemplatePro
       {conversation.messages.map((message, index) => (
         <Page
           key={message.id}
-          size={options.pageSize ?? 'A4'}
-          style={[styles.page, isRTL ? styles.rtl : undefined] as Record<string, unknown>[]}
+          size={(options.pageSize ?? 'A4') as PDFPageSize}
+          style={[styles.page, isRTL ? styles.rtl : undefined] as PDFPageProps['style']}
         >
           <View style={[styles.message, getMessageStyle(message.role)]}>
             <View style={styles.messageHeader}>

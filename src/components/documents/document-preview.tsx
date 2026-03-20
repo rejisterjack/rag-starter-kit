@@ -1,18 +1,13 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { X, ChevronLeft, ChevronRight, Highlighter } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { type Document } from "./document-card";
+import { ChevronLeft, ChevronRight, Highlighter, X } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import type { Document } from './document-card';
 
 interface DocumentChunk {
   id: string;
@@ -78,20 +73,17 @@ export function DocumentPreview({
                     key={chunk.id}
                     onClick={() => onChunkClick?.(chunk)}
                     className={cn(
-                      "relative rounded-lg border p-4 transition-all",
-                      "hover:border-primary/50 cursor-pointer",
-                      chunk.isHighlighted && "border-primary bg-primary/5",
-                      highlightedChunkId === chunk.id &&
-                        "ring-2 ring-primary ring-offset-2"
+                      'relative rounded-lg border p-4 transition-all',
+                      'hover:border-primary/50 cursor-pointer',
+                      chunk.isHighlighted && 'border-primary bg-primary/5',
+                      highlightedChunkId === chunk.id && 'ring-2 ring-primary ring-offset-2'
                     )}
                   >
                     <div className="flex items-start gap-3">
                       <Badge variant="outline" className="shrink-0">
                         Chunk {chunk.index + 1}
                       </Badge>
-                      <p className="text-sm leading-relaxed text-foreground">
-                        {chunk.text}
-                      </p>
+                      <p className="text-sm leading-relaxed text-foreground">{chunk.text}</p>
                     </div>
                     {chunk.isHighlighted && (
                       <div className="absolute right-2 top-2">
@@ -121,14 +113,8 @@ export function DocumentPreview({
               <ChevronLeft className="h-4 w-4 mr-1" />
               Previous
             </Button>
-            <span className="text-sm text-muted-foreground">
-              Page {currentPage}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((p) => p + 1)}
-            >
+            <span className="text-sm text-muted-foreground">Page {currentPage}</span>
+            <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => p + 1)}>
               Next
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
@@ -156,14 +142,12 @@ export function InlineDocumentPreview({
   className,
 }: InlineDocumentPreviewProps) {
   return (
-    <div className={cn("flex flex-col h-full bg-background border-l", className)}>
+    <div className={cn('flex flex-col h-full bg-background border-l', className)}>
       {/* Header */}
       <div className="border-b p-4 flex items-center justify-between">
         <div>
           <h3 className="font-semibold truncate max-w-[250px]">{document.name}</h3>
-          <p className="text-xs text-muted-foreground">
-            {chunks?.length || 0} chunks
-          </p>
+          <p className="text-xs text-muted-foreground">{chunks?.length || 0} chunks</p>
         </div>
         {onClose && (
           <Button variant="ghost" size="icon" onClick={onClose}>
@@ -179,9 +163,8 @@ export function InlineDocumentPreview({
             <div
               key={chunk.id}
               className={cn(
-                "rounded-lg border p-3 text-sm transition-all",
-                highlightedChunkId === chunk.id &&
-                  "border-primary bg-primary/5 ring-1 ring-primary"
+                'rounded-lg border p-3 text-sm transition-all',
+                highlightedChunkId === chunk.id && 'border-primary bg-primary/5 ring-1 ring-primary'
               )}
             >
               <Badge variant="outline" className="mb-2">

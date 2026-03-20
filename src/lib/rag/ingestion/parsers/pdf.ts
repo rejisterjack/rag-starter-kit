@@ -3,7 +3,7 @@
  * Extracts text, metadata, and page-level content from PDF documents
  */
 
-import * as pdfParse from 'pdf-parse';
+// pdf-parse is imported dynamically below
 
 export interface PDFPage {
   pageNumber: number;
@@ -36,7 +36,11 @@ export interface ParsedPDF {
  */
 export async function parsePDF(buffer: Buffer): Promise<ParsedPDF> {
   try {
-    const data = await pdfParse(buffer, {
+    // Dynamic import to handle module format issues
+    const pdfModule = await import('pdf-parse');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parseFn = (pdfModule as unknown as { default: (buffer: Buffer, opts?: { max?: number }) => Promise<{ text: string; numpages: number; info: Record<string, unknown> }> }).default;
+    const data = await parseFn(buffer, {
       // Enable max pages limit if needed for very large PDFs
       max: 0, // 0 = no limit
     });
@@ -48,15 +52,18 @@ export async function parsePDF(buffer: Buffer): Promise<ParsedPDF> {
     // pdf-parse doesn't give us direct page mapping, so we estimate
     const pages = extractPages(text, pageCount);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const info = data.info as Record<string, any>;
+    
     const metadata: PDFMetadata = {
-      title: data.info?.Title || undefined,
-      author: data.info?.Author || undefined,
-      subject: data.info?.Subject || undefined,
-      keywords: data.info?.Keywords || undefined,
-      creator: data.info?.Creator || undefined,
-      producer: data.info?.Producer || undefined,
-      creationDate: data.info?.CreationDate ? parsePDFDate(data.info.CreationDate) : undefined,
-      modificationDate: data.info?.ModDate ? parsePDFDate(data.info.ModDate) : undefined,
+      title: info?.Title ? String(info.Title) : undefined,
+      author: info?.Author ? String(info.Author) : undefined,
+      subject: info?.Subject ? String(info.Subject) : undefined,
+      keywords: info?.Keywords ? String(info.Keywords) : undefined,
+      creator: info?.Creator ? String(info.Creator) : undefined,
+      producer: info?.Producer ? String(info.Producer) : undefined,
+      creationDate: info?.CreationDate ? parsePDFDate(String(info.CreationDate)) : undefined,
+      modificationDate: info?.ModDate ? parsePDFDate(String(info.ModDate)) : undefined,
       pageCount,
       encrypted: false, // pdf-parse handles decryption
     };

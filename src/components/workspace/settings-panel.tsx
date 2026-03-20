@@ -1,16 +1,15 @@
 'use client';
 
-import { useState } from 'react';
 import { Building2, Palette, Save, Shield } from 'lucide-react';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 
 interface WorkspaceSettings {
   id: string;
@@ -74,8 +73,7 @@ export function SettingsPanel({
       if (!response.ok) {
         throw new Error('Failed to update workspace');
       }
-    } catch (error) {
-      console.error('Failed to save settings:', error);
+    } catch (_error) {
     } finally {
       setIsLoading(false);
     }
@@ -95,8 +93,7 @@ export function SettingsPanel({
       if (!response.ok) {
         throw new Error('Failed to update RAG settings');
       }
-    } catch (error) {
-      console.error('Failed to save RAG settings:', error);
+    } catch (_error) {
     } finally {
       setIsLoading(false);
     }
@@ -196,9 +193,7 @@ export function SettingsPanel({
             <select
               id="defaultModel"
               value={ragSettings.defaultModel}
-              onChange={(e) =>
-                setRagSettings({ ...ragSettings, defaultModel: e.target.value })
-              }
+              onChange={(e) => setRagSettings({ ...ragSettings, defaultModel: e.target.value })}
               disabled={!canManageSettings}
               className="w-full rounded-md border border-input bg-background px-3 py-2"
             >
@@ -331,9 +326,7 @@ export function SettingsPanel({
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
               <Label className="text-base">Enable audit logging</Label>
-              <p className="text-sm text-muted-foreground">
-                Track all actions in the workspace
-              </p>
+              <p className="text-sm text-muted-foreground">Track all actions in the workspace</p>
             </div>
             <Switch defaultChecked disabled />
           </div>

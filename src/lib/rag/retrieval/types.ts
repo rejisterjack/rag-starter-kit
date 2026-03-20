@@ -257,6 +257,8 @@ export interface RetrievalPreset {
   rerank: boolean;
   expandQuery: boolean;
   compress: boolean;
+  useHyDE: boolean;
+  useSelfQuery: boolean;
   config?: {
     vector?: Partial<VectorSearchConfig>;
     keyword?: Partial<KeywordSearchConfig>;

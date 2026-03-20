@@ -8,6 +8,12 @@
 import type { RAGConfig, RAGQuery, RAGResponse, Source } from '@/types';
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
 
+// Define message type compatible with the AI SDK
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
 // ============================================================================
 // Configuration
 // ============================================================================
@@ -59,13 +65,13 @@ export async function generateRAGResponse(
     // Step 3: Generate response with context
     const systemPrompt = buildRAGSystemPrompt(context, config.systemInstructions);
     
-    const messages = [
-      { role: 'system' as const, content: systemPrompt },
-      ...(query.history ?? []),
-      { role: 'user' as const, content: query.query },
+    const messages: ChatMessage[] = [
+      { role: 'system', content: systemPrompt },
+      ...(query.history ?? []).map((m): ChatMessage => ({ role: m.role, content: m.content })),
+      { role: 'user', content: query.query },
     ];
 
-    const response = await generateChatCompletion(messages, config);
+    const response = await generateChatCompletion(messages as unknown as Parameters<typeof generateChatCompletion>[0], config);
     
     const latency = Date.now() - startTime;
     
@@ -73,9 +79,9 @@ export async function generateRAGResponse(
       answer: response.text,
       sources,
       tokensUsed: {
-        prompt: response.usage?.promptTokens ?? 0,
-        completion: response.usage?.completionTokens ?? 0,
-        total: response.usage?.totalTokens ?? 0,
+        prompt: (response.usage as unknown as { promptTokens?: number })?.promptTokens ?? 0,
+        completion: (response.usage as unknown as { completionTokens?: number })?.completionTokens ?? 0,
+        total: (response.usage as unknown as { totalTokens?: number })?.totalTokens ?? 0,
       },
       latency,
     };
@@ -119,13 +125,13 @@ export async function* streamRAGResponse(
     const systemPrompt = buildRAGSystemPrompt(context, config.systemInstructions);
     
     // Step 3: Stream response
-    const messages = [
-      { role: 'system' as const, content: systemPrompt },
-      ...(query.history ?? []),
-      { role: 'user' as const, content: query.query },
+    const messages: ChatMessage[] = [
+      { role: 'system', content: systemPrompt },
+      ...(query.history ?? []).map((m): ChatMessage => ({ role: m.role, content: m.content })),
+      { role: 'user', content: query.query },
     ];
 
-    const stream = await streamChatCompletion(messages, config);
+    const stream = await streamChatCompletion(messages as unknown as Parameters<typeof streamChatCompletion>[0], config);
     
     for await (const chunk of stream.textStream) {
       yield { type: 'content', content: chunk };

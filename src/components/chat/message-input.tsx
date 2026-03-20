@@ -1,11 +1,12 @@
-"use client";
+'use client';
 
-import React, { useRef, useState, useCallback, useEffect } from "react";
-import { Send, Paperclip, Loader2, X } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { Loader2, Paperclip, Send, X } from 'lucide-react';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 interface MessageInputProps {
   onSend: (message: string, files?: File[]) => void;
@@ -21,10 +22,10 @@ export function MessageInput({
   onTyping,
   disabled = false,
   isLoading = false,
-  placeholder = "Send a message...",
+  placeholder = 'Send a message...',
   className,
 }: MessageInputProps) {
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -32,7 +33,7 @@ export function MessageInput({
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (textarea) {
-      textarea.style.height = "auto";
+      textarea.style.height = 'auto';
       const newHeight = Math.min(textarea.scrollHeight, 200);
       textarea.style.height = `${newHeight}px`;
     }
@@ -40,25 +41,25 @@ export function MessageInput({
 
   useEffect(() => {
     adjustHeight();
-  }, [message, adjustHeight]);
+  }, [adjustHeight]);
 
   const handleSubmit = useCallback(() => {
     if (!message.trim() && files.length === 0) return;
     if (disabled || isLoading) return;
 
     onSend(message.trim(), files.length > 0 ? files : undefined);
-    setMessage("");
+    setMessage('');
     setFiles([]);
 
     // Reset textarea height
     if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = 'auto';
     }
   }, [message, files, disabled, isLoading, onSend]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey) {
+      if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         handleSubmit();
       }
@@ -66,14 +67,11 @@ export function MessageInput({
     [handleSubmit]
   );
 
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const selectedFiles = Array.from(e.target.files || []);
-      setFiles((prev) => [...prev, ...selectedFiles]);
-      e.target.value = ""; // Reset input
-    },
-    []
-  );
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    setFiles((prev) => [...prev, ...selectedFiles]);
+    e.target.value = ''; // Reset input
+  }, []);
 
   const removeFile = useCallback((index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
@@ -87,17 +85,13 @@ export function MessageInput({
   const hasContent = message.trim().length > 0 || files.length > 0;
 
   return (
-    <div className={cn("border-t bg-background p-4", className)}>
+    <div className={cn('border-t bg-background p-4', className)}>
       <div className="mx-auto max-w-3xl">
         {/* File attachments */}
         {files.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
             {files.map((file, index) => (
-              <Badge
-                key={index}
-                variant="secondary"
-                className="flex items-center gap-1 pr-1"
-              >
+              <Badge key={index} variant="secondary" className="flex items-center gap-1 pr-1">
                 <Paperclip className="h-3 w-3" />
                 <span className="max-w-[150px] truncate">{file.name}</span>
                 <Button
@@ -153,10 +147,10 @@ export function MessageInput({
             disabled={!hasContent || disabled || isLoading}
             size="icon"
             className={cn(
-              "shrink-0 rounded-lg transition-all",
+              'shrink-0 rounded-lg transition-all',
               hasContent && !disabled && !isLoading
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground'
             )}
           >
             {isLoading ? (

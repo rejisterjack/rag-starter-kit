@@ -1,51 +1,41 @@
-"use client";
+'use client';
 
 /**
  * Voice Feature Demo Component
  * Example usage of voice input/output features
  */
 
-import React, { useState } from 'react';
-import { Mic, Settings, Command } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Command, Mic, Settings } from 'lucide-react';
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { VoiceInputButton, VoiceInputPanel } from './voice-input-button';
-import { SpeakButton } from './speak-button';
-import { VoiceSettingsPanel } from './voice-settings';
-// import { VoiceTranscriptPanel } from './voice-transcript-panel';
-import { VoiceWaveform } from './voice-waveform';
-import { useVoiceInput, useVoiceOutput, useVoiceCommands } from '@/hooks/use-voice';
+import { useVoiceCommands, useVoiceInput, useVoiceOutput } from '@/hooks/use-voice';
 import { checkBrowserSupport } from '@/lib/voice';
+import { SpeakButton } from './speak-button';
+import { VoiceInputButton } from './voice-input-button';
+import { VoiceSettingsPanel } from './voice-settings';
+import { VoiceWaveform } from './voice-waveform';
 
 export function VoiceDemo() {
   const [activeTab, setActiveTab] = useState('input');
   const [demoText, setDemoText] = useState('Hello! This is a demonstration of the voice features.');
   const [receivedTranscript, setReceivedTranscript] = useState('');
-  const [voicePanelOpen, setVoicePanelOpen] = useState(false);
-  
+  const [isSpeaking, _setIsSpeaking] = useState(false);
+
   // Check browser support
   const support = checkBrowserSupport();
 
   // Voice input demo
-  const {
-    isListening,
-    transcript,
-    interimTranscript,
-    fullTranscript,
-    error,
-  } = useVoiceInput({
+  const { isListening, transcript, interimTranscript, fullTranscript, error } = useVoiceInput({
     language: 'en-US',
     interimResults: true,
-    onFinalResult: (text) => setReceivedTranscript(text),
+    onFinalResult: (text: string) => setReceivedTranscript(text),
   });
 
   // Voice output demo
-  const {
-    voices,
-    cancel,
-  } = useVoiceOutput();
+  const { voices, cancel } = useVoiceOutput();
 
   // Voice commands demo
   const { commands, lastCommand, registerCommand } = useVoiceCommands({
@@ -90,7 +80,7 @@ export function VoiceDemo() {
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-4">
@@ -104,10 +94,7 @@ export function VoiceDemo() {
           <TabsContent value="input" className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium">Speech to Text</h3>
-              <VoiceInputButton
-                onTranscript={setReceivedTranscript}
-                showTranscript={false}
-              />
+              <VoiceInputButton onTranscript={setReceivedTranscript} />
             </div>
 
             {support.speechRecognition || support.webkitSpeechRecognition ? (
@@ -132,9 +119,7 @@ export function VoiceDemo() {
                   </div>
                 </div>
 
-                {isListening && (
-                  <VoiceWaveform isActive={true} barCount={20} height={40} />
-                )}
+                {isListening && <VoiceWaveform isActive={true} className="h-10" />}
 
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Transcript</p>
@@ -167,20 +152,12 @@ export function VoiceDemo() {
                     <p className="text-sm text-red-800">{error.message}</p>
                   </div>
                 )}
-
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setVoicePanelOpen(true)}
-                >
-                  Open Full Voice Panel
-                </Button>
               </>
             ) : (
               <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
                 <p className="text-sm text-yellow-800">
-                  Speech recognition is not supported in your browser.
-                  Try using Chrome, Edge, or Safari.
+                  Speech recognition is not supported in your browser. Try using Chrome, Edge, or
+                  Safari.
                 </p>
               </div>
             )}
@@ -205,17 +182,8 @@ export function VoiceDemo() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <SpeakButton 
-                    text={demoText} 
-                    label="Speak"
-                    iconOnly={false}
-                    allowPause={true}
-                  />
-                  <Button 
-                    variant="outline" 
-                    onClick={cancel}
-                    disabled={!isSpeaking}
-                  >
+                  <SpeakButton text={demoText} label="Speak" iconOnly={false} allowPause={true} />
+                  <Button variant="outline" onClick={cancel} disabled={!isSpeaking}>
                     Stop
                   </Button>
                 </div>
@@ -255,7 +223,7 @@ export function VoiceDemo() {
               <p className="text-sm text-muted-foreground">
                 Say one of the following commands while voice input is active:
               </p>
-              
+
               <div className="space-y-2">
                 {commands.map((cmd) => (
                   <div
@@ -266,7 +234,7 @@ export function VoiceDemo() {
                   >
                     <p className="font-medium text-sm">{cmd.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      Say: {cmd.phrases.map(p => `"${p}"`).join(', ')}
+                      Say: {cmd.phrases.map((p) => `"${p}"`).join(', ')}
                     </p>
                   </div>
                 ))}
@@ -305,7 +273,13 @@ export function VoiceDemo() {
                 </div>
                 <div className="flex justify-between">
                   <span>Speech Recognition</span>
-                  <Badge variant={support.speechRecognition || support.webkitSpeechRecognition ? 'default' : 'secondary'}>
+                  <Badge
+                    variant={
+                      support.speechRecognition || support.webkitSpeechRecognition
+                        ? 'default'
+                        : 'secondary'
+                    }
+                  >
                     {support.speechRecognition || support.webkitSpeechRecognition ? 'Yes' : 'No'}
                   </Badge>
                 </div>
@@ -330,12 +304,6 @@ export function VoiceDemo() {
           </TabsContent>
         </Tabs>
       </CardContent>
-
-      <VoiceInputPanel
-        isOpen={voicePanelOpen}
-        onClose={() => setVoicePanelOpen(false)}
-        onTranscript={setReceivedTranscript}
-      />
     </Card>
   );
 }

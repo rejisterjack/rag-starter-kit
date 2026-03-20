@@ -13,5 +13,4 @@ export {
   type RAGTrace,
   type RAGSpan,
   type RAGGeneration,
-  type RAGEvent,
 } from './langfuse';

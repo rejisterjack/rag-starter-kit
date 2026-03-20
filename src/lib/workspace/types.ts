@@ -5,6 +5,7 @@
 export type MemberRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
 export type MemberStatus = 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'SUSPENDED';
 export type WorkspacePlan = 'FREE' | 'PRO' | 'ENTERPRISE';
+export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'CANCELLED';
 
 export interface Workspace {
   id: string;
@@ -36,6 +37,7 @@ export interface WorkspaceInvitation {
   workspaceId: string;
   email: string;
   role: MemberRole;
+  status: InvitationStatus;
   invitedBy: string;
   token: string;
   expiresAt: Date;
@@ -73,7 +75,7 @@ export interface MembersListResponse {
         email: string;
         image: string | null;
       };
-    })[];
+    });
   };
 }
 

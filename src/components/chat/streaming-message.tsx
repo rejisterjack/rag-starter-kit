@@ -1,11 +1,10 @@
-"use client";
+'use client';
 
-import React from "react";
-import { Bot, Square } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Markdown } from "./markdown";
+import { Bot, Square } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { Markdown } from './markdown';
 
 interface StreamingMessageProps {
   content: string;
@@ -13,13 +12,9 @@ interface StreamingMessageProps {
   className?: string;
 }
 
-export function StreamingMessage({
-  content,
-  onCancel,
-  className,
-}: StreamingMessageProps) {
+export function StreamingMessage({ content, onCancel, className }: StreamingMessageProps) {
   return (
-    <div className={cn("relative py-6 bg-muted/30", className)}>
+    <div className={cn('relative py-6 bg-muted/30', className)}>
       <div className="mx-auto flex max-w-3xl gap-4 px-4">
         {/* Avatar */}
         <div className="flex shrink-0 flex-col items-center">
@@ -46,7 +41,7 @@ export function StreamingMessage({
 
           {/* Message content */}
           <div className="text-foreground">
-            <Markdown content={content || "▌"} />
+            <Markdown content={content || '▌'} />
             {content && (
               <span className="inline-block h-4 w-2 animate-pulse bg-primary align-middle" />
             )}
@@ -56,12 +51,7 @@ export function StreamingMessage({
         {/* Cancel button */}
         {onCancel && (
           <div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onCancel}
-              className="gap-1"
-            >
+            <Button variant="outline" size="sm" onClick={onCancel} className="gap-1">
               <Square className="h-3 w-3 fill-current" />
               Stop
             </Button>

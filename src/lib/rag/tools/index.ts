@@ -26,17 +26,14 @@ export {
 
 // Web search tool
 export {
-  webSearchTool,
   createWebSearchTool,
-  createWebSearchToolFromEnv,
-  createWebSearchProviderFromEnv,
+  getDefaultWebSearchProvider,
   type WebSearchProvider,
   type WebSearchResult,
   type WebSearchOptions,
   TavilyProvider,
   SerpAPIProvider,
   DuckDuckGoProvider,
-  MockWebSearchProvider,
 } from './web-search';
 
 // Document tools
@@ -51,7 +48,7 @@ export {
 
 // Re-import for use in this file
 import { calculatorTool } from './calculator';
-import { webSearchTool } from './web-search';
+import { getDefaultWebSearchProvider, createWebSearchTool } from './web-search';
 import {
   searchDocumentsTool,
   documentSummaryTool,
@@ -87,7 +84,7 @@ export const currentTimeTool = {
 export function getAllTools() {
   return [
     calculatorTool,
-    webSearchTool,
+    createWebSearchTool(getDefaultWebSearchProvider()),
     searchDocumentsTool,
     documentSummaryTool,
     documentMetadataTool,
@@ -102,6 +99,6 @@ export function getAllTools() {
  */
 export function createToolRegistry(): ToolRegistry {
   const registry = new ToolRegistry();
-  getAllTools().forEach((tool) => registry.register(tool as import('./types').Tool));
+  getAllTools().forEach((tool) => registry.register(tool));
   return registry;
 }

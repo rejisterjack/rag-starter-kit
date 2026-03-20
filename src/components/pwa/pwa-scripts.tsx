@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import Script from "next/script";
+import Script from 'next/script';
 
 /**
  * PWA Scripts Component
  * Handles service worker registration and PWA initialization
- * 
+ *
  * This component should be placed at the end of the body in layout.tsx
  */
 export function PWAScripts() {
@@ -177,7 +177,7 @@ declare global {
     /** Deferred install prompt event */
     __DEFERRED_INSTALL_PROMPT__?: {
       prompt(): Promise<void>;
-      userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+      userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
     };
     /** PWA utilities */
     __PWA__: {
@@ -186,7 +186,7 @@ declare global {
       clearCache(): void;
       getRegistration(): ServiceWorkerRegistration | undefined;
       getInstallPrompt(): unknown;
-      showInstallPrompt(): Promise<{ outcome: "accepted" | "dismissed"; platform: string } | null>;
+      showInstallPrompt(): Promise<{ outcome: 'accepted' | 'dismissed'; platform: string } | null>;
       isStandalone(): boolean;
       isOnline(): boolean;
     };

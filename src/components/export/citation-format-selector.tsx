@@ -1,15 +1,10 @@
 'use client';
 
-import React from 'react';
+import { BookOpen, Footprints, GraduationCap, Hash, Info, ListOrdered } from 'lucide-react';
+import type React from 'react';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { Info, Hash, Footprints, BookOpen, GraduationCap, ListOrdered } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 import type { CitationStyle } from '@/lib/export';
 import { cn } from '@/lib/utils';
@@ -101,12 +96,7 @@ export function CitationFormatSelector({
         </TooltipProvider>
       </div>
 
-      <RadioGroup
-        value={value}
-        onValueChange={onChange}
-        disabled={disabled}
-        className="grid gap-2"
-      >
+      <RadioGroup value={value} onValueChange={onChange} disabled={disabled} className="grid gap-2">
         {citationOptions.map((option) => (
           <label
             key={option.value}
@@ -141,9 +131,7 @@ export function CitationFormatSelector({
                 <span className="font-medium">{option.label}</span>
               </div>
 
-              <p className="text-sm text-muted-foreground mt-1">
-                {option.description}
-              </p>
+              <p className="text-sm text-muted-foreground mt-1">{option.description}</p>
 
               {value === option.value && (
                 <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground border border-border">
@@ -233,7 +221,6 @@ export function CitationPreview({ style, citations, className }: CitationPreview
       case 'footnotes':
       case 'endnotes':
         return `[^${index + 1}]: ${citation.documentName}${citation.page ? `, Page ${citation.page}` : ''}`;
-      case 'inline-numbered':
       default:
         return `[${index + 1}] ${citation.documentName}${citation.page ? `, Page ${citation.page}` : ''}`;
     }
@@ -247,7 +234,6 @@ export function CitationPreview({ style, citations, className }: CitationPreview
       case 'footnotes':
       case 'endnotes':
         return `${index + 1}`;
-      case 'inline-numbered':
       default:
         return `[${index + 1}]`;
     }
@@ -261,15 +247,13 @@ export function CitationPreview({ style, citations, className }: CitationPreview
         <p>
           The research findings indicate significant improvements in efficiency
           {citations.length > 0 && (
-            <span className="text-primary font-medium">
-              {' '}{getInlineCitation(0)}
-            </span>
-          )}. These results are consistent with previous studies
+            <span className="text-primary font-medium"> {getInlineCitation(0)}</span>
+          )}
+          . These results are consistent with previous studies
           {citations.length > 1 && (
-            <span className="text-primary font-medium">
-              {' '}{getInlineCitation(1)}
-            </span>
-          )}.
+            <span className="text-primary font-medium"> {getInlineCitation(1)}</span>
+          )}
+          .
         </p>
 
         {(style === 'footnotes' || style === 'endnotes') && citations.length > 0 && (

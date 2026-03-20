@@ -1,26 +1,23 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import {
-  Loader2,
-  Save,
   AlertTriangle,
   Building2,
-  Users,
+  Loader2,
   Lock,
+  Save,
   Unlock,
   UserPlus,
+  Users,
 } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
+import { useRouter } from 'next/navigation';
+import { useCallback, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -28,12 +25,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // =============================================================================
 // Types
@@ -97,6 +91,13 @@ export function SSOSettings({
     }
   };
 
+  // Validate domain format
+  const isValidDomain = useCallback((domain: string): boolean => {
+    const regex =
+      /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+    return regex.test(domain);
+  }, []);
+
   // Add domain
   const handleAddDomain = useCallback(() => {
     if (!newDomain || !isValidDomain(newDomain)) {
@@ -113,21 +114,18 @@ export function SSOSettings({
     setSettings({ ...settings, ssoDomains: [...settings.ssoDomains, domain] });
     setNewDomain('');
     setError(null);
-  }, [newDomain, settings]);
+  }, [newDomain, settings, isValidDomain]);
 
   // Remove domain
-  const handleRemoveDomain = useCallback((domain: string) => {
-    setSettings({
-      ...settings,
-      ssoDomains: settings.ssoDomains.filter((d) => d !== domain),
-    });
-  }, [settings]);
-
-  // Validate domain format
-  const isValidDomain = (domain: string): boolean => {
-    const regex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
-    return regex.test(domain);
-  };
+  const handleRemoveDomain = useCallback(
+    (domain: string) => {
+      setSettings({
+        ...settings,
+        ssoDomains: settings.ssoDomains.filter((d) => d !== domain),
+      });
+    },
+    [settings]
+  );
 
   return (
     <TooltipProvider>
@@ -139,15 +137,15 @@ export function SSOSettings({
               <Building2 className="h-5 w-5" />
               Single Sign-On Settings
             </CardTitle>
-            <CardDescription>
-              Configure SSO behavior and security policies
-            </CardDescription>
+            <CardDescription>Configure SSO behavior and security policies</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Enable SSO Toggle */}
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="sso-enabled" className="text-base">Enable SSO</Label>
+                <Label htmlFor="sso-enabled" className="text-base">
+                  Enable SSO
+                </Label>
                 <p className="text-sm text-muted-foreground">
                   Allow users to sign in via SAML or OAuth providers
                 </p>
@@ -155,7 +153,7 @@ export function SSOSettings({
               <Switch
                 id="sso-enabled"
                 checked={settings.ssoEnabled}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({ ...settings, ssoEnabled: checked })
                 }
               />
@@ -167,7 +165,9 @@ export function SSOSettings({
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="force-sso" className="text-base">Force SSO</Label>
+                  <Label htmlFor="force-sso" className="text-base">
+                    Force SSO
+                  </Label>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <AlertTriangle className="h-4 w-4 text-yellow-500 cursor-help" />
@@ -187,7 +187,7 @@ export function SSOSettings({
               <Switch
                 id="force-sso"
                 checked={settings.forceSSO}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({ ...settings, forceSSO: checked })
                 }
                 disabled={!settings.ssoEnabled}
@@ -199,8 +199,8 @@ export function SSOSettings({
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Warning</AlertTitle>
                 <AlertDescription>
-                  Force SSO is enabled. Make sure your SSO configuration is working
-                  correctly or you may be locked out of the workspace.
+                  Force SSO is enabled. Make sure your SSO configuration is working correctly or you
+                  may be locked out of the workspace.
                 </AlertDescription>
               </Alert>
             )}
@@ -230,7 +230,7 @@ export function SSOSettings({
               <Switch
                 id="jit-provisioning"
                 checked={settings.jitProvisioning}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({ ...settings, jitProvisioning: checked })
                 }
                 disabled={!settings.ssoEnabled}
@@ -252,7 +252,7 @@ export function SSOSettings({
               <Switch
                 id="account-linking"
                 checked={settings.allowAccountLinking}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({ ...settings, allowAccountLinking: checked })
                 }
                 disabled={!settings.ssoEnabled}
@@ -278,21 +278,14 @@ export function SSOSettings({
                 onKeyDown={(e) => e.key === 'Enter' && handleAddDomain()}
                 disabled={!settings.ssoEnabled}
               />
-              <Button
-                onClick={handleAddDomain}
-                disabled={!settings.ssoEnabled || !newDomain}
-              >
+              <Button onClick={handleAddDomain} disabled={!settings.ssoEnabled || !newDomain}>
                 Add Domain
               </Button>
             </div>
 
             <div className="flex flex-wrap gap-2">
               {settings.ssoDomains.map((domain) => (
-                <Badge
-                  key={domain}
-                  variant="secondary"
-                  className="flex items-center gap-1"
-                >
+                <Badge key={domain} variant="secondary" className="flex items-center gap-1">
                   {domain}
                   <button
                     onClick={() => handleRemoveDomain(domain)}
@@ -304,9 +297,7 @@ export function SSOSettings({
                 </Badge>
               ))}
               {settings.ssoDomains.length === 0 && (
-                <p className="text-sm text-muted-foreground italic">
-                  No domains configured
-                </p>
+                <p className="text-sm text-muted-foreground italic">No domains configured</p>
               )}
             </div>
           </CardContent>
@@ -362,9 +353,7 @@ export function SSOSettings({
         <Card>
           <CardHeader>
             <CardTitle>Session Settings</CardTitle>
-            <CardDescription>
-              Configure session duration for SSO users
-            </CardDescription>
+            <CardDescription>Configure session duration for SSO users</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -424,11 +413,7 @@ export function SSOSettings({
 
         {/* Save Button */}
         <div className="flex justify-end">
-          <Button
-            onClick={handleSave}
-            disabled={isLoading}
-            size="lg"
-          >
+          <Button onClick={handleSave} disabled={isLoading} size="lg">
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Save className="mr-2 h-4 w-4" />
             Save Settings

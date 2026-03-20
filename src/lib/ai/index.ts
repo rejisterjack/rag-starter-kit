@@ -1,5 +1,5 @@
 import { openai } from '@ai-sdk/openai';
-import { streamText, generateText, type Message } from 'ai';
+import { streamText, generateText, type UIMessage } from 'ai';
 
 import type { RAGConfig } from '@/types';
 
@@ -21,34 +21,36 @@ export const defaultAIConfig: RAGConfig = {
  * Stream a chat completion with the AI
  */
 export async function streamChatCompletion(
-  messages: Message[],
+  messages: UIMessage[],
   config: Partial<RAGConfig> = {}
-) {
+): Promise<ReturnType<typeof streamText>> {
   const modelConfig = { ...defaultAIConfig, ...config };
 
-  return streamText({
+  const result = streamText({
     model: openai(modelConfig.model),
-    messages,
+    messages: messages as UIMessage[],
     temperature: modelConfig.temperature,
-    maxTokens: modelConfig.maxTokens,
-  });
+    maxOutputTokens: modelConfig.maxTokens,
+  } as unknown as Parameters<typeof streamText>[0]);
+  return result;
 }
 
 /**
  * Generate a non-streaming chat completion
  */
 export async function generateChatCompletion(
-  messages: Message[],
+  messages: UIMessage[],
   config: Partial<RAGConfig> = {}
-) {
+): Promise<ReturnType<typeof generateText>> {
   const modelConfig = { ...defaultAIConfig, ...config };
 
-  return generateText({
+  const result = generateText({
     model: openai(modelConfig.model),
-    messages,
+    messages: messages as UIMessage[],
     temperature: modelConfig.temperature,
-    maxTokens: modelConfig.maxTokens,
-  });
+    maxOutputTokens: modelConfig.maxTokens,
+  } as unknown as Parameters<typeof generateText>[0]);
+  return result;
 }
 
 /**

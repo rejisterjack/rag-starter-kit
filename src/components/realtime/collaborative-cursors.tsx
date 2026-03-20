@@ -6,16 +6,12 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
-import { cn } from '@/lib/utils';
-import type { UserInfo, CursorPosition } from '@/lib/realtime/types';
+import type React from 'react';
+import { useMemo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { CursorPosition, UserInfo } from '@/lib/realtime/types';
+import { cn } from '@/lib/utils';
 
 // =============================================================================
 // Types
@@ -50,7 +46,7 @@ interface CursorProps {
 function getInitials(name: string): string {
   return name
     .split(' ')
-    .map(n => n[0])
+    .map((n) => n[0])
     .join('')
     .toUpperCase()
     .slice(0, 2);
@@ -70,12 +66,12 @@ function generateCursorColor(userId: string): string {
     '#d946ef', // fuchsia
     '#f43f5e', // rose
   ];
-  
+
   let hash = 0;
   for (let i = 0; i < userId.length; i++) {
     hash = userId.charCodeAt(i) + ((hash << 5) - hash);
   }
-  
+
   return colors[Math.abs(hash) % colors.length];
 }
 
@@ -91,7 +87,7 @@ const Cursor: React.FC<CursorProps> = ({
 }) => {
   const { user, position } = cursor;
   const color = useMemo(() => generateCursorColor(user.id), [user.id]);
-  
+
   const labelOffsetClasses = {
     top: '-translate-x-1/2 -translate-y-full -mt-1',
     bottom: '-translate-x-1/2 translate-y-full mt-1',
@@ -136,7 +132,7 @@ const Cursor: React.FC<CursorProps> = ({
           <TooltipTrigger asChild>
             <div className="relative">
               {cursorSvg}
-              
+
               {showLabel && (
                 <div
                   className={cn(
@@ -162,14 +158,12 @@ const Cursor: React.FC<CursorProps> = ({
           <TooltipContent side="top">
             <p className="text-sm font-medium">{user.name}</p>
             {position.elementId && (
-              <p className="text-xs text-muted-foreground">
-                Editing: {position.elementId}
-              </p>
+              <p className="text-xs text-muted-foreground">Editing: {position.elementId}</p>
             )}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      
+
       {/* Selection highlight */}
       {position.selection && (
         <div
@@ -204,7 +198,7 @@ export const CollaborativeCursors: React.FC<CollaborativeCursorsProps> = ({
   const activeCursors = useMemo(() => {
     const now = Date.now();
     const filtered: CursorState[] = [];
-    
+
     for (const [userId, cursor] of cursors.entries()) {
       if (
         userId !== currentUserId &&
@@ -213,7 +207,7 @@ export const CollaborativeCursors: React.FC<CollaborativeCursorsProps> = ({
         filtered.push(cursor);
       }
     }
-    
+
     return filtered;
   }, [cursors, currentUserId]);
 
@@ -221,16 +215,13 @@ export const CollaborativeCursors: React.FC<CollaborativeCursorsProps> = ({
 
   return (
     <div
-      className={cn(
-        'absolute inset-0 pointer-events-none overflow-hidden',
-        className
-      )}
+      className={cn('absolute inset-0 pointer-events-none overflow-hidden', className)}
       style={{
         // Ensure cursors are positioned relative to the container
         position: containerRef?.current ? 'absolute' : 'fixed',
       }}
     >
-      {activeCursors.map(cursor => (
+      {activeCursors.map((cursor) => (
         <Cursor
           key={cursor.user.id}
           cursor={cursor}
@@ -253,27 +244,20 @@ interface CursorListProps {
   className?: string;
 }
 
-export const CursorList: React.FC<CursorListProps> = ({
-  cursors,
-  currentUserId,
-  className,
-}) => {
+export const CursorList: React.FC<CursorListProps> = ({ cursors, currentUserId, className }) => {
   const activeUsers = useMemo(() => {
     const now = Date.now();
     const users: Array<{ user: UserInfo; color: string }> = [];
-    
+
     for (const [userId, cursor] of cursors.entries()) {
-      if (
-        userId !== currentUserId &&
-        now - cursor.timestamp < 30000
-      ) {
+      if (userId !== currentUserId && now - cursor.timestamp < 30000) {
         users.push({
           user: cursor.user,
           color: generateCursorColor(userId),
         });
       }
     }
-    
+
     return users;
   }, [cursors, currentUserId]);
 
@@ -328,16 +312,13 @@ export const CursorActivityIndicator: React.FC<CursorActivityIndicatorProps> = (
   const activeCount = useMemo(() => {
     const now = Date.now();
     let count = 0;
-    
+
     for (const [userId, cursor] of cursors.entries()) {
-      if (
-        userId !== currentUserId &&
-        now - cursor.timestamp < 30000
-      ) {
+      if (userId !== currentUserId && now - cursor.timestamp < 30000) {
         count++;
       }
     }
-    
+
     return count;
   }, [cursors, currentUserId]);
 
@@ -349,9 +330,7 @@ export const CursorActivityIndicator: React.FC<CursorActivityIndicatorProps> = (
         <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
         <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
       </span>
-      <span>
-        {activeCount === 1 ? '1 active cursor' : `${activeCount} active cursors`}
-      </span>
+      <span>{activeCount === 1 ? '1 active cursor' : `${activeCount} active cursors`}</span>
     </div>
   );
 };

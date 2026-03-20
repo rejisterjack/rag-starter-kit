@@ -1,29 +1,30 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import {
-  Loader2,
+  AlertTriangle,
   Check,
-  X,
   Copy,
+  Download,
   FileText,
+  Loader2,
+  RefreshCw,
   Shield,
   Upload,
-  Download,
-  RefreshCw,
-  AlertTriangle,
+  X,
 } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useRouter } from 'next/navigation';
+import { useCallback, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-// import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -32,13 +33,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 
 // =============================================================================
 // Types
@@ -128,11 +126,8 @@ export function SSOConfiguration({
     setSuccess(null);
 
     try {
-      const payload = activeTab === 'metadata'
-        ? metadataUrl
-          ? { metadataUrl }
-          : { metadataXml }
-        : manualConfig;
+      const payload =
+        activeTab === 'metadata' ? (metadataUrl ? { metadataUrl } : { metadataXml }) : manualConfig;
 
       const response = await fetch(`/api/workspaces/${workspaceId}/saml`, {
         method: config ? 'PUT' : 'POST',
@@ -226,17 +221,15 @@ export function SSOConfiguration({
             <Shield className="h-5 w-5" />
             SAML SSO Status
           </CardTitle>
-          <CardDescription>
-            Configure SAML 2.0 Single Sign-On for your organization
-          </CardDescription>
+          <CardDescription>Configure SAML 2.0 Single Sign-On for your organization</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`h-3 w-3 rounded-full ${config?.active ? 'bg-green-500' : 'bg-gray-300'}`} />
-              <span className="font-medium">
-                {config?.active ? 'Active' : 'Not Configured'}
-              </span>
+              <div
+                className={`h-3 w-3 rounded-full ${config?.active ? 'bg-green-500' : 'bg-gray-300'}`}
+              />
+              <span className="font-medium">{config?.active ? 'Active' : 'Not Configured'}</span>
             </div>
             {config?.active && (
               <Badge variant="outline" className="text-green-600 border-green-600">
@@ -260,12 +253,7 @@ export function SSOConfiguration({
         </CardContent>
         {config?.active && (
           <CardFooter className="flex justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTest}
-              disabled={isTesting}
-            >
+            <Button variant="outline" size="sm" onClick={handleTest} disabled={isTesting}>
               {isTesting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -273,11 +261,7 @@ export function SSOConfiguration({
               )}
               Test Connection
             </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setShowDeleteDialog(true)}
-            >
+            <Button variant="destructive" size="sm" onClick={() => setShowDeleteDialog(true)}>
               <X className="mr-2 h-4 w-4" />
               Remove
             </Button>
@@ -289,9 +273,7 @@ export function SSOConfiguration({
       <Card>
         <CardHeader>
           <CardTitle>Service Provider Metadata</CardTitle>
-          <CardDescription>
-            Provide this information to your Identity Provider
-          </CardDescription>
+          <CardDescription>Provide this information to your Identity Provider</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -312,11 +294,7 @@ export function SSOConfiguration({
             <Label>ACS (Assertion Consumer Service) URL</Label>
             <div className="flex gap-2">
               <Input value={spUrls.acs} readOnly />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => copyToClipboard(spUrls.acs)}
-              >
+              <Button variant="outline" size="icon" onClick={() => copyToClipboard(spUrls.acs)}>
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
@@ -326,21 +304,13 @@ export function SSOConfiguration({
             <Label>SLO (Single Logout) URL</Label>
             <div className="flex gap-2">
               <Input value={spUrls.slo} readOnly />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => copyToClipboard(spUrls.slo)}
-              >
+              <Button variant="outline" size="icon" onClick={() => copyToClipboard(spUrls.slo)}>
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={downloadMetadata}
-          >
+          <Button variant="outline" className="w-full" onClick={downloadMetadata}>
             <Download className="mr-2 h-4 w-4" />
             Download SP Metadata XML
           </Button>
@@ -351,9 +321,7 @@ export function SSOConfiguration({
       <Card>
         <CardHeader>
           <CardTitle>Identity Provider Configuration</CardTitle>
-          <CardDescription>
-            Configure your IdP settings
-          </CardDescription>
+          <CardDescription>Configure your IdP settings</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ConfigTab)}>
@@ -377,9 +345,7 @@ export function SSOConfiguration({
                   value={metadataUrl}
                   onChange={(e) => setMetadataUrl(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Or paste the metadata XML below
-                </p>
+                <p className="text-xs text-muted-foreground">Or paste the metadata XML below</p>
               </div>
 
               <div className="space-y-2">
@@ -401,7 +367,9 @@ export function SSOConfiguration({
                   id="idpEntityId"
                   placeholder="https://your-idp.com/entity-id"
                   value={manualConfig.idpEntityId}
-                  onChange={(e) => setManualConfig({ ...manualConfig, idpEntityId: e.target.value })}
+                  onChange={(e) =>
+                    setManualConfig({ ...manualConfig, idpEntityId: e.target.value })
+                  }
                 />
               </div>
 
@@ -431,7 +399,9 @@ export function SSOConfiguration({
                   id="certificate"
                   placeholder="-----BEGIN CERTIFICATE-----\nMIIDXTCCAkWgAwIBAgIJAJC1HiIAZAiUMA0GCSqGSIb3Qa..."
                   value={manualConfig.certificate}
-                  onChange={(e) => setManualConfig({ ...manualConfig, certificate: e.target.value })}
+                  onChange={(e) =>
+                    setManualConfig({ ...manualConfig, certificate: e.target.value })
+                  }
                   className="min-h-[150px] font-mono text-xs"
                 />
               </div>
@@ -439,18 +409,11 @@ export function SSOConfiguration({
           </Tabs>
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Button
-            variant="outline"
-            onClick={() => router.refresh()}
-            disabled={isLoading}
-          >
+          <Button variant="outline" onClick={() => router.refresh()} disabled={isLoading}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Reset
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isLoading}
-          >
+          <Button onClick={handleSave} disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Configuration
           </Button>
@@ -480,22 +443,15 @@ export function SSOConfiguration({
           <DialogHeader>
             <DialogTitle>Remove SAML Configuration</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove SAML SSO configuration?
-              Users will no longer be able to sign in via SSO.
+              Are you sure you want to remove SAML SSO configuration? Users will no longer be able
+              to sign in via SSO.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
-            >
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isLoading}
-            >
+            <Button variant="destructive" onClick={handleDelete} disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Remove
             </Button>

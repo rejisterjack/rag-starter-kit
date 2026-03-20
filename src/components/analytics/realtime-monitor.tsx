@@ -1,27 +1,27 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Activity,
-  Users,
-  MessageSquare,
   AlertCircle,
   CheckCircle2,
   Clock,
+  type LucideIcon,
+  MessageSquare,
+  RefreshCw,
+  Users,
   Wifi,
   WifiOff,
-  RefreshCw,
-  type LucideIcon,
-} from "lucide-react";
+} from 'lucide-react';
+import * as React from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 export interface RealtimeEvent {
   id: string;
-  type: "query" | "response" | "error" | "user" | "system";
+  type: 'query' | 'response' | 'error' | 'user' | 'system';
   message: string;
   timestamp: Date;
   metadata?: Record<string, string | number>;
@@ -33,7 +33,7 @@ export interface RealtimeMetric {
   value: number | string;
   unit?: string;
   icon?: LucideIcon;
-  trend?: "up" | "down" | "neutral";
+  trend?: 'up' | 'down' | 'neutral';
   color?: string;
 }
 
@@ -51,14 +51,14 @@ export interface RealtimeMonitorProps {
 }
 
 const eventTypeConfig: Record<
-  RealtimeEvent["type"],
+  RealtimeEvent['type'],
   { icon: LucideIcon; color: string; label: string }
 > = {
-  query: { icon: MessageSquare, color: "text-blue-500", label: "Query" },
-  response: { icon: CheckCircle2, color: "text-green-500", label: "Response" },
-  error: { icon: AlertCircle, color: "text-red-500", label: "Error" },
-  user: { icon: Users, color: "text-purple-500", label: "User" },
-  system: { icon: Activity, color: "text-orange-500", label: "System" },
+  query: { icon: MessageSquare, color: 'text-blue-500', label: 'Query' },
+  response: { icon: CheckCircle2, color: 'text-green-500', label: 'Response' },
+  error: { icon: AlertCircle, color: 'text-red-500', label: 'Error' },
+  user: { icon: Users, color: 'text-purple-500', label: 'User' },
+  system: { icon: Activity, color: 'text-orange-500', label: 'System' },
 };
 
 function ConnectionStatus({
@@ -72,13 +72,11 @@ function ConnectionStatus({
     <div className="flex items-center gap-2">
       <div
         className={cn(
-          "h-2 w-2 rounded-full animate-pulse",
-          isConnected ? "bg-green-500" : "bg-red-500"
+          'h-2 w-2 rounded-full animate-pulse',
+          isConnected ? 'bg-green-500' : 'bg-red-500'
         )}
       />
-      <span className="text-xs text-muted-foreground">
-        {isConnected ? "Live" : "Disconnected"}
-      </span>
+      <span className="text-xs text-muted-foreground">{isConnected ? 'Live' : 'Disconnected'}</span>
       {lastUpdated && isConnected && (
         <span className="text-xs text-muted-foreground">
           · Updated {lastUpdated.toLocaleTimeString()}
@@ -94,13 +92,13 @@ function MetricCard({ metric }: { metric: RealtimeMetric }) {
     <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
       <div
         className={cn(
-          "h-10 w-10 rounded-lg flex items-center justify-center",
-          metric.color ? "" : "bg-background"
+          'h-10 w-10 rounded-lg flex items-center justify-center',
+          metric.color ? '' : 'bg-background'
         )}
         style={metric.color ? { backgroundColor: `${metric.color}20` } : undefined}
       >
         <Icon
-          className={cn("h-5 w-5", metric.color || "text-muted-foreground")}
+          className={cn('h-5 w-5', metric.color || 'text-muted-foreground')}
           style={metric.color ? { color: metric.color } : undefined}
         />
       </div>
@@ -108,9 +106,7 @@ function MetricCard({ metric }: { metric: RealtimeMetric }) {
         <p className="text-xs text-muted-foreground truncate">{metric.label}</p>
         <div className="flex items-baseline gap-1">
           <span className="text-xl font-bold">{metric.value}</span>
-          {metric.unit && (
-            <span className="text-xs text-muted-foreground">{metric.unit}</span>
-          )}
+          {metric.unit && <span className="text-xs text-muted-foreground">{metric.unit}</span>}
         </div>
       </div>
     </div>
@@ -123,7 +119,7 @@ function EventItem({ event }: { event: RealtimeEvent }) {
 
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-      <div className={cn("mt-0.5", config.color)}>
+      <div className={cn('mt-0.5', config.color)}>
         <Icon className="h-4 w-4" />
       </div>
       <div className="flex-1 min-w-0">
@@ -139,7 +135,10 @@ function EventItem({ event }: { event: RealtimeEvent }) {
         {event.metadata && Object.keys(event.metadata).length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
             {Object.entries(event.metadata).map(([key, value]) => (
-              <span key={key} className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+              <span
+                key={key}
+                className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded"
+              >
                 {key}: {value}
               </span>
             ))}
@@ -151,7 +150,7 @@ function EventItem({ event }: { event: RealtimeEvent }) {
 }
 
 export function RealtimeMonitor({
-  title = "Real-time Monitor",
+  title = 'Real-time Monitor',
   description,
   metrics,
   events,
@@ -170,7 +169,7 @@ export function RealtimeMonitor({
     if (autoScroll && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [events, autoScroll]);
+  }, [autoScroll]);
 
   // Handle scroll to toggle auto-scroll
   const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -247,11 +246,7 @@ export function RealtimeMonitor({
           <div className="px-4 py-2 border-b bg-muted/50">
             <h4 className="text-sm font-medium">Recent Events</h4>
           </div>
-          <ScrollArea
-            className="h-64"
-            ref={scrollRef}
-            onScroll={handleScroll}
-          >
+          <ScrollArea className="h-64" ref={scrollRef} onScroll={handleScroll}>
             <div className="divide-y">
               {displayEvents.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
@@ -259,9 +254,7 @@ export function RealtimeMonitor({
                   <p className="text-sm">No events yet</p>
                 </div>
               ) : (
-                displayEvents.map((event) => (
-                  <EventItem key={event.id} event={event} />
-                ))
+                displayEvents.map((event) => <EventItem key={event.id} event={event} />)
               )}
             </div>
           </ScrollArea>
@@ -272,10 +265,7 @@ export function RealtimeMonitor({
 }
 
 // Hook for simulating real-time data updates
-export function useRealtimeData(options: {
-  refreshInterval?: number;
-  enabled?: boolean;
-} = {}) {
+export function useRealtimeData(options: { refreshInterval?: number; enabled?: boolean } = {}) {
   const { refreshInterval = 5000, enabled = true } = options;
   const [tick, setTick] = React.useState(0);
 

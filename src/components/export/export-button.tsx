@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import { Download, FileCode2, FileText, FileType2, Loader2, MoreHorizontal } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { Button, type ButtonProps } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,24 +10,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button, type ButtonProps } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  FileText,
-  FileType2,
-  FileCode2,
-  Download,
-  MoreHorizontal,
-  Loader2,
-} from 'lucide-react';
-
-import { ExportDialog, type ExportOptions, type ExportOptions as ExportDialogOptions } from './export-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ExportFormat } from '@/lib/export';
+import {
+  ExportDialog,
+  type ExportOptions as ExportDialogOptions,
+  type ExportOptions,
+} from './export-dialog';
 
 // =============================================================================
 // Types
@@ -37,7 +28,10 @@ export interface ExportButtonProps {
   workspaceId?: string;
   workspaceName?: string;
   variant?: 'button' | 'dropdown' | 'icon';
-  onExport?: (format: 'pdf' | 'markdown' | 'html' | 'json', options?: ExportDialogOptions) => Promise<void>;
+  onExport?: (
+    format: 'pdf' | 'markdown' | 'html' | 'json',
+    options?: ExportDialogOptions
+  ) => Promise<void>;
   showLabel?: boolean;
   className?: string;
   disabled?: boolean;
@@ -191,9 +185,7 @@ export function ExportButton({
                 {isExporting && exportFormat === item.format ? (
                   <Loader2 className="ml-auto h-4 w-4 animate-spin" />
                 ) : (
-                  <span className="ml-auto text-xs text-muted-foreground">
-                    {item.shortcut}
-                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground">{item.shortcut}</span>
                 )}
               </DropdownMenuItem>
             ))}

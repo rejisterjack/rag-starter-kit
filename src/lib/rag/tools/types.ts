@@ -136,13 +136,17 @@ function zodTypeToJson(zodType: z.ZodType): unknown {
   if (zodType instanceof z.ZodNumber) return { type: 'number' };
   if (zodType instanceof z.ZodBoolean) return { type: 'boolean' };
   if (zodType instanceof z.ZodArray) {
+    // Access element type through _def
+    const elementType = (zodType as unknown as { _def: { type: z.ZodType } })._def.type;
     return {
       type: 'array',
-      items: zodTypeToJson(zodType.element),
+      items: zodTypeToJson(elementType),
     };
   }
   if (zodType instanceof z.ZodOptional) {
-    return zodTypeToJson(zodType.unwrap());
+    // Access the inner type through _def
+    const innerType = (zodType as unknown as { _def: { innerType: z.ZodType } })._def.innerType;
+    return zodTypeToJson(innerType);
   }
   if (zodType instanceof z.ZodObject) {
     return zodToJsonSchema(zodType);

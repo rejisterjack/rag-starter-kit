@@ -3,8 +3,8 @@
  * Initializes the WebSocket server and handles Socket.io requests
  */
 
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 import type { UserInfo } from '@/lib/realtime/types';
 
@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
   try {
     // In production, Socket.io typically runs on a separate server
     // This endpoint returns the Socket.io configuration to the client
-    
+
     const socketConfig = {
       url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
       path: '/api/socket/io',
@@ -31,8 +31,7 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
       success: true,
       config: socketConfig,
     });
-  } catch (error) {
-    console.error('Socket configuration error:', error);
+  } catch (_error) {
     return NextResponse.json(
       {
         success: false,
@@ -61,7 +60,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         // This requires the WebSocket server to be initialized elsewhere
         const { getIO } = await import('@/lib/realtime/websocket-server');
         const io = getIO();
-        
+
         if (!io) {
           return NextResponse.json(
             {
@@ -85,17 +84,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       case 'getRoomInfo': {
         const { getRoomMembers } = await import('@/lib/realtime/websocket-server');
         const members = roomId ? getRoomMembers(roomId) : [];
-        
+
         return NextResponse.json({
           success: true,
-          data: members.length > 0 ? {
-            memberCount: members.length,
-            members: members.map((m: { user: UserInfo; joinedAt: Date; isTyping: boolean }) => ({
-              user: m.user,
-              joinedAt: m.joinedAt,
-              isTyping: m.isTyping,
-            })),
-          } : null,
+          data:
+            members.length > 0
+              ? {
+                  memberCount: members.length,
+                  members: members.map(
+                    (m: { user: UserInfo; joinedAt: Date; isTyping: boolean }) => ({
+                      user: m.user,
+                      joinedAt: m.joinedAt,
+                      isTyping: m.isTyping,
+                    })
+                  ),
+                }
+              : null,
         });
       }
 
@@ -111,8 +115,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           { status: 400 }
         );
     }
-  } catch (error) {
-    console.error('Socket action error:', error);
+  } catch (_error) {
     return NextResponse.json(
       {
         success: false,
@@ -125,5 +128,3 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 }
-
-

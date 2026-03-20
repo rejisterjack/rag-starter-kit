@@ -4,21 +4,16 @@
 
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  SpeechRecognitionService,
-  SpeechRecognitionError,
-  SpeechRecognitionOptions,
-  isSpeechRecognitionSupported,
   getSupportedLanguages,
+  isSpeechRecognitionSupported,
+  type SpeechRecognitionError,
+  type SpeechRecognitionOptions,
+  SpeechRecognitionService,
 } from '@/lib/voice/speech-recognition';
 
-export type SpeechRecognitionState =
-  | 'inactive'
-  | 'starting'
-  | 'listening'
-  | 'processing'
-  | 'error';
+export type SpeechRecognitionState = 'inactive' | 'starting' | 'listening' | 'processing' | 'error';
 
 export interface UseSpeechRecognitionReturn {
   // State
@@ -28,14 +23,14 @@ export interface UseSpeechRecognitionReturn {
   confidence: number;
   error: SpeechRecognitionError | null;
   isSupported: boolean;
-  
+
   // Actions
   startListening: () => void;
   stopListening: () => void;
   toggleListening: () => void;
   resetTranscript: () => void;
   setLanguage: (lang: string) => void;
-  
+
   // Info
   language: string;
   supportedLanguages: Array<{ code: string; name: string }>;
@@ -58,7 +53,7 @@ export function useSpeechRecognition(
   const [confidence, setConfidence] = useState(0);
   const [error, setError] = useState<SpeechRecognitionError | null>(null);
   const [language, setLanguageState] = useState(options.language || 'en-US');
-  
+
   const serviceRef = useRef<SpeechRecognitionService | null>(null);
   const isSupported = isSpeechRecognitionSupported();
   const supportedLanguages = getSupportedLanguages();
@@ -142,11 +137,11 @@ export function useSpeechRecognition(
 
   const startListening = useCallback(() => {
     if (!serviceRef.current) return;
-    
+
     setState('starting');
     setError(null);
     const started = serviceRef.current.start();
-    
+
     if (!started) {
       setState('error');
       setError({

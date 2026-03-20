@@ -1,28 +1,27 @@
-"use client";
+'use client';
 
-import React from "react";
-import { Settings, RotateCcw, Bot, Wrench, Cpu } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Bot, Cpu, RotateCcw, Settings, Wrench } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+} from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 
 /** Configuration for available tools */
 export interface ToolConfig {
@@ -85,54 +84,54 @@ export interface AgentSettingsPanelProps {
 
 const DEFAULT_MODELS: ModelOption[] = [
   {
-    id: "gpt-4o-mini",
-    name: "GPT-4o Mini",
-    description: "Fast and cost-effective",
+    id: 'gpt-4o-mini',
+    name: 'GPT-4o Mini',
+    description: 'Fast and cost-effective',
     supportsTools: true,
   },
   {
-    id: "gpt-4o",
-    name: "GPT-4o",
-    description: "Most capable",
+    id: 'gpt-4o',
+    name: 'GPT-4o',
+    description: 'Most capable',
     supportsTools: true,
   },
   {
-    id: "claude-3-haiku",
-    name: "Claude 3 Haiku",
-    description: "Fast and efficient",
+    id: 'claude-3-haiku',
+    name: 'Claude 3 Haiku',
+    description: 'Fast and efficient',
     supportsTools: true,
   },
   {
-    id: "claude-3-sonnet",
-    name: "Claude 3 Sonnet",
-    description: "Balanced performance",
+    id: 'claude-3-sonnet',
+    name: 'Claude 3 Sonnet',
+    description: 'Balanced performance',
     supportsTools: true,
   },
 ];
 
 const DEFAULT_TOOLS: ToolConfig[] = [
   {
-    id: "document_search",
-    name: "Document Search",
-    description: "Search through uploaded documents",
+    id: 'document_search',
+    name: 'Document Search',
+    description: 'Search through uploaded documents',
     enabled: true,
   },
   {
-    id: "calculator",
-    name: "Calculator",
-    description: "Perform mathematical calculations",
+    id: 'calculator',
+    name: 'Calculator',
+    description: 'Perform mathematical calculations',
     enabled: true,
   },
   {
-    id: "web_search",
-    name: "Web Search",
-    description: "Search the web for current information",
+    id: 'web_search',
+    name: 'Web Search',
+    description: 'Search the web for current information',
     enabled: false,
   },
   {
-    id: "current_time",
-    name: "Current Time",
-    description: "Get the current date and time",
+    id: 'current_time',
+    name: 'Current Time',
+    description: 'Get the current date and time',
     enabled: true,
   },
 ];
@@ -153,10 +152,7 @@ export function AgentSettingsPanel({
   // Initialize tools if not set
   const tools = settings.tools.length > 0 ? settings.tools : availableTools;
 
-  const updateSetting = <K extends keyof AgentSettings>(
-    key: K,
-    value: AgentSettings[K]
-  ) => {
+  const updateSetting = <K extends keyof AgentSettings>(key: K, value: AgentSettings[K]) => {
     onSettingsChange({ ...settings, [key]: value });
   };
 
@@ -164,7 +160,7 @@ export function AgentSettingsPanel({
     const updatedTools = tools.map((tool) =>
       tool.id === toolId ? { ...tool, enabled: !tool.enabled } : tool
     );
-    updateSetting("tools", updatedTools);
+    updateSetting('tools', updatedTools);
   };
 
   const handleReset = () => {
@@ -173,7 +169,7 @@ export function AgentSettingsPanel({
     } else {
       onSettingsChange({
         maxIterations: 5,
-        model: availableModels[0]?.id || "gpt-4o-mini",
+        model: availableModels[0]?.id || 'gpt-4o-mini',
         temperature: 0.1,
         tools: availableTools.map((t) => ({ ...t, enabled: true })),
         streamingEnabled: true,
@@ -190,10 +186,7 @@ export function AgentSettingsPanel({
           <Cpu className="h-4 w-4 text-muted-foreground" />
           <Label className="text-sm font-medium">Model</Label>
         </div>
-        <Select
-          value={settings.model}
-          onValueChange={(value) => updateSetting("model", value)}
-        >
+        <Select value={settings.model} onValueChange={(value) => updateSetting('model', value)}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select a model" />
           </SelectTrigger>
@@ -205,7 +198,7 @@ export function AgentSettingsPanel({
                   {model.description && (
                     <span className="text-xs text-muted-foreground">
                       {model.description}
-                      {!model.supportsTools && " (No tool support)"}
+                      {!model.supportsTools && ' (No tool support)'}
                     </span>
                   )}
                 </div>
@@ -230,15 +223,14 @@ export function AgentSettingsPanel({
         </div>
         <Slider
           value={[settings.maxIterations]}
-          onValueChange={([value]: number[]) => updateSetting("maxIterations", value)}
+          onValueChange={([value]: number[]) => updateSetting('maxIterations', value)}
           min={1}
           max={10}
           step={1}
           className="w-full"
         />
         <p className="text-xs text-muted-foreground">
-          Maximum number of reasoning steps the agent can take before providing
-          an answer.
+          Maximum number of reasoning steps the agent can take before providing an answer.
         </p>
       </div>
 
@@ -254,7 +246,7 @@ export function AgentSettingsPanel({
         </div>
         <Slider
           value={[settings.temperature]}
-          onValueChange={([value]: number[]) => updateSetting("temperature", value)}
+          onValueChange={([value]: number[]) => updateSetting('temperature', value)}
           min={0}
           max={1}
           step={0.1}
@@ -285,9 +277,7 @@ export function AgentSettingsPanel({
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm">{tool.name}</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {tool.description}
-                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">{tool.description}</p>
               </div>
               <Switch
                 checked={tool.enabled}
@@ -308,29 +298,21 @@ export function AgentSettingsPanel({
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="text-sm">Streaming</Label>
-              <p className="text-xs text-muted-foreground">
-                Stream responses in real-time
-              </p>
+              <p className="text-xs text-muted-foreground">Stream responses in real-time</p>
             </div>
             <Switch
               checked={settings.streamingEnabled}
-              onCheckedChange={(checked: boolean) =>
-                updateSetting("streamingEnabled", checked)
-              }
+              onCheckedChange={(checked: boolean) => updateSetting('streamingEnabled', checked)}
             />
           </div>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="text-sm">Show Reasoning</Label>
-              <p className="text-xs text-muted-foreground">
-                Display agent thought process
-              </p>
+              <p className="text-xs text-muted-foreground">Display agent thought process</p>
             </div>
             <Switch
               checked={settings.showReasoning}
-              onCheckedChange={(checked: boolean) =>
-                updateSetting("showReasoning", checked)
-              }
+              onCheckedChange={(checked: boolean) => updateSetting('showReasoning', checked)}
             />
           </div>
         </div>
@@ -340,7 +322,7 @@ export function AgentSettingsPanel({
 
   if (inCard) {
     return (
-      <Card className={cn("w-full max-w-md", className)}>
+      <Card className={cn('w-full max-w-md', className)}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Settings className="h-5 w-5" />
@@ -384,7 +366,7 @@ export function AgentSettingsSummary({
   const enabledToolsCount = settings.tools.filter((t) => t.enabled).length;
 
   return (
-    <div className={cn("flex items-center gap-3 text-xs text-muted-foreground", className)}>
+    <div className={cn('flex items-center gap-3 text-xs text-muted-foreground', className)}>
       <span className="flex items-center gap-1">
         <Cpu className="h-3 w-3" />
         {settings.model}

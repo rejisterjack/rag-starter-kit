@@ -1,9 +1,8 @@
-"use client";
+'use client';
 
-import * as React from "react";
-
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import * as React from 'react';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export interface DistributionData {
   name: string;
@@ -15,7 +14,7 @@ export interface DistributionChartProps {
   data: DistributionData[];
   title?: string;
   description?: string;
-  type?: "pie" | "donut";
+  type?: 'pie' | 'donut';
   showLegend?: boolean;
   showLabels?: boolean;
   height?: number;
@@ -27,14 +26,14 @@ export interface DistributionChartProps {
 }
 
 const defaultColors = [
-  "hsl(var(--primary))",
-  "hsl(var(--secondary))",
-  "hsl(var(--accent))",
-  "hsl(var(--muted))",
-  "hsl(var(--destructive))",
-  "hsl(200, 80%, 50%)",
-  "hsl(280, 80%, 50%)",
-  "hsl(30, 80%, 50%)",
+  'hsl(var(--primary))',
+  'hsl(var(--secondary))',
+  'hsl(var(--accent))',
+  'hsl(var(--muted))',
+  'hsl(var(--destructive))',
+  'hsl(200, 80%, 50%)',
+  'hsl(280, 80%, 50%)',
+  'hsl(30, 80%, 50%)',
 ];
 
 function ChartTooltip({
@@ -51,15 +50,12 @@ function ChartTooltip({
   if (!active || !payload || payload.length === 0) return null;
 
   const data = payload[0];
-  const percentage = total > 0 ? ((data.value / total) * 100).toFixed(1) : "0";
+  const percentage = total > 0 ? ((data.value / total) * 100).toFixed(1) : '0';
 
   return (
     <div className="rounded-lg border bg-popover p-3 shadow-sm">
       <div className="flex items-center gap-2 mb-1">
-        <div
-          className="h-2 w-2 rounded-full"
-          style={{ backgroundColor: data.payload.color }}
-        />
+        <div className="h-2 w-2 rounded-full" style={{ backgroundColor: data.payload.color }} />
         <span className="text-sm font-medium">{data.name}</span>
       </div>
       <div className="text-sm text-muted-foreground">
@@ -83,14 +79,11 @@ function CustomLegend({
   return (
     <ul className="space-y-2 mt-4">
       {payload.map((entry, index) => {
-        const percentage = total > 0 ? ((entry.payload.value / total) * 100).toFixed(1) : "0";
+        const percentage = total > 0 ? ((entry.payload.value / total) * 100).toFixed(1) : '0';
         return (
           <li key={`legend-${index}`} className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: entry.color }}
-              />
+              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
               <span className="text-muted-foreground">{entry.value}</span>
             </div>
             <div className="flex items-center gap-2">
@@ -108,7 +101,7 @@ export function DistributionChart({
   data,
   title,
   description,
-  type = "donut",
+  type = 'donut',
   showLegend = true,
 
   height = 300,
@@ -130,8 +123,8 @@ export function DistributionChart({
     [chartData]
   );
 
-  const calculatedInnerRadius = innerRadius ?? (type === "donut" ? 60 : 0);
-  const calculatedOuterRadius = outerRadius ?? (type === "donut" ? 100 : 120);
+  const calculatedInnerRadius = innerRadius ?? (type === 'donut' ? 60 : 0);
+  const calculatedOuterRadius = outerRadius ?? (type === 'donut' ? 100 : 120);
 
   if (loading) {
     return (
@@ -139,9 +132,7 @@ export function DistributionChart({
         {(title || description) && (
           <CardHeader>
             {title && <div className="h-5 w-40 bg-muted animate-pulse rounded" />}
-            {description && (
-              <div className="h-4 w-60 bg-muted animate-pulse rounded mt-2" />
-            )}
+            {description && <div className="h-4 w-60 bg-muted animate-pulse rounded mt-2" />}
           </CardHeader>
         )}
         <CardContent>
@@ -198,12 +189,10 @@ export function DistributionChart({
                     <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
                   ))}
                 </Pie>
-                <Tooltip
-                  content={<ChartTooltip total={total} valueFormatter={valueFormatter} />}
-                />
+                <Tooltip content={<ChartTooltip total={total} valueFormatter={valueFormatter} />} />
               </PieChart>
             </ResponsiveContainer>
-            {type === "donut" && (
+            {type === 'donut' && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="text-center">
                   <div className="text-2xl font-bold">{valueFormatter(total)}</div>
@@ -217,7 +206,7 @@ export function DistributionChart({
               <CustomLegend
                 payload={chartData.map((item) => ({
                   value: item.name,
-                  color: item.color!,
+                  color: item.color ?? '#000000',
                   payload: item,
                 }))}
                 total={total}

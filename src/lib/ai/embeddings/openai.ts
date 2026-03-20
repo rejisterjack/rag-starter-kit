@@ -9,9 +9,9 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { RetryableError, withRetry } from '@/lib/utils/retry';
 import {
-  EmbeddingProvider,
-  EmbeddingConfig,
-  BatchEmbeddingResult,
+  type EmbeddingProvider,
+  type EmbeddingConfig,
+  type BatchEmbeddingResult,
   OPENAI_MODELS,
   type OpenAIModel,
 } from './types';
@@ -32,7 +32,7 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
       retryDelayMs: 1000,
       timeoutMs: 30000,
       apiKey: process.env.OPENAI_API_KEY ?? '',
-      baseUrl: undefined,
+      baseUrl: '',
       ...config,
     };
 

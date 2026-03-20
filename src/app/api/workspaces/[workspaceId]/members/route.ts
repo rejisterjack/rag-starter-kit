@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { inviteMember } from '@/lib/workspace/workspace';
 import { canManageMembers } from '@/lib/workspace/permissions';
+import { inviteMember } from '@/lib/workspace/workspace';
 
 interface RouteParams {
   params: Promise<{ workspaceId: string }>;
@@ -11,9 +11,10 @@ interface RouteParams {
 
 /**
  * GET /api/workspaces/[workspaceId]/members
- * Get all members of a workspace
+ * Get all members of a workspace with pagination
+ * Query params: page (default: 1), limit (default: 20, max: 100)
  */
-export async function GET(_req: Request, { params }: RouteParams) {
+export async function GET(req: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -41,7 +42,17 @@ export async function GET(_req: Request, { params }: RouteParams) {
       );
     }
 
-    // Get all members
+    // Parse pagination params
+    const { searchParams } = new URL(req.url);
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)));
+
+    // Get total count for pagination
+    const total = await prisma.workspaceMember.count({
+      where: { workspaceId },
+    });
+
+    // Get paginated members
     const members = await prisma.workspaceMember.findMany({
       where: { workspaceId },
       include: {
@@ -55,7 +66,11 @@ export async function GET(_req: Request, { params }: RouteParams) {
         },
       },
       orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    const totalPages = Math.ceil(total / limit);
 
     return NextResponse.json({
       success: true,
@@ -69,9 +84,16 @@ export async function GET(_req: Request, { params }: RouteParams) {
           user: m.user,
         })),
       },
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
     });
-  } catch (error) {
-    console.error('Get members error:', error);
+  } catch (_error) {
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to get members' } },
       { status: 500 }
@@ -115,7 +137,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       );
     }
 
-    let validatedInput;
+    let validatedInput: ReturnType<typeof validateInviteMemberInput>;
     try {
       validatedInput = validateInviteMemberInput(body);
     } catch (error) {
@@ -150,8 +172,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       },
       { status: 201 }
     );
-  } catch (error) {
-    console.error('Invite member error:', error);
+  } catch (_error) {
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to invite member' } },
       { status: 500 }

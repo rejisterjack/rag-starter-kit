@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { Play, Square, BarChart3, MoreHorizontal } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { BarChart3, MoreHorizontal, Play, Square } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
 interface ExperimentVariant {
@@ -94,14 +94,14 @@ export function ExperimentCard({
     setIsLoading(true);
     try {
       await action();
-    } catch (error) {
+    } catch (_error) {
       toast.error('Action failed');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const winningVariant = experiment.variants.reduce((best, current) => 
+  const winningVariant = experiment.variants.reduce((best, current) =>
     current.metrics.rate > best.metrics.rate ? current : best
   );
 
@@ -122,10 +122,10 @@ export function ExperimentCard({
               </CardDescription>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             {getStatusBadge(experiment.status)}
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -138,13 +138,11 @@ export function ExperimentCard({
                   View Results
                 </DropdownMenuItem>
                 {onEdit && (
-                  <DropdownMenuItem onClick={() => onEdit(experiment.id)}>
-                    Edit
-                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onEdit(experiment.id)}>Edit</DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
                 {onDelete && (
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => onDelete(experiment.id)}
                     className="text-destructive"
                   >
@@ -167,9 +165,13 @@ export function ExperimentCard({
           {experiment.variants.map((variant) => (
             <div key={variant.id} className="space-y-1">
               <div className="flex items-center justify-between text-sm">
-                <span className={cn(
-                  variant.id === winningVariant.id && experiment.status !== 'draft' && 'font-medium'
-                )}>
+                <span
+                  className={cn(
+                    variant.id === winningVariant.id &&
+                      experiment.status !== 'draft' &&
+                      'font-medium'
+                  )}
+                >
                   {variant.name}
                   {variant.id === winningVariant.id && experiment.status !== 'draft' && (
                     <span className="ml-1 text-green-500">★</span>
@@ -179,10 +181,7 @@ export function ExperimentCard({
                   {variant.trafficPercentage}% • {variant.metrics.rate.toFixed(1)}%
                 </span>
               </div>
-              <Progress 
-                value={variant.trafficPercentage} 
-                className="h-2"
-              />
+              <Progress value={variant.trafficPercentage} className="h-2" />
             </div>
           ))}
         </div>
@@ -200,7 +199,7 @@ export function ExperimentCard({
               Start
             </Button>
           )}
-          
+
           {experiment.status === 'running' && (
             <Button
               size="sm"
@@ -213,7 +212,7 @@ export function ExperimentCard({
               Pause
             </Button>
           )}
-          
+
           {experiment.status === 'paused' && (
             <Button
               size="sm"
@@ -225,7 +224,7 @@ export function ExperimentCard({
               Resume
             </Button>
           )}
-          
+
           {(experiment.status === 'running' || experiment.status === 'paused') && (
             <Button
               size="sm"
@@ -237,12 +236,8 @@ export function ExperimentCard({
               Complete
             </Button>
           )}
-          
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onViewResults(experiment.id)}
-          >
+
+          <Button size="sm" variant="outline" onClick={() => onViewResults(experiment.id)}>
             <BarChart3 className="h-4 w-4" />
           </Button>
         </div>
@@ -251,9 +246,7 @@ export function ExperimentCard({
         {experiment.status !== 'draft' && (
           <div className="grid grid-cols-3 gap-2 pt-2 border-t">
             <div className="text-center">
-              <p className="text-lg font-semibold">
-                {experiment.totalTraffic.toLocaleString()}
-              </p>
+              <p className="text-lg font-semibold">{experiment.totalTraffic.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground">Total</p>
             </div>
             <div className="text-center">
@@ -263,9 +256,7 @@ export function ExperimentCard({
               <p className="text-xs text-muted-foreground">Best Rate</p>
             </div>
             <div className="text-center">
-              <p className="text-lg font-semibold">
-                {experiment.variants.length}
-              </p>
+              <p className="text-lg font-semibold">{experiment.variants.length}</p>
               <p className="text-xs text-muted-foreground">Variants</p>
             </div>
           </div>

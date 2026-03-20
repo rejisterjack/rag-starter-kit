@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   cn,
   formatDate,
@@ -228,7 +228,7 @@ describe('Function utilities', () => {
       debounced();
       expect(fn).not.toHaveBeenCalled();
 
-      await new Promise(r => setTimeout(r, 150));
+      await new Promise((r: (value: unknown) => void) => setTimeout(r, 150));
       expect(fn).toHaveBeenCalledTimes(1);
     });
 
@@ -237,12 +237,12 @@ describe('Function utilities', () => {
       const debounced = debounce(fn, 100);
 
       debounced();
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise((r: (value: unknown) => void) => setTimeout(r, 50));
       debounced();
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise((r: (value: unknown) => void) => setTimeout(r, 50));
       debounced();
       
-      await new Promise(r => setTimeout(r, 150));
+      await new Promise((r: (value: unknown) => void) => setTimeout(r, 150));
       expect(fn).toHaveBeenCalledTimes(1);
     });
 
@@ -251,7 +251,7 @@ describe('Function utilities', () => {
       const debounced = debounce(fn, 10);
 
       debounced('arg1', 'arg2');
-      await new Promise(r => setTimeout(r, 20));
+      await new Promise((r: (value: unknown) => void) => setTimeout(r, 20));
 
       expect(fn).toHaveBeenCalledWith('arg1', 'arg2');
     });
@@ -278,7 +278,7 @@ describe('Function utilities', () => {
 
       expect(fn).toHaveBeenCalledTimes(1);
 
-      await new Promise(r => setTimeout(r, 150));
+      await new Promise((r: (value: unknown) => void) => setTimeout(r, 150));
       expect(fn).toHaveBeenCalledTimes(2);
     });
 
@@ -298,7 +298,7 @@ describe('Function utilities', () => {
       throttled('second');
       throttled('third');
 
-      await new Promise(r => setTimeout(r, 150));
+      await new Promise((r: (value: unknown) => void) => setTimeout(r, 150));
       expect(fn).toHaveBeenLastCalledWith('third');
     });
   });
@@ -307,7 +307,11 @@ describe('Function utilities', () => {
 describe('Array utilities', () => {
   describe('groupBy', () => {
     it('groups array by key', () => {
-      const items = [
+      interface Item {
+        category: string;
+        name: string;
+      }
+      const items: Item[] = [
         { category: 'A', name: 'Item 1' },
         { category: 'B', name: 'Item 2' },
         { category: 'A', name: 'Item 3' },
@@ -321,7 +325,7 @@ describe('Array utilities', () => {
 
     it('groups by function', () => {
       const items = [1, 2, 3, 4, 5, 6];
-      const grouped = groupBy(items, n => n % 2 === 0 ? 'even' : 'odd');
+      const grouped = groupBy(items, (n: number): string => n % 2 === 0 ? 'even' : 'odd');
 
       expect(grouped.even).toEqual([2, 4, 6]);
       expect(grouped.odd).toEqual([1, 3, 5]);
@@ -330,7 +334,11 @@ describe('Array utilities', () => {
 
   describe('uniqueBy', () => {
     it('removes duplicates by key', () => {
-      const items = [
+      interface Item {
+        id: number;
+        name: string;
+      }
+      const items: Item[] = [
         { id: 1, name: 'A' },
         { id: 2, name: 'B' },
         { id: 1, name: 'C' },
@@ -339,11 +347,15 @@ describe('Array utilities', () => {
       const unique = uniqueBy(items, 'id');
 
       expect(unique).toHaveLength(2);
-      expect(unique.map(i => i.id)).toEqual([1, 2]);
+      expect(unique.map((i: Item) => i.id)).toEqual([1, 2]);
     });
 
     it('keeps first occurrence by default', () => {
-      const items = [
+      interface Item {
+        id: number;
+        name: string;
+      }
+      const items: Item[] = [
         { id: 1, name: 'First' },
         { id: 1, name: 'Second' },
       ];
@@ -356,7 +368,11 @@ describe('Array utilities', () => {
 
   describe('sortBy', () => {
     it('sorts by key', () => {
-      const items = [
+      interface Item {
+        name: string;
+        age: number;
+      }
+      const items: Item[] = [
         { name: 'Charlie', age: 30 },
         { name: 'Alice', age: 25 },
         { name: 'Bob', age: 35 },
@@ -364,24 +380,27 @@ describe('Array utilities', () => {
 
       const sorted = sortBy(items, 'name');
 
-      expect(sorted.map(i => i.name)).toEqual(['Alice', 'Bob', 'Charlie']);
+      expect(sorted.map((i: Item) => i.name)).toEqual(['Alice', 'Bob', 'Charlie']);
     });
 
     it('sorts in descending order', () => {
       const items = [3, 1, 4, 1, 5];
 
-      const sorted = sortBy(items, n => n, 'desc');
+      const sorted = sortBy(items, (n: number): number => n, 'desc');
 
       expect(sorted).toEqual([5, 4, 3, 1, 1]);
     });
 
     it('handles nested keys', () => {
-      const items = [
+      interface Item {
+        user: { name: string };
+      }
+      const items: Item[] = [
         { user: { name: 'Zoe' } },
         { user: { name: 'Amy' } },
       ];
 
-      const sorted = sortBy(items, 'user.name');
+      const sorted = sortBy(items, (i: Item): string => i.user.name);
 
       expect(sorted[0].user.name).toBe('Amy');
     });
@@ -391,7 +410,11 @@ describe('Array utilities', () => {
 describe('Object utilities', () => {
   describe('deepClone', () => {
     it('creates deep copy', () => {
-      const original = { nested: { value: 1 }, arr: [1, 2, 3] };
+      interface NestedObject {
+        nested: { value: number };
+        arr: number[];
+      }
+      const original: NestedObject = { nested: { value: 1 }, arr: [1, 2, 3] };
       const cloned = deepClone(original);
 
       cloned.nested.value = 2;
@@ -402,7 +425,11 @@ describe('Object utilities', () => {
     });
 
     it('handles circular references', () => {
-      const obj: any = { a: 1 };
+      interface CircularObject {
+        a: number;
+        self?: CircularObject;
+      }
+      const obj: CircularObject = { a: 1 };
       obj.self = obj;
 
       expect(() => deepClone(obj)).not.toThrow();
@@ -419,8 +446,8 @@ describe('Object utilities', () => {
 
   describe('deepMerge', () => {
     it('merges objects deeply', () => {
-      const target = { a: { b: 1, c: 2 }, d: 3 };
-      const source = { a: { b: 10, e: 20 } };
+      const target: Record<string, unknown> = { a: { b: 1, c: 2 }, d: 3 };
+      const source: Record<string, unknown> = { a: { b: 10, e: 20 } };
 
       const merged = deepMerge(target, source);
 
@@ -431,8 +458,8 @@ describe('Object utilities', () => {
     });
 
     it('does not mutate target', () => {
-      const target = { a: { b: 1 } };
-      const source = { a: { c: 2 } };
+      const target: Record<string, unknown> = { a: { b: 1 } };
+      const source: Record<string, unknown> = { a: { c: 2 } };
 
       deepMerge(target, source);
 
@@ -440,8 +467,8 @@ describe('Object utilities', () => {
     });
 
     it('handles arrays', () => {
-      const target = { arr: [1, 2] };
-      const source = { arr: [3, 4] };
+      const target: Record<string, unknown> = { arr: [1, 2] };
+      const source: Record<string, unknown> = { arr: [3, 4] };
 
       const merged = deepMerge(target, source);
 
@@ -450,9 +477,9 @@ describe('Object utilities', () => {
 
     it('merges multiple sources', () => {
       const result = deepMerge(
-        { a: 1 },
-        { b: 2 },
-        { c: 3 }
+        { a: 1, b: 0, c: 0 } as Record<string, unknown>,
+        { b: 2 } as Record<string, unknown>,
+        { c: 3 } as Record<string, unknown>
       );
 
       expect(result).toEqual({ a: 1, b: 2, c: 3 });

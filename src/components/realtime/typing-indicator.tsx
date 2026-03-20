@@ -7,9 +7,9 @@
 'use client';
 
 import React from 'react';
-import { cn } from '@/lib/utils';
-import type { TypingEvent, UserInfo } from '@/lib/realtime/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import type { TypingEvent, UserInfo } from '@/lib/realtime/types';
+import { cn } from '@/lib/utils';
 
 // =============================================================================
 // Types
@@ -30,8 +30,8 @@ interface TypingIndicatorProps {
 
 function getTypingText(users: UserInfo[], currentUserId?: string): string {
   // Filter out current user
-  const otherUsers = users.filter(u => u.id !== currentUserId);
-  
+  const otherUsers = users.filter((u) => u.id !== currentUserId);
+
   if (otherUsers.length === 0) return '';
   if (otherUsers.length === 1) {
     return `${otherUsers[0].name} is typing`;
@@ -48,7 +48,7 @@ function getTypingText(users: UserInfo[], currentUserId?: string): string {
 function getInitials(name: string): string {
   return name
     .split(' ')
-    .map(n => n[0])
+    .map((n) => n[0])
     .join('')
     .toUpperCase()
     .slice(0, 2);
@@ -60,15 +60,15 @@ function getInitials(name: string): string {
 
 const AnimatedDots: React.FC = () => (
   <span className="inline-flex items-center gap-0.5">
-    <span 
+    <span
       className="h-1 w-1 animate-bounce rounded-full bg-current"
       style={{ animationDelay: '0ms' }}
     />
-    <span 
+    <span
       className="h-1 w-1 animate-bounce rounded-full bg-current"
       style={{ animationDelay: '150ms' }}
     />
-    <span 
+    <span
       className="h-1 w-1 animate-bounce rounded-full bg-current"
       style={{ animationDelay: '300ms' }}
     />
@@ -85,14 +85,10 @@ interface AvatarStackProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-const AvatarStack: React.FC<AvatarStackProps> = ({ 
-  users, 
-  maxDisplay = 3,
-  size = 'sm',
-}) => {
+const AvatarStack: React.FC<AvatarStackProps> = ({ users, maxDisplay = 3, size = 'sm' }) => {
   const displayUsers = users.slice(0, maxDisplay);
   const remainingCount = users.length - maxDisplay;
-  
+
   const sizeClasses = {
     sm: 'h-5 w-5 text-[10px]',
     md: 'h-6 w-6 text-xs',
@@ -102,12 +98,9 @@ const AvatarStack: React.FC<AvatarStackProps> = ({
   return (
     <div className="flex -space-x-1.5">
       {displayUsers.map((user, index) => (
-        <Avatar 
-          key={user.id} 
-          className={cn(
-            'border-2 border-background ring-0',
-            sizeClasses[size]
-          )}
+        <Avatar
+          key={user.id}
+          className={cn('border-2 border-background ring-0', sizeClasses[size])}
           style={{ zIndex: displayUsers.length - index }}
         >
           <AvatarImage src={user.image || undefined} alt={user.name} />
@@ -117,7 +110,7 @@ const AvatarStack: React.FC<AvatarStackProps> = ({
         </Avatar>
       ))}
       {remainingCount > 0 && (
-        <div 
+        <div
           className={cn(
             'flex items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground font-medium',
             sizeClasses[size]
@@ -146,12 +139,12 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({
   const activeUsers = React.useMemo(() => {
     const now = Date.now();
     return typingUsers
-      .filter(event => event.isTyping && now - event.timestamp < 6000)
-      .map(event => event.user);
+      .filter((event) => event.isTyping && now - event.timestamp < 6000)
+      .map((event) => event.user);
   }, [typingUsers]);
 
   // Don't render if no one is typing (excluding current user)
-  const relevantUsers = activeUsers.filter(u => u.id !== currentUserId);
+  const relevantUsers = activeUsers.filter((u) => u.id !== currentUserId);
   if (relevantUsers.length === 0) return null;
 
   const typingText = getTypingText(relevantUsers, currentUserId);
@@ -167,8 +160,8 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({
       )}
     >
       {showAvatar && <AvatarStack users={relevantUsers} />}
-      
-      <div 
+
+      <div
         className={cn(
           'flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5',
           align === 'right' && 'flex-row-reverse'
@@ -199,9 +192,7 @@ export const CompactTypingIndicator: React.FC<CompactTypingIndicatorProps> = ({
   const activeCount = React.useMemo(() => {
     const now = Date.now();
     return typingUsers.filter(
-      event => event.isTyping && 
-               event.user.id !== currentUserId && 
-               now - event.timestamp < 6000
+      (event) => event.isTyping && event.user.id !== currentUserId && now - event.timestamp < 6000
     ).length;
   }, [typingUsers, currentUserId]);
 
@@ -210,9 +201,7 @@ export const CompactTypingIndicator: React.FC<CompactTypingIndicatorProps> = ({
   return (
     <div className={cn('flex items-center gap-1.5 text-xs text-muted-foreground', className)}>
       <AnimatedDots />
-      <span>
-        {activeCount === 1 ? 'Someone is typing' : `${activeCount} people are typing`}
-      </span>
+      <span>{activeCount === 1 ? 'Someone is typing' : `${activeCount} people are typing`}</span>
     </div>
   );
 };
@@ -235,12 +224,10 @@ export const BubbleTypingIndicator: React.FC<BubbleTypingIndicatorProps> = ({
   const activeUsers = React.useMemo(() => {
     const now = Date.now();
     return typingUsers
-      .filter(event => 
-        event.isTyping && 
-        event.user.id !== currentUserId && 
-        now - event.timestamp < 6000
+      .filter(
+        (event) => event.isTyping && event.user.id !== currentUserId && now - event.timestamp < 6000
       )
-      .map(event => event.user);
+      .map((event) => event.user);
   }, [typingUsers, currentUserId]);
 
   if (activeUsers.length === 0) return null;
@@ -255,12 +242,10 @@ export const BubbleTypingIndicator: React.FC<BubbleTypingIndicatorProps> = ({
           {getInitials(activeUsers[0].name)}
         </AvatarFallback>
       </Avatar>
-      
+
       <div className="rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
-            {activeUsers[0].name} is typing
-          </span>
+          <span className="text-xs text-muted-foreground">{activeUsers[0].name} is typing</span>
           <AnimatedDots />
         </div>
       </div>

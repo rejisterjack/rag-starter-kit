@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { Clock, FileText, Loader2, MessageSquare, Search, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Search, FileText, MessageSquare, Users, Clock, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import {
   CommandDialog,
   CommandEmpty,
@@ -12,7 +13,6 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface SearchResult {
@@ -66,10 +66,10 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
     try {
       const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&limit=20`);
       if (!response.ok) throw new Error('Search failed');
-      
+
       const data = await response.json();
       setResults(data.results);
-    } catch (error) {
+    } catch (_error) {
       toast.error('Search failed');
     } finally {
       setIsLoading(false);
@@ -152,11 +152,21 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
 
           {!isLoading && query.trim() === '' && (
             <CommandGroup heading="Quick Actions">
-              <CommandItem onSelect={() => { setOpen(false); router.push('/chat/new'); }}>
+              <CommandItem
+                onSelect={() => {
+                  setOpen(false);
+                  router.push('/chat/new');
+                }}
+              >
                 <MessageSquare className="mr-2 h-4 w-4" />
                 New Chat
               </CommandItem>
-              <CommandItem onSelect={() => { setOpen(false); router.push('/documents/upload'); }}>
+              <CommandItem
+                onSelect={() => {
+                  setOpen(false);
+                  router.push('/documents/upload');
+                }}
+              >
                 <FileText className="mr-2 h-4 w-4" />
                 Upload Document
               </CommandItem>
@@ -168,37 +178,33 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
           )}
 
           {!isLoading && results.length > 0 && (
-            <>
-              <CommandGroup heading="Results">
-                {results.map((result) => (
-                  <CommandItem
-                    key={result.id}
-                    onSelect={() => handleSelect(result)}
-                    className="flex items-start gap-3 py-3"
-                  >
-                    <div className="mt-0.5">{getIcon(result.type)}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium truncate">{result.title}</span>
-                        <Badge variant="secondary" className="text-xs capitalize">
-                          {result.type}
-                        </Badge>
-                      </div>
-                      {result.subtitle && (
-                        <p className="text-sm text-muted-foreground truncate">
-                          {result.subtitle}
-                        </p>
-                      )}
-                      {result.content && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                          {result.content}
-                        </p>
-                      )}
+            <CommandGroup heading="Results">
+              {results.map((result) => (
+                <CommandItem
+                  key={result.id}
+                  onSelect={() => handleSelect(result)}
+                  className="flex items-start gap-3 py-3"
+                >
+                  <div className="mt-0.5">{getIcon(result.type)}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium truncate">{result.title}</span>
+                      <Badge variant="secondary" className="text-xs capitalize">
+                        {result.type}
+                      </Badge>
                     </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </>
+                    {result.subtitle && (
+                      <p className="text-sm text-muted-foreground truncate">{result.subtitle}</p>
+                    )}
+                    {result.content && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                        {result.content}
+                      </p>
+                    )}
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
           )}
         </CommandList>
       </CommandDialog>

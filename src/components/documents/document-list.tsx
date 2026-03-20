@@ -1,28 +1,21 @@
-"use client";
+'use client';
 
-import React, { useState, useMemo } from "react";
-import {
-  Search,
-  Upload,
-  FileText,
-  Filter,
-  Trash2,
-  FolderOpen,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import { FileText, Filter, FolderOpen, Search, Trash2, Upload } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuCheckboxItem,
+  DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
-import { DocumentCard, type Document, type DocumentStatus } from "./document-card";
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { type Document, DocumentCard, type DocumentStatus } from './document-card';
 
 interface DocumentListProps {
   documents: Document[];
@@ -47,17 +40,14 @@ export function DocumentList({
   selectedDocumentId,
   className,
 }: DocumentListProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<DocumentStatus[]>([]);
 
   // Filter documents
   const filteredDocuments = useMemo(() => {
     return documents.filter((doc) => {
-      const matchesSearch = doc.name
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-      const matchesStatus =
-        statusFilter.length === 0 || statusFilter.includes(doc.status);
+      const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(doc.status);
       return matchesSearch && matchesStatus;
     });
   }, [documents, searchQuery, statusFilter]);
@@ -75,14 +65,12 @@ export function DocumentList({
 
   const toggleStatusFilter = (status: DocumentStatus) => {
     setStatusFilter((prev) =>
-      prev.includes(status)
-        ? prev.filter((s) => s !== status)
-        : [...prev, status]
+      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
     );
   };
 
   return (
-    <div className={cn("flex h-full flex-col bg-background", className)}>
+    <div className={cn('flex h-full flex-col bg-background', className)}>
       {/* Header */}
       <div className="border-b p-4">
         <div className="flex items-center justify-between mb-4">
@@ -120,26 +108,26 @@ export function DocumentList({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
               <DropdownMenuCheckboxItem
-                checked={statusFilter.includes("completed")}
-                onCheckedChange={() => toggleStatusFilter("completed")}
+                checked={statusFilter.includes('completed')}
+                onCheckedChange={() => toggleStatusFilter('completed')}
               >
                 Ready ({statusCounts.completed || 0})
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={statusFilter.includes("processing")}
-                onCheckedChange={() => toggleStatusFilter("processing")}
+                checked={statusFilter.includes('processing')}
+                onCheckedChange={() => toggleStatusFilter('processing')}
               >
                 Processing ({statusCounts.processing || 0})
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={statusFilter.includes("pending")}
-                onCheckedChange={() => toggleStatusFilter("pending")}
+                checked={statusFilter.includes('pending')}
+                onCheckedChange={() => toggleStatusFilter('pending')}
               >
                 Pending ({statusCounts.pending || 0})
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={statusFilter.includes("error")}
-                onCheckedChange={() => toggleStatusFilter("error")}
+                checked={statusFilter.includes('error')}
+                onCheckedChange={() => toggleStatusFilter('error')}
               >
                 Error ({statusCounts.error || 0})
               </DropdownMenuCheckboxItem>
@@ -181,16 +169,11 @@ export function DocumentList({
               <FileText className="mb-4 h-12 w-12 opacity-20" />
               <p className="text-sm">
                 {searchQuery || statusFilter.length > 0
-                  ? "No documents match your filters"
-                  : "No documents uploaded yet"}
+                  ? 'No documents match your filters'
+                  : 'No documents uploaded yet'}
               </p>
               {!searchQuery && statusFilter.length === 0 && onUpload && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={onUpload}
-                >
+                <Button variant="outline" size="sm" className="mt-4" onClick={onUpload}>
                   <Upload className="mr-2 h-4 w-4" />
                   Upload your first document
                 </Button>
@@ -223,9 +206,7 @@ export function DocumentList({
             </div>
             <div className="flex justify-between mt-1">
               <span>Ready</span>
-              <span className="font-medium text-green-600">
-                {statusCounts.completed || 0}
-              </span>
+              <span className="font-medium text-green-600">{statusCounts.completed || 0}</span>
             </div>
           </div>
         </>

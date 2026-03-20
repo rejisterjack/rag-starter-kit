@@ -1,20 +1,25 @@
 /**
  * SAML Assertion Consumer Service (ACS) Endpoint
- * 
+ *
  * Receives and processes SAML responses from the Identity Provider.
  * Handles user provisioning, account linking, and session creation.
- * 
+ *
  * This is the critical security endpoint that validates SAML assertions
  * and establishes user sessions.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-
-import { processSamlResponse, getWorkspaceSamlConfig, validateEmailDomain, markAssertionUsed, isAssertionUsed } from '@/lib/auth/saml/provider';
+import { type NextRequest, NextResponse } from 'next/server';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { SamlError, type SamlProfile } from '@/lib/auth/saml/config';
+import {
+  getWorkspaceSamlConfig,
+  isAssertionUsed,
+  markAssertionUsed,
+  processSamlResponse,
+  validateEmailDomain,
+} from '@/lib/auth/saml/provider';
 import { prisma } from '@/lib/db';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
 import { createDefaultWorkspace } from '@/lib/workspace/workspace';
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +32,7 @@ export async function POST(
   { params }: { params: Promise<{ workspaceId: string }> }
 ): Promise<Response> {
   let workspaceId: string | undefined;
-  
+
   try {
     const resolvedParams = await params;
     workspaceId = resolvedParams.workspaceId;
@@ -39,20 +44,14 @@ export async function POST(
     const relayState = formData.get('RelayState') as string | undefined;
 
     if (!samlResponse) {
-      return NextResponse.json(
-        { error: 'SAMLResponse not found' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'SAMLResponse not found' }, { status: 400 });
     }
 
     // Get and validate SAML configuration
     const config = await getWorkspaceSamlConfig(workspaceId);
 
     if (!config) {
-      return NextResponse.json(
-        { error: 'SAML configuration not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'SAML configuration not found' }, { status: 404 });
     }
 
     // Process SAML response
@@ -65,10 +64,7 @@ export async function POST(
 
     // Check for replay attacks
     if (profile.assertionId && isAssertionUsed(profile.assertionId)) {
-      return NextResponse.json(
-        { error: 'SAML assertion has already been used' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'SAML assertion has already been used' }, { status: 401 });
     }
 
     // Mark assertion as used
@@ -83,7 +79,7 @@ export async function POST(
 
     const workspaceSettings = workspace?.settings as Record<string, unknown> | undefined;
     const ssoDomain = workspaceSettings?.ssoDomain as string | undefined;
-    
+
     if (ssoDomain) {
       const isValidDomain = validateEmailDomain(profile.email, [ssoDomain]);
       if (!isValidDomain) {
@@ -114,10 +110,7 @@ export async function POST(
     const userResult = await findOrCreateUser(profile, resolvedWorkspaceId);
 
     if (!userResult.success) {
-      return NextResponse.json(
-        { error: userResult.error },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: userResult.error }, { status: 500 });
     }
 
     // Log successful login
@@ -169,8 +162,6 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error('SAML ACS processing failed:', error);
-
     // Log the error
     await logAuditEvent({
       event: AuditEvent.USER_LOGIN,
@@ -189,10 +180,7 @@ export async function POST(
       );
     }
 
-    return NextResponse.json(
-      { error: 'SAML authentication failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'SAML authentication failed' }, { status: 500 });
   }
 }
 
@@ -242,8 +230,8 @@ async function findOrCreateUser(
 
       // Create default workspace for new user
       await createDefaultWorkspace(user.id, {
-        name: profile.name 
-          ? `${profile.name}'s Workspace` 
+        name: profile.name
+          ? `${profile.name}'s Workspace`
           : `${profile.email.split('@')[0]}'s Workspace`,
       });
     } else {
@@ -295,8 +283,7 @@ async function findOrCreateUser(
       userId: user.id,
       isNewUser,
     };
-  } catch (error) {
-    console.error('User provisioning failed:', error);
+  } catch (_error) {
     return {
       success: false,
       error: 'Failed to provision user',

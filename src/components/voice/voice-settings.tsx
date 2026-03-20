@@ -1,13 +1,15 @@
-"use client";
+'use client';
 
 /**
  * Voice Settings Component
  * Settings panel for voice preferences
  */
 
-import React, { useState, useCallback } from 'react';
-import { Mic, Volume2, Globe, Settings2, Zap, Activity } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Activity, Globe, Mic, Settings2, Volume2, Zap } from 'lucide-react';
+import type React from 'react';
+import { useCallback, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -25,16 +28,14 @@ import {
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useVoiceOutput } from '@/hooks/use-voice';
+import { cn } from '@/lib/utils';
 import {
+  DEFAULT_VOICE_SETTINGS,
   SUPPORTED_LANGUAGES,
   type SupportedLanguage,
   type VoiceSettings,
-  DEFAULT_VOICE_SETTINGS,
 } from '@/lib/voice';
 
 interface VoiceSettingsPanelProps {
@@ -64,21 +65,21 @@ export function VoiceSettingsPanel({
   const { voices, speak, isSpeaking, setVoice, setRate, setPitch } = useVoiceOutput();
 
   // Filter voices by selected language
-  const availableVoices = voices.filter(v => 
+  const availableVoices = voices.filter((v) =>
     v.lang.toLowerCase().startsWith(settings.synthesisLanguage.toLowerCase())
   );
 
   // Update settings
-  const updateSetting = useCallback(<K extends keyof VoiceSettings>(
-    key: K,
-    value: VoiceSettings[K]
-  ) => {
-    setSettings(prev => {
-      const updated = { ...prev, [key]: value };
-      onSettingsChange?.(updated);
-      return updated;
-    });
-  }, [onSettingsChange]);
+  const updateSetting = useCallback(
+    <K extends keyof VoiceSettings>(key: K, value: VoiceSettings[K]) => {
+      setSettings((prev) => {
+        const updated = { ...prev, [key]: value };
+        onSettingsChange?.(updated);
+        return updated;
+      });
+    },
+    [onSettingsChange]
+  );
 
   // Handle test voice
   const handleTestVoice = useCallback(() => {
@@ -91,9 +92,9 @@ export function VoiceSettingsPanel({
 
   // Group voices by gender/category
   const groupedVoices = {
-    female: availableVoices.filter(v => v.gender === 'female'),
-    male: availableVoices.filter(v => v.gender === 'male'),
-    other: availableVoices.filter(v => v.gender === 'neutral' || !v.gender),
+    female: availableVoices.filter((v) => v.gender === 'female'),
+    male: availableVoices.filter((v) => v.gender === 'male'),
+    other: availableVoices.filter((v) => v.gender === 'neutral' || !v.gender),
   };
 
   return (
@@ -105,16 +106,14 @@ export function VoiceSettingsPanel({
           </Button>
         )}
       </DialogTrigger>
-      
+
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings2 className="h-5 w-5" />
             Voice Settings
           </DialogTitle>
-          <DialogDescription>
-            Customize your voice input and output preferences
-          </DialogDescription>
+          <DialogDescription>Customize your voice input and output preferences</DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="input" className="mt-4">
@@ -156,8 +155,8 @@ export function VoiceSettingsPanel({
                 <Switch
                   id="continuous-mode"
                   checked={settings.inputMode === 'continuous'}
-                  onCheckedChange={(checked) => 
-                    updateSetting('inputMode', checked ? 'continuous' : 'push-to-talk')
+                  onCheckedChange={(checked: boolean | 'indeterminate') =>
+                    updateSetting('inputMode', checked === true ? 'continuous' : 'push-to-talk')
                   }
                 />
               </div>
@@ -171,13 +170,15 @@ export function VoiceSettingsPanel({
               </Label>
               <Select
                 value={settings.recognitionLanguage}
-                onValueChange={(value) => updateSetting('recognitionLanguage', value as SupportedLanguage)}
+                onValueChange={(value) =>
+                  updateSetting('recognitionLanguage', value as SupportedLanguage)
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select language" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SUPPORTED_LANGUAGES.filter(l => l.code !== 'auto').map((lang) => (
+                  {SUPPORTED_LANGUAGES.filter((l) => l.code !== 'auto').map((lang) => (
                     <SelectItem key={lang.code} value={lang.code}>
                       <span className="mr-2">{lang.flag}</span>
                       {lang.name}
@@ -206,7 +207,7 @@ export function VoiceSettingsPanel({
                   <SelectValue placeholder="Select language" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SUPPORTED_LANGUAGES.filter(l => l.code !== 'auto').map((lang) => (
+                  {SUPPORTED_LANGUAGES.filter((l) => l.code !== 'auto').map((lang) => (
                     <SelectItem key={lang.code} value={lang.code}>
                       <span className="mr-2">{lang.flag}</span>
                       {lang.name}
@@ -228,8 +229,10 @@ export function VoiceSettingsPanel({
                 disabled={availableVoices.length === 0}
               >
                 <SelectTrigger>
-                  <SelectValue 
-                    placeholder={availableVoices.length === 0 ? 'No voices available' : 'Select voice'} 
+                  <SelectValue
+                    placeholder={
+                      availableVoices.length === 0 ? 'No voices available' : 'Select voice'
+                    }
                   />
                 </SelectTrigger>
                 <SelectContent>
@@ -241,7 +244,9 @@ export function VoiceSettingsPanel({
                       {groupedVoices.female.map((voice) => (
                         <SelectItem key={voice.voiceURI} value={voice.voiceURI}>
                           {voice.name}
-                          {voice.localService && <span className="ml-2 text-xs text-muted-foreground">(Local)</span>}
+                          {voice.localService && (
+                            <span className="ml-2 text-xs text-muted-foreground">(Local)</span>
+                          )}
                         </SelectItem>
                       ))}
                     </>
@@ -254,7 +259,9 @@ export function VoiceSettingsPanel({
                       {groupedVoices.male.map((voice) => (
                         <SelectItem key={voice.voiceURI} value={voice.voiceURI}>
                           {voice.name}
-                          {voice.localService && <span className="ml-2 text-xs text-muted-foreground">(Local)</span>}
+                          {voice.localService && (
+                            <span className="ml-2 text-xs text-muted-foreground">(Local)</span>
+                          )}
                         </SelectItem>
                       ))}
                     </>
@@ -262,7 +269,9 @@ export function VoiceSettingsPanel({
                   {groupedVoices.other.map((voice) => (
                     <SelectItem key={voice.voiceURI} value={voice.voiceURI}>
                       {voice.name}
-                      {voice.localService && <span className="ml-2 text-xs text-muted-foreground">(Local)</span>}
+                      {voice.localService && (
+                        <span className="ml-2 text-xs text-muted-foreground">(Local)</span>
+                      )}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -279,7 +288,7 @@ export function VoiceSettingsPanel({
               </div>
               <Slider
                 value={[settings.speechRate]}
-                onValueChange={([value]) => {
+                onValueChange={([value]: number[]) => {
                   updateSetting('speechRate', value);
                   setRate(value);
                 }}
@@ -304,7 +313,7 @@ export function VoiceSettingsPanel({
               </div>
               <Slider
                 value={[settings.speechPitch]}
-                onValueChange={([value]) => {
+                onValueChange={([value]: number[]) => {
                   updateSetting('speechPitch', value);
                   setPitch(value);
                 }}
@@ -343,7 +352,9 @@ export function VoiceSettingsPanel({
               <Switch
                 id="auto-play"
                 checked={settings.autoPlayAssistant}
-                onCheckedChange={(checked) => updateSetting('autoPlayAssistant', checked)}
+                onCheckedChange={(checked: boolean | 'indeterminate') =>
+                  updateSetting('autoPlayAssistant', checked === true)
+                }
               />
             </div>
 
@@ -358,7 +369,9 @@ export function VoiceSettingsPanel({
               <Switch
                 id="voice-commands"
                 checked={settings.enableVoiceCommands}
-                onCheckedChange={(checked) => updateSetting('enableVoiceCommands', checked)}
+                onCheckedChange={(checked: boolean | 'indeterminate') =>
+                  updateSetting('enableVoiceCommands', checked === true)
+                }
               />
             </div>
 
@@ -373,7 +386,9 @@ export function VoiceSettingsPanel({
               <Switch
                 id="show-confidence"
                 checked={settings.showConfidenceScores}
-                onCheckedChange={(checked) => updateSetting('showConfidenceScores', checked)}
+                onCheckedChange={(checked: boolean | 'indeterminate') =>
+                  updateSetting('showConfidenceScores', checked === true)
+                }
               />
             </div>
           </TabsContent>
@@ -381,10 +396,13 @@ export function VoiceSettingsPanel({
 
         {/* Footer */}
         <div className="flex justify-end gap-2 mt-6">
-          <Button variant="outline" onClick={() => {
-            setSettings(DEFAULT_VOICE_SETTINGS);
-            onSettingsChange?.(DEFAULT_VOICE_SETTINGS);
-          }}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSettings(DEFAULT_VOICE_SETTINGS);
+              onSettingsChange?.(DEFAULT_VOICE_SETTINGS);
+            }}
+          >
             Reset to Default
           </Button>
           <Button onClick={() => setIsOpen(false)}>Done</Button>
@@ -414,16 +432,16 @@ export function CompactVoiceSettings({
     ...initialSettings,
   });
 
-  const updateSetting = useCallback(<K extends keyof VoiceSettings>(
-    key: K,
-    value: VoiceSettings[K]
-  ) => {
-    setSettings(prev => {
-      const updated = { ...prev, [key]: value };
-      onSettingsChange?.(updated);
-      return updated;
-    });
-  }, [onSettingsChange]);
+  const updateSetting = useCallback(
+    <K extends keyof VoiceSettings>(key: K, value: VoiceSettings[K]) => {
+      setSettings((prev) => {
+        const updated = { ...prev, [key]: value };
+        onSettingsChange?.(updated);
+        return updated;
+      });
+    },
+    [onSettingsChange]
+  );
 
   return (
     <div className={cn('space-y-4 p-4', className)}>
@@ -433,13 +451,15 @@ export function CompactVoiceSettings({
         </Label>
         <Select
           value={settings.recognitionLanguage}
-          onValueChange={(value) => updateSetting('recognitionLanguage', value as SupportedLanguage)}
+          onValueChange={(value) =>
+            updateSetting('recognitionLanguage', value as SupportedLanguage)
+          }
         >
           <SelectTrigger className="h-8">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {SUPPORTED_LANGUAGES.filter(l => l.code !== 'auto').map((lang) => (
+            {SUPPORTED_LANGUAGES.filter((l) => l.code !== 'auto').map((lang) => (
               <SelectItem key={lang.code} value={lang.code}>
                 <span className="mr-2">{lang.flag}</span>
                 {lang.name}
@@ -454,13 +474,11 @@ export function CompactVoiceSettings({
           <Label className="text-xs font-semibold uppercase text-muted-foreground">
             Speech Rate
           </Label>
-          <span className="text-xs text-muted-foreground">
-            {settings.speechRate.toFixed(1)}x
-          </span>
+          <span className="text-xs text-muted-foreground">{settings.speechRate.toFixed(1)}x</span>
         </div>
         <Slider
           value={[settings.speechRate]}
-          onValueChange={([value]) => updateSetting('speechRate', value)}
+          onValueChange={([value]: number[]) => updateSetting('speechRate', value)}
           min={0.5}
           max={2}
           step={0.1}
@@ -469,12 +487,12 @@ export function CompactVoiceSettings({
       </div>
 
       <div className="flex items-center justify-between">
-        <Label className="text-xs font-semibold uppercase text-muted-foreground">
-          Auto-play
-        </Label>
+        <Label className="text-xs font-semibold uppercase text-muted-foreground">Auto-play</Label>
         <Switch
           checked={settings.autoPlayAssistant}
-          onCheckedChange={(checked) => updateSetting('autoPlayAssistant', checked)}
+          onCheckedChange={(checked: boolean | 'indeterminate') =>
+            updateSetting('autoPlayAssistant', checked === true)
+          }
         />
       </div>
     </div>

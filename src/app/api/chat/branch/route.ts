@@ -1,6 +1,6 @@
 /**
  * Conversation Branch API Routes
- * 
+ *
  * Handles:
  * - POST /api/chat/branch - Create new branch (fork conversation)
  * - GET /api/chat/branch?conversationId=x - List branches
@@ -9,17 +9,17 @@
  * - DELETE /api/chat/branch?branchId=x - Delete branch
  */
 
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { NextResponse } from 'next/server';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 import {
-  forkConversation,
-  editMessage,
-  listBranches,
-  getConversationTree,
   type EditMessageResult,
-} from "@/lib/rag/conversation-branch";
-import { logAuditEvent, AuditEvent } from "@/lib/audit/audit-logger";
+  editMessage,
+  forkConversation,
+  getConversationTree,
+  listBranches,
+} from '@/lib/rag/conversation-branch';
 
 // =============================================================================
 // POST - Create new branch
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
-        { success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } },
         { status: 401 }
       );
     }
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       body = await req.json();
     } catch {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_BODY", message: "Invalid JSON body" } },
+        { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
       );
     }
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: "MISSING_FIELDS", message: "conversationId and messageId are required" },
+          error: { code: 'MISSING_FIELDS', message: 'conversationId and messageId are required' },
         },
         { status: 400 }
       );
@@ -71,13 +71,13 @@ export async function POST(req: Request) {
     const chat = await prisma.chat.findFirst({
       where: {
         id: conversationId,
-        OR: [{ userId }, { workspaceId: workspaceId ?? "" }],
+        OR: [{ userId }, { workspaceId: workspaceId ?? '' }],
       },
     });
 
     if (!chat) {
       return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Conversation not found" } },
+        { success: false, error: { code: 'NOT_FOUND', message: 'Conversation not found' } },
         { status: 404 }
       );
     }
@@ -96,9 +96,9 @@ export async function POST(req: Request) {
       event: AuditEvent.CHAT_UPDATED,
       userId,
       workspaceId,
-      severity: "INFO",
+      severity: 'INFO',
       metadata: {
-        action: "fork_conversation",
+        action: 'fork_conversation',
         chatId: newBranchId,
         parentId: conversationId,
         forkMessageId: messageId,
@@ -110,19 +110,17 @@ export async function POST(req: Request) {
       success: true,
       data: {
         branchId: newBranchId,
-        name: newBranch?.title || branchName || "New Branch",
+        name: newBranch?.title || branchName || 'New Branch',
         parentId: conversationId,
         messageCount: newBranch?._count.messages || 0,
       },
     });
   } catch (error) {
-    console.error("Failed to create branch:", error);
-
-    const errorMessage = error instanceof Error ? error.message : "Failed to create branch";
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create branch';
     return NextResponse.json(
       {
         success: false,
-        error: { code: "INTERNAL_ERROR", message: errorMessage },
+        error: { code: 'INTERNAL_ERROR', message: errorMessage },
       },
       { status: 500 }
     );
@@ -139,7 +137,7 @@ export async function GET(req: Request) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
-        { success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } },
         { status: 401 }
       );
     }
@@ -149,9 +147,9 @@ export async function GET(req: Request) {
 
     // Parse query parameters
     const { searchParams } = new URL(req.url);
-    const conversationId = searchParams.get("conversationId");
-    const rootId = searchParams.get("rootId");
-    const includeTree = searchParams.get("tree") === "true";
+    const conversationId = searchParams.get('conversationId');
+    const rootId = searchParams.get('rootId');
+    const includeTree = searchParams.get('tree') === 'true';
 
     const effectiveRootId = conversationId || rootId;
 
@@ -159,7 +157,7 @@ export async function GET(req: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: "MISSING_ID", message: "conversationId or rootId is required" },
+          error: { code: 'MISSING_ID', message: 'conversationId or rootId is required' },
         },
         { status: 400 }
       );
@@ -169,13 +167,13 @@ export async function GET(req: Request) {
     const rootChat = await prisma.chat.findFirst({
       where: {
         id: effectiveRootId,
-        OR: [{ userId }, { workspaceId: workspaceId ?? "" }],
+        OR: [{ userId }, { workspaceId: workspaceId ?? '' }],
       },
     });
 
     if (!rootChat) {
       return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Conversation not found" } },
+        { success: false, error: { code: 'NOT_FOUND', message: 'Conversation not found' } },
         { status: 404 }
       );
     }
@@ -201,13 +199,11 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
-    console.error("Failed to list branches:", error);
-
-    const errorMessage = error instanceof Error ? error.message : "Failed to list branches";
+    const errorMessage = error instanceof Error ? error.message : 'Failed to list branches';
     return NextResponse.json(
       {
         success: false,
-        error: { code: "INTERNAL_ERROR", message: errorMessage },
+        error: { code: 'INTERNAL_ERROR', message: errorMessage },
       },
       { status: 500 }
     );
@@ -224,7 +220,7 @@ export async function PATCH(req: Request) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
-        { success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } },
         { status: 401 }
       );
     }
@@ -238,13 +234,18 @@ export async function PATCH(req: Request) {
       body = await req.json();
     } catch {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_BODY", message: "Invalid JSON body" } },
+        { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
       );
     }
 
     // Validate body
-    const { messageId, newContent, regenerateResponse = true, branchName } = body as {
+    const {
+      messageId,
+      newContent,
+      regenerateResponse = true,
+      branchName,
+    } = body as {
       messageId?: string;
       newContent?: string;
       regenerateResponse?: boolean;
@@ -255,7 +256,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: "MISSING_FIELDS", message: "messageId and newContent are required" },
+          error: { code: 'MISSING_FIELDS', message: 'messageId and newContent are required' },
         },
         { status: 400 }
       );
@@ -269,18 +270,17 @@ export async function PATCH(req: Request) {
 
     if (!message) {
       return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Message not found" } },
+        { success: false, error: { code: 'NOT_FOUND', message: 'Message not found' } },
         { status: 404 }
       );
     }
 
     const hasAccess =
-      message.chat.userId === userId ||
-      (workspaceId && message.chat.workspaceId === workspaceId);
+      message.chat.userId === userId || (workspaceId && message.chat.workspaceId === workspaceId);
 
     if (!hasAccess) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "Access denied" } },
+        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
         { status: 403 }
       );
     }
@@ -295,7 +295,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: "EDIT_FAILED", message: result.error || "Failed to edit message" },
+          error: { code: 'EDIT_FAILED', message: result.error || 'Failed to edit message' },
         },
         { status: 400 }
       );
@@ -307,29 +307,27 @@ export async function PATCH(req: Request) {
       userId,
       workspaceId,
       metadata: {
-        action: "edit_message_and_fork",
+        action: 'edit_message_and_fork',
         messageId,
         newBranchId: result.newBranchId,
         regenerateResponse,
       },
-      severity: "INFO",
+      severity: 'INFO',
     });
 
     return NextResponse.json({
       success: true,
       data: {
         newBranchId: result.newBranchId,
-        message: "Message edited and new branch created",
+        message: 'Message edited and new branch created',
       },
     });
   } catch (error) {
-    console.error("Failed to edit message:", error);
-
-    const errorMessage = error instanceof Error ? error.message : "Failed to edit message";
+    const errorMessage = error instanceof Error ? error.message : 'Failed to edit message';
     return NextResponse.json(
       {
         success: false,
-        error: { code: "INTERNAL_ERROR", message: errorMessage },
+        error: { code: 'INTERNAL_ERROR', message: errorMessage },
       },
       { status: 500 }
     );
@@ -346,7 +344,7 @@ export async function PUT(req: Request) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
-        { success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } },
         { status: 401 }
       );
     }
@@ -360,7 +358,7 @@ export async function PUT(req: Request) {
       body = await req.json();
     } catch {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_BODY", message: "Invalid JSON body" } },
+        { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
       );
     }
@@ -375,7 +373,7 @@ export async function PUT(req: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: "MISSING_FIELDS", message: "branchId and name are required" },
+          error: { code: 'MISSING_FIELDS', message: 'branchId and name are required' },
         },
         { status: 400 }
       );
@@ -385,13 +383,13 @@ export async function PUT(req: Request) {
     const chat = await prisma.chat.findFirst({
       where: {
         id: branchId,
-        OR: [{ userId }, { workspaceId: workspaceId ?? "" }],
+        OR: [{ userId }, { workspaceId: workspaceId ?? '' }],
       },
     });
 
     if (!chat) {
       return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Branch not found" } },
+        { success: false, error: { code: 'NOT_FOUND', message: 'Branch not found' } },
         { status: 404 }
       );
     }
@@ -409,7 +407,7 @@ export async function PUT(req: Request) {
       workspaceId,
       metadata: {
         chatId: branchId,
-        action: "rename",
+        action: 'rename',
         newName: name.trim(),
       },
     });
@@ -422,13 +420,11 @@ export async function PUT(req: Request) {
       },
     });
   } catch (error) {
-    console.error("Failed to rename branch:", error);
-
-    const errorMessage = error instanceof Error ? error.message : "Failed to rename branch";
+    const errorMessage = error instanceof Error ? error.message : 'Failed to rename branch';
     return NextResponse.json(
       {
         success: false,
-        error: { code: "INTERNAL_ERROR", message: errorMessage },
+        error: { code: 'INTERNAL_ERROR', message: errorMessage },
       },
       { status: 500 }
     );
@@ -445,7 +441,7 @@ export async function DELETE(req: Request) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
-        { success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } },
         { status: 401 }
       );
     }
@@ -455,13 +451,13 @@ export async function DELETE(req: Request) {
 
     // Parse query parameters
     const { searchParams } = new URL(req.url);
-    const branchId = searchParams.get("branchId");
+    const branchId = searchParams.get('branchId');
 
     if (!branchId) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: "MISSING_ID", message: "branchId is required" },
+          error: { code: 'MISSING_ID', message: 'branchId is required' },
         },
         { status: 400 }
       );
@@ -471,13 +467,13 @@ export async function DELETE(req: Request) {
     const chat = await prisma.chat.findFirst({
       where: {
         id: branchId,
-        OR: [{ userId }, { workspaceId: workspaceId ?? "" }],
+        OR: [{ userId }, { workspaceId: workspaceId ?? '' }],
       },
     });
 
     if (!chat) {
       return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Branch not found" } },
+        { success: false, error: { code: 'NOT_FOUND', message: 'Branch not found' } },
         { status: 404 }
       );
     }
@@ -488,12 +484,12 @@ export async function DELETE(req: Request) {
       event: AuditEvent.CHAT_DELETED,
       userId,
       workspaceId,
-      metadata: { 
-        chatId: branchId, 
+      metadata: {
+        chatId: branchId,
         isRoot: !metadata?.isBranch,
         isBranch: metadata?.isBranch ?? false,
       },
-      severity: "WARNING",
+      severity: 'WARNING',
     });
 
     // Delete the branch (cascade will handle messages)
@@ -509,13 +505,11 @@ export async function DELETE(req: Request) {
       },
     });
   } catch (error) {
-    console.error("Failed to delete branch:", error);
-
-    const errorMessage = error instanceof Error ? error.message : "Failed to delete branch";
+    const errorMessage = error instanceof Error ? error.message : 'Failed to delete branch';
     return NextResponse.json(
       {
         success: false,
-        error: { code: "INTERNAL_ERROR", message: errorMessage },
+        error: { code: 'INTERNAL_ERROR', message: errorMessage },
       },
       { status: 500 }
     );

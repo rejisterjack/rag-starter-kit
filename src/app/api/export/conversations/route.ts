@@ -4,12 +4,11 @@
  */
 
 import { NextResponse } from 'next/server';
-
-import { auth } from '@/lib/auth';
-import { getExportService, ExportServiceError } from '@/lib/export';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
-import { checkPermission, Permission } from '@/lib/workspace/permissions';
 import { z } from 'zod';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { auth } from '@/lib/auth';
+import { ExportServiceError, getExportService } from '@/lib/export';
+import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // =============================================================================
 // Validation Schema
@@ -48,10 +47,7 @@ export async function POST(req: Request) {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -142,10 +138,7 @@ export async function POST(req: Request) {
     );
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: 'Export failed', code: 'EXPORT_FAILED' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Export failed', code: 'EXPORT_FAILED' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -157,8 +150,6 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    console.error('Bulk export error:', error);
-
     if (error instanceof ExportServiceError) {
       const statusMap: Record<string, number> = {
         NOT_FOUND: 404,
@@ -193,10 +184,7 @@ export async function GET(req: Request) {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -235,18 +223,12 @@ export async function GET(req: Request) {
     const job = exportService.getJobStatus(jobId);
 
     if (!job) {
-      return NextResponse.json(
-        { error: 'Job not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Job not found', code: 'NOT_FOUND' }, { status: 404 });
     }
 
     // Verify user owns this job
     if (job.userId !== userId) {
-      return NextResponse.json(
-        { error: 'Access denied', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Access denied', code: 'FORBIDDEN' }, { status: 403 });
     }
 
     return NextResponse.json({
@@ -266,9 +248,7 @@ export async function GET(req: Request) {
         error: job.error,
       },
     });
-  } catch (error) {
-    console.error('Get bulk export status error:', error);
-
+  } catch (_error) {
     return NextResponse.json(
       {
         error: 'Internal server error',
@@ -288,10 +268,7 @@ export async function DELETE(req: Request) {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -312,18 +289,12 @@ export async function DELETE(req: Request) {
     const job = exportService.getJobStatus(jobId);
 
     if (!job) {
-      return NextResponse.json(
-        { error: 'Job not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Job not found', code: 'NOT_FOUND' }, { status: 404 });
     }
 
     // Verify user owns this job
     if (job.userId !== userId) {
-      return NextResponse.json(
-        { error: 'Access denied', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Access denied', code: 'FORBIDDEN' }, { status: 403 });
     }
 
     // Cancel job
@@ -340,9 +311,7 @@ export async function DELETE(req: Request) {
       success: true,
       data: { message: 'Export cancelled' },
     });
-  } catch (error) {
-    console.error('Cancel bulk export error:', error);
-
+  } catch (_error) {
     return NextResponse.json(
       {
         error: 'Internal server error',

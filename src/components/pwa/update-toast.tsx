@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useCallback } from "react";
-import { RefreshCw, Download, Sparkles, X } from "lucide-react";
+import { Download, RefreshCw, Sparkles, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Toast,
   ToastClose,
@@ -11,9 +11,9 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-} from "@/components/ui/toast";
-import { useServiceWorker, usePWA } from "@/hooks/use-pwa";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/toast';
+import { usePWA, useServiceWorker } from '@/hooks/use-pwa';
+import { cn } from '@/lib/utils';
 
 /**
  * Props for UpdateToast component
@@ -30,12 +30,12 @@ interface UpdateToastProps {
 /**
  * Update notification toast component
  * Shows when a new version of the app is available
- * 
+ *
  * @example
  * ```tsx
  * // Basic usage
  * <UpdateToast />
- * 
+ *
  * // With custom options
  * <UpdateToast checkOnMount={true} autoHideDelay={3000} />
  * ```
@@ -92,26 +92,24 @@ export function UpdateToast({
       {showToast && (
         <div
           className={cn(
-            "fixed z-[100] transition-all duration-300",
-            isClosing ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0",
-            "bottom-0 right-0 p-4 md:max-w-[420px] w-full"
+            'fixed z-[100] transition-all duration-300',
+            isClosing ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0',
+            'bottom-0 right-0 p-4 md:max-w-[420px] w-full'
           )}
         >
           <Toast
             variant="default"
             className={cn(
-              "border-primary/20 bg-background shadow-lg",
-              updateComplete && "border-green-500/20",
+              'border-primary/20 bg-background shadow-lg',
+              updateComplete && 'border-green-500/20',
               className
             )}
           >
             <div className="flex items-start gap-3">
               <div
                 className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-                  updateComplete
-                    ? "bg-green-100 dark:bg-green-900"
-                    : "bg-primary/10"
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
+                  updateComplete ? 'bg-green-100 dark:bg-green-900' : 'bg-primary/10'
                 )}
               >
                 {isUpdating ? (
@@ -125,17 +123,17 @@ export function UpdateToast({
               <div className="flex-1 space-y-1">
                 <ToastTitle className="text-sm font-semibold">
                   {isUpdating
-                    ? "Updating..."
+                    ? 'Updating...'
                     : updateComplete
-                    ? "Update complete!"
-                    : "Update available"}
+                      ? 'Update complete!'
+                      : 'Update available'}
                 </ToastTitle>
                 <ToastDescription className="text-xs text-muted-foreground">
                   {isUpdating
-                    ? "Please wait while we update the app"
+                    ? 'Please wait while we update the app'
                     : updateComplete
-                    ? "The app has been updated to the latest version"
-                    : "A new version is available. Refresh to get the latest features."}
+                      ? 'The app has been updated to the latest version'
+                      : 'A new version is available. Refresh to get the latest features.'}
                 </ToastDescription>
               </div>
             </div>
@@ -204,18 +202,16 @@ export function UpdateBanner({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "fixed left-0 right-0 top-0 z-50 border-b bg-primary px-4 py-2 text-primary-foreground shadow-lg",
-        "transition-all duration-300",
-        isClosing ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100",
+        'fixed left-0 right-0 top-0 z-50 border-b bg-primary px-4 py-2 text-primary-foreground shadow-lg',
+        'transition-all duration-300',
+        isClosing ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100',
         className
       )}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Sparkles className="h-4 w-4 shrink-0" />
-          <span className="text-sm font-medium">
-            A new version is available!
-          </span>
+          <span className="text-sm font-medium">A new version is available!</span>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -230,7 +226,7 @@ export function UpdateBanner({ className }: { className?: string }) {
             ) : (
               <RefreshCw className="mr-2 h-3 w-3" />
             )}
-            {isUpdating ? "Updating..." : "Update now"}
+            {isUpdating ? 'Updating...' : 'Update now'}
           </Button>
           <Button
             size="icon"
@@ -255,13 +251,8 @@ export function VersionInfo({ className }: { className?: string }) {
   const { isInstalled } = usePWA();
 
   return (
-    <div
-      className={cn(
-        "flex items-center gap-2 text-xs text-muted-foreground",
-        className
-      )}
-    >
-      <span>v{process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0"}</span>
+    <div className={cn('flex items-center gap-2 text-xs text-muted-foreground', className)}>
+      <span>v{process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'}</span>
       {isInstalled && (
         <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-900 dark:text-green-400">
           Installed
@@ -287,12 +278,12 @@ export function VersionInfo({ className }: { className?: string }) {
  */
 export function CheckUpdateButton({
   className,
-  variant = "outline",
-  size = "default",
+  variant = 'outline',
+  size = 'default',
 }: {
   className?: string;
-  variant?: "default" | "outline" | "ghost";
-  size?: "default" | "sm" | "lg" | "icon";
+  variant?: 'default' | 'outline' | 'ghost';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
 }) {
   const { checkForUpdate, isUpdating } = useServiceWorker();
   const [isChecking, setIsChecking] = useState(false);
@@ -307,25 +298,21 @@ export function CheckUpdateButton({
 
   const buttonContent = (
     <>
-      <RefreshCw
-        className={cn("h-4 w-4", (isChecking || isUpdating) && "animate-spin")}
-      />
-      {size !== "icon" && (
-        <span>
-          {isChecking || isUpdating ? "Checking..." : "Check for updates"}
-        </span>
+      <RefreshCw className={cn('h-4 w-4', (isChecking || isUpdating) && 'animate-spin')} />
+      {size !== 'icon' && (
+        <span>{isChecking || isUpdating ? 'Checking...' : 'Check for updates'}</span>
       )}
     </>
   );
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn('flex items-center gap-2', className)}>
       <Button
         variant={variant}
         size={size}
         disabled={isChecking || isUpdating}
         onClick={() => void handleCheck()}
-        className={cn("gap-2", size === "icon" && "h-9 w-9")}
+        className={cn('gap-2', size === 'icon' && 'h-9 w-9')}
       >
         {buttonContent}
       </Button>

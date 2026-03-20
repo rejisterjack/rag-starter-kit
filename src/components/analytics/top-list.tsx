@@ -1,24 +1,23 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Users,
   FileText,
-  MessageSquare,
-  Search,
   type LucideIcon,
-} from "lucide-react";
+  MessageSquare,
+  Minus,
+  Search,
+  TrendingDown,
+  TrendingUp,
+  Users,
+} from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
-export type TopListItemType = "user" | "document" | "query" | "generic";
+export type TopListItemType = 'user' | 'document' | 'query' | 'generic';
 
 export interface TopListItem {
   id: string;
@@ -31,7 +30,14 @@ export interface TopListItem {
   avatarUrl?: string;
   icon?: LucideIcon;
   badge?: string;
-  badgeVariant?: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info";
+  badgeVariant?:
+    | 'default'
+    | 'secondary'
+    | 'destructive'
+    | 'outline'
+    | 'success'
+    | 'warning'
+    | 'info';
   progress?: number;
   progressMax?: number;
   href?: string;
@@ -61,30 +67,26 @@ const typeIcons: Record<TopListItemType, LucideIcon> = {
 
 function TrendIcon({ trend }: { trend: number }) {
   if (trend > 0) {
-    return (
-      <TrendingUp className="h-3 w-3 text-green-600 dark:text-green-400" />
-    );
+    return <TrendingUp className="h-3 w-3 text-green-600 dark:text-green-400" />;
   }
   if (trend < 0) {
-    return (
-      <TrendingDown className="h-3 w-3 text-red-600 dark:text-red-400" />
-    );
+    return <TrendingDown className="h-3 w-3 text-red-600 dark:text-red-400" />;
   }
   return <Minus className="h-3 w-3 text-muted-foreground" />;
 }
 
 function RankBadge({ rank }: { rank: number }) {
   const colors = {
-    1: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100",
-    2: "bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
-    3: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100",
+    1: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100',
+    2: 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+    3: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100',
   };
 
   return (
     <div
       className={cn(
-        "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
-        rank <= 3 ? colors[rank as keyof typeof colors] : "bg-muted text-muted-foreground"
+        'flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold',
+        rank <= 3 ? colors[rank as keyof typeof colors] : 'bg-muted text-muted-foreground'
       )}
     >
       {rank}
@@ -115,9 +117,9 @@ function TopListItemRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 p-3 rounded-lg transition-colors",
-        onClick && "cursor-pointer hover:bg-muted/50",
-        "border-b last:border-b-0"
+        'flex items-center gap-3 p-3 rounded-lg transition-colors',
+        onClick && 'cursor-pointer hover:bg-muted/50',
+        'border-b last:border-b-0'
       )}
       onClick={onClick}
     >
@@ -137,14 +139,12 @@ function TopListItemRow({
         <div className="flex items-center gap-2">
           <span className="font-medium truncate">{item.title}</span>
           {item.badge && (
-            <Badge variant={item.badgeVariant || "secondary"} className="shrink-0 text-xs">
+            <Badge variant={item.badgeVariant || 'secondary'} className="shrink-0 text-xs">
               {item.badge}
             </Badge>
           )}
         </div>
-        {item.subtitle && (
-          <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
-        )}
+        {item.subtitle && <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>}
         {showProgress && item.progress !== undefined && (
           <div className="mt-2">
             <Progress value={progressValue} className="h-1.5" />
@@ -154,9 +154,7 @@ function TopListItemRow({
 
       <div className="text-right shrink-0">
         <div className="font-semibold">{item.value}</div>
-        {item.valueLabel && (
-          <p className="text-xs text-muted-foreground">{item.valueLabel}</p>
-        )}
+        {item.valueLabel && <p className="text-xs text-muted-foreground">{item.valueLabel}</p>}
       </div>
 
       {showTrend && item.trend !== undefined && (
@@ -164,10 +162,10 @@ function TopListItemRow({
           <TrendIcon trend={item.trend} />
           <span
             className={cn(
-              "text-xs font-medium",
-              item.trend > 0 && "text-green-600 dark:text-green-400",
-              item.trend < 0 && "text-red-600 dark:text-red-400",
-              item.trend === 0 && "text-muted-foreground"
+              'text-xs font-medium',
+              item.trend > 0 && 'text-green-600 dark:text-green-400',
+              item.trend < 0 && 'text-red-600 dark:text-red-400',
+              item.trend === 0 && 'text-muted-foreground'
             )}
           >
             {Math.abs(item.trend).toFixed(1)}%
@@ -182,13 +180,13 @@ export function TopList({
   title,
   description,
   items,
-  type = "generic",
+  type = 'generic',
   maxItems = 10,
   showRank = true,
   showTrend = false,
   showProgress = false,
   loading = false,
-  emptyMessage = "No items to display",
+  emptyMessage = 'No items to display',
   className,
   onItemClick,
 }: TopListProps) {

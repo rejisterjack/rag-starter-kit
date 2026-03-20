@@ -4,23 +4,22 @@
  * GET: Get users in a workspace/chat
  */
 
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-
+import { NextResponse } from 'next/server';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import {
-  updatePresence,
+  getUserPresence,
   getUsersInRoom,
-  removePresence,
-  setUserStatus,
-  setCurrentView,
   heartbeat,
   isRedisConfigured,
-  getUserPresence,
+  removePresence,
+  setCurrentView,
+  setUserStatus,
+  updatePresence,
 } from '@/lib/realtime/presence';
-import { getRateLimiter } from '@/lib/security/rate-limiter';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
 import type { PresenceStatus } from '@/lib/realtime/types';
+import { getRateLimiter } from '@/lib/security/rate-limiter';
 
 // =============================================================================
 // POST Handler - Update User Presence
@@ -274,8 +273,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           { status: 400 }
         );
     }
-  } catch (error) {
-    console.error('Presence API error:', error);
+  } catch (_error) {
     return NextResponse.json(
       {
         success: false,
@@ -370,8 +368,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       },
       { status: 400 }
     );
-  } catch (error) {
-    console.error('Presence GET error:', error);
+  } catch (_error) {
     return NextResponse.json(
       {
         success: false,
@@ -424,8 +421,7 @@ export async function DELETE(_req: NextRequest): Promise<NextResponse> {
         timestamp: Date.now(),
       },
     });
-  } catch (error) {
-    console.error('Presence DELETE error:', error);
+  } catch (_error) {
     return NextResponse.json(
       {
         success: false,

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState, useCallback, useRef } from "react";
-import { type Source } from "@/components/chat/citations";
+import { useCallback, useRef, useState } from 'react';
+import type { Source } from '@/components/chat/citations';
 
 export interface StreamingState {
   content: string;
@@ -31,36 +31,34 @@ export interface UseStreamingReturn {
  * Hook for handling streaming responses from the AI API
  * Supports token-by-token accumulation, source extraction, and cancellation
  */
-export function useStreaming(
-  options: UseStreamingOptions = {}
-): UseStreamingReturn {
+export function useStreaming(options: UseStreamingOptions = {}): UseStreamingReturn {
   const { onToken, onSources, onError, onFinish } = options;
 
   const [state, setState] = useState<StreamingState>({
-    content: "",
+    content: '',
     isStreaming: false,
     sources: [],
     error: null,
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const accumulatedContentRef = useRef("");
+  const accumulatedContentRef = useRef('');
   const accumulatedSourcesRef = useRef<Source[]>([]);
 
   const startStream = useCallback(
     async (response: Response) => {
       if (!response.body) {
-        throw new Error("No response body");
+        throw new Error('No response body');
       }
 
       // Reset state
       setState({
-        content: "",
+        content: '',
         isStreaming: true,
         sources: [],
         error: null,
       });
-      accumulatedContentRef.current = "";
+      accumulatedContentRef.current = '';
       accumulatedSourcesRef.current = [];
 
       const reader = response.body.getReader();
@@ -79,14 +77,14 @@ export function useStreaming(
           if (done) break;
 
           const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n").filter((line) => line.trim());
+          const lines = chunk.split('\n').filter((line) => line.trim());
 
           for (const line of lines) {
             try {
               const data = JSON.parse(line);
 
               switch (data.type) {
-                case "token":
+                case 'token':
                   accumulatedContentRef.current += data.content;
                   setState((prev) => ({
                     ...prev,
@@ -95,7 +93,7 @@ export function useStreaming(
                   onToken?.(data.content);
                   break;
 
-                case "sources":
+                case 'sources':
                   accumulatedSourcesRef.current = data.sources;
                   setState((prev) => ({
                     ...prev,
@@ -104,39 +102,36 @@ export function useStreaming(
                   onSources?.(data.sources);
                   break;
 
-                case "error":
-                  throw new Error(data.message || "Streaming error");
+                case 'error':
+                  throw new Error(data.message || 'Streaming error');
 
-                case "done":
+                case 'done':
                   setState((prev) => ({
                     ...prev,
                     isStreaming: false,
                   }));
-                  onFinish?.(
-                    accumulatedContentRef.current,
-                    accumulatedSourcesRef.current
-                  );
+                  onFinish?.(accumulatedContentRef.current, accumulatedSourcesRef.current);
                   break;
               }
-            } catch (parseError) {
+            } catch {
               // Ignore lines that aren't valid JSON
               // These might be SSE comments or keep-alive messages
             }
           }
         }
       } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") {
+        if (err instanceof Error && err.name === 'AbortError') {
           // User cancelled - not an error
           return;
         }
 
-        const error = err instanceof Error ? err : new Error(String(err));
+        const streamError = err instanceof Error ? err : new Error(String(err));
         setState((prev) => ({
           ...prev,
-          error,
+          error: streamError,
           isStreaming: false,
         }));
-        onError?.(error);
+        onError?.(streamError);
       } finally {
         reader.releaseLock();
       }
@@ -155,12 +150,12 @@ export function useStreaming(
   const reset = useCallback(() => {
     abortControllerRef.current?.abort();
     setState({
-      content: "",
+      content: '',
       isStreaming: false,
       sources: [],
       error: null,
     });
-    accumulatedContentRef.current = "";
+    accumulatedContentRef.current = '';
     accumulatedSourcesRef.current = [];
   }, []);
 
@@ -185,9 +180,9 @@ export async function createStreamingRequest(
   options?: { headers?: Record<string, string> }
 ): Promise<Response> {
   const response = await fetch(url, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...options?.headers,
     },
     body: JSON.stringify(body),
@@ -195,7 +190,7 @@ export async function createStreamingRequest(
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(error || "Failed to start stream");
+    throw new Error(error || 'Failed to start stream');
   }
 
   return response;
@@ -205,16 +200,16 @@ export async function createStreamingRequest(
  * Parse SSE (Server-Sent Events) stream data
  */
 export function parseSSEData(line: string): { type: string; data: unknown } | null {
-  if (!line.startsWith("data: ")) return null;
+  if (!line.startsWith('data: ')) return null;
 
   const data = line.slice(6);
-  if (data === "[DONE]") {
-    return { type: "done", data: null };
+  if (data === '[DONE]') {
+    return { type: 'done', data: null };
   }
 
   try {
-    return { type: "data", data: JSON.parse(data) };
+    return { type: 'data', data: JSON.parse(data) };
   } catch {
-    return { type: "raw", data };
+    return { type: 'raw', data };
   }
 }

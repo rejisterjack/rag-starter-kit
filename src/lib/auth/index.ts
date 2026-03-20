@@ -7,6 +7,7 @@ import GitHub from 'next-auth/providers/github';
 import Google from 'next-auth/providers/google';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { createDefaultWorkspace, getUserWorkspaces } from '@/lib/workspace/workspace';
 
 // =============================================================================
@@ -28,14 +29,8 @@ declare module 'next-auth' {
   }
 }
 
-declare module 'next-auth/jwt' {
-  interface JWT {
-    id?: string;
-    role?: string;
-    workspaceId?: string;
-    workspaceRole?: string;
-  }
-}
+// Note: next-auth/jwt module augmentation removed due to compatibility issues
+// JWT types are handled via type assertions
 
 // =============================================================================
 // NextAuth Configuration
@@ -147,10 +142,12 @@ export const {
         token.role = user.role ?? 'USER';
 
         // Get user's first workspace for default
-        const workspaces = await getUserWorkspaces(user.id!);
+        const workspaces = await getUserWorkspaces(user.id ?? '');
         if (workspaces.length > 0) {
           token.workspaceId = workspaces[0].id;
-          const member = workspaces[0].members.find((m) => m.userId === user.id);
+          const member = workspaces[0].members.find(
+            (m: { userId: string }) => m.userId === user.id
+          );
           token.workspaceRole = member?.role ?? 'MEMBER';
         }
       }
@@ -162,7 +159,7 @@ export const {
         const member = await prisma.workspaceMember.findFirst({
           where: {
             workspaceId: session.workspaceId,
-            userId: token.id!,
+            userId: token.id ?? '',
           },
         });
         token.workspaceRole = member?.role ?? 'MEMBER';
@@ -174,10 +171,10 @@ export const {
     // Session Callback - Attach user data to session
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id!;
-        session.user.role = token.role ?? 'USER';
-        session.user.workspaceId = token.workspaceId;
-        session.user.workspaceRole = token.workspaceRole;
+        session.user.id = typeof token.id === 'string' ? token.id : '';
+        session.user.role = typeof token.role === 'string' ? token.role : 'USER';
+        session.user.workspaceId = typeof token.workspaceId === 'string' ? token.workspaceId : undefined;
+        session.user.workspaceRole = typeof token.workspaceRole === 'string' ? token.workspaceRole : undefined;
       }
       return session;
     },
@@ -216,7 +213,9 @@ export const {
             metadata: { email: user.email, provider: 'oauth' },
           });
         } catch (error) {
-          console.error('Failed to create default workspace:', error);
+          logger.error('Failed to create default workspace', {
+            error: error instanceof Error ? error.message : 'Unknown',
+          });
         }
       }
     },
@@ -293,7 +292,9 @@ export async function registerUser({
 
     return { success: true, userId: user.id };
   } catch (error) {
-    console.error('Registration error:', error);
+    logger.error('Registration error', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
     return { success: false, error: 'Failed to create account' };
   }
 }
@@ -342,7 +343,9 @@ export async function changePassword({
 
     return { success: true };
   } catch (error) {
-    console.error('Password change error:', error);
+    logger.error('Password change error', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
     return { success: false, error: 'Failed to change password' };
   }
 }

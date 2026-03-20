@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 import { prisma } from '@/lib/db';
 
 import { AuditEvent, AuditSeverity } from '@prisma/client';
@@ -70,12 +72,11 @@ export async function logAuditEvent(input: LogAuditEventInput): Promise<void> {
         event: input.event,
         userId: input.userId,
         workspaceId: input.workspaceId,
-        apiKeyId: input.apiKeyId,
         severity: input.severity ?? 'INFO',
-        metadata: input.metadata ?? {},
-        resource: input.resource,
-        changes: input.changes,
-        error: input.error,
+        metadata: (input.metadata ?? {}) as unknown as Prisma.InputJsonValue,
+        resource: (input.resource ?? {}) as unknown as Prisma.InputJsonValue,
+        changes: (input.changes ?? {}) as unknown as Prisma.InputJsonValue,
+        error: input.error ?? null,
         ipAddress: input.ipAddress,
         userAgent: input.userAgent,
       },
@@ -165,7 +166,13 @@ export async function getAuditLogs(
   ]);
 
   return {
-    logs: logs as AuditLogResult[],
+    logs: logs.map(log => ({
+      ...log,
+      metadata: log.metadata as Record<string, unknown> | null,
+      resource: log.resource as Record<string, unknown> | null,
+      changes: log.changes as Record<string, unknown> | null,
+      error: log.error,
+    })) as AuditLogResult[],
     total,
   };
 }
@@ -192,7 +199,13 @@ export async function getRecentWorkspaceEvents(
     take: limit,
   });
 
-  return logs as AuditLogResult[];
+  return logs.map(log => ({
+    ...log,
+    metadata: log.metadata as Record<string, unknown> | null,
+    resource: log.resource as Record<string, unknown> | null,
+    changes: log.changes as Record<string, unknown> | null,
+    error: log.error,
+  })) as AuditLogResult[];
 }
 
 /**
@@ -246,7 +259,13 @@ export async function getSecurityEvents(
     take: options?.limit ?? 50,
   });
 
-  return logs as AuditLogResult[];
+  return logs.map(log => ({
+    ...log,
+    metadata: log.metadata as Record<string, unknown> | null,
+    resource: log.resource as Record<string, unknown> | null,
+    changes: log.changes as Record<string, unknown> | null,
+    error: log.error,
+  })) as AuditLogResult[];
 }
 
 /**
@@ -273,6 +292,15 @@ export async function getUserActivitySummary(
       where: {
         userId,
         createdAt: { gte: startDate },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: 100,

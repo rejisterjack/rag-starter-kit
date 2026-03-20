@@ -3,17 +3,22 @@
  * Generates PDF files from conversations using @react-pdf/renderer
  */
 
-import { Page, PDFDocument, renderToBuffer, StyleSheet, Text, View } from '@react-pdf/renderer';
+import { Page, Document as PDFDocument, renderToBuffer, StyleSheet, Text, View } from '@react-pdf/renderer';
+import type { ReactElement } from 'react';
 
 import type { ExportCitation, ExportConversation, ExportOptions, ExportProgress } from './types';
+
+// Extract types from @react-pdf/renderer components
+type PDFPageProps = React.ComponentProps<typeof Page>;
+type PDFPageSize = PDFPageProps['size'];
 
 // =============================================================================
 // Types
 // =============================================================================
 
-export interface PDFGenerationOptions extends ExportOptions {
-  /** PDF page size */
-  pageSize?: 'A4' | 'Letter' | 'Legal';
+export interface PDFGenerationOptions extends Omit<ExportOptions, 'pageSize'> {
+  /** PDF page size - using @react-pdf/renderer Page size type */
+  pageSize?: Extract<PDFPageSize, string>;
   /** Page margins in mm */
   margins?: {
     top: number;
@@ -133,14 +138,14 @@ interface ConversationPDFProps {
   options: PDFGenerationOptions;
 }
 
-function ConversationPDF({ conversation, citations, options }: ConversationPDFProps) {
-  const formatDate = (date: Date) => {
+function ConversationPDF({ conversation, citations, options }: ConversationPDFProps): ReactElement {
+  const formatDate = (date: Date): string => {
     return new Date(date).toLocaleString();
   };
 
   return (
     <PDFDocument>
-      <Page size={options.pageSize || 'A4'} style={styles.page}>
+      <Page size={(options.pageSize || 'A4') as PDFPageSize} style={styles.page as PDFPageProps['style']}>
         {/* Header */}
         {options.includeHeader !== false && (
           <View style={styles.header}>
@@ -172,7 +177,6 @@ function ConversationPDF({ conversation, citations, options }: ConversationPDFPr
               <Text key={index} style={styles.citation}>
                 [{index + 1}] {citation.documentName}
                 {citation.page ? `, Page ${citation.page}` : ''}
-                {citation.section ? `, Section: ${citation.section}` : ''}
               </Text>
             ))}
           </View>
@@ -223,7 +227,7 @@ export class PDFGenerator {
       this.reportProgress({
         progress: 30,
         currentStep: 'Building PDF content...',
-        processedItems: conversation.messages.length / 2,
+        processedItems: Math.floor(conversation.messages.length / 2),
         totalItems: conversation.messages.length,
       });
 
@@ -235,7 +239,7 @@ export class PDFGenerator {
       this.reportProgress({
         progress: 60,
         currentStep: 'Rendering PDF...',
-        processedItems: conversation.messages.length * 0.75,
+        processedItems: Math.floor(conversation.messages.length * 0.75),
         totalItems: conversation.messages.length,
       });
 
@@ -315,10 +319,10 @@ export async function generateBulkPDF(
   onProgress?: (progress: ExportProgress) => void
 ): Promise<Buffer> {
   // For bulk export, create a combined PDF with multiple pages
-  const CombinedPDF = () => (
+  const CombinedPDF = (): ReactElement => (
     <PDFDocument>
       {conversations.map((conversation, convIndex) => (
-        <Page key={convIndex} size={options.pageSize || 'A4'} style={styles.page}>
+        <Page key={convIndex} size={(options.pageSize || 'A4') as PDFPageSize} style={styles.page as PDFPageProps['style']}>
           <View style={styles.header}>
             <Text style={styles.title}>{conversation.title}</Text>
             <Text style={styles.subtitle}>ID: {conversation.id}</Text>
@@ -355,25 +359,29 @@ export async function generateBulkPDF(
     </PDFDocument>
   );
 
-  onProgress?.({
-    jobId: 'pdf-bulk-generation',
-    status: 'processing',
-    progress: 0,
-    currentStep: `Processing ${conversations.length} conversations...`,
-    processedItems: 0,
-    totalItems: conversations.length,
-  });
+  if (onProgress) {
+    onProgress({
+      jobId: 'pdf-bulk-generation',
+      status: 'processing',
+      progress: 0,
+      currentStep: `Processing ${conversations.length} conversations...`,
+      processedItems: 0,
+      totalItems: conversations.length,
+    });
+  }
 
   const buffer = await renderToBuffer(<CombinedPDF />);
 
-  onProgress?.({
-    jobId: 'pdf-bulk-generation',
-    status: 'completed',
-    progress: 100,
-    currentStep: `Generated PDF with ${conversations.length} conversations`,
-    processedItems: conversations.length,
-    totalItems: conversations.length,
-  });
+  if (onProgress) {
+    onProgress({
+      jobId: 'pdf-bulk-generation',
+      status: 'completed',
+      progress: 100,
+      currentStep: `Generated PDF with ${conversations.length} conversations`,
+      processedItems: conversations.length,
+      totalItems: conversations.length,
+    });
+  }
 
   return buffer;
 }

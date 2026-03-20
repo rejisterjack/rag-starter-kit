@@ -134,7 +134,7 @@ export class KeywordRetriever {
     const startTime = Date.now();
     const topK = options.topK ?? 5;
     const minScore = options.minScore ?? 0.01; // BM25 scores are typically small
-    // const language = validateLanguage(this.config.language ?? 'english');
+    const language = validateLanguage(this.config.language ?? 'english');
     const tsqueryFn = getTsqueryFunction(this.config.queryType ?? 'websearch');
 
     // Build filters
@@ -182,7 +182,7 @@ export class KeywordRetriever {
 
     try {
       // Add query, language, and limit to params
-      const queryParams = [...params, query, language, topK * 2];
+      const queryParams = [...params, query, language ?? 'english', topK * 2];
 
       const results = await prisma.$queryRawUnsafe<
         Array<RawSearchResult & { highlighted_content?: string }>

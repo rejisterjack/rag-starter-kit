@@ -1,36 +1,30 @@
-"use client";
+'use client';
 
-import React, { useState, useMemo } from "react";
 import {
-  GitCompare,
+  AlertCircle,
   ArrowLeft,
   Check,
-  AlertCircle,
-  Plus,
-  Minus,
-  Edit3,
-  Trophy,
   ChevronDown,
   ChevronUp,
-  ThumbsUp,
+  Edit3,
+  GitCompare,
+  Minus,
+  Plus,
   ThumbsDown,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatRelativeTime } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { BranchComparison, ConversationBranch } from "@/hooks/use-conversation-branch";
-import type { Message } from "./message-item";
-import { Markdown } from "./markdown";
+  ThumbsUp,
+  Trophy,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { BranchComparison, ConversationBranch } from '@/hooks/use-conversation-branch';
+import { cn, formatRelativeTime } from '@/lib/utils';
+import { Markdown } from './markdown';
+import type { Message } from './message-item';
 
 // =============================================================================
 // Types
@@ -41,12 +35,12 @@ interface BranchComparisonViewProps {
   branches: ConversationBranch[];
   onClose: () => void;
   onSwitchToBranch?: (branchId: string) => void;
-  onVoteBranch?: (branchId: string, vote: "up" | "down") => void;
+  onVoteBranch?: (branchId: string, vote: 'up' | 'down') => void;
   className?: string;
 }
 
 interface Difference {
-  type: "added" | "removed" | "modified" | "unchanged";
+  type: 'added' | 'removed' | 'modified' | 'unchanged';
   messageA?: Message;
   messageB?: Message;
   description?: string;
@@ -58,20 +52,21 @@ interface Difference {
 
 interface DiffHighlightProps {
   text: string;
-  type: "added" | "removed" | "unchanged";
+  type: 'added' | 'removed' | 'unchanged';
   maxLength?: number;
 }
 
 function DiffHighlight({ text, type, maxLength = 200 }: DiffHighlightProps) {
-  const truncated = text.length > maxLength ? text.slice(0, maxLength) + "..." : text;
-  
+  const truncated = text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+
   return (
     <span
       className={cn(
-        "px-1 rounded",
-        type === "added" && "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200",
-        type === "removed" && "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200 line-through",
-        type === "unchanged" && "text-foreground"
+        'px-1 rounded',
+        type === 'added' && 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
+        type === 'removed' &&
+          'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200 line-through',
+        type === 'unchanged' && 'text-foreground'
       )}
     >
       {truncated}
@@ -86,7 +81,7 @@ function DiffHighlight({ text, type, maxLength = 200 }: DiffHighlightProps) {
 interface MessageDiffProps {
   messageA?: Message;
   messageB?: Message;
-  type: "added" | "removed" | "modified" | "unchanged";
+  type: 'added' | 'removed' | 'modified' | 'unchanged';
   isHighlighted?: boolean;
 }
 
@@ -95,11 +90,11 @@ function MessageDiff({ messageA, messageB, type, isHighlighted }: MessageDiffPro
 
   const getIcon = () => {
     switch (type) {
-      case "added":
+      case 'added':
         return <Plus className="h-4 w-4 text-green-500" />;
-      case "removed":
+      case 'removed':
         return <Minus className="h-4 w-4 text-red-500" />;
-      case "modified":
+      case 'modified':
         return <Edit3 className="h-4 w-4 text-yellow-500" />;
       default:
         return <div className="h-4 w-4" />;
@@ -108,19 +103,19 @@ function MessageDiff({ messageA, messageB, type, isHighlighted }: MessageDiffPro
 
   const getBadge = () => {
     switch (type) {
-      case "added":
+      case 'added':
         return (
           <Badge variant="success" className="text-[10px]">
             Added
           </Badge>
         );
-      case "removed":
+      case 'removed':
         return (
           <Badge variant="destructive" className="text-[10px]">
             Removed
           </Badge>
         );
-      case "modified":
+      case 'modified':
         return (
           <Badge variant="warning" className="text-[10px]">
             Modified
@@ -134,12 +129,12 @@ function MessageDiff({ messageA, messageB, type, isHighlighted }: MessageDiffPro
   return (
     <div
       className={cn(
-        "border rounded-lg overflow-hidden transition-colors",
-        isHighlighted && "ring-2 ring-primary ring-offset-1",
-        type === "added" && "border-green-200 dark:border-green-800",
-        type === "removed" && "border-red-200 dark:border-red-800",
-        type === "modified" && "border-yellow-200 dark:border-yellow-800",
-        type === "unchanged" && "border-border"
+        'border rounded-lg overflow-hidden transition-colors',
+        isHighlighted && 'ring-2 ring-primary ring-offset-1',
+        type === 'added' && 'border-green-200 dark:border-green-800',
+        type === 'removed' && 'border-red-200 dark:border-red-800',
+        type === 'modified' && 'border-yellow-200 dark:border-yellow-800',
+        type === 'unchanged' && 'border-border'
       )}
     >
       <button
@@ -153,17 +148,17 @@ function MessageDiff({ messageA, messageB, type, isHighlighted }: MessageDiffPro
         )}
         {getIcon()}
         <span className="text-sm font-medium">
-          {messageA?.role === "user" || messageB?.role === "user" ? "User" : "Assistant"}
+          {messageA?.role === 'user' || messageB?.role === 'user' ? 'User' : 'Assistant'}
         </span>
         {getBadge()}
         <span className="ml-auto text-xs text-muted-foreground">
-          {type === "modified" ? "Content differs" : ""}
+          {type === 'modified' ? 'Content differs' : ''}
         </span>
       </button>
-      
+
       {isExpanded && (
         <div className="p-3">
-          {type === "modified" ? (
+          {type === 'modified' ? (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <span className="text-xs text-muted-foreground">Original</span>
@@ -189,11 +184,7 @@ function MessageDiff({ messageA, messageB, type, isHighlighted }: MessageDiffPro
           ) : (
             <div className="text-sm">
               <Markdown
-                content={
-                  type === "removed"
-                    ? messageA?.content || ""
-                    : messageB?.content || ""
-                }
+                content={type === 'removed' ? messageA?.content || '' : messageB?.content || ''}
               />
             </div>
           )}
@@ -215,8 +206,8 @@ export function BranchComparisonView({
   onVoteBranch,
   className,
 }: BranchComparisonViewProps) {
-  const [selectedTab, setSelectedTab] = useState<"side-by-side" | "diff">("diff");
-  const [votes, setVotes] = useState<Record<string, "up" | "down">>({});
+  const [selectedTab, setSelectedTab] = useState<'side-by-side' | 'diff'>('diff');
+  const [votes, setVotes] = useState<Record<string, 'up' | 'down'>>({});
 
   const branchA = branches.find((b) => b.id === comparison.branchA.id);
   const branchB = branches.find((b) => b.id === comparison.branchB.id);
@@ -229,20 +220,20 @@ export function BranchComparisonView({
 
     // Simple diff algorithm - align by index for now
     const maxLength = Math.max(messagesA.length, messagesB.length);
-    
+
     for (let i = 0; i < maxLength; i++) {
       const msgA = messagesA[i];
       const msgB = messagesB[i];
 
       if (!msgA && msgB) {
-        diffs.push({ type: "added", messageB: msgB });
+        diffs.push({ type: 'added', messageB: msgB });
       } else if (msgA && !msgB) {
-        diffs.push({ type: "removed", messageA: msgA });
+        diffs.push({ type: 'removed', messageA: msgA });
       } else if (msgA && msgB) {
         if (msgA.content !== msgB.content || msgA.role !== msgB.role) {
-          diffs.push({ type: "modified", messageA: msgA, messageB: msgB });
+          diffs.push({ type: 'modified', messageA: msgA, messageB: msgB });
         } else {
-          diffs.push({ type: "unchanged", messageA: msgA, messageB: msgB });
+          diffs.push({ type: 'unchanged', messageA: msgA, messageB: msgB });
         }
       }
     }
@@ -250,17 +241,15 @@ export function BranchComparisonView({
     return diffs;
   }, [comparison]);
 
-  const significantDifferences = differences.filter(
-    (d) => d.type !== "unchanged"
-  );
+  const significantDifferences = differences.filter((d) => d.type !== 'unchanged');
 
-  const handleVote = (branchId: string, vote: "up" | "down") => {
+  const handleVote = (branchId: string, vote: 'up' | 'down') => {
     setVotes((prev) => ({ ...prev, [branchId]: vote }));
     onVoteBranch?.(branchId, vote);
   };
 
   return (
-    <div className={cn("flex flex-col h-full bg-background", className)}>
+    <div className={cn('flex flex-col h-full bg-background', className)}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <div className="flex items-center gap-3">
@@ -277,7 +266,7 @@ export function BranchComparisonView({
             </p>
           </div>
         </div>
-        
+
         <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as typeof selectedTab)}>
           <TabsList>
             <TabsTrigger value="diff">Differences</TabsTrigger>
@@ -288,7 +277,7 @@ export function BranchComparisonView({
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        {selectedTab === "diff" ? (
+        {selectedTab === 'diff' ? (
           <ScrollArea className="h-full">
             <div className="p-4 space-y-4 max-w-4xl mx-auto">
               {/* Summary Card */}
@@ -303,29 +292,29 @@ export function BranchComparisonView({
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div className="p-3 bg-muted rounded-lg">
                       <div className="text-2xl font-bold text-green-600">
-                        {differences.filter((d) => d.type === "added").length}
+                        {differences.filter((d) => d.type === 'added').length}
                       </div>
                       <div className="text-xs text-muted-foreground">Added</div>
                     </div>
                     <div className="p-3 bg-muted rounded-lg">
                       <div className="text-2xl font-bold text-red-600">
-                        {differences.filter((d) => d.type === "removed").length}
+                        {differences.filter((d) => d.type === 'removed').length}
                       </div>
                       <div className="text-xs text-muted-foreground">Removed</div>
                     </div>
                     <div className="p-3 bg-muted rounded-lg">
                       <div className="text-2xl font-bold text-yellow-600">
-                        {differences.filter((d) => d.type === "modified").length}
+                        {differences.filter((d) => d.type === 'modified').length}
                       </div>
                       <div className="text-xs text-muted-foreground">Modified</div>
                     </div>
                   </div>
-                  
+
                   {comparison.divergencePoint && (
                     <div className="mt-4 p-3 bg-primary/5 rounded-lg">
                       <p className="text-sm">
-                        <span className="font-medium">Divergence point:</span>{" "}
-                        Messages started differing at this point
+                        <span className="font-medium">Divergence point:</span> Messages started
+                        differing at this point
                       </p>
                     </div>
                   )}
@@ -350,8 +339,7 @@ export function BranchComparisonView({
                       messageB={diff.messageB}
                       type={diff.type}
                       isHighlighted={
-                        (diff.messageA?.id || diff.messageB?.id) ===
-                        comparison.divergencePoint
+                        (diff.messageA?.id || diff.messageB?.id) === comparison.divergencePoint
                       }
                     />
                   ))
@@ -368,8 +356,10 @@ export function BranchComparisonView({
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-medium flex items-center gap-2">
-                      {branchA?.name || "Branch A"}
-                      <Badge variant="outline" className="text-[10px]">A</Badge>
+                      {branchA?.name || 'Branch A'}
+                      <Badge variant="outline" className="text-[10px]">
+                        A
+                      </Badge>
                     </h3>
                     <p className="text-xs text-muted-foreground">
                       {comparison.branchA.messages.length} messages
@@ -383,10 +373,10 @@ export function BranchComparisonView({
                             variant="ghost"
                             size="icon"
                             className={cn(
-                              "h-8 w-8",
-                              votes[comparison.branchA.id] === "up" && "text-green-600"
+                              'h-8 w-8',
+                              votes[comparison.branchA.id] === 'up' && 'text-green-600'
                             )}
-                            onClick={() => handleVote(comparison.branchA.id, "up")}
+                            onClick={() => handleVote(comparison.branchA.id, 'up')}
                           >
                             <ThumbsUp className="h-4 w-4" />
                           </Button>
@@ -401,10 +391,10 @@ export function BranchComparisonView({
                             variant="ghost"
                             size="icon"
                             className={cn(
-                              "h-8 w-8",
-                              votes[comparison.branchA.id] === "down" && "text-red-600"
+                              'h-8 w-8',
+                              votes[comparison.branchA.id] === 'down' && 'text-red-600'
                             )}
-                            onClick={() => handleVote(comparison.branchA.id, "down")}
+                            onClick={() => handleVote(comparison.branchA.id, 'down')}
                           >
                             <ThumbsDown className="h-4 w-4" />
                           </Button>
@@ -421,10 +411,10 @@ export function BranchComparisonView({
                     <div
                       key={message.id}
                       className={cn(
-                        "p-3 rounded-lg",
-                        message.role === "user"
-                          ? "bg-muted ml-4"
-                          : "bg-primary/5 mr-4 border border-primary/10"
+                        'p-3 rounded-lg',
+                        message.role === 'user'
+                          ? 'bg-muted ml-4'
+                          : 'bg-primary/5 mr-4 border border-primary/10'
                       )}
                     >
                       <div className="flex items-center gap-2 mb-2">
@@ -462,8 +452,10 @@ export function BranchComparisonView({
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-medium flex items-center gap-2">
-                      {branchB?.name || "Branch B"}
-                      <Badge variant="outline" className="text-[10px]">B</Badge>
+                      {branchB?.name || 'Branch B'}
+                      <Badge variant="outline" className="text-[10px]">
+                        B
+                      </Badge>
                     </h3>
                     <p className="text-xs text-muted-foreground">
                       {comparison.branchB.messages.length} messages
@@ -477,10 +469,10 @@ export function BranchComparisonView({
                             variant="ghost"
                             size="icon"
                             className={cn(
-                              "h-8 w-8",
-                              votes[comparison.branchB.id] === "up" && "text-green-600"
+                              'h-8 w-8',
+                              votes[comparison.branchB.id] === 'up' && 'text-green-600'
                             )}
-                            onClick={() => handleVote(comparison.branchB.id, "up")}
+                            onClick={() => handleVote(comparison.branchB.id, 'up')}
                           >
                             <ThumbsUp className="h-4 w-4" />
                           </Button>
@@ -495,10 +487,10 @@ export function BranchComparisonView({
                             variant="ghost"
                             size="icon"
                             className={cn(
-                              "h-8 w-8",
-                              votes[comparison.branchB.id] === "down" && "text-red-600"
+                              'h-8 w-8',
+                              votes[comparison.branchB.id] === 'down' && 'text-red-600'
                             )}
-                            onClick={() => handleVote(comparison.branchB.id, "down")}
+                            onClick={() => handleVote(comparison.branchB.id, 'down')}
                           >
                             <ThumbsDown className="h-4 w-4" />
                           </Button>
@@ -515,10 +507,10 @@ export function BranchComparisonView({
                     <div
                       key={message.id}
                       className={cn(
-                        "p-3 rounded-lg",
-                        message.role === "user"
-                          ? "bg-muted ml-4"
-                          : "bg-primary/5 mr-4 border border-primary/10"
+                        'p-3 rounded-lg',
+                        message.role === 'user'
+                          ? 'bg-muted ml-4'
+                          : 'bg-primary/5 mr-4 border border-primary/10'
                       )}
                     >
                       <div className="flex items-center gap-2 mb-2">
@@ -567,12 +559,7 @@ interface CompactComparisonBadgeProps {
 
 export function CompactComparisonBadge({ differenceCount, onClick }: CompactComparisonBadgeProps) {
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      className="gap-1.5 h-8"
-      onClick={onClick}
-    >
+    <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={onClick}>
       <GitCompare className="h-4 w-4" />
       <span>{differenceCount} differences</span>
     </Button>
@@ -590,7 +577,7 @@ interface BranchWinnerBadgeProps {
 
 export function BranchWinnerBadge({ winnerId, branches }: BranchWinnerBadgeProps) {
   const winner = branches.find((b) => b.id === winnerId);
-  
+
   if (!winner) return null;
 
   return (

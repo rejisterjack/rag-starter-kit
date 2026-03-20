@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     }
 
     // Validate input
-    let validatedInput;
+    let validatedInput: ReturnType<typeof validateRegisterUserInput>;
     try {
       validatedInput = validateRegisterUserInput(body);
     } catch (error) {
@@ -71,8 +71,7 @@ export async function POST(req: Request) {
       },
       { status: 201 }
     );
-  } catch (error) {
-    console.error('Registration API error:', error);
+  } catch (_error) {
     return NextResponse.json(
       {
         error: {

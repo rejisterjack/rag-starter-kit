@@ -235,7 +235,7 @@ export class TextToSpeechService {
     return this.isProcessing && !this.isPaused;
   }
 
-  isPaused(): boolean {
+  getPaused(): boolean {
     return this.isPaused;
   }
 

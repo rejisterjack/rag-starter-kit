@@ -1,21 +1,20 @@
 /**
  * OAuth Callback Handler
- * 
+ *
  * Handles OAuth 2.0 / OIDC callbacks from identity providers.
  * Exchanges authorization code for tokens and provisions/authenticates users.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-
+import { type NextRequest, NextResponse } from 'next/server';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import {
+  consumeState,
   exchangeCode,
   fetchUserProfile,
-  consumeState,
   getOAuthProviderById,
   type OAuthProfile,
 } from '@/lib/auth/oauth/providers';
 import { prisma } from '@/lib/db';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
 import { createDefaultWorkspace } from '@/lib/workspace/workspace';
 
 export const dynamic = 'force-dynamic';
@@ -30,11 +29,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 
     // Handle OAuth errors
     if (error) {
-      console.error('OAuth error:', error, errorDescription);
-      return redirectWithError(
-        request,
-        `OAuth error: ${errorDescription || error}`
-      );
+      return redirectWithError(request, `OAuth error: ${errorDescription || error}`);
     }
 
     if (!code || !state) {
@@ -92,10 +87,7 @@ export async function GET(request: NextRequest): Promise<Response> {
           severity: 'WARNING',
         });
 
-        return redirectWithError(
-          request,
-          'Email domain not authorized for this workspace'
-        );
+        return redirectWithError(request, 'Email domain not authorized for this workspace');
       }
     }
 
@@ -119,12 +111,14 @@ export async function GET(request: NextRequest): Promise<Response> {
     });
 
     // Create session
-    await createSession(userResult.userId!, workspaceId);
+    if (!userResult.userId) {
+      return redirectWithError(request, 'User ID is missing');
+    }
+    await createSession(userResult.userId, workspaceId);
 
     // Redirect to app
     return NextResponse.redirect(`${baseUrl}/chat`);
   } catch (error) {
-    console.error('OAuth callback failed:', error);
     return redirectWithError(
       request,
       error instanceof Error ? error.message : 'OAuth authentication failed'
@@ -178,8 +172,8 @@ async function findOrCreateUser(
 
       // Create default workspace for new user
       await createDefaultWorkspace(user.id, {
-        name: profile.name 
-          ? `${profile.name}'s Workspace` 
+        name: profile.name
+          ? `${profile.name}'s Workspace`
           : `${profile.email.split('@')[0]}'s Workspace`,
       });
     } else {
@@ -248,8 +242,7 @@ async function findOrCreateUser(
       userId: user.id,
       isNewUser,
     };
-  } catch (error) {
-    console.error('User provisioning failed:', error);
+  } catch (_error) {
     return {
       success: false,
       error: 'Failed to provision user',

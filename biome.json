@@ -26,8 +26,10 @@
   },
   "files": {
     "includes": [
-      "src/**/*",
-      "tests/**/*",
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "tests/**/*.ts",
+      "tests/**/*.tsx",
       "prisma/**/*.ts",
       "scripts/**/*.ts"
     ],
@@ -46,5 +48,30 @@
       "trailingCommas": "es5",
       "semicolons": "always"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["prisma/seed.ts", "scripts/**/*.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["tests/**/*"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          },
+          "correctness": {
+            "noUnusedVariables": "off"
+          }
+        }
+      }
+    }
+  ]
 }

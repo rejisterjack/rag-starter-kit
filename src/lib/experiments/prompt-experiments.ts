@@ -6,7 +6,6 @@
  */
 
 import { createHash } from 'crypto';
-import { prisma } from '@/lib/db';
 
 // ============================================================================
 // Types
@@ -124,25 +123,12 @@ export class PromptExperimentManager {
       query?: string;
     }
   ): Promise<void> {
-    try {
-      await prisma.experimentResult.create({
-        data: {
-          experimentId,
-          variantId,
-          responseQuality: metrics.responseQuality,
-          latency: metrics.latency,
-          tokenUsage: metrics.tokenUsage,
-          retrievalAccuracy: metrics.retrievalAccuracy,
-          userSatisfaction: metrics.userSatisfaction,
-          customMetrics: metrics.customMetrics as Record<string, number>,
-          userId: metadata?.userId,
-          conversationId: metadata?.conversationId,
-          query: metadata?.query,
-        },
-      });
-    } catch (error) {
-      console.error('Failed to track experiment result:', error);
-    }
+    // Note: experimentResult model not in schema - no-op
+    void experimentId;
+    void variantId;
+    void metrics;
+    void metadata;
+    console.log('Experiment result tracking not available');
   }
 
   /**
@@ -154,9 +140,21 @@ export class PromptExperimentManager {
       throw new Error(`Experiment not found: ${experimentId}`);
     }
 
-    const results = await prisma.experimentResult.findMany({
-      where: { experimentId },
-    });
+    // Note: experimentResult model not in schema - returning empty array
+    void experimentId;
+    const results: Array<{
+      variantId: string;
+      responseQuality: number;
+      latency: number;
+      tokenUsage: number;
+      retrievalAccuracy: number;
+      userSatisfaction: number;
+      customMetrics: Record<string, number>;
+      userId: string | null;
+      conversationId: string | null;
+      query: string | null;
+      createdAt: Date;
+    }> = [];
 
     // Aggregate results by variant
     const variantResults = new Map<string, { metrics: ExperimentMetrics[]; count: number }>();

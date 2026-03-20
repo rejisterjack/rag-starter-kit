@@ -4,14 +4,14 @@
 
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  TextToSpeechService,
-  TextToSpeechOptions,
-  isTextToSpeechSupported,
   findBestVoice,
+  isTextToSpeechSupported,
+  type TextToSpeechOptions,
+  TextToSpeechService,
   VOICE_PRESETS,
-  VoicePreset,
+  type VoicePreset,
 } from '@/lib/voice/text-to-speech';
 
 export type TTSEventType = 'start' | 'end' | 'pause' | 'resume' | 'error' | 'boundary';
@@ -23,12 +23,12 @@ export interface UseTextToSpeechReturn {
   isSupported: boolean;
   voices: SpeechSynthesisVoice[];
   selectedVoice: SpeechSynthesisVoice | null;
-  
+
   // Settings
   rate: number;
   pitch: number;
   volume: number;
-  
+
   // Actions
   speak: (text: string, options?: Partial<TextToSpeechOptions>) => Promise<void>;
   speakImmediately: (text: string, options?: Partial<TextToSpeechOptions>) => Promise<void>;
@@ -37,14 +37,14 @@ export interface UseTextToSpeechReturn {
   togglePause: () => void;
   stop: () => void;
   clearQueue: () => void;
-  
+
   // Settings
   setVoice: (voice: SpeechSynthesisVoice | null) => void;
   setRate: (rate: number) => void;
   setPitch: (pitch: number) => void;
   setVolume: (volume: number) => void;
   applyPreset: (preset: VoicePreset) => void;
-  
+
   // Helpers
   findVoiceForLanguage: (lang: string) => SpeechSynthesisVoice | null;
   queueLength: number;
@@ -62,9 +62,7 @@ export interface UseTextToSpeechOptions {
   preferPremium?: boolean;
 }
 
-export function useTextToSpeech(
-  options: UseTextToSpeechOptions = {}
-): UseTextToSpeechReturn {
+export function useTextToSpeech(options: UseTextToSpeechOptions = {}): UseTextToSpeechReturn {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -75,7 +73,7 @@ export function useTextToSpeech(
   const [pitch, setPitchState] = useState(options.pitch ?? 1);
   const [volume, setVolumeState] = useState(options.volume ?? 1);
   const [queueLength, setQueueLength] = useState(0);
-  
+
   const serviceRef = useRef<TextToSpeechService | null>(null);
   const isSupported = isTextToSpeechSupported();
 
@@ -122,9 +120,12 @@ export function useTextToSpeech(
       setIsPaused(false);
     });
 
-    service.on('error', (event) => {
+    service.on('error', (event: SpeechSynthesisEvent) => {
       setIsSpeaking(false);
-      const error = new Error(`Speech synthesis error: ${event.error}`);
+      // Type guard for SpeechSynthesisErrorEvent
+      const errorMessage =
+        'error' in event && typeof event.error === 'string' ? event.error : 'Unknown error';
+      const error = new Error(`Speech synthesis error: ${errorMessage}`);
       options.onError?.(error);
     });
 

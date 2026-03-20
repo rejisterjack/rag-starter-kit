@@ -69,6 +69,7 @@ model User {
   auditLogs         AuditLog[]
   rateLimits        RateLimit[]
   apiUsage          ApiUsage[]
+  invitationsSent   WorkspaceInvitation[] @relation("InvitationSender")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -113,6 +114,7 @@ model Workspace {
   ownerId     String
   owner       User          @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members     WorkspaceMember[]
+  invitations WorkspaceInvitation[]
   documents   Document[]
   chats       Chat[]
   apiKeys     ApiKey[]
@@ -156,6 +158,37 @@ enum MemberStatus {
   ACTIVE
   SUSPENDED
   REMOVED
+}
+
+model WorkspaceInvitation {
+  id            String        @id @default(cuid())
+  workspaceId   String
+  email         String
+  role          WorkspaceRole @default(MEMBER)
+  status        InviteStatus  @default(PENDING)
+  token         String        @unique
+  expiresAt     DateTime
+  invitedById   String
+  invitedAt     DateTime      @default(now())
+  acceptedAt    DateTime?
+  cancelledAt   DateTime?
+  cancelledById String?
+  
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy     User          @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: Cascade)
+  
+  @@index([workspaceId])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@map("workspace_invitations")
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
 }
 
 // ============================================================================
@@ -257,6 +290,9 @@ model Chat {
   // Optional metadata for features like branching
   metadata    Json?      @default("{}")
   
+  // Document processing tracking
+  chunkCount  Int?
+  
   // Relations
   userId      String
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -283,6 +319,9 @@ model Message {
   
   // Token usage
   tokensUsed  Json?
+  
+  // Message metadata for features like editing
+  metadata    Json?
   
   chat        Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
   
@@ -361,6 +400,7 @@ model ApiUsage {
   @@index([userId])
   @@index([workspaceId])
   @@index([createdAt])
+  @@index([workspaceId, createdAt]) // Composite index for analytics time-series queries
   @@map("api_usage")
 }
 
@@ -680,6 +720,7 @@ model SamlConnection {
   idpMetadata       String?  // Raw SAML metadata XML
   idpEntityId       String?
   idpSsoUrl         String?
+  idpSloUrl         String?  // Single Logout URL
   idpCertificate    String?
   
   // SP Configuration
@@ -693,6 +734,7 @@ model SamlConnection {
   // Settings
   allowIdpInitiated Boolean  @default(false)
   defaultRole       String   @default("MEMBER") // Default role for SAML users
+  attributeMapping  Json     @default("{}") // Attribute mapping configuration
   
   // State
   enabled           Boolean  @default(true)

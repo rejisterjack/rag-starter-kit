@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 import type { Document, DocumentChunk, IngestionJob, Message, Chat } from '@/types';
 
@@ -11,6 +11,9 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma = globalForPrisma.prisma ?? new PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+
+// Re-export PrismaClient type
+export type { PrismaClient };
 
 // ============================================================================
 // Re-export all database modules
@@ -250,7 +253,9 @@ export async function updateDocument(
   return prisma.document.update({
     where: { id },
     data: {
-      ...data,
+      status: data.status,
+      content: data.content,
+      metadata: data.metadata as Prisma.InputJsonValue,
       updatedAt: new Date(),
     },
   });

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Types
 export interface AnalyticsFilter {
@@ -77,7 +77,7 @@ export interface RealtimeMetrics {
 
 export interface RealtimeEvent {
   id: string;
-  type: "query" | "response" | "error" | "user" | "system";
+  type: 'query' | 'response' | 'error' | 'user' | 'system';
   message: string;
   timestamp: Date;
   metadata?: Record<string, string | number>;
@@ -95,72 +95,68 @@ export interface AnalyticsData {
 }
 
 // API Functions
-async function fetchAnalyticsOverview(
-  filter: AnalyticsFilter
-): Promise<AnalyticsData> {
+async function fetchAnalyticsOverview(filter: AnalyticsFilter): Promise<AnalyticsData> {
   const params = new URLSearchParams();
-  if (filter.startDate) params.set("startDate", filter.startDate.toISOString());
-  if (filter.endDate) params.set("endDate", filter.endDate.toISOString());
-  if (filter.workspaceId) params.set("workspaceId", filter.workspaceId);
-  if (filter.userId) params.set("userId", filter.userId);
+  if (filter.startDate) params.set('startDate', filter.startDate.toISOString());
+  if (filter.endDate) params.set('endDate', filter.endDate.toISOString());
+  if (filter.workspaceId) params.set('workspaceId', filter.workspaceId);
+  if (filter.userId) params.set('userId', filter.userId);
 
   const response = await fetch(`/api/analytics/overview?${params}`);
   if (!response.ok) {
-    throw new Error("Failed to fetch analytics overview");
+    throw new Error('Failed to fetch analytics overview');
   }
   return response.json();
 }
 
 async function fetchMetrics(filter: AnalyticsFilter): Promise<MetricsData> {
   const params = new URLSearchParams();
-  if (filter.startDate) params.set("startDate", filter.startDate.toISOString());
-  if (filter.endDate) params.set("endDate", filter.endDate.toISOString());
+  if (filter.startDate) params.set('startDate', filter.startDate.toISOString());
+  if (filter.endDate) params.set('endDate', filter.endDate.toISOString());
 
   const response = await fetch(`/api/analytics/metrics?${params}`);
   if (!response.ok) {
-    throw new Error("Failed to fetch metrics");
+    throw new Error('Failed to fetch metrics');
   }
   return response.json();
 }
 
-async function fetchTimeSeries(
-  filter: AnalyticsFilter
-): Promise<TimeSeriesPoint[]> {
+async function fetchTimeSeries(filter: AnalyticsFilter): Promise<TimeSeriesPoint[]> {
   const params = new URLSearchParams();
-  if (filter.startDate) params.set("startDate", filter.startDate.toISOString());
-  if (filter.endDate) params.set("endDate", filter.endDate.toISOString());
+  if (filter.startDate) params.set('startDate', filter.startDate.toISOString());
+  if (filter.endDate) params.set('endDate', filter.endDate.toISOString());
 
   const response = await fetch(`/api/analytics/timeseries?${params}`);
   if (!response.ok) {
-    throw new Error("Failed to fetch time series data");
+    throw new Error('Failed to fetch time series data');
   }
   return response.json();
 }
 
 async function fetchRealtimeMetrics(): Promise<RealtimeMetrics> {
-  const response = await fetch("/api/analytics/realtime");
+  const response = await fetch('/api/analytics/realtime');
   if (!response.ok) {
-    throw new Error("Failed to fetch realtime metrics");
+    throw new Error('Failed to fetch realtime metrics');
   }
   return response.json();
 }
 
 async function fetchRealtimeEvents(): Promise<RealtimeEvent[]> {
-  const response = await fetch("/api/analytics/events");
+  const response = await fetch('/api/analytics/events');
   if (!response.ok) {
-    throw new Error("Failed to fetch realtime events");
+    throw new Error('Failed to fetch realtime events');
   }
   return response.json();
 }
 
 // Query Keys
 export const analyticsKeys = {
-  all: ["analytics"] as const,
-  overview: (filter: AnalyticsFilter) => [...analyticsKeys.all, "overview", filter] as const,
-  metrics: (filter: AnalyticsFilter) => [...analyticsKeys.all, "metrics", filter] as const,
-  timeSeries: (filter: AnalyticsFilter) => [...analyticsKeys.all, "timeseries", filter] as const,
-  realtime: () => [...analyticsKeys.all, "realtime"] as const,
-  events: () => [...analyticsKeys.all, "events"] as const,
+  all: ['analytics'] as const,
+  overview: (filter: AnalyticsFilter) => [...analyticsKeys.all, 'overview', filter] as const,
+  metrics: (filter: AnalyticsFilter) => [...analyticsKeys.all, 'metrics', filter] as const,
+  timeSeries: (filter: AnalyticsFilter) => [...analyticsKeys.all, 'timeseries', filter] as const,
+  realtime: () => [...analyticsKeys.all, 'realtime'] as const,
+  events: () => [...analyticsKeys.all, 'events'] as const,
 };
 
 // Hooks
@@ -203,10 +199,9 @@ export function useAnalyticsTimeSeries(options: UseAnalyticsOptions = {}) {
   });
 }
 
-export function useRealtimeAnalytics(options: {
-  refreshInterval?: number;
-  enabled?: boolean;
-} = {}) {
+export function useRealtimeAnalytics(
+  options: { refreshInterval?: number; enabled?: boolean } = {}
+) {
   const { refreshInterval = 5000, enabled = true } = options;
 
   const metricsQuery = useQuery({
@@ -254,12 +249,10 @@ export function useAnalyticsRefresh() {
 }
 
 // Hook for analytics with filter state management
-export function useAnalyticsWithFilter(
-  initialFilter: AnalyticsFilter = {}
-) {
+export function useAnalyticsWithFilter(initialFilter: AnalyticsFilter = {}) {
   const [filter, setFilter] = useState<AnalyticsFilter>(initialFilter);
   const [debouncedFilter, setDebouncedFilter] = useState<AnalyticsFilter>(initialFilter);
-  
+
   // Debounce filter changes
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -295,11 +288,14 @@ export function useAnalyticsWithFilter(
 }
 
 // Hook for SSE-based realtime updates
-export function useRealtimeEventsSSE(options: {
-  enabled?: boolean;
-  onEvent?: (event: RealtimeEvent) => void;
-} = {}) {
-  const { enabled = true, onEvent } = options;
+export function useRealtimeEventsSSE(
+  options: {
+    enabled?: boolean;
+    onEvent?: (event: RealtimeEvent) => void;
+    onError?: (error: Error) => void;
+  } = {}
+) {
+  const { enabled = true, onEvent, onError } = options;
   const [events, setEvents] = useState<RealtimeEvent[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -314,7 +310,7 @@ export function useRealtimeEventsSSE(options: {
 
     const connect = () => {
       try {
-        const es = new EventSource("/api/analytics/events/stream");
+        const es = new EventSource('/api/analytics/events/stream');
         eventSourceRef.current = es;
 
         es.onopen = () => {
@@ -327,21 +323,25 @@ export function useRealtimeEventsSSE(options: {
             const data = JSON.parse(event.data) as RealtimeEvent;
             setEvents((prev) => [...prev.slice(-49), data]);
             onEvent?.(data);
-          } catch (err) {
-            console.error("Failed to parse SSE event:", err);
+          } catch {
+            // Silently ignore parsing errors for malformed SSE events
           }
         };
 
         es.onerror = () => {
           setIsConnected(false);
-          setError(new Error("Connection lost"));
+          const connectionError = new Error('Connection lost');
+          setError(connectionError);
+          onError?.(connectionError);
           es.close();
-          
+
           // Reconnect after 5 seconds
           setTimeout(connect, 5000);
         };
       } catch (err) {
-        setError(err instanceof Error ? err : new Error("Failed to connect"));
+        const connectionError = err instanceof Error ? err : new Error('Failed to connect');
+        setError(connectionError);
+        onError?.(connectionError);
       }
     };
 
@@ -350,7 +350,7 @@ export function useRealtimeEventsSSE(options: {
     return () => {
       eventSourceRef.current?.close();
     };
-  }, [enabled, onEvent]);
+  }, [enabled, onEvent, onError]);
 
   const clearEvents = useCallback(() => {
     setEvents([]);
@@ -393,7 +393,7 @@ export function generateMockTimeSeries(days: number = 30): TimeSeriesPoint[] {
     date.setDate(date.getDate() - i);
 
     data.push({
-      date: date.toISOString().split("T")[0],
+      date: date.toISOString().split('T')[0],
       queries: Math.floor(Math.random() * 500) + 300,
       users: Math.floor(Math.random() * 100) + 50,
       responseTime: +(Math.random() * 2 + 0.5).toFixed(2),
@@ -407,11 +407,11 @@ export function generateMockTimeSeries(days: number = 30): TimeSeriesPoint[] {
 
 export function generateMockDistribution(): DistributionItem[] {
   return [
-    { name: "General Query", value: 450, color: "hsl(var(--primary))" },
-    { name: "Document Search", value: 320, color: "hsl(var(--secondary))" },
-    { name: "Code Analysis", value: 180, color: "hsl(var(--accent))" },
-    { name: "Summarization", value: 150, color: "hsl(var(--muted))" },
-    { name: "Other", value: 100, color: "hsl(var(--destructive))" },
+    { name: 'General Query', value: 450, color: 'hsl(var(--primary))' },
+    { name: 'Document Search', value: 320, color: 'hsl(var(--secondary))' },
+    { name: 'Code Analysis', value: 180, color: 'hsl(var(--accent))' },
+    { name: 'Summarization', value: 150, color: 'hsl(var(--muted))' },
+    { name: 'Other', value: 100, color: 'hsl(var(--destructive))' },
   ];
 }
 

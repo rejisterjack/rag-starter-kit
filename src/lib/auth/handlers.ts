@@ -2,11 +2,9 @@
  * NextAuth Handlers
  */
 
-import { auth } from './index';
+import { auth, signIn as authSignIn, signOut as authSignOut } from './index';
 
 // Export handlers for API route
-export const handlers = auth.handlers;
-export const signIn = auth.signIn;
-export const signOut = auth.signOut;
+export { auth as handlers, authSignIn as signIn, authSignOut as signOut };
 
-export default handlers;
+export default auth;

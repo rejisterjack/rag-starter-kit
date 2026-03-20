@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export interface ApiKey {
@@ -30,7 +30,7 @@ export interface UseApiKeysReturn {
   apiKeys: ApiKey[];
   isLoading: boolean;
   error: Error | null;
-  
+
   // Actions
   createKey: (data: {
     name: string;
@@ -41,10 +41,10 @@ export interface UseApiKeysReturn {
   revokeKey: (keyId: string) => Promise<void>;
   regenerateKey: (keyId: string) => Promise<{ key: string }>;
   updateKey: (keyId: string, data: { name?: string; permissions?: string[] }) => Promise<void>;
-  
+
   // Usage
   getKeyUsage: (keyId: string, days?: number) => Promise<ApiKeyUsage[]>;
-  
+
   // Refresh
   refresh: () => Promise<void>;
 }
@@ -59,11 +59,12 @@ export function useApiKeys(): UseApiKeysReturn {
     try {
       const response = await fetch('/api/api-keys');
       if (!response.ok) throw new Error('Failed to fetch API keys');
-      
+
       const data = await response.json();
       setApiKeys(data.apiKeys);
     } catch (err) {
-      setError(err as Error);
+      const fetchError = err instanceof Error ? err : new Error(String(err));
+      setError(fetchError);
       toast.error('Failed to load API keys');
     } finally {
       setIsLoading(false);
@@ -74,64 +75,76 @@ export function useApiKeys(): UseApiKeysReturn {
     fetchApiKeys();
   }, [fetchApiKeys]);
 
-  const createKey = useCallback(async (data: {
-    name: string;
-    description?: string;
-    permissions: string[];
-    expiresIn?: number;
-  }): Promise<{ key: string; keyId: string }> => {
-    const response = await fetch('/api/api-keys', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
+  const createKey = useCallback(
+    async (data: {
+      name: string;
+      description?: string;
+      permissions: string[];
+      expiresIn?: number;
+    }): Promise<{ key: string; keyId: string }> => {
+      const response = await fetch('/api/api-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
 
-    if (!response.ok) throw new Error('Failed to create API key');
-    
-    const result = await response.json();
-    await fetchApiKeys();
-    return result;
-  }, [fetchApiKeys]);
+      if (!response.ok) throw new Error('Failed to create API key');
 
-  const revokeKey = useCallback(async (keyId: string) => {
-    const response = await fetch(`/api/api-keys/${keyId}`, {
-      method: 'DELETE',
-    });
+      const result = await response.json();
+      await fetchApiKeys();
+      return result;
+    },
+    [fetchApiKeys]
+  );
 
-    if (!response.ok) throw new Error('Failed to revoke API key');
-    await fetchApiKeys();
-    toast.success('API key revoked');
-  }, [fetchApiKeys]);
+  const revokeKey = useCallback(
+    async (keyId: string) => {
+      const response = await fetch(`/api/api-keys/${keyId}`, {
+        method: 'DELETE',
+      });
 
-  const regenerateKey = useCallback(async (keyId: string): Promise<{ key: string }> => {
-    const response = await fetch(`/api/api-keys/${keyId}/regenerate`, {
-      method: 'POST',
-    });
+      if (!response.ok) throw new Error('Failed to revoke API key');
+      await fetchApiKeys();
+      toast.success('API key revoked');
+    },
+    [fetchApiKeys]
+  );
 
-    if (!response.ok) throw new Error('Failed to regenerate API key');
-    
-    const result = await response.json();
-    await fetchApiKeys();
-    toast.success('API key regenerated');
-    return result;
-  }, [fetchApiKeys]);
+  const regenerateKey = useCallback(
+    async (keyId: string): Promise<{ key: string }> => {
+      const response = await fetch(`/api/api-keys/${keyId}/regenerate`, {
+        method: 'POST',
+      });
 
-  const updateKey = useCallback(async (keyId: string, data: { name?: string; permissions?: string[] }) => {
-    const response = await fetch(`/api/api-keys/${keyId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
+      if (!response.ok) throw new Error('Failed to regenerate API key');
 
-    if (!response.ok) throw new Error('Failed to update API key');
-    await fetchApiKeys();
-    toast.success('API key updated');
-  }, [fetchApiKeys]);
+      const result = await response.json();
+      await fetchApiKeys();
+      toast.success('API key regenerated');
+      return result;
+    },
+    [fetchApiKeys]
+  );
+
+  const updateKey = useCallback(
+    async (keyId: string, data: { name?: string; permissions?: string[] }) => {
+      const response = await fetch(`/api/api-keys/${keyId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error('Failed to update API key');
+      await fetchApiKeys();
+      toast.success('API key updated');
+    },
+    [fetchApiKeys]
+  );
 
   const getKeyUsage = useCallback(async (keyId: string, days = 30): Promise<ApiKeyUsage[]> => {
     const response = await fetch(`/api/api-keys/${keyId}?days=${days}`);
     if (!response.ok) throw new Error('Failed to fetch key usage');
-    
+
     const data = await response.json();
     return data.usage;
   }, []);

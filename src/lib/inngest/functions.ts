@@ -1,18 +1,36 @@
 /**
  * Inngest Background Job Functions
- * 
+ *
  * Handles document ingestion processing in the background
  */
 
-import { inngest } from './client';
 import { prisma } from '@/lib/db';
-import { createEmbeddings } from '@/lib/rag/engine';
 import { ChunkingEngine } from '@/lib/rag/chunking';
-// import { parsePDF } from '@/lib/rag/ingestion/parsers/pdf';
-// import { parseDOCX } from '@/lib/rag/ingestion/parsers/docx';
-// import { parseText } from '@/lib/rag/ingestion/parsers/txt';
-// import { parseHTML } from '@/lib/rag/ingestion/parsers/html';
+import { createEmbeddings } from '@/lib/rag/engine';
 import { scrapeURL } from '@/lib/rag/ingestion/parsers/url';
+import { inngest } from './client';
+
+// =============================================================================
+// Event Types
+// =============================================================================
+
+interface IngestEventData {
+  documentId: string;
+  userId: string;
+}
+
+interface BulkIngestData {
+  documentIds: string[];
+  userId: string;
+}
+
+// Inngest handler context type
+type InngestContext = {
+  event: { data: IngestEventData };
+  step: {
+    run: <T>(name: string, fn: () => Promise<T>) => Promise<T>;
+  };
+};
 
 // =============================================================================
 // Document Ingestion Job
@@ -20,74 +38,26 @@ import { scrapeURL } from '@/lib/rag/ingestion/parsers/url';
 
 /**
  * Background job to process document ingestion
- * 
- * This function:
- * 1. Creates document chunks from parsed content
- * 2. Generates embeddings for each chunk
- * 3. Stores chunks in the database with embeddings
- * 4. Updates document status throughout the process
- * 5. Emits events for progress tracking
  */
 export const processDocumentJob = inngest.createFunction(
   {
     id: 'process-document',
     name: 'Process Document Ingestion',
-    concurrency: 5, // Process up to 5 documents simultaneously
+    concurrency: 5,
     retries: 3,
-    onFailure: async ({ event, error }) => {
-      // Log failure for monitoring
-      console.error('Document ingestion failed:', {
-        documentId: event.data.documentId,
-        error: error.message,
-      });
-
-      // Update document and job status
-      await prisma.document.update({
-        where: { id: event.data.documentId },
-        data: {
-          status: 'FAILED',
-          metadata: {
-            error: error.message,
-            failedAt: new Date().toISOString(),
-          },
-        },
-      });
-
-      await prisma.ingestionJob.updateMany({
-        where: { documentId: event.data.documentId },
-        data: {
-          status: 'FAILED',
-          error: error.message,
-          completedAt: new Date(),
-        },
-      });
-
-      // Send failure event
-      await inngest.send({
-        name: 'document/ingestion.failed',
-        data: {
-          documentId: event.data.documentId,
-          userId: event.data.userId,
-          error: error.message,
-        },
-      });
-    },
+    triggers: [{ event: 'document/ingest' }],
   },
-  { event: 'document/ingest' },
-  async ({ event, step }) => {
+  async ({ event, step }: { event: { data: IngestEventData }; step: InngestContext['step'] }) => {
     const { documentId, userId } = event.data;
     const startTime = Date.now();
 
-    // =============================================================================
+
     // Step 1: Create Ingestion Job Record
-    // =============================================================================
     const job = await step.run('create-job', async () => {
-      // Delete any existing jobs for this document
       await prisma.ingestionJob.deleteMany({
         where: { documentId },
       });
 
-      // Create new job
       return prisma.ingestionJob.create({
         data: {
           documentId,
@@ -98,21 +68,19 @@ export const processDocumentJob = inngest.createFunction(
     });
 
     // Send started event
-    await step.run('emit-started', () =>
-      inngest.send({
+    await step.run('emit-started', async () => {
+      await inngest.send({
         name: 'document/ingestion.started',
         data: {
           documentId,
           userId,
           jobId: job.id,
         },
-      })
-    );
+      });
+    });
 
-    // =============================================================================
     // Step 2: Fetch and Parse Document
-    // =============================================================================
-    await step.run('update-status-parsing', () =>
+    await step.run('update-status-parsing', async () =>
       updateJobStatus(job.id, {
         status: 'PROCESSING',
         progress: 5,
@@ -129,7 +97,6 @@ export const processDocumentJob = inngest.createFunction(
         throw new Error(`Document not found: ${documentId}`);
       }
 
-      // Update document status
       await prisma.document.update({
         where: { id: documentId },
         data: { status: 'PROCESSING' },
@@ -141,11 +108,10 @@ export const processDocumentJob = inngest.createFunction(
     // Parse document based on type
     const parsedContent = await step.run('parse-document', async () => {
       if (!document.content) {
-        // Fetch and parse content based on document type
         if (document.contentType === 'HTML' && document.metadata) {
           const metadata = document.metadata as Record<string, unknown>;
-          if (metadata.sourceUrl) {
-            const scraped = await scrapeURL(metadata.sourceUrl as string);
+          if (metadata.sourceUrl && typeof metadata.sourceUrl === 'string') {
+            const scraped = await scrapeURL(metadata.sourceUrl);
             await prisma.document.update({
               where: { id: documentId },
               data: { content: scraped.text },
@@ -159,24 +125,20 @@ export const processDocumentJob = inngest.createFunction(
         throw new Error('Document has no content');
       }
 
-      // Content already exists
       return {
         text: document.content,
-        metadata: document.metadata as Record<string, unknown> || {},
+        metadata: (document.metadata as Record<string, unknown>) || {},
       };
     });
 
-    await step.run('emit-progress-parsed', () =>
+    await step.run('emit-progress-parsed', async () =>
       emitProgress(documentId, userId, 'parse', 20, 'Document parsed')
     );
 
-    // =============================================================================
     // Step 3: Create Chunks
-    // =============================================================================
     const chunks = await step.run('create-chunks', async () => {
-      // Determine optimal chunk size based on document type
-      const chunkSize = document.contentType === 'PDF' ? 1200 : 
-                        document.contentType === 'MD' ? 1500 : 1000;
+      const chunkSize =
+        document.contentType === 'PDF' ? 1200 : document.contentType === 'MD' ? 1500 : 1000;
       const chunkOverlap = 200;
 
       return ChunkingEngine.chunk(parsedContent.text, {
@@ -187,18 +149,16 @@ export const processDocumentJob = inngest.createFunction(
       });
     });
 
-    await step.run('update-progress-chunked', () =>
+    await step.run('update-progress-chunked', async () =>
       updateJobStatus(job.id, { progress: 40 })
     );
 
-    await step.run('emit-progress-chunked', () =>
+    await step.run('emit-progress-chunked', async () =>
       emitProgress(documentId, userId, 'chunk', 40, `${chunks.length} chunks created`)
     );
 
-    // =============================================================================
     // Step 4: Generate Embeddings
-    // =============================================================================
-    await step.run('update-status-embedding', () =>
+    await step.run('update-status-embedding', async () =>
       updateJobStatus(job.id, { progress: 50 })
     );
 
@@ -213,10 +173,9 @@ export const processDocumentJob = inngest.createFunction(
       const batchIndex = Math.floor(i / batchSize);
 
       await step.run(`generate-embeddings-batch-${batchIndex}`, async () => {
-        const contents = batch.map(c => c.content);
+        const contents = batch.map((chunk) => chunk.content);
         const embeddingVectors = await embeddings.embedDocuments(contents);
 
-        // Store chunks with embeddings
         for (let j = 0; j < batch.length; j++) {
           const chunk = batch[j];
           const vector = embeddingVectors[j];
@@ -232,18 +191,16 @@ export const processDocumentJob = inngest.createFunction(
               ${chunk.metadata.index},
               ${chunk.metadata.start},
               ${chunk.metadata.end},
-              ${chunk.metadata.page || null},
-              ${chunk.metadata.headings?.[0] || null},
+              ${chunk.metadata.page ?? null},
+              ${chunk.metadata.headings?.[0] ?? null},
               NOW()
             )
           `;
         }
 
-        // Update progress
         const progress = Math.round(50 + ((i + batch.length) / totalChunks) * 45);
         await updateJobStatus(job.id, { progress });
 
-        // Emit progress event
         await emitProgress(
           documentId,
           userId,
@@ -259,18 +216,14 @@ export const processDocumentJob = inngest.createFunction(
       });
     }
 
-    // =============================================================================
     // Step 5: Finalize
-    // =============================================================================
     const processingTime = Date.now() - startTime;
 
     await step.run('finalize-document', async () => {
-      // Update document status
       await prisma.document.update({
         where: { id: documentId },
         data: {
           status: 'COMPLETED',
-          chunkCount: totalChunks,
           metadata: {
             ...parsedContent.metadata,
             processedAt: new Date().toISOString(),
@@ -280,7 +233,6 @@ export const processDocumentJob = inngest.createFunction(
         },
       });
 
-      // Update job status
       await prisma.ingestionJob.update({
         where: { id: job.id },
         data: {
@@ -293,8 +245,7 @@ export const processDocumentJob = inngest.createFunction(
       return { totalChunks, processingTime };
     });
 
-    // Send completion event
-    await step.run('emit-completed', () =>
+    await step.run('emit-completed', async () =>
       inngest.send({
         name: 'document/ingestion.completed',
         data: {
@@ -325,12 +276,11 @@ export const retryIngestionJob = inngest.createFunction(
     id: 'retry-ingestion',
     name: 'Retry Failed Document Ingestion',
     retries: 2,
+    triggers: [{ event: 'document/ingestion.retry' }],
   },
-  { event: 'document/ingestion.retry' },
-  async ({ event, step }) => {
+  async ({ event, step }: { event: { data: IngestEventData }; step: InngestContext['step'] }) => {
     const { documentId, userId } = event.data;
 
-    // Clear previous error state
     await step.run('reset-document', async () => {
       await prisma.document.update({
         where: { id: documentId },
@@ -342,14 +292,12 @@ export const retryIngestionJob = inngest.createFunction(
         },
       });
 
-      // Delete existing chunks
       await prisma.documentChunk.deleteMany({
         where: { documentId },
       });
     });
 
-    // Re-queue for processing
-    await step.run('requeue-job', () =>
+    await step.run('requeue-job', async () =>
       inngest.send({
         name: 'document/ingest',
         data: { documentId, userId },
@@ -368,10 +316,10 @@ export const bulkIngestJob = inngest.createFunction(
   {
     id: 'bulk-ingest',
     name: 'Bulk Document Ingestion',
-    concurrency: 1, // Process one bulk job at a time
+    concurrency: 1,
+    triggers: [{ event: 'document/bulk-ingest' }],
   },
-  { event: 'document/bulk-ingest' },
-  async ({ event, step }) => {
+  async ({ event, step }: { event: { data: BulkIngestData }; step: InngestContext['step'] }) => {
     const { documentIds, userId } = event.data;
     const results: Array<{ documentId: string; success: boolean; error?: string }> = [];
 
@@ -394,15 +342,14 @@ export const bulkIngestJob = inngest.createFunction(
       }
     }
 
-    // Send bulk completion event
-    await step.run('emit-bulk-completed', () =>
+    await step.run('emit-bulk-completed', async () =>
       inngest.send({
         name: 'document/bulk-ingest.completed',
         data: {
           userId,
           totalCount: documentIds.length,
-          successCount: results.filter(r => r.success).length,
-          failureCount: results.filter(r => !r.success).length,
+          successCount: results.filter((r) => r.success).length,
+          failureCount: results.filter((r) => !r.success).length,
           results,
         },
       })
@@ -410,8 +357,8 @@ export const bulkIngestJob = inngest.createFunction(
 
     return {
       totalCount: documentIds.length,
-      successCount: results.filter(r => r.success).length,
-      failureCount: results.filter(r => !r.success).length,
+      successCount: results.filter((r) => r.success).length,
+      failureCount: results.filter((r) => !r.success).length,
       results,
     };
   }
@@ -425,9 +372,10 @@ export const cleanupStaleJobs = inngest.createFunction(
   {
     id: 'cleanup-stale-jobs',
     name: 'Cleanup Stale Ingestion Jobs',
+    triggers: [{ cron: '0 */6 * * *' }],
   },
-  { cron: '0 */6 * * *' }, // Run every 6 hours
-  async ({ step }) => {
+  async ({ step }: { step: InngestContext['step'] }) => {
+
     const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
 
     const staleJobs = await step.run('find-stale-jobs', async () => {
@@ -443,7 +391,6 @@ export const cleanupStaleJobs = inngest.createFunction(
 
     for (const job of staleJobs) {
       await step.run(`cleanup-job-${job.id}`, async () => {
-        // Mark job as failed
         await prisma.ingestionJob.update({
           where: { id: job.id },
           data: {
@@ -453,7 +400,6 @@ export const cleanupStaleJobs = inngest.createFunction(
           },
         });
 
-        // Update document status
         await prisma.document.update({
           where: { id: job.documentId },
           data: {
@@ -485,8 +431,8 @@ async function updateJobStatus(
     startedAt?: Date;
     completedAt?: Date;
   }
-) {
-  return prisma.ingestionJob.update({
+): Promise<void> {
+  await prisma.ingestionJob.update({
     where: { id: jobId },
     data,
   });
@@ -498,8 +444,8 @@ async function emitProgress(
   stage: string,
   progress: number,
   message: string
-) {
-  return inngest.send({
+): Promise<void> {
+  await inngest.send({
     name: 'document/ingestion.progress',
     data: {
       documentId,

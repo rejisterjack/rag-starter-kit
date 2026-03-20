@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { format, subDays, startOfDay, endOfDay } from "date-fns";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
+import { endOfDay, format, startOfDay, subDays } from 'date-fns';
+import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
+import * as React from 'react';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 export type DateRangePreset =
-  | "today"
-  | "yesterday"
-  | "last7days"
-  | "last30days"
-  | "thisMonth"
-  | "lastMonth"
-  | "custom";
+  | 'today'
+  | 'yesterday'
+  | 'last7days'
+  | 'last30days'
+  | 'thisMonth'
+  | 'lastMonth'
+  | 'custom';
 
 export interface DateRange {
   from: Date;
@@ -26,25 +26,22 @@ export interface DateRangePickerProps {
   value?: DateRange;
   onChange: (range: DateRange, preset: DateRangePreset) => void;
   presets?: DateRangePreset[];
-  align?: "start" | "center" | "end";
+  align?: 'start' | 'center' | 'end';
   className?: string;
   disabled?: boolean;
   placeholder?: string;
 }
 
-const presetConfig: Record<
-  DateRangePreset,
-  { label: string; getRange: () => DateRange }
-> = {
+const presetConfig: Record<DateRangePreset, { label: string; getRange: () => DateRange }> = {
   today: {
-    label: "Today",
+    label: 'Today',
     getRange: () => ({
       from: startOfDay(new Date()),
       to: endOfDay(new Date()),
     }),
   },
   yesterday: {
-    label: "Yesterday",
+    label: 'Yesterday',
     getRange: () => {
       const yesterday = subDays(new Date(), 1);
       return {
@@ -54,21 +51,21 @@ const presetConfig: Record<
     },
   },
   last7days: {
-    label: "Last 7 days",
+    label: 'Last 7 days',
     getRange: () => ({
       from: startOfDay(subDays(new Date(), 6)),
       to: endOfDay(new Date()),
     }),
   },
   last30days: {
-    label: "Last 30 days",
+    label: 'Last 30 days',
     getRange: () => ({
       from: startOfDay(subDays(new Date(), 29)),
       to: endOfDay(new Date()),
     }),
   },
   thisMonth: {
-    label: "This month",
+    label: 'This month',
     getRange: () => {
       const now = new Date();
       return {
@@ -78,7 +75,7 @@ const presetConfig: Record<
     },
   },
   lastMonth: {
-    label: "Last month",
+    label: 'Last month',
     getRange: () => {
       const now = new Date();
       return {
@@ -88,7 +85,7 @@ const presetConfig: Record<
     },
   },
   custom: {
-    label: "Custom range",
+    label: 'Custom range',
     getRange: () => ({
       from: startOfDay(subDays(new Date(), 6)),
       to: endOfDay(new Date()),
@@ -97,38 +94,40 @@ const presetConfig: Record<
 };
 
 const defaultPresets: DateRangePreset[] = [
-  "today",
-  "yesterday",
-  "last7days",
-  "last30days",
-  "thisMonth",
-  "lastMonth",
-  "custom",
+  'today',
+  'yesterday',
+  'last7days',
+  'last30days',
+  'thisMonth',
+  'lastMonth',
+  'custom',
 ];
 
 function formatDateRange(range: DateRange | undefined): string {
-  if (!range || !range.from) return "";
-  
+  if (!range || !range.from) return '';
+
   if (!range.to || range.from.getTime() === range.to.getTime()) {
-    return format(range.from, "MMM d, yyyy");
+    return format(range.from, 'MMM d, yyyy');
   }
 
-  if (range.from.getMonth() === range.to.getMonth() && 
-      range.from.getFullYear() === range.to.getFullYear()) {
-    return `${format(range.from, "MMM d")} - ${format(range.to, "d, yyyy")}`;
+  if (
+    range.from.getMonth() === range.to.getMonth() &&
+    range.from.getFullYear() === range.to.getFullYear()
+  ) {
+    return `${format(range.from, 'MMM d')} - ${format(range.to, 'd, yyyy')}`;
   }
 
-  return `${format(range.from, "MMM d")} - ${format(range.to, "MMM d, yyyy")}`;
+  return `${format(range.from, 'MMM d')} - ${format(range.to, 'MMM d, yyyy')}`;
 }
 
 export function DateRangePicker({
   value,
   onChange,
   presets = defaultPresets,
-  align = "start",
+  align = 'start',
   className,
   disabled = false,
-  placeholder = "Pick a date range",
+  placeholder = 'Pick a date range',
 }: DateRangePickerProps) {
   const [open, setOpen] = React.useState(false);
   const [selectedPreset, setSelectedPreset] = React.useState<DateRangePreset | null>(null);
@@ -144,7 +143,7 @@ export function DateRangePicker({
   }, [value]);
 
   const handlePresetSelect = (preset: DateRangePreset) => {
-    if (preset === "custom") {
+    if (preset === 'custom') {
       setSelectedPreset(preset);
       return;
     }
@@ -160,22 +159,27 @@ export function DateRangePicker({
     if (!range) return;
 
     const newRange: DateRange = {
-      from: range.from ? startOfDay(range.from) : (dateRange?.from || new Date()),
-      to: range.to ? endOfDay(range.to) : (range.from ? endOfDay(range.from) : (dateRange?.to || new Date())),
+      from: range.from ? startOfDay(range.from) : dateRange?.from || new Date(),
+      to: range.to
+        ? endOfDay(range.to)
+        : range.from
+          ? endOfDay(range.from)
+          : dateRange?.to || new Date(),
     };
 
     setDateRange(newRange);
 
     // Only call onChange if both dates are selected
     if (range.from && range.to) {
-      setSelectedPreset("custom");
-      onChange(newRange, "custom");
+      setSelectedPreset('custom');
+      onChange(newRange, 'custom');
     }
   };
 
-  const displayValue = selectedPreset && selectedPreset !== "custom"
-    ? presetConfig[selectedPreset].label
-    : formatDateRange(dateRange) || placeholder;
+  const displayValue =
+    selectedPreset && selectedPreset !== 'custom'
+      ? presetConfig[selectedPreset].label
+      : formatDateRange(dateRange) || placeholder;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -183,8 +187,8 @@ export function DateRangePicker({
         <Button
           variant="outline"
           className={cn(
-            "w-full justify-start text-left font-normal",
-            !dateRange && "text-muted-foreground",
+            'w-full justify-start text-left font-normal',
+            !dateRange && 'text-muted-foreground',
             className
           )}
           disabled={disabled}
@@ -201,7 +205,7 @@ export function DateRangePicker({
             {presets.map((preset) => (
               <Button
                 key={preset}
-                variant={selectedPreset === preset ? "secondary" : "ghost"}
+                variant={selectedPreset === preset ? 'secondary' : 'ghost'}
                 size="sm"
                 className="w-full justify-start text-left"
                 onClick={() => handlePresetSelect(preset)}
@@ -232,7 +236,7 @@ export function DateRangePicker({
           <div className="text-sm text-muted-foreground">
             {dateRange?.from && dateRange?.to && (
               <>
-                {format(dateRange.from, "MMM d, yyyy")} - {format(dateRange.to, "MMM d, yyyy")}
+                {format(dateRange.from, 'MMM d, yyyy')} - {format(dateRange.to, 'MMM d, yyyy')}
               </>
             )}
           </div>
@@ -251,7 +255,7 @@ export function DateRangePicker({
               size="sm"
               onClick={() => {
                 if (dateRange?.from && dateRange?.to) {
-                  onChange(dateRange, selectedPreset || "custom");
+                  onChange(dateRange, selectedPreset || 'custom');
                   setOpen(false);
                 }
               }}
@@ -267,9 +271,7 @@ export function DateRangePicker({
 }
 
 // Hook for managing date range state
-export function useDateRange(
-  defaultPreset: DateRangePreset = "last7days"
-): {
+export function useDateRange(defaultPreset: DateRangePreset = 'last7days'): {
   range: DateRange;
   preset: DateRangePreset;
   setRange: (range: DateRange, preset: DateRangePreset) => void;

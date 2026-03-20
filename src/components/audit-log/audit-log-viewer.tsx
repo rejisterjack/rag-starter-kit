@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { format } from 'date-fns';
-import { Download, AlertTriangle, Info, AlertCircle } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Download, Info } from 'lucide-react';
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,12 +50,7 @@ const severityConfig = {
   CRITICAL: { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-100' },
 };
 
-export function AuditLogViewer({
-  logs,
-  isLoading,
-  onExport,
-  className,
-}: AuditLogViewerProps) {
+export function AuditLogViewer({ logs, isLoading, onExport, className }: AuditLogViewerProps) {
   const [filter, setFilter] = useState('');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [eventFilter, setEventFilter] = useState<string>('all');
@@ -87,7 +82,7 @@ export function AuditLogViewer({
             onChange={(e) => setFilter(e.target.value)}
           />
         </div>
-        
+
         <Select value={severityFilter} onValueChange={setSeverityFilter}>
           <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="Severity" />

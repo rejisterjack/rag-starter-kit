@@ -1,9 +1,11 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
+
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { emailService } from '@/lib/notifications/email';
 
-import type { MemberRole, MemberStatus, Workspace, WorkspaceMember } from './types';
+import type { MemberRole, Workspace, WorkspaceMember } from './types';
 
 // =============================================================================
 // Types
@@ -23,7 +25,18 @@ export interface UpdateWorkspaceInput {
   settings?: Record<string, unknown>;
 }
 
-export interface WorkspaceWithMembers extends Workspace {
+export interface WorkspaceWithMembers {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  logoUrl: string | null;
+  avatar: string | null;
+  ownerId: string;
+  plan: string;
+  settings: Record<string, unknown> | null;
+  createdAt: Date;
+  updatedAt: Date;
   members: (WorkspaceMember & {
     user: {
       id: string;
@@ -72,8 +85,8 @@ export async function createWorkspace(
     data: {
       name: data.name,
       slug,
-      description: data.description,
-      avatar: data.avatar,
+      description: data.description ?? null,
+      logoUrl: data.avatar ?? null,
       ownerId: userId,
       members: {
         create: {
@@ -93,7 +106,18 @@ export async function createWorkspace(
     metadata: { name: data.name, slug },
   });
 
-  return workspace;
+  return {
+    id: workspace.id,
+    name: workspace.name,
+    slug: workspace.slug,
+    description: workspace.description,
+    avatar: workspace.logoUrl,
+    ownerId: workspace.ownerId,
+    plan: 'FREE',
+    settings: workspace.settings as Record<string, unknown> | null,
+    createdAt: workspace.createdAt,
+    updatedAt: workspace.updatedAt,
+  };
 }
 
 /**
@@ -124,7 +148,7 @@ export async function createDefaultWorkspace(
  * Get workspace by ID
  */
 export async function getWorkspaceById(workspaceId: string): Promise<WorkspaceWithMembers | null> {
-  return prisma.workspace.findUnique({
+  const result = await prisma.workspace.findUnique({
     where: { id: workspaceId },
     include: {
       members: {
@@ -154,14 +178,33 @@ export async function getWorkspaceById(workspaceId: string): Promise<WorkspaceWi
         },
       },
     },
-  }) as Promise<WorkspaceWithMembers | null>;
+  });
+
+  if (!result) return null;
+
+  return {
+    id: result.id,
+    name: result.name,
+    slug: result.slug,
+    description: result.description,
+    logoUrl: result.logoUrl,
+    avatar: result.logoUrl,
+    ownerId: result.ownerId,
+    plan: 'FREE',
+    settings: result.settings as Record<string, unknown> | null,
+    createdAt: result.createdAt,
+    updatedAt: result.updatedAt,
+    members: result.members as unknown as WorkspaceWithMembers['members'],
+    owner: result.owner,
+    _count: result._count,
+  };
 }
 
 /**
  * Get workspace by slug
  */
 export async function getWorkspaceBySlug(slug: string): Promise<WorkspaceWithMembers | null> {
-  return prisma.workspace.findUnique({
+  const result = await prisma.workspace.findUnique({
     where: { slug },
     include: {
       members: {
@@ -191,7 +234,26 @@ export async function getWorkspaceBySlug(slug: string): Promise<WorkspaceWithMem
         },
       },
     },
-  }) as Promise<WorkspaceWithMembers | null>;
+  });
+
+  if (!result) return null;
+
+  return {
+    id: result.id,
+    name: result.name,
+    slug: result.slug,
+    description: result.description,
+    logoUrl: result.logoUrl,
+    avatar: result.logoUrl,
+    ownerId: result.ownerId,
+    plan: 'FREE',
+    settings: result.settings as Record<string, unknown> | null,
+    createdAt: result.createdAt,
+    updatedAt: result.updatedAt,
+    members: result.members as unknown as WorkspaceWithMembers['members'],
+    owner: result.owner,
+    _count: result._count,
+  };
 }
 
 /**
@@ -235,7 +297,22 @@ export async function getUserWorkspaces(userId: string): Promise<WorkspaceWithMe
     orderBy: { joinedAt: 'desc' },
   });
 
-  return members.map((m) => m.workspace) as WorkspaceWithMembers[];
+  return members.map((m) => ({
+    id: m.workspace.id,
+    name: m.workspace.name,
+    slug: m.workspace.slug,
+    description: m.workspace.description,
+    logoUrl: m.workspace.logoUrl,
+    avatar: m.workspace.logoUrl,
+    ownerId: m.workspace.ownerId,
+    plan: 'FREE',
+    settings: m.workspace.settings as Record<string, unknown> | null,
+    createdAt: m.workspace.createdAt,
+    updatedAt: m.workspace.updatedAt,
+    members: m.workspace.members as unknown as WorkspaceWithMembers['members'],
+    owner: m.workspace.owner,
+    _count: m.workspace._count,
+  }));
 }
 
 /**
@@ -245,24 +322,38 @@ export async function updateWorkspace(
   workspaceId: string,
   data: UpdateWorkspaceInput
 ): Promise<Workspace> {
+  // Build update data dynamically
+  const updateData: Record<string, unknown> = {};
+
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.description !== undefined) updateData.description = data.description ?? null;
+  if (data.avatar !== undefined) updateData.logoUrl = data.avatar ?? null;
+  if (data.settings !== undefined) updateData.settings = data.settings;
+
   const workspace = await prisma.workspace.update({
     where: { id: workspaceId },
-    data: {
-      ...(data.name && { name: data.name }),
-      ...(data.description !== undefined && { description: data.description }),
-      ...(data.avatar !== undefined && { avatar: data.avatar }),
-      ...(data.settings && { settings: data.settings }),
-    },
+    data: updateData,
   });
 
   // Log workspace update
   await logAuditEvent({
     event: AuditEvent.WORKSPACE_UPDATED,
     workspaceId,
-    metadata: data,
+    metadata: updateData,
   });
 
-  return workspace;
+  return {
+    id: workspace.id,
+    name: workspace.name,
+    slug: workspace.slug,
+    description: workspace.description,
+    avatar: workspace.logoUrl,
+    ownerId: workspace.ownerId,
+    plan: 'FREE',
+    settings: workspace.settings as Record<string, unknown> | null,
+    createdAt: workspace.createdAt,
+    updatedAt: workspace.updatedAt,
+  };
 }
 
 /**
@@ -340,7 +431,20 @@ export async function getCurrentWorkspace(userId: string): Promise<Workspace | n
     include: { workspace: true },
   });
 
-  return membership?.workspace || null;
+  if (!membership) return null;
+
+  return {
+    id: membership.workspace.id,
+    name: membership.workspace.name,
+    slug: membership.workspace.slug,
+    description: membership.workspace.description,
+    avatar: membership.workspace.logoUrl,
+    ownerId: membership.workspace.ownerId,
+    plan: 'FREE',
+    settings: membership.workspace.settings as Record<string, unknown> | null,
+    createdAt: membership.workspace.createdAt,
+    updatedAt: membership.workspace.updatedAt,
+  };
 }
 
 // =============================================================================
@@ -403,8 +507,6 @@ export async function inviteMember(
           userId: existingUser.id,
           role,
           status: 'ACTIVE',
-          invitedBy: invitedByUserId,
-          invitedAt: new Date(),
         },
       });
 
@@ -431,20 +533,19 @@ export async function inviteMember(
       return { success: true };
     }
 
-    // User doesn't exist - create invitation token
+    // User doesn't exist - create invitation
     const inviteToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     // Store invitation in database
-    await prisma.workspaceInvitation.create({
+    const invitation = await prisma.workspaceInvitation.create({
       data: {
-        email,
         workspaceId,
-        invitedById: invitedByUserId,
+        email,
         role,
         token: inviteToken,
         expiresAt,
-        status: 'PENDING',
+        invitedById: invitedByUserId,
       },
     });
 
@@ -465,7 +566,7 @@ export async function inviteMember(
     if (!emailResult.success) {
       // If email fails, delete the invitation
       await prisma.workspaceInvitation.delete({
-        where: { token: inviteToken },
+        where: { id: invitation.id },
       });
       return { success: false, error: `Failed to send invitation email: ${emailResult.error}` };
     }
@@ -526,7 +627,7 @@ export async function acceptInvitation(
     }
 
     // Verify email matches
-    if (user.email !== invitation.email) {
+    if (user.email.toLowerCase() !== invitation.email.toLowerCase()) {
       return { success: false, error: 'Invitation email does not match your account email' };
     }
 
@@ -542,7 +643,7 @@ export async function acceptInvitation(
       // Update invitation status and return success
       await prisma.workspaceInvitation.update({
         where: { token },
-        data: { status: 'ACCEPTED' },
+        data: { status: 'ACCEPTED', acceptedAt: new Date() },
       });
       return { success: true, workspaceId: invitation.workspaceId };
     }
@@ -554,15 +655,13 @@ export async function acceptInvitation(
         userId,
         role: invitation.role,
         status: 'ACTIVE',
-        invitedBy: invitation.invitedById,
-        invitedAt: invitation.createdAt,
       },
     });
 
     // Mark invitation as accepted
     await prisma.workspaceInvitation.update({
       where: { token },
-      data: { status: 'ACCEPTED' },
+      data: { status: 'ACCEPTED', acceptedAt: new Date() },
     });
 
     // Log acceptance
@@ -575,7 +674,7 @@ export async function acceptInvitation(
 
     return { success: true, workspaceId: invitation.workspaceId };
   } catch (error) {
-    console.error('Accept invitation error:', error);
+    logger.error('Accept invitation error', { error: error instanceof Error ? error.message : 'Unknown' });
     return { success: false, error: 'Failed to accept invitation' };
   }
 }
@@ -620,7 +719,7 @@ export async function cancelInvitation(
 
     return { success: true };
   } catch (error) {
-    console.error('Cancel invitation error:', error);
+    logger.error('Cancel invitation error', { error: error instanceof Error ? error.message : 'Unknown' });
     return { success: false, error: 'Failed to cancel invitation' };
   }
 }
@@ -649,7 +748,7 @@ export async function getWorkspaceInvitations(workspaceId: string): Promise<
         select: { id: true, name: true, email: true },
       },
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { invitedAt: 'desc' },
   });
 
   return invitations.map((inv) => ({

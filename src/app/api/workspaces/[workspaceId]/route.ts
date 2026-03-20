@@ -2,13 +2,8 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import {
-  getWorkspaceById,
-  updateWorkspace,
-  deleteWorkspace,
-} from '@/lib/workspace/workspace';
 import { canManageWorkspace } from '@/lib/workspace/permissions';
-
+import { deleteWorkspace, getWorkspaceById, updateWorkspace } from '@/lib/workspace/workspace';
 
 interface RouteParams {
   params: Promise<{ workspaceId: string }>;
@@ -83,8 +78,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
         currentUserRole: membership.role,
       },
     });
-  } catch (error) {
-    console.error('Get workspace error:', error);
+  } catch (_error) {
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to get workspace' } },
       { status: 500 }
@@ -128,7 +122,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       );
     }
 
-    let validatedInput;
+    let validatedInput: ReturnType<typeof validateUpdateWorkspaceInput>;
     try {
       validatedInput = validateUpdateWorkspaceInput(body);
     } catch (error) {
@@ -159,8 +153,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
         },
       },
     });
-  } catch (error) {
-    console.error('Update workspace error:', error);
+  } catch (_error) {
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to update workspace' } },
       { status: 500 }
@@ -200,8 +193,7 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       success: true,
       data: { message: 'Workspace deleted successfully' },
     });
-  } catch (error) {
-    console.error('Delete workspace error:', error);
+  } catch (_error) {
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to delete workspace' } },
       { status: 500 }

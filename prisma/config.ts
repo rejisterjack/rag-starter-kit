@@ -1,4 +1,4 @@
-import type { PrismaConfig } from 'prisma/config';
+import type { PrismaConfig } from '@prisma/config';
 
 export default {
   schema: './schema.prisma',

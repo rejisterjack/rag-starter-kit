@@ -24,10 +24,7 @@ export async function GET(req: Request) {
     const userId = session.user.id;
 
     const workspaceFilter = {
-      OR: [
-        { userId },
-        { workspace: { members: { some: { userId } } } },
-      ],
+      OR: [{ userId }, { workspace: { members: { some: { userId } } } }],
     };
 
     const [chats, documents, messages, workspaces] = await Promise.all([
@@ -163,9 +160,7 @@ export async function GET(req: Request) {
       total: scoredResults.length,
       query,
     });
-
-  } catch (error) {
-    console.error('Search error:', error);
+  } catch (_error) {
     return NextResponse.json({ error: 'Search failed' }, { status: 500 });
   }
 }

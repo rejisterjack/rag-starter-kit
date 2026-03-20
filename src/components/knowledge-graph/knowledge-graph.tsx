@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { ZoomIn, ZoomOut, RefreshCw } from 'lucide-react';
+import { RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 // import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 
-interface Node {
+interface Node extends d3.SimulationNodeDatum {
   id: string;
   label: string;
   type: 'document' | 'entity' | 'concept';
@@ -15,9 +15,9 @@ interface Node {
   color?: string;
 }
 
-interface Edge {
-  source: string;
-  target: string;
+interface Edge extends d3.SimulationLinkDatum<Node> {
+  source: string | Node;
+  target: string | Node;
   type: string;
   strength?: number;
 }
@@ -44,7 +44,8 @@ export function KnowledgeGraph({ nodes, edges, onNodeClick, className }: Knowled
     const height = svgRef.current.clientHeight;
 
     // Create zoom behavior
-    const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
+    const zoomBehavior = d3
+      .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 4])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
@@ -56,14 +57,22 @@ export function KnowledgeGraph({ nodes, edges, onNodeClick, className }: Knowled
     const g = svg.append('g');
 
     // Create simulation
-    const simulation = d3.forceSimulation(nodes as any)
-      .force('link', d3.forceLink(edges).id((d: any) => d.id).distance(100))
+    const simulation = d3
+      .forceSimulation(nodes)
+      .force(
+        'link',
+        d3
+          .forceLink<Node, Edge>(edges)
+          .id((d) => d.id)
+          .distance(100)
+      )
       .force('charge', d3.forceManyBody().strength(-300))
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('collision', d3.forceCollide().radius(30));
 
     // Draw edges
-    const link = g.append('g')
+    const link = g
+      .append('g')
       .selectAll('line')
       .data(edges)
       .enter()
@@ -73,31 +82,35 @@ export function KnowledgeGraph({ nodes, edges, onNodeClick, className }: Knowled
       .attr('stroke-opacity', 0.6);
 
     // Draw nodes
-    const node = g.append('g')
+    const node = g
+      .append('g')
       .selectAll('g')
       .data(nodes)
       .enter()
       .append('g')
       .attr('cursor', 'pointer')
-      .call(d3.drag<any, any>()
-        .on('start', (event, d: any) => {
-          if (!event.active) simulation.alphaTarget(0.3).restart();
-          d.fx = d.x;
-          d.fy = d.y;
-        })
-        .on('drag', (event, d: any) => {
-          d.fx = event.x;
-          d.fy = event.y;
-        })
-        .on('end', (event, d: any) => {
-          if (!event.active) simulation.alphaTarget(0);
-          d.fx = null;
-          d.fy = null;
-        })
+      .call(
+        d3
+          .drag<SVGGElement, Node>()
+          .on('start', (event, d) => {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+          })
+          .on('drag', (event, d) => {
+            d.fx = event.x;
+            d.fy = event.y;
+          })
+          .on('end', (event, d) => {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+          })
       );
 
     // Node circles
-    node.append('circle')
+    node
+      .append('circle')
       .attr('r', (d) => d.size || 20)
       .attr('fill', (d) => {
         const colors: Record<string, string> = {
@@ -117,7 +130,8 @@ export function KnowledgeGraph({ nodes, edges, onNodeClick, className }: Knowled
       });
 
     // Node labels
-    node.append('text')
+    node
+      .append('text')
       .text((d) => d.label)
       .attr('x', 0)
       .attr('y', (d) => (d.size || 20) + 15)
@@ -129,12 +143,12 @@ export function KnowledgeGraph({ nodes, edges, onNodeClick, className }: Knowled
     // Update positions on simulation tick
     simulation.on('tick', () => {
       link
-        .attr('x1', (d: any) => d.source.x)
-        .attr('y1', (d: any) => d.source.y)
-        .attr('x2', (d: any) => d.target.x)
-        .attr('y2', (d: any) => d.target.y);
+        .attr('x1', (d) => (d.source as Node).x ?? 0)
+        .attr('y1', (d) => (d.source as Node).y ?? 0)
+        .attr('x2', (d) => (d.target as Node).x ?? 0)
+        .attr('y2', (d) => (d.target as Node).y ?? 0);
 
-      node.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
+      node.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
     });
 
     return () => {
@@ -190,18 +204,12 @@ export function KnowledgeGraph({ nodes, edges, onNodeClick, className }: Knowled
       </div>
 
       {/* Graph */}
-      <svg
-        ref={svgRef}
-        className="w-full h-full min-h-[500px]"
-        style={{ cursor: 'grab' }}
-      />
+      <svg ref={svgRef} className="w-full h-full min-h-[500px]" style={{ cursor: 'grab' }} />
 
       {/* Selected Node Info */}
       {selectedNode && (
         <div className="absolute top-4 left-4 bg-card/90 backdrop-blur rounded-lg border p-4 max-w-xs">
-          <h4 className="font-semibold mb-2">
-            {nodes.find((n) => n.id === selectedNode)?.label}
-          </h4>
+          <h4 className="font-semibold mb-2">{nodes.find((n) => n.id === selectedNode)?.label}</h4>
           <p className="text-sm text-muted-foreground">
             Type: {nodes.find((n) => n.id === selectedNode)?.type}
           </p>

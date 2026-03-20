@@ -1,30 +1,24 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { User, Bot, Pencil, Trash2, Check, X, Copy } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatRelativeTime } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Bot, Check, Copy, Pencil, Trash2, User, X } from 'lucide-react';
+import { useState } from 'react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Markdown } from "./markdown";
-import { CitationList, type Source } from "./citations";
+} from '@/components/ui/dropdown-menu';
+import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn, formatRelativeTime } from '@/lib/utils';
+import { CitationList, type Source } from './citations';
+import { Markdown } from './markdown';
 
 export interface Message {
   id: string;
-  role: "user" | "assistant" | "system";
+  role: 'user' | 'assistant' | 'system';
   content: string;
   createdAt: Date;
   sources?: Source[];
@@ -33,7 +27,7 @@ export interface Message {
 }
 
 // Re-export Source for convenience
-export type { Source } from "./citations";
+export type { Source } from './citations';
 
 interface MessageItemProps {
   message: Message;
@@ -54,8 +48,8 @@ export function MessageItem({
   const [editContent, setEditContent] = useState(message.content);
   const [copied, setCopied] = useState(false);
 
-  const isUser = message.role === "user";
-  const isAssistant = message.role === "assistant";
+  const isUser = message.role === 'user';
+  const isAssistant = message.role === 'assistant';
 
   const handleSaveEdit = () => {
     if (editContent.trim() && editContent !== message.content) {
@@ -76,21 +70,14 @@ export function MessageItem({
   };
 
   return (
-    <div
-      className={cn(
-        "group relative py-6",
-        isUser ? "bg-background" : "bg-muted/30"
-      )}
-    >
+    <div className={cn('group relative py-6', isUser ? 'bg-background' : 'bg-muted/30')}>
       <div className="mx-auto flex max-w-3xl gap-4 px-4">
         {/* Avatar */}
         <div className="flex shrink-0 flex-col items-center">
           <Avatar
             className={cn(
-              "h-8 w-8",
-              isUser
-                ? "bg-primary text-primary-foreground"
-                : "bg-green-600 text-white"
+              'h-8 w-8',
+              isUser ? 'bg-primary text-primary-foreground' : 'bg-green-600 text-white'
             )}
           >
             <AvatarFallback>
@@ -103,16 +90,12 @@ export function MessageItem({
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="mb-1 flex items-center gap-2">
-            <span className="text-sm font-semibold">
-              {isUser ? "You" : "Assistant"}
-            </span>
+            <span className="text-sm font-semibold">{isUser ? 'You' : 'Assistant'}</span>
             <span className="text-xs text-muted-foreground">
               {formatRelativeTime(message.createdAt)}
             </span>
             {message.model && (
-              <span className="text-xs text-muted-foreground">
-                · {message.model}
-              </span>
+              <span className="text-xs text-muted-foreground">· {message.model}</span>
             )}
           </div>
 
@@ -139,10 +122,7 @@ export function MessageItem({
           ) : (
             <>
               <div className="text-foreground">
-                <Markdown
-                  content={message.content}
-                  onCitationClick={onCitationClick}
-                />
+                <Markdown content={message.content} onCitationClick={onCitationClick} />
               </div>
 
               {/* Sources for assistant messages */}
@@ -165,12 +145,7 @@ export function MessageItem({
               <div className="flex items-center gap-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={handleCopy}
-                    >
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopy}>
                       {copied ? (
                         <Check className="h-4 w-4 text-green-500" />
                       ) : (
@@ -179,7 +154,7 @@ export function MessageItem({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{copied ? "Copied!" : "Copy message"}</p>
+                    <p>{copied ? 'Copied!' : 'Copy message'}</p>
                   </TooltipContent>
                 </Tooltip>
 

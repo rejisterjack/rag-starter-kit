@@ -1,21 +1,21 @@
 /**
  * SAML Provider Implementation
- * 
+ *
  * Handles SAML 2.0 authentication flow using samlify library.
  * Supports Identity Provider (IdP) initiated and Service Provider (SP) initiated SSO.
  */
 
+// Import samlify
 import * as saml from 'samlify';
-// import { z } from 'zod';
-
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
-
+import { logger } from '@/lib/logger';
 import {
-  type SamlConfig,
-  type SamlProfile,
-  SamlError,
-  parseCertificate,
   getSamlUrls,
+  parseCertificate,
+  type SamlConfig,
+  SamlError,
+  type SamlProfile,
 } from './config';
 
 // =============================================================================
@@ -23,15 +23,25 @@ import {
 // =============================================================================
 
 /**
+ * Service Provider instance type
+ */
+type ServiceProviderInstance = ReturnType<typeof saml.ServiceProvider>;
+
+/**
+ * Identity Provider instance type
+ */
+type IdentityProviderInstance = ReturnType<typeof saml.IdentityProvider>;
+
+/**
  * Create a SAML Service Provider instance
  */
 export function createServiceProvider(
   config: SamlConfig,
   baseUrl: string
-): saml.ServiceProviderInstance {
+): ServiceProviderInstance {
   const urls = getSamlUrls(config.workspaceId, baseUrl);
 
-  const spConfig: saml.ServiceProviderSettings = {
+  const spConfig = {
     entityID: config.spEntityId,
     authnRequestsSigned: !!config.privateKey,
     wantAssertionsSigned: config.wantAssertionsSigned,
@@ -39,14 +49,20 @@ export function createServiceProvider(
     signingCert: config.certificate,
     privateKey: config.privateKey,
     nameIDFormat: [config.nameIdFormat],
-    assertionConsumerService: [{
-      Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
-      Location: urls.acs,
-    }],
-    singleLogoutService: config.logoutUrl ? [{
-      Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
-      Location: urls.slo,
-    }] : undefined,
+    assertionConsumerService: [
+      {
+        Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+        Location: urls.acs,
+      },
+    ],
+    singleLogoutService: config.logoutUrl
+      ? [
+          {
+            Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
+            Location: urls.slo,
+          },
+        ]
+      : undefined,
   };
 
   return saml.ServiceProvider(spConfig);
@@ -55,20 +71,26 @@ export function createServiceProvider(
 /**
  * Create a SAML Identity Provider instance from configuration
  */
-export function createIdentityProvider(config: SamlConfig): saml.IdentityProviderInstance {
-  const idpConfig: saml.IdentityProviderSettings = {
+export function createIdentityProvider(config: SamlConfig): IdentityProviderInstance {
+  const idpConfig = {
     entityID: config.idpEntityId,
     signingCert: parseCertificate(config.certificate),
     isAssertionEncrypted: false,
     nameIDFormat: [config.nameIdFormat],
-    singleSignOnService: [{
-      Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
-      Location: config.entryPoint,
-    }],
-    singleLogoutService: config.logoutUrl ? [{
-      Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
-      Location: config.logoutUrl,
-    }] : undefined,
+    singleSignOnService: [
+      {
+        Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
+        Location: config.entryPoint,
+      },
+    ],
+    singleLogoutService: config.logoutUrl
+      ? [
+          {
+            Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
+            Location: config.logoutUrl,
+          },
+        ]
+      : undefined,
   };
 
   return saml.IdentityProvider(idpConfig);
@@ -117,12 +139,10 @@ export async function initiateLogin(
       relayState: relayState || '',
     };
   } catch (error) {
-    console.error('SAML login initiation failed:', error);
-    throw new SamlError(
-      'Failed to initiate SAML login',
-      'CONFIG_NOT_FOUND',
-      500
-    );
+    logger.error('SAML login initiation failed', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
+    throw new SamlError('Failed to initiate SAML login', 'CONFIG_NOT_FOUND', 500);
   }
 }
 
@@ -162,17 +182,21 @@ export async function processSamlResponse(
     // Extract user profile from the assertion
     const profile = extractProfile(result, config);
 
+    void relayState;
+
     return {
       profile,
-      sessionIndex: result.extract?.sessionIndex || null,
+      sessionIndex: (result.extract?.sessionIndex as string | undefined) || null,
       isNewUser: false, // Will be determined by caller based on user lookup
     };
   } catch (error) {
-    console.error('SAML response processing failed:', error);
-    
+    logger.error('SAML response processing failed', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
+
     // Map specific errors to appropriate codes
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
+
     if (errorMessage.includes('signature')) {
       throw new SamlError('Invalid SAML signature', 'INVALID_SIGNATURE', 401);
     }
@@ -182,12 +206,8 @@ export async function processSamlResponse(
     if (errorMessage.includes('audience')) {
       throw new SamlError('Invalid audience in SAML assertion', 'AUDIENCE_MISMATCH', 401);
     }
-    
-    throw new SamlError(
-      `SAML authentication failed: ${errorMessage}`,
-      'INVALID_ASSERTION',
-      401
-    );
+
+    throw new SamlError(`SAML authentication failed: ${errorMessage}`, 'INVALID_ASSERTION', 401);
   }
 }
 
@@ -195,22 +215,18 @@ export async function processSamlResponse(
  * Extract user profile from SAML response
  */
 function extractProfile(
-  result: saml.parseResult,
+  result: { extract?: Record<string, unknown> },
   config: SamlConfig
 ): SamlProfile {
   const extract = result.extract || {};
-  const attributes = extract.attributes || {};
+  const attributes = (extract.attributes as Record<string, unknown>) || {};
 
   // Get email from mapped attribute
   const emailAttribute = config.attributeMapping.email || 'email';
   const email = attributes[emailAttribute] as string | undefined;
 
   if (!email) {
-    throw new SamlError(
-      'Email attribute not found in SAML assertion',
-      'INVALID_ASSERTION',
-      401
-    );
+    throw new SamlError('Email attribute not found in SAML assertion', 'INVALID_ASSERTION', 401);
   }
 
   // Build name from available attributes
@@ -218,7 +234,7 @@ function extractProfile(
   if (config.attributeMapping.name && attributes[config.attributeMapping.name]) {
     name = attributes[config.attributeMapping.name] as string;
   } else if (config.attributeMapping.firstName || config.attributeMapping.lastName) {
-    const firstName = config.attributeMapping.firstName 
+    const firstName = config.attributeMapping.firstName
       ? (attributes[config.attributeMapping.firstName] as string | undefined)
       : undefined;
     const lastName = config.attributeMapping.lastName
@@ -231,7 +247,7 @@ function extractProfile(
   let groups: string[] | undefined;
   if (config.attributeMapping.groups && attributes[config.attributeMapping.groups]) {
     const groupsAttr = attributes[config.attributeMapping.groups];
-    groups = Array.isArray(groupsAttr) ? groupsAttr : [groupsAttr];
+    groups = Array.isArray(groupsAttr) ? groupsAttr : [groupsAttr as string];
   }
 
   // Process all attributes
@@ -241,12 +257,12 @@ function extractProfile(
   }
 
   return {
-    nameID: extract.nameID || email,
-    nameIDFormat: extract.nameIDFormat || config.nameIdFormat,
-    sessionIndex: extract.sessionIndex,
+    nameID: (extract.nameID as string | undefined) || email,
+    nameIDFormat: (extract.nameIDFormat as string | undefined) || config.nameIdFormat,
+    sessionIndex: extract.sessionIndex as string | undefined,
     email: email.toLowerCase().trim(),
     name: name?.trim(),
-    firstName: config.attributeMapping.firstName 
+    firstName: config.attributeMapping.firstName
       ? (attributes[config.attributeMapping.firstName] as string | undefined)?.trim()
       : undefined,
     lastName: config.attributeMapping.lastName
@@ -254,8 +270,8 @@ function extractProfile(
       : undefined,
     groups,
     attributes: processedAttributes,
-    issuer: extract.issuer || config.idpEntityId,
-    assertionId: extract.assertionID,
+    issuer: (extract.issuer as string | undefined) || config.idpEntityId,
+    assertionId: extract.assertionID as string | undefined,
   };
 }
 
@@ -286,7 +302,9 @@ export async function initiateLogout(
       logoutRequestId: id,
     };
   } catch (error) {
-    console.error('SAML logout initiation failed:', error);
+    logger.error('SAML logout initiation failed', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
     throw new SamlError('Failed to initiate logout', 'SLO_FAILED', 500);
   }
 }
@@ -311,7 +329,9 @@ export async function processLogoutResponse(
 
     return true;
   } catch (error) {
-    console.error('SAML logout response processing failed:', error);
+    logger.error('SAML logout response processing failed', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
     throw new SamlError('Logout response validation failed', 'SLO_FAILED', 401);
   }
 }
@@ -341,31 +361,64 @@ export async function parseIdPMetadata(metadataXml: string): Promise<ParsedIdPMe
     const metadata = idp.entityMeta;
 
     // Extract SSO URL
-    const ssoService = metadata.getSingleLogoutService('urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect')
-      || metadata.getSingleLogoutService('urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST');
+    const ssoService =
+      metadata.getSingleLogoutService('urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect') ||
+      metadata.getSingleLogoutService('urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST');
 
     // Extract certificate
     const certificate = metadata.getX509Certificate('signing');
 
     if (!certificate) {
-      throw new SamlError('No signing certificate found in IdP metadata', 'INVALID_CERTIFICATE', 400);
+      throw new SamlError(
+        'No signing certificate found in IdP metadata',
+        'INVALID_CERTIFICATE',
+        400
+      );
     }
+
+    // Get SSO URL with proper type checking
+    const getSsoUrl = (): string => {
+      if (ssoService && typeof ssoService === 'object' && 'location' in ssoService) {
+        const service = ssoService as { location: string };
+        return service.location;
+      }
+      return '';
+    };
+
+    // Get logout URL
+    const getLogoutUrl = (): string | undefined => {
+      const sloService = metadata.getSingleLogoutService(
+        'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+      );
+      if (sloService && typeof sloService === 'object' && 'location' in sloService) {
+        const service = sloService as { location: string };
+        return service.location;
+      }
+      return undefined;
+    };
+
+    // Get name ID formats
+    const nameIdFormats = metadata.getNameIDFormat();
+    const ssoBindingsRaw = metadata.getSupportBindings(['singleSignOnService']);
 
     return {
       entityId: metadata.getEntityID(),
-      entryPoint: ssoService?.location || '',
-      logoutUrl: metadata.getSingleLogoutService('urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect')?.location,
+      entryPoint: getSsoUrl(),
+      logoutUrl: getLogoutUrl(),
       certificate: parseCertificate(certificate),
-      nameIdFormats: metadata.getNameIDFormat() || [],
-      ssoBindings: metadata.getSupportBindings('singleSignOn') || [],
+      nameIdFormats: Array.isArray(nameIdFormats) ? nameIdFormats : [],
+      ssoBindings:
+        typeof ssoBindingsRaw === 'string'
+          ? [ssoBindingsRaw]
+          : Array.isArray(ssoBindingsRaw)
+            ? ssoBindingsRaw
+            : [],
     };
   } catch (error) {
-    console.error('Failed to parse IdP metadata:', error);
-    throw new SamlError(
-      'Invalid IdP metadata format',
-      'INVALID_CERTIFICATE',
-      400
-    );
+    logger.error('Failed to parse IdP metadata', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
+    throw new SamlError('Invalid IdP metadata format', 'INVALID_CERTIFICATE', 400);
   }
 }
 
@@ -376,37 +429,45 @@ export async function parseIdPMetadata(metadataXml: string): Promise<ParsedIdPMe
 /**
  * Get active SAML configuration for a workspace
  */
-export async function getWorkspaceSamlConfig(
-  workspaceId: string
-): Promise<SamlConfig | null> {
+export async function getWorkspaceSamlConfig(workspaceId: string): Promise<SamlConfig | null> {
   const connection = await prisma.samlConnection.findUnique({
     where: {
       workspaceId,
-      active: true,
     },
   });
 
-  if (!connection) return null;
+  if (!connection || !connection.enabled) return null;
+
+  // Safely extract attribute mapping from JSON
+  const attrMappingJson = connection.attributeMapping as
+    | Record<string, string>
+    | undefined;
 
   return {
     id: connection.id,
     workspaceId: connection.workspaceId,
-    spEntityId: connection.spEntityId,
-    idpEntityId: connection.idpEntityId,
-    entryPoint: connection.entryPoint,
-    callbackUrl: connection.callbackUrl,
-    logoutUrl: connection.logoutUrl || undefined,
-    certificate: connection.certificate,
+    spEntityId: connection.spEntityId ?? '',
+    idpEntityId: connection.idpEntityId ?? '',
+    entryPoint: connection.idpSsoUrl ?? '',
+    callbackUrl: connection.spAcsUrl ?? '',
+    logoutUrl: connection.idpSloUrl || undefined,
+    certificate: connection.idpCertificate ?? '',
     privateKey: connection.privateKey || undefined,
-    wantAssertionsSigned: connection.wantAssertionsSigned,
-    wantResponseSigned: connection.wantResponseSigned,
-    signatureAlgorithm: connection.signatureAlgorithm as SamlConfig['signatureAlgorithm'],
-    digestAlgorithm: connection.digestAlgorithm as SamlConfig['digestAlgorithm'],
-    nameIdFormat: connection.nameIdFormat as SamlConfig['nameIdFormat'],
-    attributeMapping: connection.attributeMapping as SamlConfig['attributeMapping'],
-    active: connection.active,
-    certRotatedAt: connection.certRotatedAt || undefined,
-    previousCertificate: connection.previousCertificate || undefined,
+    wantAssertionsSigned: false,
+    wantResponseSigned: false,
+    signatureAlgorithm: 'rsa-sha256',
+    digestAlgorithm: 'sha256',
+    nameIdFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
+    attributeMapping: {
+      email: attrMappingJson?.email ?? 'email',
+      name: attrMappingJson?.name,
+      firstName: attrMappingJson?.firstName,
+      lastName: attrMappingJson?.lastName,
+      groups: attrMappingJson?.groups,
+    },
+    active: connection.enabled,
+    certRotatedAt: undefined,
+    previousCertificate: undefined,
     createdAt: connection.createdAt,
     updatedAt: connection.updatedAt,
   };
@@ -423,50 +484,57 @@ export async function upsertSamlConfig(
     where: { workspaceId },
   });
 
-  const data = {
-    workspaceId,
+  // Common fields for create/update
+  const commonData = {
     spEntityId: config.spEntityId,
     idpEntityId: config.idpEntityId,
-    entryPoint: config.entryPoint,
-    callbackUrl: config.callbackUrl,
-    logoutUrl: config.logoutUrl,
-    certificate: parseCertificate(config.certificate),
-    privateKey: config.privateKey,
-    wantAssertionsSigned: config.wantAssertionsSigned,
-    wantResponseSigned: config.wantResponseSigned,
-    signatureAlgorithm: config.signatureAlgorithm,
-    digestAlgorithm: config.digestAlgorithm,
-    nameIdFormat: config.nameIdFormat,
-    attributeMapping: config.attributeMapping as Record<string, unknown>,
-    active: config.active,
+    idpSsoUrl: config.entryPoint,
+    spAcsUrl: config.callbackUrl,
+    idpSloUrl: config.logoutUrl ?? null,
+    idpCertificate: parseCertificate(config.certificate),
+    privateKey: config.privateKey ?? null,
+    enabled: config.active,
+    defaultRole: 'MEMBER',
+    attributeMapping: config.attributeMapping as Prisma.InputJsonValue,
   };
 
   const connection = existing
     ? await prisma.samlConnection.update({
         where: { id: existing.id },
-        data,
+        data: commonData,
       })
-    : await prisma.samlConnection.create({ data });
+    : await prisma.samlConnection.create({
+        data: {
+          ...commonData,
+          workspace: { connect: { id: workspaceId } },
+        },
+      });
 
   return {
     id: connection.id,
     workspaceId: connection.workspaceId,
-    spEntityId: connection.spEntityId,
-    idpEntityId: connection.idpEntityId,
-    entryPoint: connection.entryPoint,
-    callbackUrl: connection.callbackUrl,
-    logoutUrl: connection.logoutUrl || undefined,
-    certificate: connection.certificate,
+    spEntityId: connection.spEntityId ?? '',
+    idpEntityId: connection.idpEntityId ?? '',
+    entryPoint: connection.idpSsoUrl ?? '',
+    callbackUrl: connection.spAcsUrl ?? '',
+    logoutUrl: connection.idpSloUrl || undefined,
+    certificate: connection.idpCertificate ?? '',
     privateKey: connection.privateKey || undefined,
-    wantAssertionsSigned: connection.wantAssertionsSigned,
-    wantResponseSigned: connection.wantResponseSigned,
-    signatureAlgorithm: connection.signatureAlgorithm as SamlConfig['signatureAlgorithm'],
-    digestAlgorithm: connection.digestAlgorithm as SamlConfig['digestAlgorithm'],
-    nameIdFormat: connection.nameIdFormat as SamlConfig['nameIdFormat'],
-    attributeMapping: connection.attributeMapping as SamlConfig['attributeMapping'],
-    active: connection.active,
-    certRotatedAt: connection.certRotatedAt || undefined,
-    previousCertificate: connection.previousCertificate || undefined,
+    wantAssertionsSigned: false,
+    wantResponseSigned: false,
+    signatureAlgorithm: 'rsa-sha256',
+    digestAlgorithm: 'sha256',
+    nameIdFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
+    attributeMapping: {
+      email: (connection.attributeMapping as Record<string, string> | undefined)?.email ?? 'email',
+      name: (connection.attributeMapping as Record<string, string> | undefined)?.name,
+      firstName: (connection.attributeMapping as Record<string, string> | undefined)?.firstName,
+      lastName: (connection.attributeMapping as Record<string, string> | undefined)?.lastName,
+      groups: (connection.attributeMapping as Record<string, string> | undefined)?.groups,
+    },
+    active: connection.enabled,
+    certRotatedAt: undefined,
+    previousCertificate: undefined,
     createdAt: connection.createdAt,
     updatedAt: connection.updatedAt,
   };
@@ -491,9 +559,8 @@ export async function rotateCertificate(
   await prisma.samlConnection.update({
     where: { id: existing.id },
     data: {
-      previousCertificate: existing.certificate,
-      certificate: parseCertificate(newCertificate),
-      certRotatedAt: new Date(),
+      idpCertificate: parseCertificate(newCertificate),
+      updatedAt: new Date(),
     },
   });
 }
@@ -521,7 +588,7 @@ export function isAssertionUsed(assertionId: string): boolean {
  */
 export function markAssertionUsed(assertionId: string): void {
   usedAssertions.add(assertionId);
-  
+
   // Auto-cleanup after TTL
   setTimeout(() => {
     usedAssertions.delete(assertionId);
@@ -534,8 +601,6 @@ export function markAssertionUsed(assertionId: string): void {
 export function validateEmailDomain(email: string, allowedDomains: string[]): boolean {
   const domain = email.split('@')[1]?.toLowerCase();
   if (!domain) return false;
-  
-  return allowedDomains.some(
-    allowed => allowed.toLowerCase() === domain
-  );
+
+  return allowedDomains.some((allowed) => allowed.toLowerCase() === domain);
 }

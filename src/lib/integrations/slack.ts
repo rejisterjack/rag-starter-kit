@@ -27,6 +27,21 @@ export interface SlackEvent {
   event_ts: string;
 }
 
+export interface SlackCommandResponse {
+  text: string;
+  response_type?: 'ephemeral' | 'in_channel';
+}
+
+interface ChatResponseData {
+  content?: string;
+  sources?: Array<{ documentName: string }>;
+}
+
+interface ChatApiResponse {
+  data?: ChatResponseData;
+  error?: string;
+}
+
 export class SlackIntegration {
   private botToken: string;
 
@@ -37,7 +52,7 @@ export class SlackIntegration {
   /**
    * Handle slash commands
    */
-  async handleCommand(command: SlackCommand): Promise<{ text: string; response_type?: 'ephemeral' | 'in_channel' }> {
+  async handleCommand(command: SlackCommand): Promise<SlackCommandResponse> {
     const { text, user_id } = command;
 
     // Find linked user
@@ -46,7 +61,6 @@ export class SlackIntegration {
         provider: 'slack',
         providerAccountId: user_id,
       },
-      include: { user: true },
     });
 
     if (!userLink) {
@@ -62,16 +76,16 @@ export class SlackIntegration {
     switch (subcommand) {
       case 'ask':
       case '':
-        return this.handleAsk(args, userLink.user.id);
+        return this.handleAsk(args, userLink.userId);
       
       case 'save':
         return this.handleSave(args, command.channel_id);
       
       case 'search':
-        return this.handleSearch(args, userLink.user.id);
+        return this.handleSearch(args, userLink.userId);
       
       case 'docs':
-        return this.handleListDocs(userLink.user.id);
+        return this.handleListDocs(userLink.userId);
       
       case 'help':
         return this.handleHelp();
@@ -84,7 +98,7 @@ export class SlackIntegration {
     }
   }
 
-  private async handleAsk(query: string, userId: string): Promise<{ text: string }> {
+  private async handleAsk(query: string, userId: string): Promise<SlackCommandResponse> {
     if (!query) {
       return { text: 'Please provide a question. Usage: `/rag ask <question>`' };
     }
@@ -103,36 +117,37 @@ export class SlackIntegration {
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json() as ChatApiResponse;
       
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to get answer');
+        throw new Error(data.error ?? 'Failed to get answer');
       }
 
-      let text = data.data.content;
+      let responseText = data.data?.content ?? '';
       
       // Add sources if available
-      if (data.data.sources?.length > 0) {
-        text += '\n\n*Sources:*';
-        data.data.sources.forEach((source: any, idx: number) => {
-          text += `\n${idx + 1}. ${source.documentName}`;
-        });
+      const sources = data.data?.sources;
+      if (sources !== undefined && sources.length > 0) {
+        responseText += '\n\n*Sources:*';
+        for (const source of sources) {
+          responseText += `\n• ${source.documentName}`;
+        }
       }
 
-      return { text };
+      return { text: responseText };
     } catch (error) {
-      return { text: `Error: ${(error as Error).message}` };
+      return { text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` };
     }
   }
 
-  private async handleSave(_args: string, _channelId: string): Promise<{ text: string }> {
+  private async handleSave(_args: string, _channelId: string): Promise<SlackCommandResponse> {
     // Get recent messages from channel and save as document
     return {
       text: 'Saving conversation to RAG... (Feature coming soon)',
     };
   }
 
-  private async handleSearch(query: string, userId: string): Promise<{ text: string }> {
+  private async handleSearch(query: string, userId: string): Promise<SlackCommandResponse> {
     if (!query) {
       return { text: 'Please provide a search query. Usage: `/rag search <query>`' };
     }
@@ -161,7 +176,7 @@ export class SlackIntegration {
     return { text };
   }
 
-  private async handleListDocs(userId: string): Promise<{ text: string }> {
+  private async handleListDocs(userId: string): Promise<SlackCommandResponse> {
     const documents = await prisma.document.findMany({
       where: { userId },
       take: 10,
@@ -172,7 +187,7 @@ export class SlackIntegration {
       return { text: 'You have no documents. Upload some at the web app!' };
     }
 
-    let text = `*Your recent documents:*`;
+    let text = '*Your recent documents:*';
     documents.forEach((doc, idx) => {
       text += `\n${idx + 1}. ${doc.name}`;
     });
@@ -180,7 +195,7 @@ export class SlackIntegration {
     return { text };
   }
 
-  private handleHelp(): { text: string } {
+  private handleHelp(): SlackCommandResponse {
     return {
       text: `*RAG Bot Commands:*
 • \`/rag ask <question>\` - Ask a question
@@ -193,7 +208,7 @@ export class SlackIntegration {
   private async getUserApiKey(userId: string): Promise<string> {
     // Get or create API key for user
     const apiKey = await prisma.apiKey.findFirst({
-      where: { userId, status: 'active' },
+      where: { userId, status: 'ACTIVE' },
     });
 
     if (apiKey) {
@@ -208,7 +223,7 @@ export class SlackIntegration {
         keyHash: 'placeholder',
         keyPreview: 'placeholder',
         permissions: ['chat:read', 'chat:write', 'documents:read'],
-        status: 'active',
+        status: 'ACTIVE',
       },
     });
 

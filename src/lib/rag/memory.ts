@@ -3,7 +3,7 @@
  * Manages conversation history with summarization for long conversations
  */
 
-import { PrismaClient, type Message as PrismaMessage } from '@prisma/client';
+import { type Message as PrismaMessage, PrismaClient } from '@prisma/client';
 import { createProviderFromEnv } from '@/lib/ai/llm';
 import { buildConversationSummarizationPrompt } from '@/lib/ai/prompts/templates';
 import type { Source } from '@/types';
@@ -75,7 +75,7 @@ export class ConversationMemory {
       take: limit ?? this.config.maxMessages,
     });
 
-    return messages.map((m) => this.mapPrismaMessage(m));
+    return messages.map((m: PrismaMessage) => this.mapPrismaMessage(m));
   }
 
   /**
@@ -101,7 +101,7 @@ export class ConversationMemory {
     });
 
     // Return in chronological order
-    return messages.reverse().map((m) => this.mapPrismaMessage(m));
+    return messages.reverse().map((m: PrismaMessage) => this.mapPrismaMessage(m));
   }
 
   /**
@@ -116,8 +116,10 @@ export class ConversationMemory {
         chatId: conversationId,
         content: message.content,
         role: message.role.toUpperCase() as 'USER' | 'ASSISTANT' | 'SYSTEM',
-        sources: message.sources ?? undefined,
-        tokensUsed: message.tokensUsed ?? undefined,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        sources: message.sources as any ?? undefined,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tokensUsed: message.tokensUsed as any ?? undefined,
       },
     });
 
@@ -141,8 +143,10 @@ export class ConversationMemory {
             chatId: conversationId,
             content: msg.content,
             role: msg.role.toUpperCase() as 'USER' | 'ASSISTANT' | 'SYSTEM',
-            sources: msg.sources ?? undefined,
-            tokensUsed: msg.tokensUsed ?? undefined,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            sources: msg.sources as any ?? undefined,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            tokensUsed: msg.tokensUsed as any ?? undefined,
           },
         })
       )
@@ -150,7 +154,7 @@ export class ConversationMemory {
 
     await this.checkAndCompressHistory(conversationId);
 
-    return created.map((m) => this.mapPrismaMessage(m));
+    return created.map((m: PrismaMessage) => this.mapPrismaMessage(m));
   }
 
   /**
@@ -299,7 +303,7 @@ export class ConversationMemory {
       orderBy: { createdAt: 'asc' },
     });
 
-    return messages.map((m) => this.mapPrismaMessage(m));
+    return messages.map((m: PrismaMessage) => this.mapPrismaMessage(m));
   }
 
   // =============================================================================
@@ -312,7 +316,7 @@ export class ConversationMemory {
       role: m.role.toLowerCase() as 'user' | 'assistant' | 'system',
       content: m.content,
       createdAt: m.createdAt,
-      sources: (m.sources as Source[]) ?? undefined,
+      sources: m.sources ? (m.sources as unknown as Source[]) : undefined,
       tokensUsed: (m.tokensUsed as { prompt: number; completion: number; total: number }) ?? undefined,
     };
   }

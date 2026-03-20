@@ -81,13 +81,13 @@ export default defineConfig({
     retry: process.env.CI ? 2 : 0,
     
     // Workers for parallel execution
-    workers: process.env.CI ? 2 : undefined,
+    maxWorkers: process.env.CI ? 2 : undefined,
     
     // Isolate each test file
     isolate: true,
     
     // Reporter configuration
-    reporter: process.env.CI 
+    reporters: process.env.CI 
       ? ['default', 'junit'] 
       : ['default', 'verbose'],
     outputFile: {

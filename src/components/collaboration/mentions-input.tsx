@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface MentionUser {
@@ -51,73 +51,80 @@ export function MentionsInput({
     }
   }, [value, onMentionsChange]);
 
-  const handleInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
-    const newCursorPosition = e.target.selectionStart;
-    
-    onChange(newValue);
-    setCursorPosition(newCursorPosition);
+  const handleInput = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newValue = e.target.value;
+      const newCursorPosition = e.target.selectionStart;
 
-    const textBeforeCursor = newValue.slice(0, newCursorPosition);
-    const mentionMatch = textBeforeCursor.match(/@([\w-]*)$/);
+      onChange(newValue);
+      setCursorPosition(newCursorPosition);
 
-    if (mentionMatch) {
-      setSearchQuery(mentionMatch[1]);
-      setShowSuggestions(true);
-      setSelectedIndex(0);
-      mentionStartRef.current = textBeforeCursor.lastIndexOf('@');
-    } else {
+      const textBeforeCursor = newValue.slice(0, newCursorPosition);
+      const mentionMatch = textBeforeCursor.match(/@([\w-]*)$/);
+
+      if (mentionMatch) {
+        setSearchQuery(mentionMatch[1]);
+        setShowSuggestions(true);
+        setSelectedIndex(0);
+        mentionStartRef.current = textBeforeCursor.lastIndexOf('@');
+      } else {
+        setShowSuggestions(false);
+        setSearchQuery('');
+        mentionStartRef.current = -1;
+      }
+    },
+    [onChange]
+  );
+
+  const insertMention = useCallback(
+    (user: MentionUser) => {
+      if (mentionStartRef.current === -1) return;
+
+      const beforeMention = value.slice(0, mentionStartRef.current);
+      const afterMention = value.slice(cursorPosition);
+      const newValue = `${beforeMention}@${user.name} ${afterMention}`;
+
+      onChange(newValue);
       setShowSuggestions(false);
       setSearchQuery('');
       mentionStartRef.current = -1;
-    }
-  }, [onChange]);
 
-  const insertMention = useCallback((user: MentionUser) => {
-    if (mentionStartRef.current === -1) return;
+      setTimeout(() => {
+        textareaRef.current?.focus();
+        const newCursorPos = beforeMention.length + user.name.length + 2;
+        textareaRef.current?.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+    },
+    [value, cursorPosition, onChange]
+  );
 
-    const beforeMention = value.slice(0, mentionStartRef.current);
-    const afterMention = value.slice(cursorPosition);
-    const newValue = `${beforeMention}@${user.name} ${afterMention}`;
-    
-    onChange(newValue);
-    setShowSuggestions(false);
-    setSearchQuery('');
-    mentionStartRef.current = -1;
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!showSuggestions) return;
 
-    setTimeout(() => {
-      textareaRef.current?.focus();
-      const newCursorPos = beforeMention.length + user.name.length + 2;
-      textareaRef.current?.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
-  }, [value, cursorPosition, onChange]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!showSuggestions) return;
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setSelectedIndex((prev) => 
-          prev < filteredUsers.length - 1 ? prev + 1 : prev
-        );
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0));
-        break;
-      case 'Enter':
-      case 'Tab':
-        e.preventDefault();
-        if (filteredUsers[selectedIndex]) {
-          insertMention(filteredUsers[selectedIndex]);
-        }
-        break;
-      case 'Escape':
-        setShowSuggestions(false);
-        break;
-    }
-  }, [showSuggestions, filteredUsers, selectedIndex, insertMention]);
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev < filteredUsers.length - 1 ? prev + 1 : prev));
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0));
+          break;
+        case 'Enter':
+        case 'Tab':
+          e.preventDefault();
+          if (filteredUsers[selectedIndex]) {
+            insertMention(filteredUsers[selectedIndex]);
+          }
+          break;
+        case 'Escape':
+          setShowSuggestions(false);
+          break;
+      }
+    },
+    [showSuggestions, filteredUsers, selectedIndex, insertMention]
+  );
 
   return (
     <div className="relative">

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { Crown, MoreHorizontal, Shield, User, UserX } from 'lucide-react';
+import { useState } from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -78,22 +78,18 @@ export function MemberList({
   const handleRoleChange = async (memberId: string, newRole: string) => {
     setIsLoading(memberId);
     try {
-      const response = await fetch(
-        `/api/workspaces/${workspaceId}/members/${memberId}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: newRole }),
-        }
-      );
+      const response = await fetch(`/api/workspaces/${workspaceId}/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      });
 
       if (!response.ok) {
         throw new Error('Failed to update role');
       }
 
       onUpdate?.();
-    } catch (error) {
-      console.error('Failed to update role:', error);
+    } catch (_error) {
     } finally {
       setIsLoading(null);
     }
@@ -106,20 +102,16 @@ export function MemberList({
 
     setIsLoading(memberId);
     try {
-      const response = await fetch(
-        `/api/workspaces/${workspaceId}/members/${memberId}`,
-        {
-          method: 'DELETE',
-        }
-      );
+      const response = await fetch(`/api/workspaces/${workspaceId}/members/${memberId}`, {
+        method: 'DELETE',
+      });
 
       if (!response.ok) {
         throw new Error('Failed to remove member');
       }
 
       onUpdate?.();
-    } catch (error) {
-      console.error('Failed to remove member:', error);
+    } catch (_error) {
     } finally {
       setIsLoading(null);
     }
@@ -131,7 +123,7 @@ export function MemberList({
     const aIndex = roleOrder.indexOf(a.role);
     const bIndex = roleOrder.indexOf(b.role);
     if (aIndex !== bIndex) return aIndex - bIndex;
-    
+
     // Then by name
     return (a.user.name || a.user.email).localeCompare(b.user.name || b.user.email);
   });
@@ -142,15 +134,13 @@ export function MemberList({
         const isCurrentUser = member.userId === currentUserId;
         const RoleIcon = roleIcons[member.role];
         const canEdit = canManageMembers && !isCurrentUser && member.role !== 'OWNER';
-        const canRemove = (isOwner || (canManageMembers && member.role === 'VIEWER')) && 
-          !isCurrentUser && 
+        const canRemove =
+          (isOwner || (canManageMembers && member.role === 'VIEWER')) &&
+          !isCurrentUser &&
           member.role !== 'OWNER';
 
         return (
-          <div
-            key={member.id}
-            className="flex items-center justify-between rounded-lg border p-4"
-          >
+          <div key={member.id} className="flex items-center justify-between rounded-lg border p-4">
             <div className="flex items-center gap-4">
               <Avatar className="h-10 w-10">
                 <AvatarImage src={member.user.image || undefined} />
@@ -161,9 +151,7 @@ export function MemberList({
               </Avatar>
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="font-medium">
-                    {member.user.name || member.user.email}
-                  </p>
+                  <p className="font-medium">{member.user.name || member.user.email}</p>
                   {isCurrentUser && (
                     <Badge variant="secondary" className="text-xs">
                       You
@@ -175,9 +163,7 @@ export function MemberList({
                     </Badge>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {member.user.email}
-                </p>
+                <p className="text-sm text-muted-foreground">{member.user.email}</p>
               </div>
             </div>
 
@@ -210,25 +196,19 @@ export function MemberList({
               {(canEdit || canRemove) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={isLoading === member.id}
-                    >
+                    <Button variant="ghost" size="icon" disabled={isLoading === member.id}>
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {canRemove && (
-                      <>
-                        <DropdownMenuItem
-                          onClick={() => handleRemoveMember(member.id)}
-                          className="text-destructive"
-                        >
-                          <UserX className="mr-2 h-4 w-4" />
-                          Remove member
-                        </DropdownMenuItem>
-                      </>
+                      <DropdownMenuItem
+                        onClick={() => handleRemoveMember(member.id)}
+                        className="text-destructive"
+                      >
+                        <UserX className="mr-2 h-4 w-4" />
+                        Remove member
+                      </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>

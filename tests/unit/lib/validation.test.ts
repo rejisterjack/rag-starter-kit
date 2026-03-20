@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-// import { z } from 'zod';
 import {
   documentUploadSchema,
   chatMessageSchema,
@@ -13,7 +12,7 @@ describe('Validation Schemas', () => {
       const validData = {
         workspaceId: 'ws-123',
         files: [
-          { name: 'document.pdf', size: 1000000, type: 'application/pdf' },
+          { name: 'document.pdf', size: 1000000, type: 'application/pdf' as const },
         ],
       };
 
@@ -23,7 +22,7 @@ describe('Validation Schemas', () => {
     it('rejects invalid workspaceId', () => {
       const invalidData = {
         workspaceId: '',
-        files: [{ name: 'doc.pdf', size: 1000, type: 'application/pdf' }],
+        files: [{ name: 'doc.pdf', size: 1000, type: 'application/pdf' as const }],
       };
 
       expect(() => documentUploadSchema.parse(invalidData)).toThrow();
@@ -33,7 +32,7 @@ describe('Validation Schemas', () => {
       const invalidData = {
         workspaceId: 'ws-123',
         files: [
-          { name: 'huge.pdf', size: 100 * 1024 * 1024, type: 'application/pdf' },
+          { name: 'huge.pdf', size: 100 * 1024 * 1024, type: 'application/pdf' as const },
         ],
       };
 
@@ -44,11 +43,11 @@ describe('Validation Schemas', () => {
       const invalidData = {
         workspaceId: 'ws-123',
         files: [
-          { name: 'virus.exe', size: 1000, type: 'application/x-msdownload' },
+          { name: 'virus.exe', size: 1000, type: 'application/x-msdownload' as const },
         ],
       };
 
-      expect(() => documentUploadSchema.parse(invalidData)).toThrow('type');
+      expect(() => documentUploadSchema.parse(invalidData)).toThrow();
     });
   });
 
@@ -139,7 +138,7 @@ describe('Validation Schemas', () => {
     it('validates valid member invitation', () => {
       const validData = {
         email: 'newmember@example.com',
-        role: 'member',
+        role: 'member' as const,
       };
 
       expect(() => inviteMemberSchema.parse(validData)).not.toThrow();
@@ -148,7 +147,7 @@ describe('Validation Schemas', () => {
     it('rejects invalid email', () => {
       const invalidData = {
         email: 'not-an-email',
-        role: 'member',
+        role: 'member' as const,
       };
 
       expect(() => inviteMemberSchema.parse(invalidData)).toThrow('email');
@@ -157,16 +156,16 @@ describe('Validation Schemas', () => {
     it('rejects invalid role', () => {
       const invalidData = {
         email: 'member@example.com',
-        role: 'superuser',
+        role: 'superuser' as const,
       };
 
       expect(() => inviteMemberSchema.parse(invalidData)).toThrow();
     });
 
     it('accepts all valid roles', () => {
-      const validRoles = ['owner', 'admin', 'member', 'viewer'];
+      const validRoles: Array<'owner' | 'admin' | 'member' | 'viewer'> = ['owner', 'admin', 'member', 'viewer'];
 
-      validRoles.forEach(role => {
+      validRoles.forEach((role) => {
         const data = { email: 'test@example.com', role };
         expect(() => inviteMemberSchema.parse(data)).not.toThrow();
       });

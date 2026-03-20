@@ -1,35 +1,20 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { 
-  GitBranch, 
-  GitCommit, 
-  ChevronRight, 
-  ChevronDown, 
-  MoreHorizontal,
+import {
   Check,
-  Trash2,
+  ChevronDown,
+  ChevronRight,
+  Clock,
   Edit3,
+  GitBranch,
+  GitCommit,
   MessageSquare,
-  Clock
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatRelativeTime } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  MoreHorizontal,
+  Trash2,
+} from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -37,9 +22,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import type { BranchTreeNode, ConversationBranch } from "@/hooks/use-conversation-branch";
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { BranchTreeNode, ConversationBranch } from '@/hooks/use-conversation-branch';
+import { cn, formatRelativeTime } from '@/lib/utils';
 
 // =============================================================================
 // Types
@@ -119,10 +113,10 @@ function BranchNode({
     <div className="select-none">
       <div
         className={cn(
-          "group flex items-center gap-1 py-2 pr-2 rounded-md transition-colors cursor-pointer",
-          isActive 
-            ? "bg-primary/10 border-l-2 border-primary" 
-            : "hover:bg-muted border-l-2 border-transparent"
+          'group flex items-center gap-1 py-2 pr-2 rounded-md transition-colors cursor-pointer',
+          isActive
+            ? 'bg-primary/10 border-l-2 border-primary'
+            : 'hover:bg-muted border-l-2 border-transparent'
         )}
         style={indentStyle}
         onClick={() => onSwitchBranch(node.id)}
@@ -165,8 +159,8 @@ function BranchNode({
               onChange={(e) => setNewName(e.target.value)}
               onBlur={handleRename}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleRename();
-                if (e.key === "Escape") {
+                if (e.key === 'Enter') handleRename();
+                if (e.key === 'Escape') {
                   setIsRenaming(false);
                   setNewName(node.name);
                 }
@@ -179,8 +173,8 @@ function BranchNode({
             <div className="flex items-center gap-2">
               <span
                 className={cn(
-                  "text-sm truncate",
-                  isActive ? "font-medium text-foreground" : "text-muted-foreground"
+                  'text-sm truncate',
+                  isActive ? 'font-medium text-foreground' : 'text-muted-foreground'
                 )}
                 title={node.name}
               >
@@ -242,7 +236,7 @@ function BranchNode({
               <Check className="mr-2 h-4 w-4" />
               Switch to branch
             </DropdownMenuItem>
-            
+
             {onRenameBranch && (
               <DropdownMenuItem
                 onClick={(e) => {
@@ -329,7 +323,7 @@ export function BranchTree({
   onRenameBranch,
   onCompareBranches,
   className,
-  maxHeight = "400px",
+  maxHeight = '400px',
 }: BranchTreeProps) {
   // Track expanded nodes - default to expanding all
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(() => {
@@ -379,7 +373,7 @@ export function BranchTree({
 
   if (branches.length === 0) {
     return (
-      <div className={cn("p-4 text-center text-muted-foreground", className)}>
+      <div className={cn('p-4 text-center text-muted-foreground', className)}>
         <GitBranch className="h-8 w-8 mx-auto mb-2 opacity-50" />
         <p className="text-sm">No branches yet</p>
         <p className="text-xs mt-1">Create a branch to explore different paths</p>
@@ -388,41 +382,28 @@ export function BranchTree({
   }
 
   return (
-    <div className={cn("flex flex-col", className)}>
+    <div className={cn('flex flex-col', className)}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
         <div className="flex items-center gap-2">
           <GitBranch className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium">Conversation Tree</span>
           <Badge variant="secondary" className="text-[10px] h-5">
-            {branches.length} {branches.length === 1 ? "branch" : "branches"}
+            {branches.length} {branches.length === 1 ? 'branch' : 'branches'}
           </Badge>
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={handleExpandAll}
-          >
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleExpandAll}>
             Expand
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={handleCollapseAll}
-          >
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleCollapseAll}>
             Collapse
           </Button>
         </div>
       </div>
 
       {/* Tree */}
-      <div 
-        className="overflow-y-auto"
-        style={{ maxHeight }}
-      >
+      <div className="overflow-y-auto" style={{ maxHeight }}>
         {branchTree.map((node) => (
           <BranchNode
             key={node.id}
@@ -498,11 +479,7 @@ interface BranchTreePanelProps extends BranchTreeProps {
   onClose: () => void;
 }
 
-export function BranchTreePanel({
-  isOpen,
-  onClose,
-  ...branchTreeProps
-}: BranchTreePanelProps) {
+export function BranchTreePanel({ isOpen, onClose, ...branchTreeProps }: BranchTreePanelProps) {
   if (!isOpen) return null;
 
   return (
@@ -511,12 +488,7 @@ export function BranchTreePanel({
         <h3 className="font-semibold">Branches</h3>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <span className="sr-only">Close</span>
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"

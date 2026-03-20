@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
-import {
-  createWorkspace,
-  getUserWorkspaces,
-} from '@/lib/workspace/workspace';
 import { validateCreateWorkspaceInput } from '@/lib/security/input-validator';
 import { checkApiRateLimit, getRateLimitIdentifier } from '@/lib/security/rate-limiter';
+import { createWorkspace, getUserWorkspaces } from '@/lib/workspace/workspace';
 
 /**
  * GET /api/workspaces
- * Get all workspaces for the current user
+ * Get all workspaces for the current user with pagination
+ * Query params: page (default: 1), limit (default: 20, max: 100)
  */
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -22,7 +20,19 @@ export async function GET() {
       );
     }
 
-    const workspaces = await getUserWorkspaces(session.user.id);
+    // Parse pagination params
+    const { searchParams } = new URL(req.url);
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)));
+
+    const allWorkspaces = await getUserWorkspaces(session.user.id);
+
+    // Calculate pagination
+    const total = allWorkspaces.length;
+    const totalPages = Math.ceil(total / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = Math.min(startIndex + limit, total);
+    const workspaces = allWorkspaces.slice(startIndex, endIndex);
 
     return NextResponse.json({
       success: true,
@@ -42,9 +52,16 @@ export async function GET() {
         })),
         currentWorkspaceId: session.user.workspaceId,
       },
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
     });
-  } catch (error) {
-    console.error('Get workspaces error:', error);
+  } catch (_error) {
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to get workspaces' } },
       { status: 500 }
@@ -91,7 +108,7 @@ export async function POST(req: Request) {
       );
     }
 
-    let validatedInput;
+    let validatedInput: ReturnType<typeof validateCreateWorkspaceInput>;
     try {
       validatedInput = validateCreateWorkspaceInput(body);
     } catch (error) {
@@ -124,8 +141,6 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Create workspace error:', error);
-    
     if (error instanceof Error && error.message === 'Workspace slug already taken') {
       return NextResponse.json(
         { error: { code: 'SLUG_TAKEN', message: 'Workspace slug is already taken' } },

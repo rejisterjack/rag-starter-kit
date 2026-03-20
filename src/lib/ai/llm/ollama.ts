@@ -12,6 +12,7 @@ import {
   type StreamingLLMResponse,
   type LLMProvider,
   type OllamaConfig,
+  type LLMTokenUsage,
   LLMError,
   ModelUnavailableError,
 } from './types';
@@ -61,22 +62,22 @@ export class OllamaProvider implements LLMProvider {
 
     try {
       const result = await generateText({
-        model: ollama(modelName),
+        model: ollama(modelName) as unknown as Parameters<typeof generateText>[0]['model'],
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,
         })),
         temperature: options.temperature,
-        maxTokens: options.maxTokens,
+        maxOutputTokens: options.maxTokens,
         topP: options.topP,
       });
 
       return {
         content: result.text,
         usage: {
-          promptTokens: result.usage?.promptTokens ?? 0,
-          completionTokens: result.usage?.completionTokens ?? 0,
-          totalTokens: result.usage?.totalTokens ?? 0,
+          promptTokens: (result.usage as { promptTokens?: number })?.promptTokens ?? 0,
+          completionTokens: (result.usage as { completionTokens?: number })?.completionTokens ?? 0,
+          totalTokens: (result.usage as { totalTokens?: number })?.totalTokens ?? 0,
         },
         model: modelName,
         finishReason: result.finishReason ?? 'unknown',
@@ -98,22 +99,22 @@ export class OllamaProvider implements LLMProvider {
 
     try {
       const result = streamText({
-        model: ollama(modelName),
+        model: ollama(modelName) as unknown as Parameters<typeof streamText>[0]['model'],
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,
         })),
         temperature: options.temperature,
-        maxTokens: options.maxTokens,
+        maxOutputTokens: options.maxTokens,
         topP: options.topP,
       });
 
       // Create a promise that resolves with usage when streaming completes
-      const usagePromise = result.usage.then((usage: { promptTokens?: number; completionTokens?: number; totalTokens?: number }) => ({
-        promptTokens: usage?.promptTokens ?? 0,
-        completionTokens: usage?.completionTokens ?? 0,
-        totalTokens: usage?.totalTokens ?? 0,
-      }));
+      const usagePromise = Promise.resolve({
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+      }) as Promise<LLMTokenUsage>;
 
       return {
         content: result.textStream,

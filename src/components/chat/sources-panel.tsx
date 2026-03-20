@@ -1,19 +1,14 @@
-"use client";
+'use client';
 
-import React from "react";
-import { FileText, ChevronRight, Highlighter } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { type Source, CitationCard } from "./citations";
+import { ChevronRight, FileText, Highlighter } from 'lucide-react';
+import React from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
+import { CitationCard, type Source } from './citations';
 
 interface SourcesPanelProps {
   sources: Source[];
@@ -44,10 +39,7 @@ export function SourcesPanel({
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent
-        side="right"
-        className={cn("w-full sm:max-w-md", className)}
-      >
+      <SheetContent side="right" className={cn('w-full sm:max-w-md', className)}>
         <SheetHeader className="space-y-2.5 pb-4">
           <SheetTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -69,8 +61,8 @@ export function SourcesPanel({
               {/* Summary */}
               <div className="rounded-lg bg-muted p-3">
                 <p className="text-sm text-muted-foreground">
-                  Found {sources.length} relevant passages from{" "}
-                  {Object.keys(groupedSources).length} documents
+                  Found {sources.length} relevant passages from {Object.keys(groupedSources).length}{' '}
+                  documents
                 </p>
               </div>
 
@@ -124,17 +116,15 @@ export function InlineSourcesPanel({
 }: InlineSourcesPanelProps) {
   if (isCollapsed) {
     return (
-      <div className={cn("border-l bg-muted/30 w-12 flex flex-col items-center py-4", className)}>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggle}
-          className="h-8 w-8"
-        >
+      <div className={cn('border-l bg-muted/30 w-12 flex flex-col items-center py-4', className)}>
+        <Button variant="ghost" size="icon" onClick={onToggle} className="h-8 w-8">
           <ChevronRight className="h-4 w-4" />
         </Button>
         {sources.length > 0 && (
-          <Badge variant="secondary" className="mt-2 text-[10px] h-5 w-5 p-0 flex items-center justify-center">
+          <Badge
+            variant="secondary"
+            className="mt-2 text-[10px] h-5 w-5 p-0 flex items-center justify-center"
+          >
             {sources.length}
           </Badge>
         )}
@@ -143,7 +133,7 @@ export function InlineSourcesPanel({
   }
 
   return (
-    <div className={cn("border-l bg-muted/30 w-80 flex flex-col", className)}>
+    <div className={cn('border-l bg-muted/30 w-80 flex flex-col', className)}>
       <div className="flex items-center justify-between border-b p-3">
         <h3 className="font-semibold flex items-center gap-2">
           <Highlighter className="h-4 w-4" />
@@ -157,9 +147,7 @@ export function InlineSourcesPanel({
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-3">
           {sources.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              No sources to display
-            </p>
+            <p className="text-sm text-muted-foreground text-center py-8">No sources to display</p>
           ) : (
             sources.map((source) => (
               <CitationCard

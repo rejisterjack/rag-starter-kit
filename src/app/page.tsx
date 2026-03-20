@@ -11,15 +11,15 @@ export default function HomePage(): React.ReactElement {
           <span className="block text-primary">Starter Kit</span>
         </h1>
         <p className="mb-8 text-lg text-muted-foreground sm:text-xl">
-          A production-ready, self-hosted RAG (Retrieval-Augmented Generation) chatbot
-          powered by Next.js 15, LangChain, and PostgreSQL pgvector.
+          A production-ready, self-hosted RAG (Retrieval-Augmented Generation) chatbot powered by
+          Next.js 15, LangChain, and PostgreSQL pgvector.
         </p>
         <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
           <Button asChild size="lg" className="min-w-[200px]">
             <Link href="/chat">Start Chatting</Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="min-w-[200px]">
-            <Link href="https://github.com/yourusername/rag-starter-kit">View on GitHub</Link>
+            <Link href="https://github.com/ragstarterkit/rag-starter-kit">View on GitHub</Link>
           </Button>
         </div>
 

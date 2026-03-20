@@ -252,3 +252,220 @@ export interface VectorSearchResult {
   section: string | null;
   similarity: number;
 }
+
+// =============================================================================
+// Web Speech API Types
+// =============================================================================
+
+/**
+ * Supported languages for speech recognition and synthesis
+ */
+export type SupportedLanguage =
+  | 'en-US'
+  | 'en-GB'
+  | 'en-AU'
+  | 'en-CA'
+  | 'en-IN'
+  | 'es-ES'
+  | 'es-MX'
+  | 'es-AR'
+  | 'fr-FR'
+  | 'fr-CA'
+  | 'de-DE'
+  | 'de-AT'
+  | 'de-CH'
+  | 'it-IT'
+  | 'pt-BR'
+  | 'pt-PT'
+  | 'nl-NL'
+  | 'pl-PL'
+  | 'ru-RU'
+  | 'ja-JP'
+  | 'ko-KR'
+  | 'zh-CN'
+  | 'zh-TW'
+  | 'zh-HK'
+  | 'ar-SA'
+  | 'ar-AE'
+  | 'ar-EG'
+  | 'hi-IN'
+  | 'th-TH'
+  | 'vi-VN'
+  | 'tr-TR'
+  | 'id-ID'
+  | 'auto';
+
+/**
+ * Speech recognition configuration options
+ */
+export interface SpeechRecognitionOptions {
+  /** Language code (e.g., 'en-US') */
+  language?: SupportedLanguage;
+  /** Enable continuous listening */
+  continuous?: boolean;
+  /** Return interim results */
+  interimResults?: boolean;
+  /** Maximum alternatives per result */
+  maxAlternatives?: number;
+  /** Enable automatic language detection */
+  autoDetectLanguage?: boolean;
+}
+
+/**
+ * Speech recognition error types
+ */
+export type SpeechRecognitionErrorType =
+  | 'no-speech'
+  | 'aborted'
+  | 'audio-capture'
+  | 'network'
+  | 'not-allowed'
+  | 'service-not-allowed'
+  | 'bad-grammar'
+  | 'language-not-supported'
+  | 'unknown';
+
+/**
+ * Speech recognition error
+ */
+export interface SpeechRecognitionError {
+  type: SpeechRecognitionErrorType;
+  message: string;
+}
+
+/**
+ * Speech recognition result alternative
+ */
+export interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+/**
+ * Speech recognition result
+ */
+export interface SpeechRecognitionResult {
+  isFinal: boolean;
+  alternatives: SpeechRecognitionAlternative[];
+  transcript: string;
+  confidence: number;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+/**
+ * Speech recognition result list
+ */
+export interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+/**
+ * Speech recognition event
+ */
+export interface SpeechRecognitionEvent {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+/**
+ * Speech recognition error event
+ */
+export interface SpeechRecognitionErrorEvent {
+  error: string;
+  message: string;
+}
+
+/**
+ * Speech recognition instance
+ */
+export interface SpeechRecognitionInstance {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onnomatch: (() => void) | null;
+  onaudiostart: (() => void) | null;
+  onaudioend: (() => void) | null;
+  onsoundstart: (() => void) | null;
+  onsoundend: (() => void) | null;
+  onspeechstart: (() => void) | null;
+  onspeechend: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
+/**
+ * Voice information for speech synthesis
+ */
+export interface TTSVoice {
+  voiceURI: string;
+  name: string;
+  lang: string;
+  localService: boolean;
+  default: boolean;
+  gender?: 'male' | 'female' | 'neutral';
+}
+
+/**
+ * Text-to-speech configuration options
+ */
+export interface TTSSynthesisOptions {
+  /** Voice to use for synthesis */
+  voice?: TTSVoice;
+  /** Speech rate (0.1 to 10, default 1) */
+  rate?: number;
+  /** Speech pitch (0 to 2, default 1) */
+  pitch?: number;
+  /** Speech volume (0 to 1, default 1) */
+  volume?: number;
+  /** Language code */
+  lang?: SupportedLanguage;
+}
+
+/**
+ * Voice command handler function
+ */
+export type VoiceCommandHandler = (args?: string) => void;
+
+/**
+ * Voice command definition
+ */
+export interface VoiceCommand {
+  /** Command identifier */
+  id: string;
+  /** Phrases that trigger this command */
+  phrases: string[];
+  /** Handler function */
+  handler: VoiceCommandHandler;
+  /** Whether command requires confirmation */
+  requiresConfirmation?: boolean;
+  /** Description for help/feedback */
+  description: string;
+}
+
+/**
+ * Audio level data for visualization
+ */
+export interface AudioLevelData {
+  /** Current volume level (0-1) */
+  level: number;
+  /** Frequency data for visualization */
+  frequencyData?: Uint8Array;
+  /** Whether audio is currently detected */
+  isSpeaking: boolean;
+}
+
+// Extend Window interface for Web Speech API
+declare global {
+  interface Window {
+    SpeechRecognition?: new () => SpeechRecognitionInstance;
+    webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+  }
+}

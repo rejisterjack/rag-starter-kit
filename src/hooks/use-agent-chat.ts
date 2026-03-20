@@ -4,10 +4,175 @@
 
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { useChat, type Message } from 'ai/react';
+import { useCallback, useRef, useState } from 'react';
 
-export type AgentState = 
+// Local type definition for Message to avoid external dependency
+interface Message {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  createdAt?: Date;
+}
+
+// Local implementation of useChat hook since 'ai/react' is not available
+interface UseChatOptions {
+  api: string;
+  body?: Record<string, unknown>;
+  onResponse?: (response: Response) => void;
+  onFinish?: () => void;
+  onError?: (error: Error) => void;
+}
+
+interface UseChatReturn {
+  messages: Message[];
+  input: string;
+  handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  handleSubmit: (e?: React.FormEvent) => void;
+  isLoading: boolean;
+  stop: () => void;
+  reload: () => void;
+  setMessages: (messages: Message[]) => void;
+  error: Error | null;
+}
+
+function useChat(options: UseChatOptions): UseChatReturn {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setInput(e.target.value);
+    },
+    []
+  );
+
+  const handleSubmit = useCallback(
+    async (e?: React.FormEvent) => {
+      e?.preventDefault();
+
+      if (!input.trim()) return;
+
+      const userMessage: Message = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: input,
+        createdAt: new Date(),
+      };
+
+      setMessages((prev) => [...prev, userMessage]);
+      setInput('');
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        abortControllerRef.current = new AbortController();
+
+        const response = await fetch(options.api, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: userMessage.content,
+            ...options.body,
+          }),
+          signal: abortControllerRef.current.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to send message');
+        }
+
+        options.onResponse?.(response);
+
+        // Handle streaming response
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('No response body');
+        }
+
+        const decoder = new TextDecoder();
+        let assistantContent = '';
+        const assistantMessageId = crypto.randomUUID();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          assistantContent += chunk;
+
+          setMessages((prev) => {
+            const existing = prev.find((m) => m.id === assistantMessageId);
+            if (existing) {
+              return prev.map((m) =>
+                m.id === assistantMessageId ? { ...m, content: assistantContent } : m
+              );
+            }
+            return [
+              ...prev,
+              {
+                id: assistantMessageId,
+                role: 'assistant',
+                content: assistantContent,
+                createdAt: new Date(),
+              },
+            ];
+          });
+        }
+
+        options.onFinish?.();
+      } catch (err) {
+        const errorInstance = err instanceof Error ? err : new Error(String(err));
+        setError(errorInstance);
+        options.onError?.(errorInstance);
+      } finally {
+        setIsLoading(false);
+        abortControllerRef.current = null;
+      }
+    },
+    [input, options]
+  );
+
+  const stop = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setIsLoading(false);
+  }, []);
+
+  const reload = useCallback(() => {
+    // Retry last message
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user');
+    if (lastUserMessage) {
+      // Remove last assistant message if exists
+      setMessages((prev) => {
+        const lastIndex = prev.length - 1;
+        if (prev[lastIndex]?.role === 'assistant') {
+          return prev.slice(0, lastIndex);
+        }
+        return prev;
+      });
+
+      // Resubmit
+      setInput(lastUserMessage.content);
+      setTimeout(() => handleSubmit(), 0);
+    }
+  }, [messages, handleSubmit]);
+
+  return {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    isLoading,
+    stop,
+    reload,
+    setMessages,
+    error,
+  };
+}
+
+export type AgentState =
   | 'idle'
   | 'classifying'
   | 'reasoning'
@@ -64,27 +229,43 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
   const [steps, setSteps] = useState<ReActStep[]>([]);
   const stepsRef = useRef<ReActStep[]>([]);
 
-  const handleStateChange = useCallback((state: AgentState) => {
-    setAgentState(state);
-    options.onStateChange?.(state);
-  }, [options]);
+  const handleStateChange = useCallback(
+    (state: AgentState) => {
+      setAgentState(state);
+      options.onStateChange?.(state);
+    },
+    [options]
+  );
 
-  const handleStep = useCallback((step: ReActStep) => {
-    stepsRef.current = [...stepsRef.current, step];
-    setSteps(stepsRef.current);
-    options.onStep?.(step);
-  }, [options]);
+  const handleStep = useCallback(
+    (step: ReActStep) => {
+      stepsRef.current = [...stepsRef.current, step];
+      setSteps(stepsRef.current);
+      options.onStep?.(step);
+    },
+    [options]
+  );
 
   // Use handleStep to avoid TS6133 error while keeping the callback available
   void handleStep;
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, stop, reload, setMessages, error } = useChat({
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    isLoading,
+    stop,
+    reload,
+    setMessages,
+    error,
+  } = useChat({
     api: '/api/chat/agent',
     body: {
       conversationId: options.conversationId,
       workspaceId: options.workspaceId,
     },
-    onResponse: (response) => {
+    onResponse: (response: Response) => {
       const strategy = response.headers.get('X-Strategy');
       if (strategy) {
         setCurrentStrategy(strategy);
@@ -99,12 +280,15 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
     },
   });
 
-  const wrappedHandleSubmit = useCallback((e?: React.FormEvent) => {
-    handleStateChange('classifying');
-    stepsRef.current = [];
-    setSteps([]);
-    handleSubmit(e);
-  }, [handleSubmit, handleStateChange]);
+  const wrappedHandleSubmit = useCallback(
+    (e?: React.FormEvent) => {
+      handleStateChange('classifying');
+      stepsRef.current = [];
+      setSteps([]);
+      handleSubmit(e);
+    },
+    [handleSubmit, handleStateChange]
+  );
 
   return {
     messages: messages as AgentMessage[],

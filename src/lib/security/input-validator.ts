@@ -108,7 +108,7 @@ export const updateWorkspaceSchema = z.object({
   name: z.string().min(1).max(100).transform(sanitizeString).optional(),
   description: z.string().max(500).transform(sanitizeString).optional().nullable(),
   avatar: z.string().url().max(500).optional().nullable(),
-  settings: z.record(z.unknown()).optional(),
+  settings: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type UpdateWorkspaceInput = z.infer<typeof updateWorkspaceSchema>;
@@ -134,7 +134,7 @@ export const createApiKeySchema = z.object({
   name: z.string().min(1).max(100).transform(sanitizeString),
   permissions: z.array(z.string()).min(1),
   expiresInDays: z.number().int().min(1).max(365).optional(),
-  allowedIps: z.array(z.string().ip()).max(10).optional(),
+  allowedIps: z.array(z.string().regex(/^(\d{1,3}\.){3}\d{1,3}$|^([0-9a-fA-F:]{2,})$/)).max(10).optional(),
   allowedEndpoints: z.array(z.string().max(200)).max(20).optional(),
 });
 
@@ -236,7 +236,7 @@ export function formatValidationErrors(error: z.ZodError): Array<{
   path: string;
   message: string;
 }> {
-  return error.errors.map((err) => ({
+  return error.issues.map((err) => ({
     path: err.path.join('.'),
     message: err.message,
   }));

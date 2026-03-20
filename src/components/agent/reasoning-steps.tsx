@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
 import {
+  Brain,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
-  Brain,
-  Wrench,
-  Eye,
-  CheckCircle2,
   Circle,
   Clock,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+  Eye,
+  Wrench,
+} from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 /** Represents a single step in the ReAct reasoning process */
 export interface ReasoningStep {
@@ -32,7 +32,7 @@ export interface ReasoningStep {
   /** Timestamp when the step was completed */
   timestamp?: Date;
   /** Current status of the step */
-  status?: "pending" | "thinking" | "acting" | "observing" | "completed" | "error";
+  status?: 'pending' | 'thinking' | 'acting' | 'observing' | 'completed' | 'error';
   /** Error message if the step failed */
   error?: string;
 }
@@ -86,7 +86,7 @@ export function ReasoningSteps({
   const collapseAll = () => setExpandedSteps(new Set());
 
   const content = (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn('space-y-3', className)}>
       {/* Header with expand/collapse all */}
       {collapsible && steps.length > 1 && (
         <div className="flex items-center justify-end gap-2">
@@ -131,7 +131,7 @@ export function ReasoningSteps({
             <Brain className="h-4 w-4 text-primary" />
             Reasoning Steps
             <Badge variant="secondary" className="ml-auto text-xs">
-              {steps.length} step{steps.length !== 1 ? "s" : ""}
+              {steps.length} step{steps.length !== 1 ? 's' : ''}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -164,20 +164,20 @@ function StepItem({
   isLast: _isLast,
   onClick,
 }: StepItemProps) {
-  const status = step.status || "completed";
+  const status = step.status || 'completed';
   const hasObservation = step.observation && step.observation.length > 0;
 
   const getStatusIcon = () => {
     switch (status) {
-      case "thinking":
+      case 'thinking':
         return <Brain className="h-3.5 w-3.5 text-blue-500 animate-pulse" />;
-      case "acting":
+      case 'acting':
         return <Wrench className="h-3.5 w-3.5 text-amber-500 animate-pulse" />;
-      case "observing":
+      case 'observing':
         return <Eye className="h-3.5 w-3.5 text-purple-500 animate-pulse" />;
-      case "completed":
+      case 'completed':
         return <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />;
-      case "error":
+      case 'error':
         return <Circle className="h-3.5 w-3.5 text-red-500" />;
       default:
         return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
@@ -186,28 +186,28 @@ function StepItem({
 
   const getStatusColor = () => {
     switch (status) {
-      case "thinking":
-        return "border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30";
-      case "acting":
-        return "border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/30";
-      case "observing":
-        return "border-purple-200 bg-purple-50/50 dark:border-purple-900 dark:bg-purple-950/30";
-      case "completed":
-        return "border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30";
-      case "error":
-        return "border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/30";
+      case 'thinking':
+        return 'border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30';
+      case 'acting':
+        return 'border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/30';
+      case 'observing':
+        return 'border-purple-200 bg-purple-50/50 dark:border-purple-900 dark:bg-purple-950/30';
+      case 'completed':
+        return 'border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30';
+      case 'error':
+        return 'border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/30';
       default:
-        return "border-muted bg-muted/30";
+        return 'border-muted bg-muted/30';
     }
   };
 
   return (
     <div
       className={cn(
-        "rounded-lg border transition-all",
+        'rounded-lg border transition-all',
         getStatusColor(),
-        collapsible && "cursor-pointer hover:border-primary/50",
-        isExpanded && "border-primary/50"
+        collapsible && 'cursor-pointer hover:border-primary/50',
+        isExpanded && 'border-primary/50'
       )}
       onClick={() => {
         onToggle();
@@ -227,7 +227,7 @@ function StepItem({
             Step {step.step}
           </Badge>
           <span className="truncate text-sm font-medium">
-            {step.action === "final_answer" ? "Final Answer" : formatActionName(step.action)}
+            {step.action === 'final_answer' ? 'Final Answer' : formatActionName(step.action)}
           </span>
         </div>
 
@@ -258,7 +258,7 @@ function StepItem({
             </div>
 
             {/* Action Input (if not final answer) */}
-            {step.action !== "final_answer" && Object.keys(step.actionInput).length > 0 && (
+            {step.action !== 'final_answer' && Object.keys(step.actionInput).length > 0 && (
               <div className="space-y-1">
                 <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Wrench className="h-3 w-3" />
@@ -304,11 +304,11 @@ function StepItem({
 }
 
 function formatActionName(action: string): string {
-  if (!action || action === "final_answer") return "Final Answer";
+  if (!action || action === 'final_answer') return 'Final Answer';
   return action
-    .split("_")
+    .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+    .join(' ');
 }
 
 /**
@@ -321,18 +321,18 @@ export function ReasoningStepsCompact({
   steps: ReasoningStep[];
   className?: string;
 }) {
-  const completedSteps = steps.filter((s) => s.status === "completed").length;
+  const completedSteps = steps.filter((s) => s.status === 'completed').length;
   const currentStep = steps.find(
-    (s) => s.status && ["thinking", "acting", "observing"].includes(s.status)
+    (s) => s.status && ['thinking', 'acting', 'observing'].includes(s.status)
   );
 
   return (
-    <div className={cn("flex items-center gap-2 text-xs text-muted-foreground", className)}>
+    <div className={cn('flex items-center gap-2 text-xs text-muted-foreground', className)}>
       <Brain className="h-3 w-3" />
       <span>
         {currentStep
           ? `Step ${currentStep.step}: ${formatActionName(currentStep.action)}`
-          : `${completedSteps} reasoning step${completedSteps !== 1 ? "s" : ""}`}
+          : `${completedSteps} reasoning step${completedSteps !== 1 ? 's' : ''}`}
       </span>
       {currentStep && (
         <span className="inline-flex gap-0.5">

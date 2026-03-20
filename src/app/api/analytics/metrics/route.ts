@@ -7,17 +7,15 @@
  */
 
 import { NextResponse } from 'next/server';
-
+import { type Granularity, getTimeSeriesData } from '@/lib/analytics/dashboard-service';
+import { logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
-
-import { checkPermission, Permission } from '@/lib/workspace/permissions';
 import {
+  addRateLimitHeaders,
   checkApiRateLimit,
   getRateLimitIdentifier,
-  addRateLimitHeaders,
 } from '@/lib/security/rate-limiter';
-import { getTimeSeriesData, type Granularity } from '@/lib/analytics/dashboard-service';
-import { logAuditEvent } from '@/lib/audit/audit-logger';
+import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // =============================================================================
 // GET Handler
@@ -30,10 +28,7 @@ export async function GET(req: Request) {
     // Step 1: Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -64,7 +59,7 @@ export async function GET(req: Request) {
 
     // Step 3: Parse query parameters
     const { searchParams } = new URL(req.url);
-    
+
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
     const granularityParam = (searchParams.get('granularity') as Granularity) ?? 'day';
@@ -99,7 +94,7 @@ export async function GET(req: Request) {
     const fromDate = new Date(fromParam);
     const toDate = new Date(toParam);
 
-    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
       return NextResponse.json(
         {
           error: 'Invalid date format',
@@ -145,7 +140,7 @@ export async function GET(req: Request) {
           details: {
             granularity: granularityParam,
             max: maxRanges[granularityParam],
-            unit: granularityParam + 's',
+            unit: `${granularityParam}s`,
           },
         },
         { status: 400 }
@@ -184,11 +179,7 @@ export async function GET(req: Request) {
       effectiveWorkspaceId = requestedWorkspaceId;
     } else if (userWorkspaceId) {
       // Use user's default workspace
-      const hasAccess = await checkPermission(
-        userId,
-        userWorkspaceId,
-        Permission.READ_API_USAGE
-      );
+      const hasAccess = await checkPermission(userId, userWorkspaceId, Permission.READ_API_USAGE);
 
       if (hasAccess) {
         effectiveWorkspaceId = userWorkspaceId;
@@ -241,8 +232,6 @@ export async function GET(req: Request) {
 
     return response;
   } catch (error) {
-    console.error('Analytics metrics error:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     return NextResponse.json(

@@ -1,33 +1,35 @@
 /**
  * Standalone WebSocket Server Script
- * 
+ *
  * This script can be used to run a standalone WebSocket server
  * for production deployments where WebSocket and HTTP are separate.
- * 
+ *
  * Usage:
  * ```bash
  * tsx scripts/websocket-server.ts
  * ```
  */
 
-import { createServer } from 'http';
+import { createServer } from 'node:http';
 import { initRealtimeServer, shutdownRealtimeServer } from '@/lib/realtime/server-init';
 
 const PORT = parseInt(process.env.WS_PORT || '3001', 10);
 const HOST = process.env.WS_HOST || '0.0.0.0';
 
-async function main() {
+async function main(): Promise<void> {
   console.log('Starting WebSocket server...');
 
   // Create a simple HTTP server (for health checks)
-  const httpServer = createServer((req, res) => {
+  const httpServer = createServer((req, res): void => {
     if (req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: 'healthy',
-        service: 'websocket',
-        timestamp: new Date().toISOString(),
-      }));
+      res.end(
+        JSON.stringify({
+          status: 'healthy',
+          service: 'websocket',
+          timestamp: new Date().toISOString(),
+        })
+      );
       return;
     }
 

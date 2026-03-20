@@ -1,22 +1,25 @@
-"use client";
+'use client';
 
 /**
  * Voice Transcript Panel Component
  * Shows interim and final transcripts with editing capability
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Mic, Edit2, Check, X, RotateCcw, Sparkles, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { AlertCircle, Check, Edit2, Mic, RotateCcw, Sparkles, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
-import { VoiceWaveform, PulsingDot } from './voice-waveform';
+import { cn } from '@/lib/utils';
 import type { SpeechRecognitionError } from '@/lib/voice';
+import { PulsingDot, VoiceWaveform } from './voice-waveform';
 
 interface VoiceTranscriptPanelProps {
+  /** Whether voice panel is open */
+  isOpen: boolean;
+  /** Callback when panel is closed */
+  onClose: () => void;
   /** Whether voice input is active */
   isListening: boolean;
   /** Final transcript text */
@@ -155,7 +158,7 @@ export function VoiceTranscriptPanel({
 
         <div className="flex items-center gap-2">
           {/* Confidence badge */}
-          {showConfidence && confidence !== null && confidence > 0 && (
+          {showConfidence && typeof confidence === 'number' && confidence > 0 && (
             <Badge variant="secondary" className="text-xs">
               {Math.round(confidence * 100)}% confidence
             </Badge>
@@ -166,12 +169,7 @@ export function VoiceTranscriptPanel({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={handleEditStart}
-                  >
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleEditStart}>
                     <Edit2 className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
@@ -187,12 +185,7 @@ export function VoiceTranscriptPanel({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={handleReset}
-                  >
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleReset}>
                     <RotateCcw className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
@@ -208,17 +201,12 @@ export function VoiceTranscriptPanel({
       {/* Waveform visualization */}
       {isListening && (
         <div className="mb-4">
-          <VoiceWaveform
-            isActive={isListening}
-            barCount={24}
-            height={48}
-            variant={error ? 'muted' : 'primary'}
-          />
+          <VoiceWaveform isActive={isListening} className="h-12" />
         </div>
       )}
 
       {/* Confidence bar */}
-      {showConfidence && confidence !== null && confidence > 0 && (
+      {showConfidence && typeof confidence === 'number' && confidence > 0 && (
         <div className="mb-3">
           <div className="flex justify-between text-xs text-muted-foreground mb-1">
             <span>Confidence</span>
@@ -296,10 +284,7 @@ export function VoiceTranscriptPanel({
           </Button>
         )}
         {onSend && (
-          <Button
-            onClick={handleSend}
-            disabled={!fullTranscript.trim() && !editedText.trim()}
-          >
+          <Button onClick={handleSend} disabled={!fullTranscript.trim() && !editedText.trim()}>
             <Check className="h-4 w-4 mr-1" />
             Send
           </Button>
@@ -394,9 +379,7 @@ export function TranscriptHistory({
 
   return (
     <div className={cn('space-y-2', className)}>
-      <h4 className="text-xs font-semibold uppercase text-muted-foreground">
-        Recent Transcripts
-      </h4>
+      <h4 className="text-xs font-semibold uppercase text-muted-foreground">Recent Transcripts</h4>
       <div className="space-y-1">
         {items.map((item) => (
           <div

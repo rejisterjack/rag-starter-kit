@@ -4,15 +4,12 @@
  * Broadcasts to all connected clients in a workspace
  */
 
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-
+import { NextResponse } from 'next/server';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
+import { isRedisConfigured } from '@/lib/realtime/presence';
 import { getRateLimiter } from '@/lib/security/rate-limiter';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
-import {
-  isRedisConfigured,
-} from '@/lib/realtime/presence';
 
 // =============================================================================
 // SSE Client Store
@@ -37,6 +34,10 @@ const sseClients = new Map<string, SSEClient>();
 // Cleanup interval for stale connections
 let cleanupInterval: NodeJS.Timeout | null = null;
 
+// Start cleanup interval immediately to prevent memory leaks
+// even before first client connects
+startCleanupInterval();
+
 function startCleanupInterval(): void {
   if (cleanupInterval) return;
 
@@ -46,14 +47,14 @@ function startCleanupInterval(): void {
 
     for (const [clientId, client] of sseClients.entries()) {
       if (now - client.lastPing > staleTimeout) {
+        try {
+          // Close the connection gracefully
+          client.controller.close();
+        } catch {
+          // Connection may already be closed
+        }
         sseClients.delete(clientId);
       }
-    }
-
-    // Stop interval if no more clients
-    if (sseClients.size === 0 && cleanupInterval) {
-      clearInterval(cleanupInterval);
-      cleanupInterval = null;
     }
   }, 30000);
 }
@@ -69,7 +70,7 @@ function stopCleanupInterval(): void {
 // Event Types
 // =============================================================================
 
-const enum RealtimeEventType {
+enum RealtimeEventType {
   // Connection events
   CONNECTED = 'connected',
   DISCONNECTED = 'disconnected',
@@ -513,8 +514,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         'X-Accel-Buffering': 'no', // Disable nginx buffering
       },
     });
-  } catch (error) {
-    console.error('SSE connection error:', error);
+  } catch (_error) {
     return NextResponse.json(
       {
         success: false,
@@ -539,8 +539,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const internalSecret = req.headers.get('x-internal-secret');
 
     const isAuthorized =
-      apiKey === process.env.INTERNAL_API_KEY ||
-      internalSecret === process.env.INTERNAL_SECRET;
+      apiKey === process.env.INTERNAL_API_KEY || internalSecret === process.env.INTERNAL_SECRET;
 
     if (!isAuthorized) {
       return NextResponse.json(
@@ -585,12 +584,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             }
           }
         }
-        broadcastToWorkspace(
-          targetId,
-          eventType as RealtimeEventType,
-          data || {},
-          excludeClientId
-        );
+        broadcastToWorkspace(targetId, eventType as RealtimeEventType, data || {}, excludeClientId);
 
         // Count affected clients
         for (const client of sseClients.values()) {
@@ -632,12 +626,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             }
           }
         }
-        broadcastToDocument(
-          targetId,
-          eventType as RealtimeEventType,
-          data || {},
-          excludeClientId
-        );
+        broadcastToDocument(targetId, eventType as RealtimeEventType, data || {}, excludeClientId);
 
         for (const client of sseClients.values()) {
           if (client.documentId === targetId) clientCount++;
@@ -674,8 +663,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         clientCount,
       },
     });
-  } catch (error) {
-    console.error('SSE broadcast error:', error);
+  } catch (_error) {
     return NextResponse.json(
       {
         success: false,

@@ -1,8 +1,10 @@
 'use client';
 
+import { AlertTriangle, Check, Copy, Key } from 'lucide-react';
 import { useState } from 'react';
-import { Copy, Check, Key, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -11,10 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 
 import {
   Select,
@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Textarea } from '@/components/ui/textarea';
 import { PermissionsSelector } from './permissions-selector';
 
 interface CreateKeyDialogProps {
@@ -44,15 +44,14 @@ const EXPIRATION_OPTIONS = [
   { value: '1year', label: '1 year', days: 365 },
 ];
 
-export function CreateKeyDialog({
-  open,
-  onOpenChange,
-  onCreate,
-}: CreateKeyDialogProps) {
+export function CreateKeyDialog({ open, onOpenChange, onCreate }: CreateKeyDialogProps) {
   const [step, setStep] = useState<'form' | 'result'>('form');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['chat:read', 'chat:write']);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
+    'chat:read',
+    'chat:write',
+  ]);
   const [expiration, setExpiration] = useState('never');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdKey, setCreatedKey] = useState<{ key: string; keyId: string } | null>(null);
@@ -76,7 +75,7 @@ export function CreateKeyDialog({
       setCreatedKey(result);
       setStep('result');
       toast.success('API key created successfully');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to create API key');
     } finally {
       setIsSubmitting(false);
@@ -203,11 +202,7 @@ export function CreateKeyDialog({
                   className="absolute right-2 top-2"
                   onClick={handleCopy}
                 >
-                  {copied ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
             </div>

@@ -1,6 +1,6 @@
 /**
  * Workspace Components
- * 
+ *
  * Workspace management and configuration UI components.
  */
 

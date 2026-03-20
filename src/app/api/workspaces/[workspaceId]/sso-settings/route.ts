@@ -1,19 +1,18 @@
 /**
  * Workspace SSO Settings API
- * 
+ *
  * Manage workspace-level SSO settings like domain, force SSO,
  * JIT provisioning, and default roles.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
+import { invalidateDomainCache } from '@/lib/auth/domain-routing';
+import { WorkspaceSSOSettingsSchema } from '@/lib/auth/saml/config';
 import { prisma } from '@/lib/db';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
-import { logAuditEvent, AuditEvent } from '@/lib/audit/audit-logger';
-import { WorkspaceSSOSettingsSchema } from '@/lib/auth/saml/config';
-import { invalidateDomainCache } from '@/lib/auth/domain-routing';
 
 // =============================================================================
 // GET - Retrieve SSO settings
@@ -28,10 +27,7 @@ export async function GET(
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     // Check permission
@@ -42,10 +38,7 @@ export async function GET(
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: 'Permission denied' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 
     // Get workspace
@@ -54,10 +47,7 @@ export async function GET(
     });
 
     if (!workspace) {
-      return NextResponse.json(
-        { error: 'Workspace not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
     }
 
     // Parse settings
@@ -73,12 +63,8 @@ export async function GET(
       allowAccountLinking: settings.allowAccountLinking !== false,
       sessionDuration: (settings.sessionDuration as number) || 8,
     });
-  } catch (error) {
-    console.error('Failed to get SSO settings:', error);
-    return NextResponse.json(
-      { error: 'Failed to retrieve SSO settings' },
-      { status: 500 }
-    );
+  } catch (_error) {
+    return NextResponse.json({ error: 'Failed to retrieve SSO settings' }, { status: 500 });
   }
 }
 
@@ -95,10 +81,7 @@ export async function PUT(
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     const hasPermission = await checkPermission(
@@ -108,10 +91,7 @@ export async function PUT(
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: 'Permission denied' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -134,10 +114,7 @@ export async function PUT(
     });
 
     if (!workspace) {
-      return NextResponse.json(
-        { error: 'Workspace not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
     }
 
     // Check if domain is being changed
@@ -221,8 +198,6 @@ export async function PUT(
       },
     });
   } catch (error) {
-    console.error('Failed to update SSO settings:', error);
-
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation failed', details: error.format() },
@@ -230,9 +205,6 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json(
-      { error: 'Failed to update SSO settings' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to update SSO settings' }, { status: 500 });
   }
 }

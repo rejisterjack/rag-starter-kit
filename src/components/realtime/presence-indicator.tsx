@@ -6,16 +6,11 @@
 'use client';
 
 import React from 'react';
-import { cn } from '@/lib/utils';
-import type { RoomMember, UserInfo } from '@/lib/realtime/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { RoomMember, UserInfo } from '@/lib/realtime/types';
+import { cn } from '@/lib/utils';
 
 // =============================================================================
 // Types
@@ -52,7 +47,7 @@ interface PresenceStatusIndicatorProps {
 function getInitials(name: string): string {
   return name
     .split(' ')
-    .map(n => n[0])
+    .map((n) => n[0])
     .join('')
     .toUpperCase()
     .slice(0, 2);
@@ -130,10 +125,7 @@ export const UserPresenceBadge: React.FC<UserPresenceBadgeProps> = ({
         </AvatarFallback>
       </Avatar>
       {showStatus && (
-        <PresenceStatusIndicator 
-          status={isOnline ? 'online' : 'offline'} 
-          size={size} 
-        />
+        <PresenceStatusIndicator status={isOnline ? 'online' : 'offline'} size={size} />
       )}
     </div>
   );
@@ -161,7 +153,7 @@ const AvatarStack: React.FC<AvatarStackProps> = ({
   // Filter out current user and sort by recent activity
   const otherUsers = React.useMemo(() => {
     return users
-      .filter(u => u.user.id !== currentUserId)
+      .filter((u) => u.user.id !== currentUserId)
       .sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime());
   }, [users, currentUserId]);
 
@@ -177,8 +169,8 @@ const AvatarStack: React.FC<AvatarStackProps> = ({
   return (
     <div className="flex -space-x-2">
       {displayUsers.map((member, index) => (
-        <div 
-          key={member.user.id} 
+        <div
+          key={member.user.id}
           className="relative"
           style={{ zIndex: displayUsers.length - index }}
         >
@@ -189,10 +181,7 @@ const AvatarStack: React.FC<AvatarStackProps> = ({
             </AvatarFallback>
           </Avatar>
           {showStatus && (
-            <PresenceStatusIndicator 
-              status="online" 
-              size={size === 'sm' ? 'sm' : 'md'} 
-            />
+            <PresenceStatusIndicator status="online" size={size === 'sm' ? 'sm' : 'md'} />
           )}
         </div>
       ))}
@@ -224,7 +213,7 @@ export const PresenceIndicator: React.FC<PresenceIndicatorProps> = ({
   className,
 }) => {
   const onlineCount = users.length;
-  const otherUsers = users.filter(u => u.user.id !== currentUserId);
+  const otherUsers = users.filter((u) => u.user.id !== currentUserId);
 
   const content = (
     <div className={cn('flex items-center gap-2', className)}>
@@ -235,13 +224,10 @@ export const PresenceIndicator: React.FC<PresenceIndicatorProps> = ({
         showStatus={showStatusIndicator}
         size={size}
       />
-      
+
       {onlineCount > 0 && (
         <Badge variant="secondary" className="text-xs font-normal">
-          {onlineCount === 1 
-            ? '1 online' 
-            : `${onlineCount} online`
-          }
+          {onlineCount === 1 ? '1 online' : `${onlineCount} online`}
         </Badge>
       )}
     </div>
@@ -253,10 +239,8 @@ export const PresenceIndicator: React.FC<PresenceIndicatorProps> = ({
 
   const tooltipContent = (
     <div className="space-y-1">
-      <p className="text-xs font-medium text-muted-foreground">
-        Currently viewing:
-      </p>
-      {otherUsers.map(member => (
+      <p className="text-xs font-medium text-muted-foreground">Currently viewing:</p>
+      {otherUsers.map((member) => (
         <div key={member.user.id} className="flex items-center gap-2">
           <div className="h-2 w-2 rounded-full bg-green-500" />
           <span className="text-sm">{member.user.name}</span>
@@ -268,9 +252,7 @@ export const PresenceIndicator: React.FC<PresenceIndicatorProps> = ({
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>
-          {content}
-        </TooltipTrigger>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
         <TooltipContent side="bottom" align="start">
           {tooltipContent}
         </TooltipContent>
@@ -294,8 +276,8 @@ export const CompactPresenceIndicator: React.FC<CompactPresenceIndicatorProps> =
   currentUserId,
   className,
 }) => {
-  const otherUsers = users.filter(u => u.user.id !== currentUserId);
-  
+  const otherUsers = users.filter((u) => u.user.id !== currentUserId);
+
   if (otherUsers.length === 0) return null;
 
   return (
@@ -305,10 +287,9 @@ export const CompactPresenceIndicator: React.FC<CompactPresenceIndicatorProps> =
         <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
       </span>
       <span>
-        {otherUsers.length === 1 
-          ? `${otherUsers[0].user.name} is viewing` 
-          : `${otherUsers.length} people viewing`
-        }
+        {otherUsers.length === 1
+          ? `${otherUsers[0].user.name} is viewing`
+          : `${otherUsers.length} people viewing`}
       </span>
     </div>
   );
@@ -343,8 +324,8 @@ export const PresenceList: React.FC<PresenceListProps> = ({
 
   return (
     <div className={cn('space-y-1', className)}>
-      {sortedUsers.map(member => (
-        <div 
+      {sortedUsers.map((member) => (
+        <div
           key={member.user.id}
           className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50"
         >
@@ -357,7 +338,7 @@ export const PresenceList: React.FC<PresenceListProps> = ({
             </Avatar>
             <PresenceStatusIndicator status="online" size="sm" />
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">
               {member.user.name}
@@ -366,7 +347,7 @@ export const PresenceList: React.FC<PresenceListProps> = ({
               )}
             </p>
           </div>
-          
+
           {showLastActive && (
             <span className="text-xs text-muted-foreground">
               {getRelativeTime(member.lastActivity)}

@@ -1,35 +1,19 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
 import {
+  Check,
+  ChevronDown,
+  Edit3,
   GitBranch,
   GitCompare,
-  Edit3,
-  Sparkles,
-  ChevronDown,
-  Plus,
   ListTree,
-  Check,
-  X
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuCheckboxItem,
-} from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Plus,
+  Sparkles,
+  X,
+} from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -37,11 +21,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import type { ConversationBranch } from "@/hooks/use-conversation-branch";
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { ConversationBranch } from '@/hooks/use-conversation-branch';
+import { cn } from '@/lib/utils';
 
 // =============================================================================
 // Types
@@ -55,7 +50,11 @@ interface BranchActionsProps {
   isEditing?: boolean;
   comparisonMode?: boolean;
   onCreateBranch?: (messageId: string, branchName?: string) => Promise<string | null>;
-  onEditMessage?: (messageId: string, newContent: string, options?: { regenerateResponse?: boolean }) => Promise<string | null>;
+  onEditMessage?: (
+    messageId: string,
+    newContent: string,
+    options?: { regenerateResponse?: boolean }
+  ) => Promise<string | null>;
   onToggleComparisonMode?: () => void;
   onSelectBranchForCompare?: (branchId: string, slot: 0 | 1) => void;
   onShowBranchTree?: () => void;
@@ -82,8 +81,8 @@ export function BranchActions({
 }: BranchActionsProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [branchName, setBranchName] = useState("");
-  const [editedContent, setEditedContent] = useState("");
+  const [branchName, setBranchName] = useState('');
+  const [editedContent, setEditedContent] = useState('');
   const [regenerateResponse, setRegenerateResponse] = useState(true);
 
   const activeBranch = branches.find((b) => b.id === activeBranchId);
@@ -93,7 +92,7 @@ export function BranchActions({
     if (currentMessageId && onCreateBranch) {
       await onCreateBranch(currentMessageId, branchName.trim() || undefined);
       setIsCreateDialogOpen(false);
-      setBranchName("");
+      setBranchName('');
     }
   };
 
@@ -101,12 +100,12 @@ export function BranchActions({
     if (currentMessageId && onEditMessage) {
       await onEditMessage(currentMessageId, editedContent, { regenerateResponse });
       setIsEditDialogOpen(false);
-      setEditedContent("");
+      setEditedContent('');
     }
   };
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn('flex items-center gap-2', className)}>
       <TooltipProvider>
         {/* Create Branch Button */}
         {currentMessageId && onCreateBranch && (
@@ -163,12 +162,9 @@ export function BranchActions({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant={comparisonMode ? "secondary" : "ghost"}
+                variant={comparisonMode ? 'secondary' : 'ghost'}
                 size="sm"
-                className={cn(
-                  "gap-1.5 h-8",
-                  comparisonMode && "ring-2 ring-primary ring-offset-1"
-                )}
+                className={cn('gap-1.5 h-8', comparisonMode && 'ring-2 ring-primary ring-offset-1')}
                 onClick={onToggleComparisonMode}
               >
                 <GitCompare className="h-4 w-4" />
@@ -193,7 +189,7 @@ export function BranchActions({
               <Button variant="ghost" size="sm" className="gap-1.5 h-8">
                 <ListTree className="h-4 w-4" />
                 <span className="hidden sm:inline max-w-[100px] truncate">
-                  {activeBranch?.name ?? "Select branch"}
+                  {activeBranch?.name ?? 'Select branch'}
                 </span>
                 <ChevronDown className="h-3 w-3" />
               </Button>
@@ -205,8 +201,8 @@ export function BranchActions({
                 <DropdownMenuItem
                   key={branch.id}
                   className={cn(
-                    "flex items-center justify-between",
-                    branch.id === activeBranchId && "bg-accent"
+                    'flex items-center justify-between',
+                    branch.id === activeBranchId && 'bg-accent'
                   )}
                   onClick={() => onSelectBranchForCompare?.(branch.id, 0)}
                 >
@@ -240,7 +236,7 @@ export function BranchActions({
               Create New Branch
             </DialogTitle>
             <DialogDescription>
-              Create a new conversation branch starting from this message. The new branch will 
+              Create a new conversation branch starting from this message. The new branch will
               include this message and all messages after it.
             </DialogDescription>
           </DialogHeader>
@@ -313,9 +309,7 @@ export function BranchActions({
                   Regenerate AI response
                 </Label>
               </div>
-              {regenerateResponse && (
-                <Sparkles className="h-4 w-4 text-yellow-500" />
-              )}
+              {regenerateResponse && <Sparkles className="h-4 w-4 text-yellow-500" />}
             </div>
           </div>
           <DialogFooter>
@@ -376,7 +370,7 @@ export function BranchComparisonSelector({
             <X className="h-4 w-4" />
           </Button>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-4 mb-4">
           {/* Branch A Selector */}
           <div className="space-y-2">
@@ -385,7 +379,7 @@ export function BranchComparisonSelector({
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="w-full justify-between">
                   <span className="truncate">
-                    {branchA ? branches.find((b) => b.id === branchA)?.name : "Select branch..."}
+                    {branchA ? branches.find((b) => b.id === branchA)?.name : 'Select branch...'}
                   </span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
@@ -412,7 +406,7 @@ export function BranchComparisonSelector({
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="w-full justify-between">
                   <span className="truncate">
-                    {branchB ? branches.find((b) => b.id === branchB)?.name : "Select branch..."}
+                    {branchB ? branches.find((b) => b.id === branchB)?.name : 'Select branch...'}
                   </span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>

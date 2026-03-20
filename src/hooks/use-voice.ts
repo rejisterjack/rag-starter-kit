@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
 /**
  * Voice React Hooks
  * Provides useVoiceInput, useVoiceOutput, and useVoiceCommands hooks
  */
 
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  SpeechService,
+  type AudioLevelData,
   getSpeechService,
   isSpeechRecognitionSupported,
   isSpeechSynthesisSupported,
-  type SpeechRecognitionOptions,
   type SpeechRecognitionError,
-  type TTSVoice,
+  type SpeechRecognitionOptions,
+  type SpeechService,
   type TTSSynthesisOptions,
-  type VoiceCommand,
-  type AudioLevelData,
+  type TTSVoice,
+  type UseVoiceCommandsReturn,
   type UseVoiceInputReturn,
   type UseVoiceOutputReturn,
-  type UseVoiceCommandsReturn,
+  type VoiceCommand,
 } from '@/lib/voice';
 
 // =============================================================================
@@ -57,7 +57,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
   const [interimTranscript, setInterimTranscript] = useState('');
   const [error, setError] = useState<SpeechRecognitionError | null>(null);
   const [confidence, setConfidence] = useState<number | null>(null);
-  
+
   const serviceRef = useRef<SpeechService | null>(null);
   const unsubscribeRef = useRef<(() => void)[]>([]);
 
@@ -97,7 +97,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
 
       setTranscript(result.fullTranscript);
       setInterimTranscript(result.interimTranscript);
-      
+
       if (result.confidence !== null) {
         setConfidence(result.confidence);
       }
@@ -124,7 +124,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     }
 
     return () => {
-      unsubscribeRef.current.forEach(unsub => unsub());
+      unsubscribeRef.current.forEach((unsub) => unsub());
       service.stopListening();
     };
   }, []);
@@ -254,13 +254,13 @@ export function useVoiceOutput(options: UseVoiceOutputOptions = {}): UseVoiceOut
 
       // Set default voice
       if (optionsRef.current.defaultVoice) {
-        const voice = availableVoices.find(v => v.voiceURI === optionsRef.current.defaultVoice);
+        const voice = availableVoices.find((v) => v.voiceURI === optionsRef.current.defaultVoice);
         if (voice) {
           setCurrentVoiceState(voice);
         }
       } else {
         // Try to find a good default voice for the current language
-        const defaultVoice = availableVoices.find(v => v.default) || availableVoices[0];
+        const defaultVoice = availableVoices.find((v) => v.default) || availableVoices[0];
         if (defaultVoice) {
           setCurrentVoiceState(defaultVoice);
         }
@@ -269,7 +269,7 @@ export function useVoiceOutput(options: UseVoiceOutputOptions = {}): UseVoiceOut
 
     // Load voices immediately and when they change
     loadVoices();
-    
+
     if (window.speechSynthesis) {
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
@@ -317,7 +317,7 @@ export function useVoiceOutput(options: UseVoiceOutputOptions = {}): UseVoiceOut
     ];
 
     return () => {
-      unsubscribeRef.current.forEach(unsub => unsub());
+      unsubscribeRef.current.forEach((unsub) => unsub());
       if (window.speechSynthesis) {
         window.speechSynthesis.onvoiceschanged = null;
       }
@@ -325,17 +325,20 @@ export function useVoiceOutput(options: UseVoiceOutputOptions = {}): UseVoiceOut
     };
   }, [isSupported, onSpeakingStart, onSpeakingEnd, onError, onBoundary]);
 
-  const speak = useCallback((text: string, speakOptions: Partial<TTSSynthesisOptions> = {}) => {
-    if (!serviceRef.current) return;
+  const speak = useCallback(
+    (text: string, speakOptions: Partial<TTSSynthesisOptions> = {}) => {
+      if (!serviceRef.current) return;
 
-    serviceRef.current.speak(text, {
-      voice: speakOptions.voice || currentVoice || undefined,
-      rate: speakOptions.rate ?? rate,
-      pitch: speakOptions.pitch ?? pitch,
-      volume: speakOptions.volume ?? optionsRef.current.defaultVolume,
-      lang: speakOptions.lang,
-    });
-  }, [currentVoice, rate, pitch]);
+      serviceRef.current.speak(text, {
+        voice: speakOptions.voice || currentVoice || undefined,
+        rate: speakOptions.rate ?? rate,
+        pitch: speakOptions.pitch ?? pitch,
+        volume: speakOptions.volume ?? optionsRef.current.defaultVolume,
+        lang: speakOptions.lang,
+      });
+    },
+    [currentVoice, rate, pitch]
+  );
 
   const cancel = useCallback(() => {
     if (serviceRef.current) {
@@ -355,12 +358,15 @@ export function useVoiceOutput(options: UseVoiceOutputOptions = {}): UseVoiceOut
     }
   }, []);
 
-  const setVoice = useCallback((voiceURI: string) => {
-    const voice = voices.find(v => v.voiceURI === voiceURI);
-    if (voice) {
-      setCurrentVoiceState(voice);
-    }
-  }, [voices]);
+  const setVoice = useCallback(
+    (voiceURI: string) => {
+      const voice = voices.find((v) => v.voiceURI === voiceURI);
+      if (voice) {
+        setCurrentVoiceState(voice);
+      }
+    },
+    [voices]
+  );
 
   const setRate = useCallback((newRate: number) => {
     setRateState(Math.max(0.1, Math.min(10, newRate)));
@@ -405,7 +411,7 @@ export function useVoiceCommands(options: UseVoiceCommandsOptions = {}): UseVoic
   const [commands, setCommands] = useState<VoiceCommand[]>([]);
   const [lastCommand, setLastCommand] = useState<string | null>(null);
   const [isEnabled, setIsEnabled] = useState(initialEnabled);
-  
+
   const serviceRef = useRef<SpeechService | null>(null);
   const handlersRef = useRef<Map<string, (args?: string) => void>>(new Map());
 
@@ -415,7 +421,7 @@ export function useVoiceCommands(options: UseVoiceCommandsOptions = {}): UseVoic
     serviceRef.current = service;
 
     // Register initial commands
-    initialCommands.forEach(cmd => {
+    initialCommands.forEach((cmd) => {
       handlersRef.current.set(cmd.id, cmd.handler);
       service.registerCommand({
         ...cmd,
@@ -438,34 +444,37 @@ export function useVoiceCommands(options: UseVoiceCommandsOptions = {}): UseVoic
     };
   }, []);
 
-  const registerCommand = useCallback((command: Omit<VoiceCommand, 'handler'> & { handler: (args?: string) => void }) => {
-    if (!serviceRef.current) return;
+  const registerCommand = useCallback(
+    (command: Omit<VoiceCommand, 'handler'> & { handler: (args?: string) => void }) => {
+      if (!serviceRef.current) return;
 
-    // Store handler reference
-    handlersRef.current.set(command.id, command.handler);
+      // Store handler reference
+      handlersRef.current.set(command.id, command.handler);
 
-    // Create wrapper that checks if enabled
-    const wrapperHandler = (args?: string) => {
-      if (isEnabled) {
-        command.handler(args);
-      }
-    };
+      // Create wrapper that checks if enabled
+      const wrapperHandler = (args?: string) => {
+        if (isEnabled) {
+          command.handler(args);
+        }
+      };
 
-    const voiceCommand: VoiceCommand = {
-      ...command,
-      handler: wrapperHandler,
-    };
+      const voiceCommand: VoiceCommand = {
+        ...command,
+        handler: wrapperHandler,
+      };
 
-    serviceRef.current.registerCommand(voiceCommand);
-    setCommands(prev => [...prev.filter(c => c.id !== command.id), voiceCommand]);
-  }, [isEnabled]);
+      serviceRef.current.registerCommand(voiceCommand);
+      setCommands((prev) => [...prev.filter((c) => c.id !== command.id), voiceCommand]);
+    },
+    [isEnabled]
+  );
 
   const unregisterCommand = useCallback((id: string) => {
     if (!serviceRef.current) return;
 
     serviceRef.current.unregisterCommand(id);
     handlersRef.current.delete(id);
-    setCommands(prev => prev.filter(c => c.id !== id));
+    setCommands((prev) => prev.filter((c) => c.id !== id));
   }, []);
 
   const setEnabled = useCallback((enabled: boolean) => {
@@ -477,10 +486,12 @@ export function useVoiceCommands(options: UseVoiceCommandsOptions = {}): UseVoic
       return 'No voice commands registered.';
     }
 
-    return commands.map(cmd => {
-      const phrases = cmd.phrases.map(p => `"${p}"`).join(', ');
-      return `${cmd.description}: Say ${phrases}`;
-    }).join('\n');
+    return commands
+      .map((cmd) => {
+        const phrases = cmd.phrases.map((p) => `"${p}"`).join(', ');
+        return `${cmd.description}: Say ${phrases}`;
+      })
+      .join('\n');
   }, [commands]);
 
   return {
@@ -511,7 +522,7 @@ export function useAudioLevel(enabled: boolean = true): UseAudioLevelReturn {
   const [level, setLevel] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [frequencyData, setFrequencyData] = useState<Uint8Array | null>(null);
-  
+
   const serviceRef = useRef<SpeechService | null>(null);
 
   useEffect(() => {
@@ -542,9 +553,3 @@ export function useAudioLevel(enabled: boolean = true): UseAudioLevelReturn {
     frequencyData,
   };
 }
-
-// =============================================================================
-// Re-exports
-// =============================================================================
-
-export { useVoiceInput, useVoiceOutput, useVoiceCommands, useAudioLevel };

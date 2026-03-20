@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { ReactNode, useEffect } from "react";
-import { InstallPrompt, UpdateToast, OfflineIndicator } from "@/components/pwa";
-import { useServiceWorker, usePWA } from "@/hooks/use-pwa";
+import { type ReactNode, useEffect } from 'react';
+import { InstallPrompt, OfflineIndicator, UpdateToast } from '@/components/pwa';
+import { usePWA, useServiceWorker } from '@/hooks/use-pwa';
 
 /**
  * PWA Provider Props
@@ -22,7 +22,7 @@ interface PWAProviderProps {
 /**
  * PWA Provider Component
  * Wraps the application with PWA-related UI components and functionality
- * 
+ *
  * @example
  * ```tsx
  * <PWAProvider
@@ -46,9 +46,12 @@ export function PWAProvider({
 
   // Check for updates periodically
   useEffect(() => {
-    const checkInterval = setInterval(() => {
-      checkForUpdate();
-    }, 60 * 60 * 1000); // Check every hour
+    const checkInterval = setInterval(
+      () => {
+        checkForUpdate();
+      },
+      60 * 60 * 1000
+    ); // Check every hour
 
     return () => clearInterval(checkInterval);
   }, [checkForUpdate]);
@@ -58,17 +61,13 @@ export function PWAProvider({
       {children}
 
       {/* Install Prompt */}
-      {showInstallPrompt && !isInstalled && (
-        <InstallPrompt delay={installPromptDelay} />
-      )}
+      {showInstallPrompt && !isInstalled && <InstallPrompt delay={installPromptDelay} />}
 
       {/* Update Toast */}
       {showUpdateToast && <UpdateToast checkOnMount={true} />}
 
       {/* Offline Indicator */}
-      {showOfflineIndicator && (
-        <OfflineIndicator variant="toast" position="bottom" />
-      )}
+      {showOfflineIndicator && <OfflineIndicator variant="toast" position="bottom" />}
     </>
   );
 }

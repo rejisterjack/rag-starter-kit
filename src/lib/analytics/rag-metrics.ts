@@ -85,10 +85,9 @@ export async function trackRAGMetrics(event: RAGEvent): Promise<void> {
         conversationId: event.conversationId,
         workspaceId: event.workspaceId,
         userId: event.userId,
-        responseLength: event.response.length,
+        // responseLength field not in schema
         latencyMs: event.latencyMs,
-        promptTokens: event.tokenUsage.prompt,
-        completionTokens: event.tokenUsage.completion,
+        // Token fields not in schema - using totalTokens only
         totalTokens: event.tokenUsage.total,
         model: event.model,
         queryType: event.queryType ?? 'retrieve',

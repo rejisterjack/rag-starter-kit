@@ -4,7 +4,6 @@
  */
 
 import type { LLMProvider, LLMOptions, LLMMessage, LLMResponse, LLMError } from '@/lib/ai/llm';
-import { RateLimitError, ModelUnavailableError } from '@/lib/ai/llm';
 import { RAGChain, type RAGChainParams, type RAGResponse, type StreamEvent } from './chain';
 
 // =============================================================================
@@ -225,14 +224,17 @@ export class ResilientRAGChain extends RAGChain {
   // =============================================================================
 
   private isRetryableError(error: unknown): boolean {
-    if (error instanceof RateLimitError) {
-      return true;
-    }
-    if (error instanceof ModelUnavailableError) {
-      return true;
-    }
     if (error instanceof Error) {
       const message = error.message.toLowerCase();
+      // Check for rate limit or model unavailable errors by message patterns
+      if (
+        message.includes('rate limit') ||
+        message.includes('rate_limit') ||
+        message.includes('model unavailable') ||
+        message.includes('model_unavailable')
+      ) {
+        return true;
+      }
       return (
         message.includes('timeout') ||
         message.includes('network') ||
@@ -352,7 +354,6 @@ export async function withRetry<T>(
 export class FallbackLLMProvider implements LLMProvider {
   private currentProviderIndex = 0;
 
-
   constructor(
     private providers: LLMProvider[],
     config?: { maxRetriesPerProvider?: number; switchOnError?: boolean }
@@ -360,7 +361,8 @@ export class FallbackLLMProvider implements LLMProvider {
     if (providers.length === 0) {
       throw new Error('At least one provider is required');
     }
-    this._config = config ?? {};
+    // Store config to be used in future enhancements
+    void config;
   }
 
   async generate(

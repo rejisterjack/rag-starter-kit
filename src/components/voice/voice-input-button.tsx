@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { Mic, MicOff, Loader2, Send, X } from 'lucide-react';
+import { Loader2, Mic, MicOff, Send, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
+import { cn } from '@/lib/utils';
 import { VoiceWaveform } from './voice-waveform';
 
 interface VoiceInputButtonProps {
@@ -24,7 +24,7 @@ export function VoiceInputButton({
   className,
 }: VoiceInputButtonProps) {
   const [showConfirm, setShowConfirm] = useState(false);
-  
+
   const {
     state,
     transcript,
@@ -37,11 +37,8 @@ export function VoiceInputButton({
     setLanguage,
   } = useSpeechRecognition({
     language,
-    onResult: (_, isFinal) => {
-      if (isFinal && confidence > 0.7) {
-        // Auto-send if high confidence
-        // onTranscript(text);
-      }
+    onResult: (_text: string, _isFinal: boolean) => {
+      // Result handling is done in the main component
     },
     onError: () => {
       setShowConfirm(false);
@@ -60,8 +57,6 @@ export function VoiceInputButton({
     setShowConfirm(true);
     startListening();
   }, [resetTranscript, startListening]);
-
-
 
   const handleCancel = useCallback(() => {
     stopListening();
@@ -85,23 +80,23 @@ export function VoiceInputButton({
   // Show confirmation UI when listening
   if (showConfirm) {
     return (
-      <div className={cn(
-        "flex items-center gap-2 rounded-full border bg-background px-3 py-1.5 animate-in fade-in zoom-in-95",
-        error && "border-red-500 bg-red-50 dark:bg-red-950/20",
-        className
-      )}>
-        <VoiceWaveform isActive={isListening} className="h-5 w-8" />
-        
-        <span className="max-w-[200px] truncate text-sm text-muted-foreground">
-          {transcript || interimTranscript || (
-            state === 'starting' ? 'Starting...' : 'Listening...'
-          )}
-        </span>
-        
-        {error && (
-          <span className="text-xs text-red-500">{error.message}</span>
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-full border bg-background px-3 py-1.5 animate-in fade-in zoom-in-95',
+          error && 'border-red-500 bg-red-50 dark:bg-red-950/20',
+          className
         )}
-        
+      >
+        <VoiceWaveform isActive={isListening} className="h-5 w-8" />
+
+        <span className="max-w-[200px] truncate text-sm text-muted-foreground">
+          {transcript ||
+            interimTranscript ||
+            (state === 'starting' ? 'Starting...' : 'Listening...')}
+        </span>
+
+        {error && <span className="text-xs text-red-500">{error.message}</span>}
+
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -111,7 +106,7 @@ export function VoiceInputButton({
           >
             <X className="h-4 w-4" />
           </Button>
-          
+
           <Button
             variant="ghost"
             size="icon"
@@ -134,8 +129,8 @@ export function VoiceInputButton({
             variant="ghost"
             size="icon"
             className={cn(
-              "rounded-full transition-all duration-300",
-              isListening && "bg-red-100 text-red-600 animate-pulse",
+              'rounded-full transition-all duration-300',
+              isListening && 'bg-red-100 text-red-600 animate-pulse',
               className
             )}
             onClick={handleStart}

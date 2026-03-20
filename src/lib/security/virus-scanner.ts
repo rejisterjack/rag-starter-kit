@@ -48,7 +48,7 @@ export interface VirusScannerConfig {
 // =============================================================================
 
 const DEFAULT_CONFIG: VirusScannerConfig = {
-  backend: 'none',
+  backend: process.env.ENABLE_VIRUS_SCAN === 'true' ? 'clamav-tcp' : 'none',
   host: process.env.CLAMAV_HOST || 'localhost',
   port: parseInt(process.env.CLAMAV_PORT || '3310', 10),
   socketPath: '/var/run/clamav/clamd.ctl',

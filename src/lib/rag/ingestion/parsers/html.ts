@@ -1,9 +1,8 @@
 /**
  * HTML Parser for web content
  * Extracts main content while removing navigation, ads, and boilerplate
+ * Uses native DOM API (no external dependencies)
  */
-
-import * as cheerio from 'cheerio';
 
 export interface HTMLMetadata {
   title?: string;
@@ -26,384 +25,343 @@ export interface HTMLSection {
 }
 
 export interface ParsedHTML {
+  title: string;
   text: string;
-  html: string;
   metadata: HTMLMetadata;
   sections: HTMLSection[];
-  links: Array<{ href: string; text: string }>;
   images: Array<{ src: string; alt: string }>;
+  links: Array<{ href: string; text: string }>;
   wordCount: number;
   characterCount: number;
 }
 
-export interface HTMLParseOptions {
-  baseUrl?: string;
-  extractMainContent?: boolean;
-  includeImages?: boolean;
-  includeLinks?: boolean;
-}
-
-// Common selectors for content extraction (Readability-inspired)
-const CONTENT_SELECTORS = [
-  'article',
-  'main',
-  '[role="main"]',
-  '.post-content',
-  '.entry-content',
-  '.article-content',
-  '.post-body',
-  '.content-body',
-  '#content',
-  '.content',
-  '.main-content',
-];
-
-// Selectors to remove (noise reduction)
-const NOISE_SELECTORS = [
-  'script',
-  'style',
-  'nav',
-  'header:not(article header)',
-  'footer:not(article footer)',
-  'aside',
-  '.sidebar',
-  '.advertisement',
-  '.ads',
-  '.ad',
-  '.comments',
-  '.social-share',
-  '.related-posts',
-  '.newsletter',
-  '.cookie-banner',
-  '.popup',
-  '.modal',
-  '[role="banner"]',
-  '[role="complementary"]',
-  '[role="navigation"]',
-];
-
 /**
- * Parse HTML buffer and extract structured content
+ * Parse HTML content and extract main text
  */
-export function parseHTML(buffer: Buffer, options: HTMLParseOptions = {}): ParsedHTML {
-  try {
-    const html = buffer.toString('utf-8');
-    const $ = cheerio.load(html, {
-      decodeEntities: true,
-      xmlMode: false,
-    });
-
-    // Extract metadata
-    const metadata = extractMetadata($, options.baseUrl);
-
-    // Extract main content
-    const mainContent = extractMainContent($, options.extractMainContent !== false);
-
-    // Extract sections
-    const sections = extractSections($, mainContent);
-
-    // Extract links
-    const links = options.includeLinks !== false ? extractLinks($, options.baseUrl) : [];
-
-    // Extract images
-    const images = options.includeImages !== false ? extractImages($, options.baseUrl) : [];
-
-    // Clean and extract text
-    const text = cleanText(mainContent.text());
-
-    // Calculate statistics
-    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
-    const characterCount = text.length;
-
-    return {
-      text,
-      html: $.html(),
-      metadata,
-      sections,
-      links,
-      images,
-      wordCount,
-      characterCount,
-    };
-  } catch (error) {
-    console.error('HTML parsing error:', error);
-    throw new HTMLParserError(
-      `Failed to parse HTML: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-  }
-}
-
-/**
- * Extract metadata from HTML head
- */
-function extractMetadata($: cheerio.CheerioAPI, baseUrl?: string): HTMLMetadata {
-  const metadata: HTMLMetadata = {};
-
-  // Standard meta tags
-  metadata.title = $('title').text().trim() || undefined;
-  metadata.description = $('meta[name="description"]').attr('content') || undefined;
-  metadata.author = $('meta[name="author"]').attr('content') || undefined;
-  metadata.keywords = $('meta[name="keywords"]').attr('content') || undefined;
-  metadata.canonicalUrl = $('link[rel="canonical"]').attr('href') || undefined;
-
-  // Open Graph tags
-  metadata.ogTitle = $('meta[property="og:title"]').attr('content') || undefined;
-  metadata.ogDescription = $('meta[property="og:description"]').attr('content') || undefined;
-  metadata.ogImage = $('meta[property="og:image"]').attr('content') || undefined;
-
-  // Article tags
-  metadata.publishedDate = 
-    $('meta[property="article:published_time"]').attr('content') ||
-    $('meta[name="publishedDate"]').attr('content') ||
-    undefined;
+export function parseHTML(buffer: Buffer): ParsedHTML {
+  const html = buffer.toString('utf-8');
   
-  metadata.modifiedDate = 
-    $('meta[property="article:modified_time"]').attr('content') ||
-    undefined;
+  // Extract metadata
+  const metadata = extractMetadata(html);
+  
+  // Extract main content
+  const mainContent = extractMainContent(html);
+  
+  // Extract sections
+  const sections = extractSections(html);
+  
+  // Extract images
+  const images = extractImages(html);
+  
+  // Extract links
+  const links = extractLinks(html);
+  
+  // Clean and normalize text
+  const cleanText = cleanHtmlText(mainContent);
+  
+  // Calculate word count
+  const wordCount = cleanText.split(/\s+/).filter(word => word.length > 0).length;
+  
+  return {
+    title: metadata.title || '',
+    text: cleanText,
+    metadata,
+    sections,
+    images,
+    links,
+    wordCount,
+    characterCount: cleanText.length,
+  };
+}
 
-  // Resolve relative URLs
-  if (baseUrl) {
-    if (metadata.canonicalUrl && !metadata.canonicalUrl.startsWith('http')) {
-      metadata.canonicalUrl = new URL(metadata.canonicalUrl, baseUrl).href;
+/**
+ * Extract metadata from HTML
+ */
+function extractMetadata(html: string): HTMLMetadata {
+  const metadata: HTMLMetadata = {};
+  
+  // Title
+  const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+  if (titleMatch) {
+    metadata.title = decodeHtmlEntities(titleMatch[1].trim());
+  }
+  
+  // Meta tags
+  const metaRegex = /<meta[^>]+>/gi;
+  let match;
+  while ((match = metaRegex.exec(html)) !== null) {
+    const metaTag = match[0];
+    
+    // Description
+    if (metaTag.match(/name=["']description["']/i)) {
+      const contentMatch = metaTag.match(/content=["']([^"']+)["']/i);
+      if (contentMatch) metadata.description = decodeHtmlEntities(contentMatch[1]);
     }
-    if (metadata.ogImage && !metadata.ogImage.startsWith('http')) {
-      metadata.ogImage = new URL(metadata.ogImage, baseUrl).href;
+    
+    // Author
+    if (metaTag.match(/name=["']author["']/i)) {
+      const contentMatch = metaTag.match(/content=["']([^"']+)["']/i);
+      if (contentMatch) metadata.author = decodeHtmlEntities(contentMatch[1]);
+    }
+    
+    // Keywords
+    if (metaTag.match(/name=["']keywords["']/i)) {
+      const contentMatch = metaTag.match(/content=["']([^"']+)["']/i);
+      if (contentMatch) metadata.keywords = decodeHtmlEntities(contentMatch[1]);
+    }
+    
+    // Canonical URL
+    if (metaTag.match(/rel=["']canonical["']/i)) {
+      const hrefMatch = metaTag.match(/href=["']([^"']+)["']/i);
+      if (hrefMatch) metadata.canonicalUrl = hrefMatch[1];
+    }
+    
+    // Open Graph tags
+    if (metaTag.match(/property=["']og:title["']/i)) {
+      const contentMatch = metaTag.match(/content=["']([^"']+)["']/i);
+      if (contentMatch) metadata.ogTitle = decodeHtmlEntities(contentMatch[1]);
+    }
+    
+    if (metaTag.match(/property=["']og:description["']/i)) {
+      const contentMatch = metaTag.match(/content=["']([^"']+)["']/i);
+      if (contentMatch) metadata.ogDescription = decodeHtmlEntities(contentMatch[1]);
+    }
+    
+    if (metaTag.match(/property=["']og:image["']/i)) {
+      const contentMatch = metaTag.match(/content=["']([^"']+)["']/i);
+      if (contentMatch) metadata.ogImage = contentMatch[1];
+    }
+    
+    // Published date
+    if (metaTag.match(/name=["'](article:published_time|publishedDate|datePublished)["']/i)) {
+      const contentMatch = metaTag.match(/content=["']([^"']+)["']/i);
+      if (contentMatch) metadata.publishedDate = contentMatch[1];
+    }
+    
+    // Modified date
+    if (metaTag.match(/name=["'](article:modified_time|modifiedDate|dateModified)["']/i)) {
+      const contentMatch = metaTag.match(/content=["']([^"']+)["']/i);
+      if (contentMatch) metadata.modifiedDate = contentMatch[1];
     }
   }
-
+  
   return metadata;
 }
 
 /**
- * Extract main content using heuristics
+ * Extract main content from HTML
  */
-function extractMainContent($: cheerio.CheerioAPI, useHeuristics: boolean): cheerio.Cheerio<cheerio.Element> {
-  if (!useHeuristics) {
-    return $('body');
-  }
-
-  // Try common content selectors
-  for (const selector of CONTENT_SELECTORS) {
-    const element = $(selector).first();
-    if (element.length && element.text().trim().length > 200) {
-      return element;
-    }
-  }
-
-  // Remove noise elements from body
-  const body = $('body').clone();
-  NOISE_SELECTORS.forEach(selector => {
-    body.find(selector).remove();
-  });
-
-  // Score paragraphs to find main content area
-  const paragraphs = body.find('p');
-  const paragraphCounts = new Map<string, number>();
-
-  paragraphs.each((_, elem) => {
-    const parent = $(elem).parent();
-    const parentTag = parent.prop('tagName')?.toLowerCase() || '';
-    const parentClass = parent.attr('class') || '';
-    const key = `${parentTag}.${parentClass}`;
-    
-    const text = $(elem).text().trim();
-    if (text.length > 20) {
-      paragraphCounts.set(key, (paragraphCounts.get(key) || 0) + 1);
-    }
-  });
-
-  // Find parent with most paragraphs
-  let maxCount = 0;
-  let bestSelector = 'body';
+function extractMainContent(html: string): string {
+  // Remove script and style tags
+  let content = html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, ' ')
+    .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, ' ')
+    .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, ' ')
+    .replace(/<aside[^>]*>[\s\S]*?<\/aside>/gi, ' ');
   
-  paragraphCounts.forEach((count, selector) => {
-    if (count > maxCount) {
-      maxCount = count;
-      bestSelector = selector;
-    }
-  });
-
-  // If we found a good content container, use it
-  if (maxCount > 2) {
-    const [tag, ...classParts] = bestSelector.split('.');
-    const className = classParts.join('.');
-    const selector = className ? `${tag}.${className}` : tag;
-    const element = body.find(selector).first();
-    if (element.length) {
-      return element;
+  // Try to find main content area
+  const mainMatch = content.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
+  if (mainMatch) {
+    content = mainMatch[1];
+  } else {
+    // Try article tag
+    const articleMatch = content.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
+    if (articleMatch) {
+      content = articleMatch[1];
+    } else {
+      // Try content divs
+      const contentDivMatch = content.match(/<div[^>]*(?:id|class)=["'](?:content|main|article)["'][^>]*>([\s\S]*?)<\/div>/i);
+      if (contentDivMatch) {
+        content = contentDivMatch[1];
+      } else {
+        // Fall back to body
+        const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        if (bodyMatch) {
+          content = bodyMatch[1];
+        }
+      }
     }
   }
-
-  return body;
+  
+  return content;
 }
 
 /**
- * Extract structured sections from content
+ * Extract sections from HTML
  */
-function extractSections($: cheerio.CheerioAPI, content: cheerio.Cheerio<cheerio.Element>): HTMLSection[] {
+function extractSections(html: string): HTMLSection[] {
   const sections: HTMLSection[] = [];
-
-  // Extract headings and their associated content
-  const headingTags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+  const headingRegex =/<(h[1-6])[^>]*>([^<]*)<\/(h[1-6])>/gi;
+  let match;
   
-  content.find(headingTags.join(', ')).each((_, elem) => {
-    const $elem = $(elem);
-    const tag = elem.tagName.toLowerCase();
-    const text = cleanText($elem.text());
-    
-    if (text) {
-      sections.push({
-        tag,
-        text,
-        id: $elem.attr('id') || undefined,
-        class: $elem.attr('class') || undefined,
-      });
-    }
-  });
-
+  while ((match = headingRegex.exec(html)) !== null) {
+    sections.push({
+      tag: match[1],
+      text: decodeHtmlEntities(match[2].trim()),
+    });
+  }
+  
   return sections;
 }
 
 /**
- * Extract and normalize links
+ * Extract images from HTML
  */
-function extractLinks($: cheerio.CheerioAPI, baseUrl?: string): Array<{ href: string; text: string }> {
-  const links: Array<{ href: string; text: string }> = [];
-  const seen = new Set<string>();
-
-  $('a[href]').each((_, elem) => {
-    const $elem = $(elem);
-    let href = $elem.attr('href') || '';
-    const text = cleanText($elem.text());
-
-    // Skip anchors, javascript, mailto, tel
-    if (href.startsWith('#') || href.startsWith('javascript:') || 
-        href.startsWith('mailto:') || href.startsWith('tel:')) {
-      return;
-    }
-
-    // Resolve relative URLs
-    if (baseUrl && !href.startsWith('http')) {
-      try {
-        href = new URL(href, baseUrl).href;
-      } catch {
-        return; // Invalid URL
-      }
-    }
-
-    // Deduplicate
-    if (!seen.has(href)) {
-      seen.add(href);
-      links.push({ href, text: text || href });
-    }
-  });
-
-  return links;
-}
-
-/**
- * Extract and normalize images
- */
-function extractImages($: cheerio.CheerioAPI, baseUrl?: string): Array<{ src: string; alt: string }> {
+function extractImages(html: string): Array<{ src: string; alt: string }> {
   const images: Array<{ src: string; alt: string }> = [];
   const seen = new Set<string>();
-
-  $('img[src]').each((_, elem) => {
-    const $elem = $(elem);
-    let src = $elem.attr('src') || '';
-    const alt = $elem.attr('alt') || '';
-
-    // Skip data URIs for large images
-    if (src.startsWith('data:')) {
-      return;
-    }
-
-    // Resolve relative URLs
-    if (baseUrl && !src.startsWith('http')) {
-      try {
-        src = new URL(src, baseUrl).href;
-      } catch {
-        return; // Invalid URL
+  
+  const imgRegex = /<img[^>]+>/gi;
+  let match;
+  
+  while ((match = imgRegex.exec(html)) !== null) {
+    const imgTag = match[0];
+    const srcMatch = imgTag.match(/src=["']([^"']+)["']/i);
+    const altMatch = imgTag.match(/alt=["']([^"]*)["']/i);
+    
+    if (srcMatch) {
+      const src = srcMatch[1];
+      if (!seen.has(src) && !src.startsWith('data:')) {
+        seen.add(src);
+        images.push({
+          src,
+          alt: altMatch ? decodeHtmlEntities(altMatch[1]) : '',
+        });
       }
     }
-
-    // Deduplicate
-    if (!seen.has(src)) {
-      seen.add(src);
-      images.push({ src, alt });
-    }
-  });
-
+  }
+  
   return images;
 }
 
 /**
- * Clean extracted text
+ * Extract links from HTML
  */
-function cleanText(text: string): string {
-  return text
-    .replace(/\s+/g, ' ')           // Collapse whitespace
-    .replace(/\n\s*\n/g, '\n\n')    // Preserve paragraph breaks
-    .replace(/^\s+|\s+$/g, '')     // Trim
+function extractLinks(html: string): Array<{ href: string; text: string }> {
+  const links: Array<{ href: string; text: string }> = [];
+  const seen = new Set<string>();
+  
+  const linkRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>([^<]*)<\/a>/gi;
+  let match;
+  
+  while ((match = linkRegex.exec(html)) !== null) {
+    const href = match[1];
+    const text = decodeHtmlEntities(match[2].trim());
+    
+    if (!seen.has(href) && !href.startsWith('#') && !href.startsWith('javascript:')) {
+      seen.add(href);
+      links.push({ href, text });
+    }
+  }
+  
+  return links;
+}
+
+/**
+ * Clean HTML text
+ */
+function cleanHtmlText(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, ' ') // Remove HTML tags
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&ldquo;/g, '"')
+    .replace(/&rdquo;/g, '"')
+    .replace(/&lsquo;/g, "'")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&hellip;/g, '...')
+    .replace(/&mdash;/g, '-')
+    .replace(/&ndash;/g, '-')
+    .replace(/\s+/g, ' ') // Normalize whitespace
     .trim();
 }
 
 /**
- * Convert relative URL to absolute
+ * Decode HTML entities
  */
-export function resolveUrl(url: string, baseUrl: string): string {
-  if (url.startsWith('http')) {
-    return url;
-  }
-  try {
-    return new URL(url, baseUrl).href;
-  } catch {
-    return url;
-  }
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&ldquo;/g, '"')
+    .replace(/&rdquo;/g, '"')
+    .replace(/&lsquo;/g, "'")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&hellip;/g, '...')
+    .replace(/&mdash;/g, '-')
+    .replace(/&ndash;/g, '-');
 }
 
 /**
- * Extract article content using readability algorithm
+ * Scrape URL content with retry logic
  */
-export function extractArticle(html: string, baseUrl?: string): ParsedHTML {
-  const parsed = parseHTML(Buffer.from(html), {
-    baseUrl,
-    extractMainContent: true,
-    includeImages: true,
-    includeLinks: false,
-  });
-
-  // Additional article-specific processing
-  // This could include more sophisticated content extraction
-  // using libraries like @mozilla/readability
-
-  return parsed;
-}
-
-/**
- * Custom error class for HTML parser
- */
-export class HTMLParserError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'HTMLParserError';
+export async function scrapeURL(
+  url: string,
+  options: {
+    timeout?: number;
+    retries?: number;
+    userAgent?: string;
+  } = {}
+): Promise<{
+  text: string;
+  html: string;
+  metadata: HTMLMetadata;
+  links: Array<{ href: string; text: string }>;
+}> {
+  const { timeout = 30000, retries = 3, userAgent = 'Mozilla/5.0 (compatible; RAGBot/1.0)' } = options;
+  
+  let lastError: Error | undefined;
+  
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': userAgent,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+        },
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const html = await response.text();
+      const parsed = parseHTML(Buffer.from(html));
+      
+      return {
+        text: parsed.text,
+        html,
+        metadata: parsed.metadata,
+        links: parsed.links,
+      };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt < retries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+      }
+    }
   }
-}
-
-/**
- * Check if HTML appears to be an article/blog post
- */
-export function isArticle(html: string): boolean {
-  const $ = cheerio.load(html);
   
-  // Check for article semantic elements
-  const hasArticleTag = $('article').length > 0;
-  const hasPublishedDate = $('meta[property="article:published_time"]').length > 0;
-  const hasAuthor = $('meta[name="author"]').length > 0 || $('[rel="author"]').length > 0;
-  
-  // Check content density
-  const textLength = $('body').text().length;
-  const linkDensity = $('a').length / Math.max(textLength / 1000, 1);
-  
-  return hasArticleTag || hasPublishedDate || (hasAuthor && linkDensity < 0.5);
+  throw new Error(`Failed to scrape URL after ${retries} attempts: ${lastError?.message}`);
 }

@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/db";
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
 
 interface HealthCheck {
   name: string;
@@ -18,16 +18,16 @@ async function checkDatabase(): Promise<HealthCheck> {
     // Simple query to check connection
     await prisma.$queryRaw`SELECT 1`;
     return {
-      name: "database",
+      name: 'database',
       healthy: true,
       responseTime: Date.now() - start,
     };
   } catch (error) {
     return {
-      name: "database",
+      name: 'database',
       healthy: false,
       responseTime: Date.now() - start,
-      error: error instanceof Error ? error.message : "Database connection failed",
+      error: error instanceof Error ? error.message : 'Database connection failed',
     };
   }
 }
@@ -38,27 +38,25 @@ async function checkDatabase(): Promise<HealthCheck> {
 async function checkVectorExtension(): Promise<HealthCheck> {
   const start = Date.now();
   try {
-    const result = await prisma.$queryRaw<
-      [{ installed: boolean }]
-    >`SELECT EXISTS (
+    const result = await prisma.$queryRaw<[{ installed: boolean }]>`SELECT EXISTS (
       SELECT 1 FROM pg_extension WHERE extname = 'vector'
     ) as installed`;
 
     const installed = result[0]?.installed ?? false;
 
     return {
-      name: "vector_extension",
+      name: 'vector_extension',
       healthy: installed,
       responseTime: Date.now() - start,
       details: { installed },
-      error: installed ? undefined : "pgvector extension not installed",
+      error: installed ? undefined : 'pgvector extension not installed',
     };
   } catch (error) {
     return {
-      name: "vector_extension",
+      name: 'vector_extension',
       healthy: false,
       responseTime: Date.now() - start,
-      error: error instanceof Error ? error.message : "Failed to check vector extension",
+      error: error instanceof Error ? error.message : 'Failed to check vector extension',
     };
   }
 }
@@ -73,29 +71,29 @@ async function checkOpenAI(): Promise<HealthCheck> {
 
     if (!apiKey) {
       return {
-        name: "openai",
+        name: 'openai',
         healthy: false,
         responseTime: Date.now() - start,
-        error: "OPENAI_API_KEY not configured",
+        error: 'OPENAI_API_KEY not configured',
       };
     }
 
     // We don't actually call the API to avoid costs, just validate key format
-    const isValidFormat = apiKey.startsWith("sk-") && apiKey.length > 20;
+    const isValidFormat = apiKey.startsWith('sk-') && apiKey.length > 20;
 
     return {
-      name: "openai",
+      name: 'openai',
       healthy: isValidFormat,
       responseTime: Date.now() - start,
       details: { configured: true },
-      error: isValidFormat ? undefined : "Invalid API key format",
+      error: isValidFormat ? undefined : 'Invalid API key format',
     };
   } catch (error) {
     return {
-      name: "openai",
+      name: 'openai',
       healthy: false,
       responseTime: Date.now() - start,
-      error: error instanceof Error ? error.message : "OpenAI check failed",
+      error: error instanceof Error ? error.message : 'OpenAI check failed',
     };
   }
 }
@@ -109,7 +107,7 @@ async function checkRedis(): Promise<HealthCheck> {
   // Skip if not configured
   if (!process.env.UPSTASH_REDIS_REST_URL) {
     return {
-      name: "redis",
+      name: 'redis',
       healthy: true,
       responseTime: 0,
       details: { configured: false },
@@ -118,7 +116,7 @@ async function checkRedis(): Promise<HealthCheck> {
 
   try {
     // Dynamic import to avoid issues if not installed
-    const { Redis } = await import("@upstash/redis");
+    const { Redis } = await import('@upstash/redis');
     const redis = new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL,
       token: process.env.UPSTASH_REDIS_REST_TOKEN,
@@ -127,17 +125,17 @@ async function checkRedis(): Promise<HealthCheck> {
     await redis.ping();
 
     return {
-      name: "redis",
+      name: 'redis',
       healthy: true,
       responseTime: Date.now() - start,
       details: { configured: true },
     };
   } catch (error) {
     return {
-      name: "redis",
+      name: 'redis',
       healthy: false,
       responseTime: Date.now() - start,
-      error: error instanceof Error ? error.message : "Redis connection failed",
+      error: error instanceof Error ? error.message : 'Redis connection failed',
     };
   }
 }
@@ -151,10 +149,10 @@ function getSystemMetrics(): Record<string, unknown> {
     memory: {
       used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
       total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
-      unit: "MB",
+      unit: 'MB',
     },
     nodeVersion: process.version,
-    environment: process.env.NODE_ENV || "development",
+    environment: process.env.NODE_ENV || 'development',
   };
 }
 
@@ -180,7 +178,7 @@ export async function GET() {
   const status = healthy ? 200 : 503;
 
   const response = {
-    status: healthy ? "healthy" : "unhealthy",
+    status: healthy ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
     responseTime: totalResponseTime,
     checks,
@@ -201,11 +199,11 @@ export async function HEAD() {
   return new NextResponse(null, {
     status: healthy ? 200 : 503,
     headers: {
-      "X-Health-Status": healthy ? "healthy" : "unhealthy",
+      'X-Health-Status': healthy ? 'healthy' : 'unhealthy',
     },
   });
 }
 
 // Configure route segment
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';

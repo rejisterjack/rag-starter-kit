@@ -3,8 +3,9 @@
  * Handles JavaScript-rendered pages, pagination, and content extraction
  */
 
-import type { ParsedHTML, HTMLMetadata } from './html';
-import { parseHTML } from './html';
+import { logger } from '@/lib/logger';
+import type { ParsedHTML } from './html';
+import { parseHTML as parseHTMLContent } from './html';
 
 export interface ScrapedPage extends ParsedHTML {
   url: string;
@@ -23,6 +24,7 @@ export interface URLScrapeOptions {
   userAgent?: string;
   includeImages?: boolean;
   includeLinks?: boolean;
+  extractMainContent?: boolean;
 }
 
 export interface PaginationOptions {
@@ -42,15 +44,57 @@ export interface RobotsTxt {
 // Install with: npm install playwright
 // And install browsers: npx playwright install
 
-let playwright: typeof import('playwright') | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PlaywrightPage = {
+  goto: (url: string, options: { waitUntil: string }) => Promise<PlaywrightResponse | null>;
+  url: () => string;
+  content: () => Promise<string>;
+  setDefaultTimeout: (timeout: number) => void;
+  setDefaultNavigationTimeout: (timeout: number) => void;
+  waitForSelector: (selector: string, options: { timeout: number }) => Promise<void>;
+  evaluate: <T>(fn: () => T) => Promise<T>;
+  close: () => Promise<void>;
+};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PlaywrightResponse = {
+  status: () => number;
+  headers: () => Record<string, string>;
+};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PlaywrightBrowserContext = {
+  newPage: () => Promise<PlaywrightPage>;
+  close: () => Promise<void>;
+};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PlaywrightModule = {
+  chromium: {
+    launch: (options: { headless: boolean }) => Promise<PlaywrightBrowserContext>;
+  };
+};
 
-try {
-  // Dynamic import for optional dependency
-  const pw = require('playwright');
-  playwright = pw;
-} catch {
-  // Playwright not installed
-  console.warn('Playwright not installed. URL scraping will use fetch fallback.');
+let playwrightInstance: PlaywrightModule | null = null;
+
+async function loadPlaywright(): Promise<PlaywrightModule | null> {
+  if (playwrightInstance) return playwrightInstance;
+  try {
+    // Dynamic import for optional dependency
+    // @ts-ignore - playwright is an optional dependency
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pw = await import('playwright') as any;
+    playwrightInstance = pw as unknown as PlaywrightModule;
+    return playwrightInstance;
+  } catch {
+    // Playwright not installed
+    logger.warn('Playwright not installed. URL scraping will use fetch fallback.');
+    return null;
+  }
+}
+
+/**
+ * Parse HTML content wrapper
+ */
+function parseHTML(buffer: Buffer): ParsedHTML {
+  return parseHTMLContent(buffer);
 }
 
 /**
@@ -79,9 +123,12 @@ export async function scrapeURL(
     await sleep(robots.crawlDelay * 1000);
   }
 
+  // Load Playwright if available
+  const pw = await loadPlaywright();
+
   // Use Playwright if available, otherwise fetch
-  if (playwright) {
-    return scrapeWithPlaywright(url, options);
+  if (pw) {
+    return scrapeWithPlaywright(url, options, pw);
   } else {
     return scrapeWithFetch(url, options);
   }
@@ -92,22 +139,18 @@ export async function scrapeURL(
  */
 async function scrapeWithPlaywright(
   url: string,
-  options: URLScrapeOptions
+  options: URLScrapeOptions,
+  playwright: PlaywrightModule
 ): Promise<ScrapedPage> {
-  if (!playwright) {
-    throw new URLScraperError('Playwright not available');
-  }
-
-  const browser = await playwright.chromium.launch({
+  const context = await playwright.chromium.launch({
     headless: true,
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let page: PlaywrightPage = null as any;
+  
   try {
-    const context = await browser.newContext({
-      userAgent: options.userAgent || getDefaultUserAgent(),
-    });
-
-    const page = await context.newPage();
+    page = await context.newPage();
 
     // Set timeout
     const timeout = options.timeout || 30000;
@@ -115,9 +158,8 @@ async function scrapeWithPlaywright(
     page.setDefaultNavigationTimeout(timeout);
 
     // Navigate to URL
-    const response = await page.goto(url, {
-      waitUntil: options.waitForNetworkIdle ? 'networkidle' : 'domcontentloaded',
-    });
+    const waitUntil = options.waitForNetworkIdle ? 'networkidle' : 'domcontentloaded';
+    const response = await page.goto(url, { waitUntil });
 
     if (!response) {
       throw new URLScraperError(`Failed to load page: ${url}`);
@@ -141,12 +183,7 @@ async function scrapeWithPlaywright(
     const html = await page.content();
 
     // Parse content
-    const parsed = parseHTML(Buffer.from(html), {
-      baseUrl: finalUrl,
-      extractMainContent: true,
-      includeImages: options.includeImages,
-      includeLinks: options.includeLinks,
-    });
+    const parsed = parseHTML(Buffer.from(html));
 
     return {
       ...parsed,
@@ -157,7 +194,9 @@ async function scrapeWithPlaywright(
       scrapedAt: new Date(),
     };
   } finally {
-    await browser.close();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (page as any)?.close?.();
+    await context.close();
   }
 }
 
@@ -191,12 +230,7 @@ async function scrapeWithFetch(
     const finalUrl = response.url;
     const contentType = response.headers.get('content-type') || 'text/html';
 
-    const parsed = parseHTML(Buffer.from(html), {
-      baseUrl: finalUrl,
-      extractMainContent: true,
-      includeImages: options.includeImages,
-      includeLinks: options.includeLinks,
-    });
+    const parsed = parseHTML(Buffer.from(html));
 
     return {
       ...parsed,
@@ -216,7 +250,7 @@ async function scrapeWithFetch(
  * Scroll page to bottom for lazy-loaded content
  */
 async function scrollPageToBottom(
-  page: import('playwright').Page,
+  page: PlaywrightPage,
   maxScrolls: number
 ): Promise<void> {
   let previousHeight = 0;
@@ -280,11 +314,10 @@ export async function* scrapePaginated(
     if (pagination.nextSelector && page.links.length > 0) {
       const nextLink = page.links.find(link => {
         const text = link.text.toLowerCase();
-        return text.includes('next') || 
-               text.includes('»') || 
-               text.includes('→') ||
-               link.href.includes('page=') && 
-               parseInt(link.href.match(/page=(\d+)/)?.[1] || '0') > pageCount;
+        const hasNextText = text.includes('next') || text.includes('»') || text.includes('→');
+        const pageMatch = link.href.match(/page=(\d+)/);
+        const hasHigherPage = pageMatch && parseInt(pageMatch[1] || '0') > pageCount;
+        return hasNextText || hasHigherPage;
       });
 
       currentUrl = nextLink?.href || null;
@@ -297,7 +330,7 @@ export async function* scrapePaginated(
 /**
  * Check robots.txt for crawl permissions
  */
-async function checkRobotsTxt(origin: string): Promise<RobotsTxt> {
+export async function checkRobotsTxt(origin: string): Promise<RobotsTxt> {
   try {
     const robotsUrl = `${origin}/robots.txt`;
     const response = await fetch(robotsUrl, {
@@ -371,10 +404,7 @@ export async function scrapeArticle(
   url: string,
   options: URLScrapeOptions = {}
 ): Promise<ScrapedPage & { isArticle: boolean }> {
-  const scraped = await scrapeURL(url, {
-    ...options,
-    extractMainContent: true,
-  });
+  const scraped = await scrapeURL(url, options);
 
   // Check if content appears to be an article
   const isArticle = checkIfArticle(scraped);

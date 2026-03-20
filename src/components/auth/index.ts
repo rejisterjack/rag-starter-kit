@@ -1,7 +1,7 @@
 /**
  * Authentication Components
- * 
+ *
  * Enterprise SSO and authentication UI components.
  */
 
-export { SSOLoginButton, CompactSSOButton } from './sso-login-button';
+export { CompactSSOButton, SSOLoginButton } from './sso-login-button';

@@ -6,15 +6,11 @@
  */
 
 import { NextResponse } from 'next/server';
-
-import { auth } from '@/lib/auth';
-import { checkPermission, Permission } from '@/lib/workspace/permissions';
-import {
-  checkApiRateLimit,
-  getRateLimitIdentifier,
-} from '@/lib/security/rate-limiter';
 import { getRealtimeMetrics } from '@/lib/analytics/dashboard-service';
 import { logAuditEvent } from '@/lib/audit/audit-logger';
+import { auth } from '@/lib/auth';
+import { checkApiRateLimit, getRateLimitIdentifier } from '@/lib/security/rate-limiter';
+import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // =============================================================================
 // Configuration
@@ -32,10 +28,7 @@ export async function GET(req: Request) {
     // Step 1: Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -98,11 +91,7 @@ export async function GET(req: Request) {
 
       effectiveWorkspaceId = requestedWorkspaceId;
     } else if (userWorkspaceId) {
-      const hasAccess = await checkPermission(
-        userId,
-        userWorkspaceId,
-        Permission.READ_API_USAGE
-      );
+      const hasAccess = await checkPermission(userId, userWorkspaceId, Permission.READ_API_USAGE);
 
       if (hasAccess) {
         effectiveWorkspaceId = userWorkspaceId;
@@ -131,7 +120,7 @@ export async function GET(req: Request) {
 
     // Step 6: Create SSE stream
     const encoder = new TextEncoder();
-    
+
     const stream = new ReadableStream({
       async start(controller) {
         // Send initial data
@@ -140,10 +129,11 @@ export async function GET(req: Request) {
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ type: 'initial', data: initialData })}\n\n`)
           );
-        } catch (error) {
-          console.error('Error fetching initial realtime data:', error);
+        } catch (_error) {
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: 'error', error: 'Failed to fetch initial data' })}\n\n`)
+            encoder.encode(
+              `data: ${JSON.stringify({ type: 'error', error: 'Failed to fetch initial data' })}\n\n`
+            )
           );
         }
 
@@ -154,10 +144,11 @@ export async function GET(req: Request) {
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ type: 'update', data: metrics })}\n\n`)
             );
-          } catch (error) {
-            console.error('Error fetching realtime data:', error);
+          } catch (_error) {
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ type: 'error', error: 'Failed to fetch data' })}\n\n`)
+              encoder.encode(
+                `data: ${JSON.stringify({ type: 'error', error: 'Failed to fetch data' })}\n\n`
+              )
             );
           }
         }, SSE_RETRY_INTERVAL);
@@ -186,8 +177,6 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
-    console.error('Analytics realtime error:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     return NextResponse.json(
@@ -212,10 +201,7 @@ export async function POST(req: Request) {
     // Step 1: Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -273,11 +259,7 @@ export async function POST(req: Request) {
 
       effectiveWorkspaceId = requestedWorkspaceId;
     } else if (userWorkspaceId) {
-      const hasAccess = await checkPermission(
-        userId,
-        userWorkspaceId,
-        Permission.READ_API_USAGE
-      );
+      const hasAccess = await checkPermission(userId, userWorkspaceId, Permission.READ_API_USAGE);
 
       if (hasAccess) {
         effectiveWorkspaceId = userWorkspaceId;
@@ -308,8 +290,6 @@ export async function POST(req: Request) {
 
     return response;
   } catch (error) {
-    console.error('Analytics realtime polling error:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     return NextResponse.json(

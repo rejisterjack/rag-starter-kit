@@ -3,17 +3,17 @@
  * Web Speech API wrapper with cross-browser support
  */
 
+import type {
+  SpeechRecognitionErrorType,
+  SpeechRecognitionInstance,
+  SpeechRecognitionResult,
+} from '@/types';
+
 export interface SpeechRecognitionOptions {
   language?: string;
   continuous?: boolean;
   interimResults?: boolean;
   maxAlternatives?: number;
-}
-
-export interface SpeechRecognitionResult {
-  transcript: string;
-  confidence: number;
-  isFinal: boolean;
 }
 
 export type SpeechRecognitionEventType =
@@ -29,16 +29,6 @@ export type SpeechRecognitionEventType =
   | 'speechstart'
   | 'speechend';
 
-export type SpeechRecognitionErrorType =
-  | 'no-speech'
-  | 'aborted'
-  | 'audio-capture'
-  | 'network'
-  | 'not-allowed'
-  | 'service-not-allowed'
-  | 'bad-grammar'
-  | 'language-not-supported';
-
 export interface SpeechRecognitionError {
   error: SpeechRecognitionErrorType;
   message: string;
@@ -49,7 +39,7 @@ type ResultHandler = (results: SpeechRecognitionResult[]) => void;
 type ErrorHandler = (error: SpeechRecognitionError) => void;
 
 export class SpeechRecognitionService {
-  private recognition: SpeechRecognition | null = null;
+  private recognition: SpeechRecognitionInstance | null = null;
   private isListening = false;
   private eventHandlers: Map<SpeechRecognitionEventType, Set<EventHandler>> = new Map();
   private resultHandlers: Set<ResultHandler> = new Set();
@@ -62,8 +52,7 @@ export class SpeechRecognitionService {
   private init() {
     if (typeof window === 'undefined') return;
 
-    const SpeechRecognitionAPI =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognitionAPI) {
       console.warn('Speech Recognition API not supported in this browser');
@@ -100,7 +89,7 @@ export class SpeechRecognitionService {
     this.recognition.onspeechend = () => this.emit('speechend');
     this.recognition.onnomatch = () => this.emit('nomatch');
 
-    this.recognition.onresult = (event: SpeechRecognitionEvent) => {
+    this.recognition.onresult = (event) => {
       const results: SpeechRecognitionResult[] = [];
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -110,13 +99,21 @@ export class SpeechRecognitionService {
           transcript: alternative.transcript,
           confidence: alternative.confidence,
           isFinal: result.isFinal,
+          alternatives: [{
+            transcript: alternative.transcript,
+            confidence: alternative.confidence,
+          }],
+          [0]: {
+            transcript: alternative.transcript,
+            confidence: alternative.confidence,
+          },
         });
       }
 
       this.resultHandlers.forEach((handler) => handler(results));
     };
 
-    this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    this.recognition.onerror = (event) => {
       const error: SpeechRecognitionError = {
         error: event.error as SpeechRecognitionErrorType,
         message: this.getErrorMessage(event.error as SpeechRecognitionErrorType),
@@ -135,13 +132,14 @@ export class SpeechRecognitionService {
   private getErrorMessage(error: SpeechRecognitionErrorType): string {
     const messages: Record<SpeechRecognitionErrorType, string> = {
       'no-speech': 'No speech was detected. Please try speaking.',
-      'aborted': 'Speech recognition was aborted.',
+      aborted: 'Speech recognition was aborted.',
       'audio-capture': 'No microphone was found or microphone is not working.',
-      'network': 'A network error occurred. Please check your connection.',
+      network: 'A network error occurred. Please check your connection.',
       'not-allowed': 'Microphone permission was denied. Please allow access.',
       'service-not-allowed': 'Speech recognition service is not allowed.',
       'bad-grammar': 'There was an error with the speech grammar.',
       'language-not-supported': 'The selected language is not supported.',
+      unknown: 'An unknown error occurred.',
     };
     return messages[error] || 'An unknown error occurred.';
   }
@@ -222,8 +220,10 @@ export class SpeechRecognitionService {
   }
 
   isSupported(): boolean {
-    return typeof window !== 'undefined' &&
-      !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    return (
+      typeof window !== 'undefined' &&
+      !!(window.SpeechRecognition || window.webkitSpeechRecognition)
+    );
   }
 
   getListeningState(): boolean {

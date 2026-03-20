@@ -1,12 +1,10 @@
 'use client';
 
-import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +14,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Table,
   TableBody,
@@ -24,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+
 // import { cn } from '@/lib/utils';
 
 interface WebhookConfig {
@@ -63,12 +64,17 @@ export function WebhookManager({
   onRegenerateSecret: _onRegenerateSecret,
 }: WebhookManagerProps) {
   const [isCreating, setIsCreating] = useState(false);
-  const [newWebhook, setNewWebhook] = useState({
+  const [newWebhook, setNewWebhook] = useState<{
+    name: string;
+    url: string;
+    events: string[];
+    isActive: boolean;
+  }>({
     name: '',
     url: '',
-    events: [] as string[],
+    events: [],
+    isActive: true,
   });
-
 
   const handleCreate = async () => {
     if (!newWebhook.name || !newWebhook.url || newWebhook.events.length === 0) {
@@ -79,9 +85,9 @@ export function WebhookManager({
     setIsCreating(true);
     try {
       await onCreate(newWebhook);
-      setNewWebhook({ name: '', url: '', events: [] });
+      setNewWebhook({ name: '', url: '', events: [], isActive: true });
       toast.success('Webhook created');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to create webhook');
     } finally {
       setIsCreating(false);
@@ -110,9 +116,7 @@ export function WebhookManager({
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Create Webhook</DialogTitle>
-            <DialogDescription>
-              Configure a webhook to receive real-time events
-            </DialogDescription>
+            <DialogDescription>Configure a webhook to receive real-time events</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -192,7 +196,7 @@ export function WebhookManager({
                   <TableCell>
                     <Switch
                       checked={webhook.isActive}
-                      onCheckedChange={(checked) =>
+                      onCheckedChange={(checked: boolean) =>
                         onUpdate(webhook.id, { isActive: checked })
                       }
                     />
@@ -204,11 +208,7 @@ export function WebhookManager({
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onDelete(webhook.id)}
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => onDelete(webhook.id)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>

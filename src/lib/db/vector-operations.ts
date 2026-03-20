@@ -5,8 +5,7 @@
  * optimization, and statistics.
  */
 
-import type { PrismaClient } from '@prisma/client';
-import type { Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 // ============================================================================
 // Types
@@ -95,7 +94,7 @@ export async function createHNSWIndex(
   const indexName = `${tableName}_${columnName}_hnsw_idx`;
 
   // Validate dimensions
-  if (dimensions <= 0) {
+  if (options.dimensions <= 0) {
     throw new Error('Dimensions must be greater than 0');
   }
 
@@ -468,7 +467,7 @@ export async function findDuplicateVectors(
 }>> {
   const whereClause = documentId 
     ? Prisma.sql`WHERE document_id = ${documentId}` 
-    : Prisma.empty;
+    : Prisma.sql``;
 
   return prisma.$queryRaw`
     SELECT 
