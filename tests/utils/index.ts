@@ -15,19 +15,27 @@ export {
 } from './mocks/prisma';
 
 export {
-  mockEmbeddingResponse,
-  createMockEmbeddings,
-  mockChatCompletionResponse,
-  createMockStreamChunk,
-  createMockOpenAIClient,
-  MockOpenAI,
-  mockStreamingResponse,
-  mockAsyncStreamingResponse,
+  mockOpenAIResponses,
+  mockOpenAI,
   resetOpenAIMocks,
-  mockEmbeddingsCreate,
-  mockChatCompletionsCreate,
-  mockStreamingChatCompletionsCreate,
+  setupStreamingMock,
 } from './mocks/openai';
+
+// Embedding Provider Mocks
+export {
+  createMockGoogleProvider,
+  createMockOpenAIProvider,
+  createMockOllamaProvider,
+  mockEmbeddingProviders,
+} from './mocks/embedding-providers';
+
+// Security Mocks
+export {
+  mockCSRF,
+  mockRateLimit,
+  mockRedis,
+  createMockRedisClient,
+} from './mocks/security';
 
 // Fixtures
 export {
@@ -93,24 +101,33 @@ export {
   rolePermissions,
 } from './fixtures/workspaces';
 
-// Helpers
+// New Test Data Generators
 export {
-  setupTestEnvironment,
-  mockNextRouter,
-  mockServerActions,
-  mockNextAuthSession,
-  defaultMockSession,
-  mockMatchMedia,
-  mockIntersectionObserver,
-  mockResizeObserver,
-  mockFetch,
-  createMockFetch,
-  mockClipboard,
-  suppressConsoleErrors,
+  generateRandomText,
+  generateRandomEmail,
+  generateRandomId,
+  generateTestDocuments,
+  generateTestChunks,
+  generateTestConversation,
+  generateTestEmbedding,
+  generateTestVector,
+  Faker,
+} from './generators';
+
+// API Test Helpers
+export {
+  createTestRequest,
+  createTestFormData,
+  createTestJSONRequest,
+  parseJSONResponse,
+  parseStreamResponse,
+  mockAPIResponse,
+  expectJSONResponse,
+  expectErrorResponse,
+  expectSuccessResponse,
+} from './helpers/api-helpers';
+
+// Setup Helpers
+export {
   wait,
-  waitForElementToBeRemoved,
-  createDeferredPromise,
-  setupCommonMocks,
-  getMockPrisma,
-  type MockSession,
 } from './helpers/setup';

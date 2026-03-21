@@ -35,6 +35,7 @@ export const rateLimits = {
   // Ingestion endpoints
   ingest: { limit: 10, windowMs: 60 * 60 * 1000, prefix: 'ingest' }, // 10/hour
   ingestUrl: { limit: 20, windowMs: 60 * 60 * 1000, prefix: 'ingest_url' },
+  ocr: { limit: 30, windowMs: 60 * 60 * 1000, prefix: 'ocr' }, // 30/hour
 
   // API endpoints
   api: { limit: 100, windowMs: 60 * 1000, prefix: 'api' }, // 100/min
@@ -62,6 +63,9 @@ export const rateLimits = {
 
   // Export endpoints
   export: { limit: 10, windowMs: 60 * 60 * 1000, prefix: 'export' },
+  
+  // Search endpoints
+  search: { limit: 100, windowMs: 60 * 1000, prefix: 'search' }, // 100/min
 } as const;
 
 export type RateLimitType = keyof typeof rateLimits;
@@ -352,3 +356,81 @@ export function addRateLimitHeaders(
   headers.set('X-RateLimit-Remaining', result.remaining.toString());
   headers.set('X-RateLimit-Reset', new Date(result.reset).toISOString());
 }
+
+// =============================================================================
+// Redis Client Export
+// =============================================================================
+
+/**
+ * Get Redis client for other security modules
+ * Returns null if Redis is not configured
+ */
+export function getRedisClient(): typeof import('ioredis').prototype | null {
+  try {
+    if (process.env.REDIS_URL) {
+      const { Redis } = require('ioredis');
+      return new Redis(process.env.REDIS_URL, {
+        retryStrategy: (times: number) => Math.min(times * 50, 2000),
+        maxRetriesPerRequest: 3,
+      });
+    }
+  } catch {
+    // Redis not available
+  }
+  return null;
+}
+
+/**
+ * Shared Redis instance for security modules
+ * Uses Upstash if available, otherwise ioredis
+ */
+export const redis = (() => {
+  // Try Upstash first
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    try {
+      const { Redis } = require('@upstash/redis');
+      return new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      });
+    } catch {
+      // Fall through to ioredis
+    }
+  }
+  
+  // Try ioredis
+  if (process.env.REDIS_URL) {
+    try {
+      const { Redis } = require('ioredis');
+      return new Redis(process.env.REDIS_URL, {
+        retryStrategy: (times: number) => Math.min(times * 50, 2000),
+        maxRetriesPerRequest: 3,
+      });
+    } catch {
+      // Fall through to mock
+    }
+  }
+  
+  // Mock Redis for development without Redis
+  return {
+    get: async () => null,
+    set: async () => 'OK',
+    del: async () => 0,
+    keys: async () => [],
+    pipeline: () => ({
+      zremrangebyscore: () => ({ zcard: () => ({ zadd: () => ({ pexpire: () => ({ exec: async () => [] }) }) }) }),
+      zcard: () => ({ zadd: () => ({ pexpire: () => ({ exec: async () => [] }) }) }),
+      zadd: () => ({ pexpire: () => ({ exec: async () => [] }) }),
+      exec: async () => [],
+    }),
+    zremrangebyscore: async () => 0,
+    zcard: async () => 0,
+    zadd: async () => 0,
+    pexpire: async () => 1,
+    ttl: async () => -2,
+    multi: () => ({
+      del: () => ({ exec: async () => [] }),
+      exec: async () => [],
+    }),
+  } as unknown as typeof import('ioredis').prototype;
+})();

@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { PWAScripts } from '@/components/pwa/pwa-scripts';
 import { Navbar } from '@/components/navbar';
 import { StructuredData } from '@/components/seo';
+import { CsrfTokenScript } from '@/lib/security/csrf.tsx';
 import '@/styles/globals.css';
 
 const geistSans = Geist({
@@ -173,6 +174,8 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactEl
         <StructuredData />
         {/* PWA Scripts - Service Worker Registration */}
         <PWAScripts />
+        {/* CSRF Token Initialization */}
+        <CsrfTokenScript />
       </body>
     </html>
   );

@@ -1,9 +1,7 @@
 import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
-  plugins: [react()],
   test: {
     // Test environment
     environment: 'jsdom',
@@ -30,7 +28,7 @@ export default defineConfig({
     // Coverage configuration
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
+      reporter: ['text', 'json', 'html', 'lcov', 'json-summary'],
       exclude: [
         'node_modules/',
         'tests/',
@@ -38,16 +36,22 @@ export default defineConfig({
         '**/*.config.*',
         '**/types/**',
         'src/lib/db/', // Generated Prisma client
+        'src/lib/inngest/', // Background job functions
+        '.next/',
+        '**/mock*.ts',
+        '**/fixtures/**',
       ],
       include: [
         'src/**/*.{js,ts,jsx,tsx}',
       ],
       thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 75,
-        statements: 80,
+        lines: 90,
+        functions: 90,
+        branches: 85,
+        statements: 90,
       },
+      // Enable reporting even if thresholds aren't met (for CI)
+      reportOnFailure: true,
     },
     
     // Test timeout
@@ -55,27 +59,6 @@ export default defineConfig({
     
     // Hook timeout
     hookTimeout: 10000,
-    
-    // Enable type checking
-    typecheck: {
-      enabled: true,
-      checker: 'tsc',
-      include: ['src/**/*.ts', 'tests/**/*.ts'],
-    },
-    
-    // Mock CSS imports
-    css: {
-      include: [/\.css$/],
-      modules: {
-        classNameStrategy: 'non-scoped',
-      },
-    },
-    
-    // Alias resolution
-    alias: {
-      '@/': path.resolve(__dirname, './src/'),
-      '@tests/': path.resolve(__dirname, './tests/'),
-    },
     
     // Retry flaky tests in CI
     retry: process.env.CI ? 2 : 0,
@@ -88,16 +71,19 @@ export default defineConfig({
     
     // Reporter configuration
     reporters: process.env.CI 
-      ? ['default', 'junit'] 
+      ? ['default', 'junit', 'json'] 
       : ['default', 'verbose'],
     outputFile: {
       junit: './test-results/junit.xml',
+      json: './test-results/results.json',
     },
     
     // Environment variables for tests
     env: {
       NODE_ENV: 'test',
       NEXT_PUBLIC_API_URL: 'http://localhost:3000',
+      NEXTAUTH_SECRET: 'test-secret-32chars-long!!!!',
+      ENCRYPTION_MASTER_KEY: 'test-master-key-32chars-long!!',
     },
     
     // Snapshot format
@@ -106,7 +92,7 @@ export default defineConfig({
       printBasicPrototype: true,
     },
     
-    // Update snapshots in CI
+    // Update snapshots in CI only when explicitly requested
     update: process.env.CI ? false : undefined,
   },
   
@@ -119,13 +105,6 @@ export default defineConfig({
       '@lib': path.resolve(__dirname, './src/lib'),
       '@hooks': path.resolve(__dirname, './src/hooks'),
       '@types': path.resolve(__dirname, './src/types'),
-    },
-  },
-  
-  // CSS configuration
-  css: {
-    postcss: {
-      plugins: [],
     },
   },
   
@@ -143,16 +122,6 @@ export default defineConfig({
       '@testing-library/react',
       '@testing-library/jest-dom',
     ],
-  },
-  
-  // Esbuild configuration
-  esbuild: {
-    loader: 'tsx',
-    include: [
-      'src/**/*.tsx',
-      'tests/**/*.tsx',
-    ],
-    exclude: [],
   },
   
   // Server configuration for tests

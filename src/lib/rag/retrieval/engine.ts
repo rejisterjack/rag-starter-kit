@@ -26,6 +26,15 @@ import type {
   RetrievedChunk,
 } from './types';
 import { VectorRetriever } from './vector';
+import {
+  searchByImage,
+  searchImagesByText,
+  searchMultiModal,
+  getDocumentImages,
+  getPageImages,
+  type ImageSearchResult,
+  type MultiModalSearchResult,
+} from './multimodal';
 
 /**
  * Configuration presets for different retrieval modes
@@ -480,6 +489,90 @@ export class RetrievalEngine {
    */
   updateExpansionConfig(config: Parameters<QueryExpander['updateExpansionConfig']>[0]): void {
     this.queryExpander.updateExpansionConfig(config);
+  }
+
+  // ==================== Multi-modal Search Methods ====================
+
+  /**
+   * Search for similar images
+   * @param imageBuffer - Query image buffer or URL
+   * @param workspaceId - Workspace to search in
+   * @param topK - Number of results to return
+   * @returns Similar images and optionally related document chunks
+   */
+  async searchByImage(
+    imageBuffer: Buffer | string,
+    workspaceId: string,
+    topK = 5
+  ): Promise<MultiModalSearchResult> {
+    return searchByImage(imageBuffer, workspaceId, {
+      workspaceId,
+      query: '',
+      topK,
+      includeChunks: true,
+    });
+  }
+
+  /**
+   * Search images by text query
+   * @param query - Text query
+   * @param workspaceId - Workspace to search in
+   * @param topK - Number of results to return
+   * @returns Matching images and optionally related document chunks
+   */
+  async searchImagesByText(
+    query: string,
+    workspaceId: string,
+    topK = 5
+  ): Promise<MultiModalSearchResult> {
+    return searchImagesByText(query, workspaceId, {
+      workspaceId,
+      query,
+      topK,
+      includeChunks: true,
+    });
+  }
+
+  /**
+   * Multi-modal search combining text and image
+   * @param query - Text query
+   * @param imageBuffer - Optional query image
+   * @param workspaceId - Workspace to search in
+   * @param options - Search options
+   * @returns Combined search results
+   */
+  async searchWithVision(
+    query: string,
+    imageBuffer: Buffer | string | undefined,
+    workspaceId: string,
+    options: { topK?: number; imageWeight?: number } = {}
+  ): Promise<MultiModalSearchResult> {
+    return searchMultiModal(query, imageBuffer, workspaceId, {
+      workspaceId,
+      query,
+      topK: options.topK ?? 5,
+      imageWeight: options.imageWeight ?? 0.5,
+      includeChunks: true,
+    });
+  }
+
+  /**
+   * Get images for a document
+   * @param documentId - Document ID
+   * @returns Array of document images
+   */
+  async getDocumentImages(documentId: string): Promise<ImageSearchResult[]> {
+    return getDocumentImages(documentId);
+  }
+
+  /**
+   * Get images for a specific page
+   * @param documentId - Document ID
+   * @param pageNumber - Page number
+   * @returns Array of page images
+   */
+  async getPageImages(documentId: string, pageNumber: number): Promise<ImageSearchResult[]> {
+    return getPageImages(documentId, pageNumber);
   }
 }
 

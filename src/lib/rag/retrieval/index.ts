@@ -1,8 +1,45 @@
 /**
- * RAG Retrieval Module
- *
- * Handles vector search, reranking, and source retrieval.
- * Now uses the new VectorStore for efficient similarity search.
+ * @fileoverview RAG Retrieval Module - Vector search and source retrieval
+ * 
+ * Provides comprehensive retrieval capabilities for the RAG pipeline:
+ * - Vector similarity search using pgvector
+ * - Hybrid search (vector + full-text)
+ * - Source reranking and deduplication
+ * - Semantic caching support
+ * 
+ * ## Retrieval Strategies
+ * 
+ * 1. **Vector Search**: Semantic similarity using embeddings
+ * 2. **Keyword Search**: Full-text search with PostgreSQL tsvector
+ * 3. **Hybrid Search**: Combines both using Reciprocal Rank Fusion (RRF)
+ * 
+ * ## Usage
+ * 
+ * ```typescript
+ * import { retrieveSources, hybridSearch } from '@/lib/rag/retrieval';
+ * 
+ * // Basic vector retrieval
+ * const sources = await retrieveSources(
+ *   "What are the key findings?",
+ *   userId,
+ *   { topK: 5, similarityThreshold: 0.7 }
+ * );
+ * 
+ * // Hybrid search for better recall
+ * const hybridSources = await hybridSearch(
+ *   "quarterly revenue",
+ *   queryEmbedding,
+ *   userId,
+ *   { topK: 5 }
+ * );
+ * 
+ * // Build context from sources
+ * const context = buildContext(sources, 4000);
+ * ```
+ * 
+ * @module rag/retrieval
+ * @see {@link module:db/vector-store} for vector store implementation
+ * @see {@link https://github.com/pgvector/pgvector|pgvector Documentation}
  */
 
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
@@ -420,3 +457,18 @@ export async function hybridSearch(
     .slice(0, config.topK ?? 5)
     .map((item) => item.result);
 }
+
+// Export multi-modal retrieval functions and types
+export {
+  searchByImage,
+  searchImagesByText,
+  searchMultiModal,
+  getDocumentImages,
+  getPageImages,
+} from './multimodal';
+
+export type {
+  ImageSearchResult,
+  MultiModalSearchResult,
+  MultiModalSearchOptions,
+} from './multimodal';

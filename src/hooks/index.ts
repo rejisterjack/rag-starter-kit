@@ -28,3 +28,6 @@ export { usePWA } from './use-pwa';
 // Voice hooks
 export { useSpeechRecognition } from './use-speech-recognition';
 export { useTextToSpeech } from './use-text-to-speech';
+
+// CSRF hook
+export { useCsrf, fetchWithCsrf, getCsrfToken } from './use-csrf';

@@ -12,6 +12,17 @@ const nextConfig: NextConfig = {
 		// Dynamic IO - enables async/await in Server Components
 		// Renamed to cacheComponents in newer versions
 		// dynamicIO: true,
+
+		// Optimize package imports for better tree-shaking
+		optimizePackageImports: [
+			'recharts',
+			'd3',
+			'gsap',
+			'@react-pdf/renderer',
+			'tesseract.js',
+			'lucide-react',
+			'date-fns',
+		],
 	},
 	webpack: (config, { isServer }): webpack.Configuration => {
 		// Exclude playwright from client-side bundle

@@ -1,18 +1,54 @@
 /**
- * AI Module - OpenRouter (Chat) + Google Gemini (Embeddings)
+ * @fileoverview AI Module - Complete AI provider integration
  * 
- * BEST OF THE BEST FREE SETUP:
- * - Chat: OpenRouter free models with automatic fallback
- * - Embeddings: Google Gemini (free tier via AI Studio)
+ * Provides a unified interface for LLM chat completions and text embeddings.
+ * Default configuration uses free tiers of OpenRouter (chat) and Google Gemini (embeddings),
+ * with automatic fallback chains for reliability.
  * 
- * Get API Keys:
- * - OpenRouter: https://openrouter.ai/keys
- * - Google AI Studio: https://aistudio.google.com/app/apikey
+ * ## Supported Providers
+ * 
+ * ### Chat/Completion (LLM)
+ * - **OpenRouter** - Access to multiple free models (DeepSeek, Mistral, Llama)
+ * - **OpenAI** - GPT-4, GPT-3.5-turbo
+ * - **Ollama** - Self-hosted local models
+ * 
+ * ### Embeddings
+ * - **Google Gemini** - Free tier (1,500 req/day), 768 dimensions
+ * - **OpenAI** - text-embedding-3 series
+ * - **Local** - Transformers.js on-device
+ * 
+ * ## Quick Start
+ * 
+ * ```typescript
+ * import { streamChatCompletion, generateEmbedding } from '@/lib/ai';
+ * 
+ * // Stream a chat response
+ * const stream = await streamChatCompletion([
+ *   { role: 'user', content: 'Hello!' }
+ * ]);
+ * 
+ * // Generate embeddings
+ * const embedding = await generateEmbedding('Your text here');
+ * ```
+ * 
+ * ## Configuration
+ * 
+ * Set environment variables in `.env`:
+ * ```
+ * OPENROUTER_API_KEY=sk-or-v1-...
+ * GOOGLE_API_KEY=AIzaSy...
+ * ```
+ * 
+ * @module ai
+ * @requires @ai-sdk/google
+ * @requires @openrouter/ai-sdk-provider
+ * @see {@link https://sdk.vercel.ai/|Vercel AI SDK Documentation}
+ * @see {@link https://openrouter.ai/docs|OpenRouter Documentation}
  */
 
 import { openrouter } from '@openrouter/ai-sdk-provider';
 import { google } from '@ai-sdk/google';
-import { streamText, generateText, embed, embedMany, type UIMessage } from 'ai';
+import { streamText, generateText, embed, embedMany, type UIMessage, type LanguageModelUsage } from 'ai';
 import { createHash } from 'crypto';
 
 // Embedding model configuration (Google Gemini - FREE)
@@ -108,10 +144,16 @@ export async function streamChatCompletion(
   throw lastError ?? new Error('All models failed');
 }
 
+export interface ChatCompletionResult {
+  text: string;
+  modelUsed: string;
+  usage: LanguageModelUsage;
+}
+
 export async function generateChatCompletion(
   messages: UIMessage[],
   config: Partial<RAGConfig> = {}
-): Promise<{ text: string; modelUsed: string }> {
+): Promise<ChatCompletionResult> {
   const modelConfig = { ...defaultAIConfig, ...config };
   const modelsToTry = [modelConfig.model, ...MODEL_FALLBACK_CHAIN.filter(m => m !== modelConfig.model)];
   
@@ -124,7 +166,7 @@ export async function generateChatCompletion(
         maxOutputTokens: modelConfig.maxTokens,
       });
       
-      return { text: result.text, modelUsed: model };
+      return { text: result.text, modelUsed: model, usage: result.usage };
     } catch (error) {
       console.warn(`Model ${model} failed, trying fallback...`);
       continue;

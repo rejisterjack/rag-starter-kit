@@ -1,6 +1,13 @@
 /**
  * Agentic Chat API Route with Streaming Support
  * Uses Query Router + ReAct Agent + Multi-Step Reasoning for intelligent query handling
+ * 
+ * Enhanced with:
+ * - Agent memory persistence
+ * - Streaming ReAct reasoning steps
+ * - Agent configuration from request
+ * - Tool selection based on settings
+ * - Agent analytics tracking
  */
 
 import { openai } from '@ai-sdk/openai';
@@ -9,12 +16,18 @@ import { type LanguageModel, streamText } from 'ai';
 import { NextResponse } from 'next/server';
 import { createOllama } from 'ollama-ai-provider';
 import { createProviderFromEnv, type LLMMessage } from '@/lib/ai/llm';
+import {
+  AgentAnalytics,
+  createAgentAnalytics,
+} from '@/lib/analytics/agent-analytics';
 import { MetricType, recordMetric } from '@/lib/analytics/rag-metrics';
 import { trackTokenUsage } from '@/lib/analytics/token-tracking';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import {
+  AgentMemory,
+  createAgentMemory,
   createQueryRouter,
   createReActAgent,
   type QueryClassification,
@@ -25,6 +38,7 @@ import { CitationHandler, sourcesToChunks } from '@/lib/rag/citations';
 import { ConversationMemory } from '@/lib/rag/memory';
 import {
   calculatorTool,
+  codeExecutorTool,
   createWebSearchTool,
   getDefaultWebSearchProvider,
   currentTimeTool,
@@ -53,6 +67,9 @@ const defaultConfig: RAGConfig = {
 
 const REACT_THRESHOLD = 0.6;
 
+// Global analytics instance
+const agentAnalytics = createAgentAnalytics();
+
 function getModel(modelName: string): LanguageModel {
   // Check if it's an OpenRouter model (contains '/' or ends with ':free')
   if (modelName.includes('/') || modelName.endsWith(':free')) {
@@ -77,6 +94,15 @@ function getModel(modelName: string): LanguageModel {
   return openrouter.chat(modelName) as unknown as LanguageModel;
 }
 
+interface AgentConfig {
+  maxIterations: number;
+  enabledTools: string[];
+  enablePlanning: boolean;
+  showReasoning: boolean;
+  enableReflection: boolean;
+  earlyTermination: boolean;
+}
+
 interface HandlerParams {
   userMessage: string;
   history: Array<{ role: 'user' | 'assistant'; content: string }>;
@@ -84,10 +110,14 @@ interface HandlerParams {
   workspaceId: string | undefined;
   effectiveConversationId: string | undefined;
   config: RAGConfig;
+  agentConfig: AgentConfig;
   shouldStream: boolean;
+  shouldStreamReasoning: boolean;
   rateLimitResult: { success: boolean; limit: number; remaining: number; reset: number };
   requestId: string;
   startTime: number;
+  agentMemory: AgentMemory;
+  analytics: AgentAnalytics;
 }
 
 export async function POST(req: Request) {
@@ -173,9 +203,31 @@ export async function POST(req: Request) {
       config: userConfig,
       stream: shouldStream,
     } = validatedInput;
+    
+    // Parse agent configuration from request
+    const agentConfig: AgentConfig = {
+      maxIterations: (body as { agentConfig?: { maxIterations?: number } })?.agentConfig?.maxIterations ?? 5,
+      enabledTools: (body as { agentConfig?: { enabledTools?: string[] } })?.agentConfig?.enabledTools ?? [
+        'calculator', 'document_search', 'current_time'
+      ],
+      enablePlanning: (body as { agentConfig?: { enablePlanning?: boolean } })?.agentConfig?.enablePlanning ?? true,
+      showReasoning: (body as { agentConfig?: { showReasoning?: boolean } })?.agentConfig?.showReasoning ?? true,
+      enableReflection: (body as { agentConfig?: { enableReflection?: boolean } })?.agentConfig?.enableReflection ?? true,
+      earlyTermination: (body as { agentConfig?: { earlyTermination?: boolean } })?.agentConfig?.earlyTermination ?? true,
+    };
+
+    const shouldStreamReasoning = (body as { streamReasoning?: boolean })?.streamReasoning ?? false;
+    
     const config = { ...defaultConfig, ...userConfig };
     const effectiveConversationId = conversationId ?? chatId;
     const userMessage = messages[messages.length - 1].content;
+
+    // Initialize agent memory
+    const agentMemory = createAgentMemory(userId, workspaceId, effectiveConversationId);
+
+    // Start analytics session
+    const analytics = createAgentAnalytics();
+    analytics.startSession(userId, workspaceId);
 
     const memory = new ConversationMemory(prisma);
     let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
@@ -231,6 +283,7 @@ export async function POST(req: Request) {
         confidence: classification.confidence,
         reasoning: classification.reasoning,
         suggestedTools: classification.suggestedTools,
+        agentConfig,
       },
     });
 
@@ -245,10 +298,14 @@ export async function POST(req: Request) {
           workspaceId,
           effectiveConversationId,
           config,
+          agentConfig,
           shouldStream,
+          shouldStreamReasoning,
           rateLimitResult,
           requestId,
           startTime,
+          agentMemory,
+          analytics,
         });
         break;
 
@@ -260,11 +317,15 @@ export async function POST(req: Request) {
           workspaceId,
           effectiveConversationId,
           config,
+          agentConfig,
           shouldStream,
+          shouldStreamReasoning,
           rateLimitResult,
           requestId,
           startTime,
           classification,
+          agentMemory,
+          analytics,
         });
         break;
 
@@ -276,11 +337,15 @@ export async function POST(req: Request) {
           workspaceId,
           effectiveConversationId,
           config,
+          agentConfig,
           shouldStream,
+          shouldStreamReasoning,
           rateLimitResult,
           requestId,
           startTime,
           classification,
+          agentMemory,
+          analytics,
         });
         break;
 
@@ -293,11 +358,15 @@ export async function POST(req: Request) {
             workspaceId,
             effectiveConversationId,
             config,
+            agentConfig,
             shouldStream,
+            shouldStreamReasoning,
             rateLimitResult,
             requestId,
             startTime,
             classification,
+            agentMemory,
+            analytics,
           });
         } else {
           response = await handleDirectRetrieval({
@@ -307,10 +376,14 @@ export async function POST(req: Request) {
             workspaceId,
             effectiveConversationId,
             config,
+            agentConfig,
             shouldStream,
+            shouldStreamReasoning,
             rateLimitResult,
             requestId,
             startTime,
+            agentMemory,
+            analytics,
           });
         }
         break;
@@ -323,8 +396,11 @@ export async function POST(req: Request) {
           userId,
           workspaceId,
           effectiveConversationId,
+          agentConfig,
           rateLimitResult,
           requestId,
+          agentMemory,
+          analytics,
         });
         break;
 
@@ -336,11 +412,15 @@ export async function POST(req: Request) {
           workspaceId,
           effectiveConversationId,
           config,
+          agentConfig,
           shouldStream,
+          shouldStreamReasoning,
           rateLimitResult,
           requestId,
           startTime,
           classification,
+          agentMemory,
+          analytics,
         });
     }
 
@@ -371,6 +451,8 @@ async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
     shouldStream,
     rateLimitResult,
     requestId,
+    agentMemory,
+    analytics,
   } = params;
 
   const llmProvider = createProviderFromEnv();
@@ -383,11 +465,20 @@ async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
     });
   }
 
+  // Get memory context
+  const memoryContext = await agentMemory.buildMemoryContext();
+  
   const llmMessages: LLMMessage[] = [
-    { role: 'system', content: 'You are a helpful assistant. Answer directly and concisely.' },
+    { 
+      role: 'system', 
+      content: `You are a helpful assistant. Answer directly and concisely.
+${memoryContext ? `\nContext:\n${memoryContext}` : ''}` 
+    },
     ...history,
     { role: 'user', content: userMessage },
   ];
+
+  const queryStartTime = Date.now();
 
   if (shouldStream) {
     const result = streamText({
@@ -409,6 +500,26 @@ async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
           promptTokens: completion.usage?.inputTokens ?? 0,
           completionTokens: completion.usage?.outputTokens ?? 0,
           model: config.model,
+        });
+
+        // Track analytics
+        await analytics.trackQuery({
+          queryId: crypto.randomUUID(),
+          userId,
+          query: userMessage,
+          queryType: 'direct_answer',
+          strategy: 'direct_answer',
+          success: true,
+          steps: 1,
+          toolCalls: 0,
+          latency: Date.now() - queryStartTime,
+          tokensUsed: {
+            prompt: completion.usage?.inputTokens ?? 0,
+            completion: completion.usage?.outputTokens ?? 0,
+            total: (completion.usage?.inputTokens ?? 0) + (completion.usage?.outputTokens ?? 0),
+          },
+          toolUsage: {},
+          timestamp: new Date(),
         });
       },
     });
@@ -444,6 +555,26 @@ async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
       model: config.model,
     });
 
+    // Track analytics
+    await analytics.trackQuery({
+      queryId: crypto.randomUUID(),
+      userId,
+      query: userMessage,
+      queryType: 'direct_answer',
+      strategy: 'direct_answer',
+      success: true,
+      steps: 1,
+      toolCalls: 0,
+      latency: Date.now() - queryStartTime,
+      tokensUsed: {
+        prompt: response.usage.promptTokens,
+        completion: response.usage.completionTokens,
+        total: response.usage.totalTokens,
+      },
+      toolUsage: {},
+      timestamp: new Date(),
+    });
+
     const jsonResponse = NextResponse.json({
       success: true,
       data: {
@@ -460,16 +591,37 @@ async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
 async function handleCalculation(
   params: HandlerParams & { classification: QueryClassification }
 ): Promise<Response> {
-  const { userMessage, history, userId, workspaceId, effectiveConversationId, config } = params;
+  const { 
+    userMessage, 
+    history, 
+    userId, 
+    workspaceId, 
+    effectiveConversationId, 
+    config, 
+    agentConfig, 
+    agentMemory,
+    analytics,
+  } = params;
 
-  const agent = createReActAgent([calculatorTool, currentTimeTool], {
+  const tools: import('@/lib/rag/tools').Tool[] = [calculatorTool, currentTimeTool];
+  
+  if (agentConfig.enabledTools.includes('code_executor')) {
+    tools.push(codeExecutorTool);
+  }
+
+  const agent = createReActAgent(tools, {
     model: config.model,
+    maxSteps: agentConfig.maxIterations,
+    enableReflection: agentConfig.enableReflection,
+    earlyTermination: agentConfig.earlyTermination,
   });
 
   const result = await agent.execute(userMessage, {
     workspaceId: workspaceId ?? '',
     userId,
     history: history as unknown as import('@/types').Message[],
+    memory: agentMemory,
+    enablePlanning: agentConfig.enablePlanning,
   });
 
   const memory = new ConversationMemory(prisma);
@@ -491,12 +643,33 @@ async function handleCalculation(
     model: config.model,
   });
 
+  // Track analytics
+  await analytics.trackQuery({
+    queryId: crypto.randomUUID(),
+    userId,
+    query: userMessage,
+    queryType: 'calculate',
+    strategy: 'calculate',
+    success: true,
+    steps: result.iterations,
+    toolCalls: result.steps.filter((s: ReActStep) => s.action !== 'final_answer').length,
+    latency: result.latency,
+    tokensUsed: result.tokensUsed,
+    toolUsage: { calculator: 1 },
+    terminated: result.terminated,
+    terminationReason: result.terminationReason,
+    timestamp: new Date(),
+  });
+
   return NextResponse.json({
     success: true,
     data: {
       content: result.answer,
       strategy: 'calculate',
-      steps: result.steps,
+      steps: agentConfig.showReasoning ? result.steps : undefined,
+      iterations: result.iterations,
+      terminated: result.terminated,
+      terminationReason: result.terminationReason,
       latency: result.latency,
       usage: { totalTokens: result.tokensUsed },
     },
@@ -506,17 +679,38 @@ async function handleCalculation(
 async function handleWebSearch(
   params: HandlerParams & { classification: QueryClassification }
 ): Promise<Response> {
-  const { userMessage, history, userId, workspaceId, effectiveConversationId, config } = params;
+  const { 
+    userMessage, 
+    history, 
+    userId, 
+    workspaceId, 
+    effectiveConversationId, 
+    config, 
+    agentConfig,
+    agentMemory,
+    analytics,
+  } = params;
 
   const webSearch = createWebSearchTool(getDefaultWebSearchProvider());
-  const agent = createReActAgent([webSearch, currentTimeTool], {
+  const tools: import('@/lib/rag/tools').Tool[] = [webSearch, currentTimeTool];
+  
+  if (agentConfig.enabledTools.includes('calculator')) {
+    tools.push(calculatorTool);
+  }
+
+  const agent = createReActAgent(tools, {
     model: config.model,
+    maxSteps: agentConfig.maxIterations,
+    enableReflection: agentConfig.enableReflection,
+    earlyTermination: agentConfig.earlyTermination,
   });
 
   const result = await agent.execute(userMessage, {
     workspaceId: workspaceId ?? '',
     userId,
     history: history as unknown as import('@/types').Message[],
+    memory: agentMemory,
+    enablePlanning: agentConfig.enablePlanning,
   });
 
   const memory = new ConversationMemory(prisma);
@@ -538,13 +732,35 @@ async function handleWebSearch(
     model: config.model,
   });
 
+  // Track analytics
+  await analytics.trackQuery({
+    queryId: crypto.randomUUID(),
+
+    userId,
+    query: userMessage,
+    queryType: 'web_search',
+    strategy: 'web_search',
+    success: true,
+    steps: result.iterations,
+    toolCalls: result.steps.filter((s: ReActStep) => s.action !== 'final_answer').length,
+    latency: result.latency,
+    tokensUsed: result.tokensUsed,
+    toolUsage: { web_search: 1 },
+    terminated: result.terminated,
+    terminationReason: result.terminationReason,
+    timestamp: new Date(),
+  });
+
   return NextResponse.json({
     success: true,
     data: {
       content: result.answer,
       strategy: 'web_search',
-      steps: result.steps,
+      steps: agentConfig.showReasoning ? result.steps : undefined,
       sources: result.sources,
+      iterations: result.iterations,
+      terminated: result.terminated,
+      terminationReason: result.terminationReason,
       latency: result.latency,
       usage: { totalTokens: result.tokensUsed },
     },
@@ -552,6 +768,7 @@ async function handleWebSearch(
 }
 
 async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
+  const queryStartTime = Date.now();
   const {
     userMessage,
     history,
@@ -562,6 +779,8 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
     shouldStream,
     rateLimitResult,
     requestId,
+    agentMemory,
+    analytics,
   } = params;
 
   const { retrieveSources } = await import('@/lib/rag/retrieval');
@@ -572,9 +791,16 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
   const { context, citationMap } = citationHandler.formatContextWithCitations(chunks);
 
   const { buildSystemPromptWithContext } = await import('@/lib/ai/prompts/templates');
-  const systemPrompt = buildSystemPromptWithContext(context, {
-    style: config.temperature < 0.5 ? 'concise' : 'balanced',
-  });
+  
+  // Get memory context
+  const memoryContext = await agentMemory.buildMemoryContext();
+  
+  const systemPrompt = buildSystemPromptWithContext(
+    `${context}${memoryContext ? `\n\nUser Context:\n${memoryContext}` : ''}`,
+    {
+      style: config.temperature < 0.5 ? 'concise' : 'balanced',
+    }
+  );
 
   const llmMessages: LLMMessage[] = [
     { role: 'system', content: systemPrompt },
@@ -611,6 +837,26 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
           promptTokens: completion.usage?.inputTokens ?? 0,
           completionTokens: completion.usage?.outputTokens ?? 0,
           model: config.model,
+        });
+
+        // Track analytics
+        await analytics.trackQuery({
+          queryId: crypto.randomUUID(),
+          userId,
+          query: userMessage,
+          queryType: 'direct_retrieval',
+          strategy: 'direct_retrieval',
+          success: true,
+          steps: 1,
+          toolCalls: 0,
+          latency: Date.now() - queryStartTime,
+          tokensUsed: {
+            prompt: completion.usage?.inputTokens ?? 0,
+            completion: completion.usage?.outputTokens ?? 0,
+            total: (completion.usage?.inputTokens ?? 0) + (completion.usage?.outputTokens ?? 0),
+          },
+          toolUsage: { document_search: 1 },
+          timestamp: new Date(),
         });
       },
     });
@@ -653,6 +899,26 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
       model: config.model,
     });
 
+    // Track analytics
+    await analytics.trackQuery({
+      queryId: crypto.randomUUID(),
+      userId,
+      query: userMessage,
+      queryType: 'direct_retrieval',
+      strategy: 'direct_retrieval',
+      success: true,
+      steps: 1,
+      toolCalls: 0,
+      latency: Date.now() - queryStartTime,
+      tokensUsed: {
+        prompt: response.usage.promptTokens,
+        completion: response.usage.completionTokens,
+        total: response.usage.totalTokens,
+      },
+      toolUsage: { document_search: 1 },
+      timestamp: new Date(),
+    });
+
     const jsonResponse = NextResponse.json({
       success: true,
       data: {
@@ -677,24 +943,77 @@ async function handleReAct(
     workspaceId,
     effectiveConversationId,
     config,
+    agentConfig,
+    shouldStreamReasoning,
+    agentMemory,
+    analytics,
   } = params;
 
-  const tools = [calculatorTool, searchDocumentsTool, documentSummaryTool, currentTimeTool];
+  // Build tool list based on enabled tools
+  const tools = [];
+  if (agentConfig.enabledTools.includes('calculator')) tools.push(calculatorTool);
+  if (agentConfig.enabledTools.includes('document_search')) tools.push(searchDocumentsTool);
+  if (agentConfig.enabledTools.includes('document_summary')) tools.push(documentSummaryTool);
+  if (agentConfig.enabledTools.includes('current_time')) tools.push(currentTimeTool);
+  if (agentConfig.enabledTools.includes('code_executor')) tools.push(codeExecutorTool);
 
-  try {
-    const webSearch = createWebSearchTool(getDefaultWebSearchProvider());
-    tools.push(webSearch);
-  } catch {
-    // Web search not configured
+  // Add web search if enabled
+  if (agentConfig.enabledTools.includes('web_search')) {
+    try {
+      const webSearch = createWebSearchTool(getDefaultWebSearchProvider());
+      tools.push(webSearch);
+    } catch {
+      // Web search not configured
+    }
   }
 
   const agent = createReActAgent(tools, {
     model: config.model,
+    maxSteps: agentConfig.maxIterations,
+    enableReflection: agentConfig.enableReflection,
+    earlyTermination: agentConfig.earlyTermination,
   });
 
+  // Handle streaming reasoning if requested
+  if (shouldStreamReasoning) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          const streamResult = agent.stream(userMessage, {
+            workspaceId: workspaceId ?? '',
+            userId,
+            memory: agentMemory,
+            enablePlanning: agentConfig.enablePlanning,
+          });
+
+          for await (const event of streamResult) {
+            const data = JSON.stringify(event);
+            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+          }
+
+          controller.close();
+        } catch (error) {
+          controller.error(error);
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+  }
+
+  // Standard execution
   const result = await agent.execute(userMessage, {
     workspaceId: workspaceId ?? '',
     userId,
+    memory: agentMemory,
+    enablePlanning: agentConfig.enablePlanning,
   });
 
   const memory = new ConversationMemory(prisma);
@@ -716,14 +1035,44 @@ async function handleReAct(
     model: config.model,
   });
 
+  // Track tool usage
+  const toolUsage: Record<string, number> = {};
+  for (const step of result.steps) {
+    if (step.action && step.action !== 'final_answer') {
+      toolUsage[step.action] = (toolUsage[step.action] ?? 0) + 1;
+    }
+  }
+
+  // Track analytics
+  await analytics.trackQuery({
+    queryId: crypto.randomUUID(),
+
+    userId,
+    query: userMessage,
+    queryType: 'react',
+    strategy: 'react',
+    success: true,
+    steps: result.iterations,
+    toolCalls: result.steps.filter((s: ReActStep) => s.action !== 'final_answer').length,
+    latency: result.latency,
+    tokensUsed: result.tokensUsed,
+    toolUsage,
+    terminated: result.terminated,
+    terminationReason: result.terminationReason,
+    timestamp: new Date(),
+  });
+
   return NextResponse.json({
     success: true,
     data: {
       content: result.answer,
       strategy: 'react',
-      steps: result.steps,
+      steps: agentConfig.showReasoning ? result.steps : undefined,
       sources: result.sources,
-      toolCalls: result.steps.filter((s: ReActStep) => s.action).length,
+      toolCalls: result.steps.filter((s: ReActStep) => s.action !== 'final_answer').length,
+      iterations: result.iterations,
+      terminated: result.terminated,
+      terminationReason: result.terminationReason,
       latency: result.latency,
       usage: { totalTokens: result.tokensUsed },
     },
@@ -731,11 +1080,17 @@ async function handleReAct(
 }
 
 async function handleClarification(
-  params: Omit<HandlerParams, 'config' | 'shouldStream' | 'startTime'> & {
+  params: Omit<HandlerParams, 'config' | 'shouldStream' | 'shouldStreamReasoning' | 'startTime'> & {
     classification: QueryClassification;
   }
 ): Promise<Response> {
-  const { userMessage, classification, effectiveConversationId, rateLimitResult } = params;
+  const { 
+    userMessage, 
+    classification, 
+    effectiveConversationId, 
+    rateLimitResult,
+    analytics,
+  } = params;
 
   const memory = new ConversationMemory(prisma);
 
@@ -746,6 +1101,23 @@ async function handleClarification(
       content: classification.reasoning,
     });
   }
+
+  // Track analytics
+  await analytics.trackQuery({
+    queryId: crypto.randomUUID(),
+
+    userId: '',
+    query: userMessage,
+    queryType: 'clarify',
+    strategy: 'clarify',
+    success: true,
+    steps: 0,
+    toolCalls: 0,
+    latency: 0,
+    tokensUsed: { prompt: 0, completion: 0, total: 0 },
+    toolUsage: {},
+    timestamp: new Date(),
+  });
 
   const jsonResponse = NextResponse.json({
     success: true,
@@ -758,4 +1130,59 @@ async function handleClarification(
   });
   addRateLimitHeaders(jsonResponse.headers, rateLimitResult);
   return jsonResponse;
+}
+
+// ============================================================================
+// Analytics API Routes
+// ============================================================================
+
+export async function GET(req: Request) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const action = searchParams.get('action');
+
+    if (action === 'stats') {
+      const days = parseInt(searchParams.get('days') ?? '30', 10);
+      const stats = await agentAnalytics.getToolUsageStats(
+        session.user.id,
+        session.user.workspaceId ?? undefined,
+        days
+      );
+      return NextResponse.json({ success: true, data: stats });
+    }
+
+    if (action === 'quality') {
+      const days = parseInt(searchParams.get('days') ?? '30', 10);
+      const quality = await agentAnalytics.getReasoningQualityMetrics(
+        session.user.id,
+        session.user.workspaceId ?? undefined,
+        days
+      );
+      return NextResponse.json({ success: true, data: quality });
+    }
+
+    if (action === 'realtime') {
+      const realtime = await agentAnalytics.getRealtimeStats(
+        session.user.id,
+        session.user.workspaceId ?? undefined
+      );
+      return NextResponse.json({ success: true, data: realtime });
+    }
+
+    return NextResponse.json(
+      { error: 'Invalid action', validActions: ['stats', 'quality', 'realtime'] },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error('Agent analytics error:', error);
+    return NextResponse.json(
+      { error: 'Failed to retrieve analytics' },
+      { status: 500 }
+    );
+  }
 }

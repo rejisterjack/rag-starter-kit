@@ -15,12 +15,27 @@ const PUBLIC_ROUTES = [
   '/reset-password',
   '/api/auth',
   '/api/webhook',
+  '/api/csrf',
   '/_next',
   '/static',
   '/favicon.ico',
   '/robots.txt',
   '/sitemap.xml',
 ];
+
+// Routes that require CSRF protection
+const CSRF_PROTECTED_ROUTES = [
+  '/api/chat',
+  '/api/ingest',
+  '/api/documents',
+  '/api/workspaces',
+  '/api/admin',
+  '/api/export',
+  '/api/invite',
+];
+
+// Safe HTTP methods that don't require CSRF protection
+const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
 
 // API routes that require authentication
 const PROTECTED_API_ROUTES = ['/api/chat', '/api/ingest', '/api/documents', '/api/workspaces'];
@@ -56,6 +71,18 @@ export async function middleware(req: NextRequest) {
       status: 204,
       headers: corsHeaders,
     });
+  }
+
+  // CSRF Protection for state-changing API requests
+  const requiresCsrf = CSRF_PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
+  if (requiresCsrf && !SAFE_METHODS.includes(req.method)) {
+    const csrfValid = await validateCsrfToken(req);
+    if (!csrfValid) {
+      return NextResponse.json(
+        { error: 'Invalid CSRF token', code: 'CSRF_INVALID' },
+        { status: 403, headers: corsHeaders }
+      );
+    }
   }
 
   // Check if route is public
@@ -95,6 +122,33 @@ export async function middleware(req: NextRequest) {
   const requiresAuth =
     PROTECTED_API_ROUTES.some((route) => pathname.startsWith(route)) ||
     pathname.startsWith('/chat');
+
+  // IP-based rate limiting for unauthenticated API requests
+  if (!isLoggedIn && pathname.startsWith('/api/')) {
+    const { checkIPRateLimit } = await import('@/lib/security/ip-rate-limiter');
+    const ipResult = await checkIPRateLimit(req);
+    
+    if (!ipResult.allowed) {
+      const response = NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          code: 'RATE_LIMIT',
+          requiresCaptcha: ipResult.requiresCaptcha,
+          isBlocked: ipResult.isBlocked,
+          resetAt: new Date(ipResult.resetTime).toISOString(),
+        },
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            'Retry-After': Math.ceil((ipResult.resetTime - Date.now()) / 1000).toString(),
+          },
+        }
+      );
+      
+      return response;
+    }
+  }
 
   // Redirect unauthenticated users to login
   if (!isLoggedIn && requiresAuth) {
@@ -153,6 +207,52 @@ export async function middleware(req: NextRequest) {
   }
 
   return response;
+}
+
+// =============================================================================
+// CSRF Token Validation
+// =============================================================================
+
+/**
+ * Validate CSRF token from request
+ * Uses double-submit cookie pattern for validation
+ */
+async function validateCsrfToken(req: NextRequest): Promise<boolean> {
+  try {
+    // Get token from header
+    const token = req.headers.get('x-csrf-token');
+    
+    if (!token) {
+      console.warn('[CSRF] Missing CSRF token in request to', req.nextUrl.pathname);
+      return false;
+    }
+
+    // Get cookie value
+    const cookie = req.cookies.get('csrf_token');
+    if (!cookie?.value) {
+      console.warn('[CSRF] Missing CSRF cookie');
+      return false;
+    }
+
+    // Timing-safe comparison
+    const encoder = new TextEncoder();
+    const tokenData = encoder.encode(token);
+    const cookieData = encoder.encode(cookie.value);
+    
+    if (tokenData.length !== cookieData.length) {
+      return false;
+    }
+    
+    let result = 0;
+    for (let i = 0; i < tokenData.length; i++) {
+      result |= tokenData[i] ^ cookieData[i];
+    }
+    
+    return result === 0;
+  } catch (error) {
+    console.error('[CSRF] Validation error:', error);
+    return false;
+  }
 }
 
 // =============================================================================

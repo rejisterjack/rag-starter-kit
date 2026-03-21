@@ -1,6 +1,35 @@
 /**
- * RAG Chain
- * Core RAG pipeline orchestrating retrieval, prompt building, and generation
+ * @fileoverview RAG Chain - Core RAG pipeline implementation
+ * 
+ * This module orchestrates the complete Retrieval-Augmented Generation pipeline,
+ * including document retrieval, context building, prompt construction, and 
+ * response generation. It provides both synchronous and streaming interfaces.
+ * 
+ * @example
+ * ```typescript
+ * // Basic usage
+ * const chain = createRAGChain(llmProvider);
+ * const response = await chain.query({
+ *   query: "What are the key findings?",
+ *   workspaceId: "ws_123",
+ *   userId: "user_456"
+ * });
+ * 
+ * // Streaming usage
+ * for await (const event of chain.stream({
+ *   query: "Explain this document",
+ *   workspaceId: "ws_123",
+ *   userId: "user_456"
+ * })) {
+ *   if (event.type === 'token') {
+ *     console.log(event.data); // Streamed token
+ *   }
+ * }
+ * ```
+ * 
+ * @module rag/chain
+ * @see {@link module:rag/retrieval} for retrieval implementation
+ * @see {@link module:ai/llm} for LLM provider interface
  */
 
 import type { LLMMessage, LLMOptions, LLMProvider } from '@/lib/ai/llm';

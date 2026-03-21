@@ -23,3 +23,29 @@ export type {
   WebhookEventType,
   WebhookPayload,
 } from './delivery';
+
+// Secret Rotation
+export {
+  cleanupExpiredRotations,
+  completeWebhookRotation,
+  generateWebhookSecret as generateSecureWebhookSecret,
+  getWebhookSecrets,
+  rotateWebhookSecret,
+  verifyWebhookSignatureWithRotation,
+} from './rotation';
+
+export type { RotationResult, WebhookSecrets } from './rotation';
+
+// Idempotency
+export {
+  checkIdempotencyKey,
+  cleanupIdempotencyKeys,
+  deleteIdempotencyKey,
+  generateIdempotencyKey,
+  IdempotencyError,
+  isDuplicateEvent,
+  markIdempotencyKeyProcessed,
+  parseIdempotencyKey,
+  processWithIdempotency,
+  storeIdempotencyKey,
+} from './idempotency';

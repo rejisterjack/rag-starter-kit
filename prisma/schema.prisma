@@ -213,12 +213,31 @@ model Document {
   // Processing status
   status      DocumentStatus   @default(PENDING)
   
+  // OCR-specific fields (for documents processed with OCR)
+  /** Whether OCR was applied to this document */
+  ocrProcessed     Boolean   @default(false)
+  /** OCR confidence score (0-100) */
+  ocrConfidence    Float?
+  /** OCR language code used (e.g., 'eng', 'deu') */
+  ocrLanguage      String?
+  /** OCR processing time in milliseconds */
+  ocrProcessingTimeMs Int?
+  /** OCR engine mode used */
+  ocrEngineMode    String?
+  /** Page segmentation mode used */
+  ocrPSM           String?
+  /** Whether preprocessing was applied */
+  ocrPreprocessing Boolean   @default(false)
+  /** Error message if OCR failed */
+  ocrError         String?
+  
   // Relations
   userId      String
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspaceId String?
   workspace   Workspace?       @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
   chunks      DocumentChunk[]
+  images      DocumentImage[]
   ingestionJob IngestionJob?
   
   createdAt   DateTime         @default(now())
@@ -227,6 +246,8 @@ model Document {
   @@index([userId])
   @@index([workspaceId])
   @@index([status])
+  @@index([ocrProcessed])
+  @@index([ocrConfidence])
   @@map("documents")
 }
 
@@ -245,6 +266,7 @@ model DocumentChunk {
   embedding   Unsupported("vector(768)")?
   
   document    Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  images      DocumentImage[]
   
   createdAt   DateTime   @default(now())
 
@@ -278,6 +300,89 @@ enum DocumentStatus {
 
 enum JobStatus {
   QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ============================================================================
+// Image Models (Multi-modal Support)
+// ============================================================================
+
+model DocumentImage {
+  id          String     @id @default(cuid())
+  documentId  String
+  document    Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  // Image metadata
+  filename    String
+  mimeType    String
+  size        Int
+  width       Int?
+  height      Int?
+  
+  // Storage
+  storageKey  String     // MinIO/S3 key
+  storageUrl  String     // Public URL
+  
+  // OCR / Caption
+  caption     String?    @db.Text
+  ocrText     String?    @db.Text
+  
+  // OCR-specific metadata
+  /** OCR confidence score (0-100) */
+  ocrConfidence    Float?
+  /** OCR language code used */
+  ocrLanguage      String?
+  /** OCR processing time in milliseconds */
+  ocrProcessingTimeMs Int?
+  /** Whether OCR preprocessing was applied */
+  ocrPreprocessing Boolean @default(false)
+  /** OCR bounding boxes as JSON */
+  ocrBoundingBoxes Json?
+  
+  // Relations
+  chunkId     String?
+  chunk       DocumentChunk? @relation(fields: [chunkId], references: [id], onDelete: SetNull)
+  pageNumber  Int?
+  
+  // Processing status
+  status      ImageStatus @default(PENDING)
+  
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([documentId])
+  @@index([chunkId])
+  @@index([status])
+  @@index([ocrConfidence])
+  @@map("document_images")
+}
+
+model ImageEmbedding {
+  id          String     @id @default(cuid())
+  
+  // Reference to the image
+  imageId     String?
+  imageUrl    String?    // For external images
+  contentHash String     @unique // For caching
+  
+  // 512-dimensional CLIP embedding
+  embedding   Unsupported("vector(512)")
+  
+  // Model info
+  model       String     @default("Xenova/clip-vit-base-patch32")
+  dimensions  Int        @default(512)
+  
+  createdAt   DateTime   @default(now())
+
+  @@index([imageId])
+  @@index([contentHash])
+  @@map("image_embeddings")
+}
+
+enum ImageStatus {
+  PENDING
   PROCESSING
   COMPLETED
   FAILED
@@ -506,6 +611,9 @@ enum AuditEvent {
   
   // Analytics
   READ_API_USAGE
+  
+  // Encryption
+  ENCRYPTION_OPERATION
 }
 
 enum AuditSeverity {

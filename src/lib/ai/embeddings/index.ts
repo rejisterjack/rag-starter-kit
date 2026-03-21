@@ -24,6 +24,15 @@ export * from './types';
 export { OpenAIEmbeddingProvider, createOpenAIProvider } from './openai';
 export { OllamaEmbeddingProvider, createOllamaProvider } from './ollama';
 export { GoogleEmbeddingProvider, createGoogleProvider, GOOGLE_MODELS } from './google';
+export {
+  generateImageEmbedding,
+  generateImageEmbeddings,
+  generateTextEmbeddingForImageSearch,
+  cosineSimilarity as imageCosineSimilarity,
+  getImageEmbeddingDimensions,
+  clearImageEmbeddingCache,
+  healthCheck as imageEmbeddingHealthCheck,
+} from './image';
 
 /**
  * Provider factory configuration with environment fallbacks

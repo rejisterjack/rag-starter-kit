@@ -5,7 +5,7 @@
  * Coordinates embedding generation, retrieval, and response generation.
  */
 
-import type { UIMessage } from 'ai';
+import type { UIMessage, LanguageModelUsage } from 'ai';
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
 import { logger } from '@/lib/logger';
 import type { RAGConfig, RAGQuery, RAGResponse, Source } from '@/types';
@@ -72,16 +72,15 @@ export async function generateRAGResponse(query: RAGQuery): Promise<RAGResponse>
     const latency = Date.now() - startTime;
 
     // Extract token usage from response
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const usage = response.usage as any;
+    const usage: LanguageModelUsage = response.usage;
 
     return {
       answer: response.text,
       sources,
       tokensUsed: {
-        prompt: usage?.promptTokens ?? 0,
-        completion: usage?.completionTokens ?? 0,
-        total: usage?.totalTokens ?? 0,
+        prompt: usage.inputTokens ?? 0,
+        completion: usage.outputTokens ?? 0,
+        total: usage.totalTokens ?? 0,
       },
       latency,
     };

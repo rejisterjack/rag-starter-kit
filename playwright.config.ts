@@ -37,6 +37,8 @@ export default defineConfig({
     ['junit', { outputFile: 'playwright-report/results.xml' }],
     // List reporter for console output
     ['list'],
+    // Visual regression reporter
+    ['blob', { outputFile: 'playwright-report/blob.zip' }],
   ],
   
   // Shared settings for all the projects below
@@ -139,6 +141,17 @@ export default defineConfig({
       },
       dependencies: ['setup'],
     },
+
+    // Visual regression tests
+    {
+      name: 'visual-regression',
+      testMatch: /.*\.visual\.spec\.ts/,
+      use: { 
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 720 },
+      },
+      dependencies: ['setup'],
+    },
   ],
   
   // Run local dev server before starting the tests
@@ -168,7 +181,7 @@ export default defineConfig({
   // Output directory for test artifacts
   outputDir: './playwright-report/test-results',
   
-  // Snapshot directory
+  // Snapshot directory for visual regression
   snapshotDir: './tests/e2e/snapshots',
   
   // Update snapshots on CI only when explicitly requested
@@ -179,6 +192,8 @@ export default defineConfig({
     timeout: 5000,
     toHaveScreenshot: {
       maxDiffPixels: 100,
+      maxDiffPixelRatio: 0.02,
+      threshold: 0.2,
     },
     toMatchSnapshot: {
       maxDiffPixelRatio: 0.1,
@@ -197,6 +212,7 @@ export default defineConfig({
       ['github'],
       ['json', { outputFile: 'playwright-report/results.json' }],
       ['junit', { outputFile: 'playwright-report/results.xml' }],
+      ['blob', { outputFile: 'playwright-report/blob.zip' }],
     ],
   }),
 });

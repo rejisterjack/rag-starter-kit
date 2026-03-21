@@ -468,3 +468,59 @@ export async function checkIngestionHealth(): Promise<{
     errors,
   };
 }
+
+// Export image pipeline functions
+export {
+  extractImagesFromPDF,
+  uploadImageToStorage,
+  generateImageCaption,
+  processImage,
+  processDocumentImages,
+  processPDFImages,
+  searchSimilarImages,
+  searchImagesByText,
+  getDocumentImages,
+  deleteDocumentImages,
+} from './image-pipeline';
+
+export type {
+  ExtractedImage,
+  ImageProcessingResult,
+  ProcessedImage,
+} from './image-pipeline';
+
+// Export OCR functions
+export {
+  parseImageWithOCR,
+  parsePDFWithOCRFallback,
+  preprocessImage,
+  isValidImage,
+  detectImageFormat,
+  getImageDimensions,
+  isOCRAvailable,
+  isPDF2PicAvailable,
+  getOCRVersion,
+  OCRParserError,
+  batchOCR,
+  OCRConfigBuilder,
+  DEFAULT_OCR_CONFIG,
+  OCREngineMode,
+  PageSegmentationMode,
+  getLanguageOptions,
+  isValidLanguage,
+  createConfigFromEnv,
+} from './parsers/ocr';
+
+export type {
+  OCRConfiguration,
+  OCRResult,
+  OCRPageResult,
+  OCRMetadata,
+  OCRPage,
+  OCRTextBlock,
+  ImagePreprocessOptions,
+  OCRProgress,
+  OCRProgressCallback,
+  ParsedOCRDocument,
+  OCROptions,
+} from './parsers/ocr';

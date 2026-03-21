@@ -284,6 +284,8 @@ docker-compose up
 
 ## 🏗️ Architecture
 
+### System Overview
+
 ```mermaid
 graph TB
     User([User]) -->|Upload Document| S3[MinIO S3]
@@ -310,6 +312,19 @@ graph TB
         WS -->|Presence/Typing| User
     end
 ```
+
+### Architecture Layers
+
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| **Presentation** | Next.js 15, React 19, Tailwind CSS | UI components, SSR, streaming |
+| **API** | Next.js API Routes, tRPC | RESTful endpoints, type-safe APIs |
+| **AI/ML** | Vercel AI SDK, OpenRouter, Gemini | LLM inference, embeddings |
+| **RAG** | LangChain, custom pipeline | Document processing, retrieval |
+| **Data** | PostgreSQL, pgvector, Redis | Persistent storage, caching |
+| **Storage** | MinIO/S3 | Document files |
+| **Queue** | Inngest | Background job processing |
+| **Real-time** | Socket.io | WebSocket connections |
 
 ---
 
@@ -384,33 +399,117 @@ rag-starter-kit/
 
 ## 📚 Documentation
 
+### Getting Started
+- [🚀 Development Setup](./docs/guides/setup.md) — Complete local development guide
 - [🆓 Free AI Setup Guide](./docs/FREE_AI_SETUP.md) — Configure free OpenRouter + Google AI
 - [🏗️ Architecture Guide](./docs/architecture.md) — System design and data flow
-- [🎨 Customization](./docs/customization.md) — Models, UI, and RAG pipeline
+
+### API Documentation
+- [📡 API Overview](./docs/api/README.md) — API introduction and authentication
+- [💬 Chat API](./docs/api/chat.md) — Streaming chat endpoints
+- [📄 Documents API](./docs/api/documents.md) — Document upload and management
+- [🔐 Authentication](./docs/api/authentication.md) — OAuth, SAML, API keys
+- [⚡ Rate Limiting](./docs/api/rate-limiting.md) — Usage limits and best practices
+- [🔗 Webhooks](./docs/api/webhooks.md) — Event notifications
+
+### Developer Guides
+- [➕ Adding New Models](./docs/guides/adding-new-models.md) — Integrate custom LLMs
+- [🎨 Customizing UI](./docs/guides/customizing-ui.md) — Theming and components
+- [🚢 Deploying](./docs/guides/deploying.md) — Deployment options (Vercel, Docker, AWS)
+- [🔧 Troubleshooting](./docs/guides/troubleshooting.md) — Common issues and solutions
+
+### Architecture Decisions
+- [ADR 001: Why Next.js](./docs/adr/001-why-nextjs.md)
+- [ADR 002: Database Choice](./docs/adr/002-database-choice.md)
+- [ADR 003: AI Provider Strategy](./docs/adr/003-ai-provider-strategy.md)
+- [ADR 004: Authentication](./docs/adr/004-authentication.md)
+- [ADR 005: RAG Pipeline](./docs/adr/005-rag-pipeline.md)
+- [ADR 006: Security](./docs/adr/006-security.md)
+
+### Additional Topics
 - [🐳 Docker Architecture](./docs/DOCKER_ARCHITECTURE.md) — Complete Docker guide
 - [🐳 Docker Deployment](./docs/deployment/docker.md) — Self-hosted deployment
 - [📋 Production Checklist](./docs/deployment/production-checklist.md)
-- [🔧 Troubleshooting](./docs/deployment/troubleshooting.md)
 - [🗣️ Voice Features](./docs/voice-features.md)
 - [💬 Real-time Collaboration](./docs/REALTIME_COLLABORATION.md)
+- [🎨 Customization](./docs/customization.md)
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](./CONTRIBUTING.md).
+We welcome contributions from the community! Please read our [Contributing Guide](./CONTRIBUTING.md) for details.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Quick Start for Contributors
+
+```bash
+# Fork and clone
+git clone https://github.com/YOUR_USERNAME/rag-starter-kit.git
+cd rag-starter-kit
+
+# Install dependencies
+pnpm install
+
+# Set up environment
+cp .env.example .env
+# Edit .env with your API keys
+
+# Start development
+docker-compose up
+```
+
+### Contribution Workflow
+
+1. **Fork** the repository
+2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
+3. **Make** your changes with tests
+4. **Run** checks: `pnpm check`
+5. **Commit** with conventional commits: `git commit -m 'feat: add amazing feature'`
+6. **Push** to your fork: `git push origin feature/amazing-feature`
+7. **Open** a Pull Request
+
+### Code Standards
+
+- **TypeScript** strict mode enabled
+- **Biome** for linting and formatting
+- **Conventional Commits** for commit messages
+- **Test coverage** required for new features
+
+See [Contributors](./CONTRIBUTORS.md) for our amazing community!
 
 ---
 
 ## 🛡️ Security
 
-Please report security vulnerabilities to [security@example.com](mailto:security@example.com). See [SECURITY.md](./SECURITY.md) for details.
+The RAG Starter Kit implements comprehensive security measures:
+
+### Authentication & Authorization
+- **NextAuth.js v5** with OAuth (GitHub, Google) and credentials
+- **SAML 2.0 SSO** support for enterprise (Okta, Azure AD)
+- **API Key** authentication for programmatic access
+- **RBAC** with workspace-level permissions
+
+### Data Protection
+- **Field-level encryption** for sensitive data
+- **Row-level security** via workspace isolation
+- **TLS 1.3** for all connections
+- **Secure headers** (CSP, HSTS, X-Frame-Options)
+
+### Input Validation
+- **Zod schemas** for all API inputs
+- **SQL injection prevention** via Prisma ORM
+- **XSS protection** with React's built-in escaping
+- **Prompt injection** defenses for LLM interactions
+
+### Monitoring & Compliance
+- **Audit logging** for all security events
+- **Rate limiting** with progressive penalties
+- **IP reputation** tracking
+- **GDPR-compliant** data handling
+
+See [Security Documentation](./docs/adr/006-security.md) for details.
+
+Report vulnerabilities to [security@example.com](mailto:security@example.com). See [SECURITY.md](./SECURITY.md) for details.
 
 ---
 

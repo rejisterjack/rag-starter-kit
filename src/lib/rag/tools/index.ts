@@ -5,6 +5,12 @@
  */
 
 import { z } from 'zod';
+// Code executor tool
+export {
+  codeExecutorTool,
+  executeCode,
+  executeCodeBatch,
+} from './code-executor';
 
 // Calculator tool
 export {
@@ -45,6 +51,7 @@ export {
 
 // Re-import for use in this file
 import { calculatorTool } from './calculator';
+import { codeExecutorTool } from './code-executor';
 import {
   compareDocumentsTool,
   documentMetadataTool,
@@ -81,6 +88,7 @@ export const currentTimeTool = {
 export function getAllTools() {
   return [
     calculatorTool,
+    codeExecutorTool,
     createWebSearchTool(getDefaultWebSearchProvider()),
     searchDocumentsTool,
     documentSummaryTool,

@@ -1,0 +1,54 @@
+{
+  "recommendations": [
+    // Core Extensions
+    "biomejs.biome",
+    "prisma.prisma",
+    "bradlc.vscode-tailwindcss",
+    
+    // TypeScript & JavaScript
+    "ms-vscode.vscode-typescript-next",
+    "dbaeumer.vscode-eslint",
+    
+    // React & Next.js
+    "dsznajder.es7-react-js-snippets",
+    "formulahendry.auto-rename-tag",
+    "christian-kohler.path-intellisense",
+    
+    // AI Assistance
+    "github.copilot",
+    "github.copilot-chat",
+    
+    // Database
+    "ckolkman.vscode-postgres",
+    
+    // Docker
+    "ms-azuretools.vscode-docker",
+    
+    // Testing
+    "vitest.explorer",
+    "ms-playwright.playwright",
+    
+    // Git
+    "eamodio.gitlens",
+    "github.vscode-pull-request-github",
+    
+    // Productivity
+    "usernamehw.errorlens",
+    "yoavbls.pretty-ts-errors",
+    "aaron-bond.better-comments",
+    "shardulm94.trailing-spaces",
+    "streetsidesoftware.code-spell-checker",
+    
+    // Markdown & Documentation
+    "yzhang.markdown-all-in-one",
+    "davidanson.vscode-markdownlint",
+    
+    // Theme & Icons
+    "pkief.material-icon-theme",
+    "zhuangtongfa.material-theme"
+  ],
+  "unwantedRecommendations": [
+    "esbenp.prettier-vscode",
+    "ms-vsliveshare.vsliveshare"
+  ]
+}

@@ -37,7 +37,9 @@ async function loadCLIPModel() {
   if (!clipModel) {
     try {
       const { pipeline } = await import('@xenova/transformers');
-      clipModel = await pipeline('image-embeddings', 'Xenova/clip-vit-base-patch32');
+      // Use 'feature-extraction' pipeline type with CLIP model
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      clipModel = await (pipeline as any)('feature-extraction', 'Xenova/clip-vit-base-patch32');
     } catch (error) {
       logger.error('Failed to load CLIP model', { error });
       throw new Error('CLIP model not available');
