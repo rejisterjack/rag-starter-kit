@@ -1,11 +1,67 @@
-import { openai } from '@ai-sdk/openai';
-import { streamText, generateText, type UIMessage } from 'ai';
+/**
+ * AI Module - OpenRouter (Chat) + Google Gemini (Embeddings)
+ * 
+ * BEST OF THE BEST FREE SETUP:
+ * - Chat: OpenRouter free models with automatic fallback
+ * - Embeddings: Google Gemini (free tier via AI Studio)
+ * 
+ * Get API Keys:
+ * - OpenRouter: https://openrouter.ai/keys
+ * - Google AI Studio: https://aistudio.google.com/app/apikey
+ */
 
-import type { RAGConfig } from '@/types';
+import { openrouter } from '@openrouter/ai-sdk-provider';
+import { google } from '@ai-sdk/google';
+import { streamText, generateText, embed, embedMany, type UIMessage } from 'ai';
+import { createHash } from 'crypto';
+
+// Embedding model configuration (Google Gemini - FREE)
+const EMBEDDING_MODEL = 'text-embedding-004';
+
+export interface RAGConfig {
+  chunkSize: number;
+  chunkOverlap: number;
+  topK: number;
+  similarityThreshold: number;
+  temperature: number;
+  maxTokens: number;
+  model: string;
+  embeddingModel: string;
+}
 
 /**
- * Default configuration for AI operations
+ * BEST OpenRouter FREE Models - Ranked by Performance
+ * All available at: https://openrouter.ai/models?max_price=0
  */
+export const BEST_FREE_MODELS = {
+  // 🥇 TIER 1: Best Overall Performance
+  DEEPSEEK_CHAT: 'deepseek/deepseek-chat:free',  // Excellent reasoning, fast
+  
+  // 🥈 TIER 2: Great Performance  
+  MISTRAL_7B: 'mistralai/mistral-7b-instruct:free',  // Fast, reliable
+  LLAMA_3_1_8B: 'meta-llama/llama-3.1-8b-instruct:free',  // Meta's best
+  
+  // 🥉 TIER 3: Good Alternative
+  GEMMA_2_9B: 'google/gemma-2-9b-it:free',  // Google's open model
+  QWEN_2_5_7B: 'qwen/qwen-2.5-7b-instruct:free',  // Alibaba's model
+  
+  // 🏅 TIER 4: Experimental
+  HERMES_405B: 'nousresearch/hermes-3-llama-3.1-405b:free',  // Very capable but slow
+  PHI_3_MEDIUM: 'microsoft/phi-3-medium:free',  // Microsoft
+} as const;
+
+/**
+ * Model fallback chain for resilience
+ * Automatically tries next model if one fails/rate-limits
+ */
+export const MODEL_FALLBACK_CHAIN = [
+  BEST_FREE_MODELS.DEEPSEEK_CHAT,
+  BEST_FREE_MODELS.MISTRAL_7B,
+  BEST_FREE_MODELS.LLAMA_3_1_8B,
+  BEST_FREE_MODELS.GEMMA_2_9B,
+  BEST_FREE_MODELS.QWEN_2_5_7B,
+];
+
 export const defaultAIConfig: RAGConfig = {
   chunkSize: 1000,
   chunkOverlap: 200,
@@ -13,115 +69,204 @@ export const defaultAIConfig: RAGConfig = {
   similarityThreshold: 0.7,
   temperature: 0.7,
   maxTokens: 2000,
-  model: 'gpt-4o-mini',
-  embeddingModel: 'text-embedding-3-small',
+  model: BEST_FREE_MODELS.DEEPSEEK_CHAT,  // Best free model
+  embeddingModel: EMBEDDING_MODEL,
 };
 
-/**
- * Stream a chat completion with the AI
- */
+// ==================== Chat Completions (OpenRouter) ====================
+
+
+
 export async function streamChatCompletion(
   messages: UIMessage[],
   config: Partial<RAGConfig> = {}
-): Promise<ReturnType<typeof streamText>> {
+) {
   const modelConfig = { ...defaultAIConfig, ...config };
-
-  const result = streamText({
-    model: openai(modelConfig.model),
-    messages: messages as UIMessage[],
-    temperature: modelConfig.temperature,
-    maxOutputTokens: modelConfig.maxTokens,
-  } as unknown as Parameters<typeof streamText>[0]);
-  return result;
+  const modelsToTry = [modelConfig.model, ...MODEL_FALLBACK_CHAIN.filter(m => m !== modelConfig.model)];
+  
+  // Try primary model first, fall back if needed
+  let lastError: Error | undefined;
+  
+  for (const model of modelsToTry) {
+    try {
+      const result = streamText({
+        model: openrouter.chat(model) as unknown as Parameters<typeof streamText>[0]['model'],
+        messages: messages as unknown as Parameters<typeof streamText>[0]['messages'],
+        temperature: modelConfig.temperature,
+        maxOutputTokens: modelConfig.maxTokens,
+      });
+      
+      // Add model info to result
+      return Object.assign(result, { _modelUsed: model });
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.warn(`Model ${model} failed, trying fallback...`);
+      continue;
+    }
+  }
+  
+  throw lastError ?? new Error('All models failed');
 }
 
-/**
- * Generate a non-streaming chat completion
- */
 export async function generateChatCompletion(
   messages: UIMessage[],
   config: Partial<RAGConfig> = {}
-): Promise<ReturnType<typeof generateText>> {
+): Promise<{ text: string; modelUsed: string }> {
   const modelConfig = { ...defaultAIConfig, ...config };
+  const modelsToTry = [modelConfig.model, ...MODEL_FALLBACK_CHAIN.filter(m => m !== modelConfig.model)];
+  
+  for (const model of modelsToTry) {
+    try {
+      const result = await generateText({
+        model: openrouter.chat(model) as unknown as Parameters<typeof generateText>[0]['model'],
+        messages: messages as unknown as Parameters<typeof generateText>[0]['messages'],
+        temperature: modelConfig.temperature,
+        maxOutputTokens: modelConfig.maxTokens,
+      });
+      
+      return { text: result.text, modelUsed: model };
+    } catch (error) {
+      console.warn(`Model ${model} failed, trying fallback...`);
+      continue;
+    }
+  }
+  
+  throw new Error('All models failed');
+}
 
-  const result = generateText({
-    model: openai(modelConfig.model),
-    messages: messages as UIMessage[],
-    temperature: modelConfig.temperature,
-    maxOutputTokens: modelConfig.maxTokens,
-  } as unknown as Parameters<typeof generateText>[0]);
-  return result;
+// ==================== Embeddings (Google Gemini - FREE) ====================
+
+/**
+ * Generate embeddings using Google Gemini (FREE via AI Studio)
+ * Get API key: https://aistudio.google.com/app/apikey
+ */
+export async function generateEmbedding(text: string): Promise<number[]> {
+  const result = await embed({
+    model: google.textEmbeddingModel(EMBEDDING_MODEL),
+    value: text,
+  });
+  
+  return Array.from(result.embedding);
 }
 
 /**
- * Calculate approximate token count for text
- * This is a rough estimate - actual token count may vary by model
+ * Generate embeddings for multiple texts using Google Gemini
+ * Processes in batches of 100 (Google's limit)
  */
+export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
+  const batchSize = 100;
+  const embeddings: number[][] = [];
+  
+  for (let i = 0; i < texts.length; i += batchSize) {
+    const batch = texts.slice(i, i + batchSize);
+    
+    const result = await embedMany({
+      model: google.textEmbeddingModel(EMBEDDING_MODEL),
+      values: batch,
+    });
+    
+    embeddings.push(...result.embeddings.map(e => Array.from(e)));
+  }
+  
+  return embeddings;
+}
+
+/**
+ * Generate cache key for embeddings
+ */
+export function generateEmbeddingCacheKey(text: string): string {
+  return createHash('sha256').update(text).digest('hex');
+}
+
+// ==================== RAG System Prompt ====================
+
+export interface RAGContext {
+  content: string;
+  source: string;
+  score: number;
+}
+
+export function buildRAGSystemPrompt(context: RAGContext[], query: string): string {
+  const contextBlocks = context
+    .map((ctx, i) => `
+[Source ${i + 1}] ${ctx.source} (Relevance: ${(ctx.score * 100).toFixed(1)}%)
+${ctx.content}
+    `.trim())
+    .join('\n\n---\n\n');
+
+  return `You are a helpful AI assistant answering questions based on the provided documents.
+
+User Query: ${query}
+
+Relevant Document Context:
+${contextBlocks}
+
+Instructions:
+- Answer the user's query using ONLY the information from the provided documents above.
+- If the documents don't contain enough information, say so clearly.
+- Always cite your sources using [Source X] format when referencing information.
+- Be concise but thorough in your response.`;
+}
+
+// ==================== Token Estimation ====================
+
 export function estimateTokens(text: string): number {
-  // Average ratio is roughly 4 characters per token for English text
+  // Rough estimate: ~4 characters per token for English text
   return Math.ceil(text.length / 4);
 }
 
-/**
- * Truncate text to fit within token limit
- */
 export function truncateToTokenLimit(text: string, maxTokens: number): string {
-  const estimatedTokens = estimateTokens(text);
+  const estimatedChars = maxTokens * 4;
+  if (text.length <= estimatedChars) return text;
+  return text.slice(0, estimatedChars) + '...';
+}
 
-  if (estimatedTokens <= maxTokens) {
-    return text;
+// ==================== Similarity Calculation ====================
+
+/**
+ * Calculate cosine similarity between two vectors
+ */
+export function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length) {
+    throw new Error('Vectors must have the same dimension');
   }
-
-  // Rough conversion back to characters
-  const maxChars = maxTokens * 4;
-  return text.slice(0, maxChars) + '...';
-}
-
-/**
- * Build a system prompt for RAG with context
- */
-export function buildRAGSystemPrompt(context: string, instructions?: string): string {
-  const baseInstructions = instructions ?? `You are a helpful AI assistant. Answer the user's question based on the provided context.
-If the context doesn't contain relevant information, say so honestly.
-Always cite your sources using [1], [2], etc. when using information from the context.`;
-
-  if (!context) {
-    return baseInstructions;
+  
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+  
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
   }
-
-  return `${baseInstructions}
-
-Context:
-${context}
-
-Instructions:
-- Answer based only on the context provided above
-- Cite sources using [1], [2], etc.
-- If the context doesn't contain the answer, say "I don't have enough information to answer that question."
-- Be concise but thorough`;
-}
-
-// ============================================================================
-// Re-export Embedding Providers
-// ============================================================================
-
-/**
- * @deprecated Use createEmbeddingProviderFromEnv from '@/lib/ai/embeddings' instead
- */
-export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
-  const { createEmbeddingProviderFromEnv } = await import('./embeddings');
-  const provider = createEmbeddingProviderFromEnv();
-  return provider.embedDocuments(texts);
+  
+  if (normA === 0 || normB === 0) return 0;
+  
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
 /**
- * @deprecated Use createEmbeddingProviderFromEnv from '@/lib/ai/embeddings' instead
+ * Find most similar documents given a query embedding
  */
-export async function generateEmbedding(text: string): Promise<number[]> {
-  const { createEmbeddingProviderFromEnv } = await import('./embeddings');
-  const provider = createEmbeddingProviderFromEnv();
-  return provider.embedQuery(text);
+export function findSimilarDocuments(
+  queryEmbedding: number[],
+  documentEmbeddings: Array<{ id: string; embedding: number[]; metadata?: Record<string, unknown> }>,
+  topK: number = 5,
+  threshold: number = 0.7
+): Array<{ id: string; score: number; metadata?: Record<string, unknown> }> {
+  const similarities = documentEmbeddings.map((doc) => ({
+    id: doc.id,
+    score: cosineSimilarity(queryEmbedding, doc.embedding),
+    metadata: doc.metadata,
+  }));
+  
+  return similarities
+    .filter((doc) => doc.score >= threshold)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
 }
 
-// Re-export all embedding modules
-export * from './embeddings';
+// ==================== Re-export types ====================
+
+export { type UIMessage };

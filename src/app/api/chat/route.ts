@@ -41,9 +41,20 @@ const defaultConfig: RAGConfig = {
   similarityThreshold: 0.7,
   temperature: 0.7,
   maxTokens: 2000,
-  model: 'gpt-4o-mini',
-  embeddingModel: 'text-embedding-3-small',
+  model: 'deepseek/deepseek-chat:free',
+  embeddingModel: 'text-embedding-004',
 };
+
+/**
+ * Best OpenRouter free models - tried in order if primary fails
+ */
+const MODEL_FALLBACK_CHAIN = [
+  'deepseek/deepseek-chat:free',
+  'mistralai/mistral-7b-instruct:free',
+  'meta-llama/llama-3.1-8b-instruct:free',
+  'google/gemma-2-9b-it:free',
+  'qwen/qwen-2.5-7b-instruct:free',
+];
 
 // =============================================================================
 // POST Handler
@@ -513,28 +524,34 @@ export async function DELETE(req: Request) {
 // =============================================================================
 
 import { openai } from '@ai-sdk/openai';
+import { openrouter } from '@openrouter/ai-sdk-provider';
 import { createOllama } from 'ollama-ai-provider';
 
 /**
  * Get the appropriate model based on configuration
  */
 function getModel(modelName: string): LanguageModel {
+  // Check if it's an OpenRouter model (contains '/' or ends with ':free')
+  if (modelName.includes('/') || modelName.endsWith(':free')) {
+    return openrouter.chat(modelName) as unknown as LanguageModel;
+  }
+
   // Check if it's an OpenAI model
   if (modelName.startsWith('gpt-') || modelName.startsWith('text-')) {
     return openai(modelName) as unknown as LanguageModel;
   }
 
   // Check if it's an Ollama model
-  const ollamaModels = ['llama3', 'mistral', 'phi3', 'gemma2', 'codellama'];
-  if (ollamaModels.some((m) => modelName.startsWith(m))) {
+  const ollamaModels = ['llama3', 'mistral', 'phi3', 'gemma2', 'codellama', 'qwen'];
+  if (ollamaModels.some((m) => modelName.toLowerCase().startsWith(m))) {
     const ollama = createOllama({
       baseURL: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434/api',
     });
     return ollama(modelName) as unknown as LanguageModel;
   }
 
-  // Default to OpenAI
-  return openai(modelName) as unknown as LanguageModel;
+  // Default to OpenRouter for unknown models (more likely to work with free models)
+  return openrouter.chat(modelName) as unknown as LanguageModel;
 }
 
 /**

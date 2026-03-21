@@ -4,11 +4,13 @@
  */
 
 import { OpenAIProvider } from './openai';
+import { OpenRouterProvider } from './openrouter';
 import { OllamaProvider } from './ollama';
 import {
   type LLMProvider,
   type LLMConfig,
   type OpenAIConfig,
+  type OpenRouterConfig,
   type OllamaConfig,
   LLMError,
 } from './types';
@@ -16,6 +18,7 @@ import {
 // Re-export all types and providers
 export * from './types';
 export { OpenAIProvider, OPENAI_MODELS } from './openai';
+export { OpenRouterProvider, OPENROUTER_FREE_MODELS } from './openrouter';
 export { OllamaProvider, OLLAMA_MODELS } from './ollama';
 
 /**
@@ -25,6 +28,8 @@ export function createLLMProvider(config: LLMConfig): LLMProvider {
   switch (config.provider) {
     case 'openai':
       return new OpenAIProvider(config as OpenAIConfig);
+    case 'openrouter':
+      return new OpenRouterProvider(config as OpenRouterConfig);
     case 'ollama':
       return new OllamaProvider(config as OllamaConfig);
     default:
@@ -40,23 +45,33 @@ export function createLLMProvider(config: LLMConfig): LLMProvider {
  * Create a provider from environment variables
  */
 export function createProviderFromEnv(): LLMProvider {
-  const provider = process.env.LLM_PROVIDER ?? 'openai';
+  const provider = process.env.LLM_PROVIDER ?? 'openrouter';
 
   switch (provider) {
     case 'openai': {
       const config: OpenAIConfig = {
         provider: 'openai',
         apiKey: process.env.OPENAI_API_KEY,
-        defaultModel: process.env.OPENAI_DEFAULT_MODEL,
+        defaultModel: process.env.DEFAULT_MODEL,
         fallbackModels: process.env.OPENAI_FALLBACK_MODELS?.split(','),
       };
       return new OpenAIProvider(config);
+    }
+    case 'openrouter': {
+      const config: OpenRouterConfig = {
+        provider: 'openrouter',
+        apiKey: process.env.OPENROUTER_API_KEY,
+        defaultModel: process.env.DEFAULT_MODEL,
+        referer: process.env.OPENROUTER_REFERER,
+        title: process.env.OPENROUTER_TITLE,
+      };
+      return new OpenRouterProvider(config);
     }
     case 'ollama': {
       const config: OllamaConfig = {
         provider: 'ollama',
         baseUrl: process.env.OLLAMA_BASE_URL,
-        defaultModel: process.env.OLLAMA_DEFAULT_MODEL,
+        defaultModel: process.env.OLLAMA_CHAT_MODEL,
       };
       return new OllamaProvider(config);
     }
@@ -74,8 +89,7 @@ export function createProviderFromEnv(): LLMProvider {
  */
 export function getDefaultConfig(): LLMConfig {
   return {
-    provider: 'openai',
-    defaultModel: 'gpt-4o-mini',
-    fallbackModels: ['gpt-4o', 'gpt-3.5-turbo'],
+    provider: 'openrouter',
+    defaultModel: 'mistralai/mistral-7b-instruct:free',
   };
 }

@@ -10,6 +10,11 @@ export {
 } from './openai';
 
 export {
+  OpenRouterProvider,
+  OPENROUTER_FREE_MODELS,
+} from './openrouter';
+
+export {
   OllamaProvider,
   OLLAMA_MODELS,
 } from './ollama';
@@ -30,6 +35,7 @@ export type {
   LLMProvider,
   LLMConfig,
   OpenAIConfig,
+  OpenRouterConfig,
   OllamaConfig,
   LLMError,
   RateLimitError,

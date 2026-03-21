@@ -23,7 +23,19 @@ services:
       - DATABASE_URL_UNPOOLED=postgresql://postgres:postgres@rag-db:5432/ragdb
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-secret-change-in-production}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-rag-local-dev-placeholder-key-not-real}
+      # 🔴 REQUIRED: OpenRouter (FREE chat models) - https://openrouter.ai/keys
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-sk-or-v1-demo}
+      - LLM_PROVIDER=openrouter
+      - DEFAULT_MODEL=deepseek/deepseek-chat:free
+      
+      # 🟡 REQUIRED: Google AI Studio (FREE embeddings) - https://aistudio.google.com/app/apikey
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-demo-key}
+      - EMBEDDING_PROVIDER=google
+      - EMBEDDING_MODEL=text-embedding-004
+      - EMBEDDING_DIMENSIONS=768
+      
+      # Fallback/OpenAI (optional)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-placeholder}
       - AUTH_GITHUB_ID=${AUTH_GITHUB_ID}
       - AUTH_GITHUB_SECRET=${AUTH_GITHUB_SECRET}
       - INNGEST_EVENT_KEY=${INNGEST_EVENT_KEY:-local}

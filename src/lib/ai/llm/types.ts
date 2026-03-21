@@ -58,13 +58,21 @@ export interface OpenAIConfig {
   fallbackModels?: string[];
 }
 
+export interface OpenRouterConfig {
+  provider: 'openrouter';
+  apiKey?: string;
+  defaultModel?: string;
+  referer?: string;
+  title?: string;
+}
+
 export interface OllamaConfig {
   provider: 'ollama';
   baseUrl?: string;
   defaultModel?: string;
 }
 
-export type LLMConfig = OpenAIConfig | OllamaConfig;
+export type LLMConfig = OpenAIConfig | OpenRouterConfig | OllamaConfig;
 
 // Error types
 export class LLMError extends Error {

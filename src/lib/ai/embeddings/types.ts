@@ -8,8 +8,8 @@
  * Configuration for embedding providers
  */
 export interface EmbeddingConfig {
-  /** Provider type */
-  provider: 'openai' | 'ollama';
+  /** Provider type: 'google' | 'openai' | 'ollama' */
+  provider: 'google' | 'openai' | 'ollama';
   /** Model name */
   model: string;
   /** Embedding dimensions */
@@ -22,9 +22,9 @@ export interface EmbeddingConfig {
   retryDelayMs?: number;
   /** Request timeout in ms (default: 30000) */
   timeoutMs?: number;
-  /** API key (for OpenAI) */
+  /** API key (for OpenAI, Google) */
   apiKey?: string;
-  /** Base URL (for Ollama or custom OpenAI endpoints) */
+  /** Base URL (for Ollama or custom endpoints) */
   baseUrl?: string;
 }
 
@@ -142,5 +142,32 @@ export const OLLAMA_MODELS = {
   },
 } as const;
 
+/**
+ * Supported local embedding models (Xenova/Transformers)
+ */
+export const LOCAL_MODELS = {
+  'Xenova/all-MiniLM-L6-v2': {
+    dimensions: 384,
+    description: 'Fast, lightweight embeddings (default)',
+    maxTokens: 512,
+  },
+  'Xenova/all-MiniLM-L12-v2': {
+    dimensions: 384,
+    description: 'Better quality, same dimensions',
+    maxTokens: 512,
+  },
+  'Xenova/all-distilroberta-v1': {
+    dimensions: 768,
+    description: 'Higher quality, larger vectors',
+    maxTokens: 512,
+  },
+  'Xenova/gte-base': {
+    dimensions: 768,
+    description: 'Optimized for semantic search',
+    maxTokens: 512,
+  },
+} as const;
+
 export type OpenAIModel = keyof typeof OPENAI_MODELS;
 export type OllamaModel = keyof typeof OLLAMA_MODELS;
+export type LocalModel = keyof typeof LOCAL_MODELS;

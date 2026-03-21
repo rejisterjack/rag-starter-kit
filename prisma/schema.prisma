@@ -241,7 +241,8 @@ model DocumentChunk {
   section     String?
   
   // Vector embedding (using pgvector extension)
-  embedding   Unsupported("vector(1536)")?
+  // Dimensions: 768 for Google Gemini, 1536 for OpenAI, 384 for local
+  embedding   Unsupported("vector(768)")?
   
   document    Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
   

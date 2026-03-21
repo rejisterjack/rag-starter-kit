@@ -3,6 +3,10 @@
  * 
  * Central export point for all embedding providers.
  * Provides factory function to create appropriate provider based on config.
+ * 
+ * DEFAULT: Google Gemini (free tier via AI Studio)
+ * - text-embedding-004: 768 dimensions, high quality
+ * - Get API key: https://aistudio.google.com/app/apikey
  */
 
 import {
@@ -13,18 +17,20 @@ import {
 } from './types';
 import { OpenAIEmbeddingProvider, createOpenAIProvider } from './openai';
 import { OllamaEmbeddingProvider, createOllamaProvider } from './ollama';
+import { GoogleEmbeddingProvider, createGoogleProvider, GOOGLE_MODELS } from './google';
 
 // Re-export all types and providers
 export * from './types';
 export { OpenAIEmbeddingProvider, createOpenAIProvider } from './openai';
 export { OllamaEmbeddingProvider, createOllamaProvider } from './ollama';
+export { GoogleEmbeddingProvider, createGoogleProvider, GOOGLE_MODELS } from './google';
 
 /**
  * Provider factory configuration with environment fallbacks
  */
 export interface ProviderFactoryConfig {
-  /** Provider type - falls back to EMBEDDING_PROVIDER env var, then 'openai' */
-  provider?: 'openai' | 'ollama';
+  /** Provider type - falls back to EMBEDDING_PROVIDER env var, then 'google' */
+  provider?: 'google' | 'openai' | 'ollama';
   /** Model name - falls back to EMBEDDING_MODEL env var */
   model?: string;
   /** API key - falls back to provider-specific env var */
@@ -46,6 +52,11 @@ export function createEmbeddingProvider(
   config: EmbeddingConfig
 ): EmbeddingProvider {
   switch (config.provider) {
+    case 'google':
+      return new GoogleEmbeddingProvider(
+        config.model as keyof typeof GOOGLE_MODELS,
+        config.apiKey
+      );
     case 'openai':
       return new OpenAIEmbeddingProvider(config);
     case 'ollama':
@@ -53,7 +64,7 @@ export function createEmbeddingProvider(
     default:
       throw new Error(
         `Unknown provider: ${config.provider}. ` +
-        `Supported providers: openai, ollama`
+        `Supported providers: google, openai, ollama`
       );
   }
 }
@@ -62,59 +73,88 @@ export function createEmbeddingProvider(
  * Create embedding provider from environment variables
  * 
  * Environment variables:
- * - EMBEDDING_PROVIDER: 'openai' or 'ollama' (default: 'openai')
- * - EMBEDDING_MODEL: Model name (default: text-embedding-3-small for OpenAI, nomic-embed-text for Ollama)
- * - OPENAI_API_KEY: OpenAI API key
- * - OLLAMA_BASE_URL: Ollama base URL (default: http://localhost:11434)
+ * - EMBEDDING_PROVIDER: 'google', 'openai', or 'ollama' (default: 'google')
+ * - EMBEDDING_MODEL: Model name (default: text-embedding-004 for Google)
+ * - GOOGLE_API_KEY or GEMINI_API_KEY: Google AI Studio API key
+ * - OPENAI_API_KEY: OpenAI API key (if using OpenAI)
+ * - OLLAMA_BASE_URL: Ollama base URL (if using Ollama)
  */
 export function createEmbeddingProviderFromEnv(
   overrides?: ProviderFactoryConfig
 ): EmbeddingProvider {
   const provider = overrides?.provider ?? 
-    (process.env.EMBEDDING_PROVIDER as 'openai' | 'ollama') ?? 
-    'openai';
+    (process.env.EMBEDDING_PROVIDER as 'google' | 'openai' | 'ollama') ?? 
+    'google';
 
-  if (provider === 'ollama') {
-    const model = overrides?.model ?? 
-      process.env.EMBEDDING_MODEL ?? 
-      'nomic-embed-text';
+  switch (provider) {
+    case 'google': {
+      const model = overrides?.model ?? 
+        process.env.EMBEDDING_MODEL ?? 
+        'text-embedding-004';
 
-    if (!isValidOllamaModel(model)) {
-      throw new Error(
-        `Invalid Ollama model: ${model}. ` +
-        `Supported: ${Object.keys(OLLAMA_MODELS).join(', ')}`
+      if (!isValidGoogleModel(model)) {
+        throw new Error(
+          `Invalid Google model: ${model}. ` +
+          `Supported: ${Object.keys(GOOGLE_MODELS).join(', ')}`
+        );
+      }
+
+      const apiKey = overrides?.apiKey ?? 
+        process.env.GOOGLE_API_KEY ?? 
+        process.env.GEMINI_API_KEY;
+
+      return createGoogleProvider(model, apiKey);
+    }
+
+    case 'ollama': {
+      const model = overrides?.model ?? 
+        process.env.EMBEDDING_MODEL ?? 
+        'nomic-embed-text';
+
+      if (!isValidOllamaModel(model)) {
+        throw new Error(
+          `Invalid Ollama model: ${model}. ` +
+          `Supported: ${Object.keys(OLLAMA_MODELS).join(', ')}`
+        );
+      }
+
+      return createOllamaProvider(
+        model,
+        overrides?.baseUrl ?? process.env.OLLAMA_BASE_URL
       );
     }
 
-    return createOllamaProvider(
-      model,
-      overrides?.baseUrl ?? process.env.OLLAMA_BASE_URL
-    );
+    case 'openai': {
+      const model = overrides?.model ?? 
+        process.env.EMBEDDING_MODEL ?? 
+        'text-embedding-3-small';
+
+      if (!isValidOpenAIModel(model)) {
+        throw new Error(
+          `Invalid OpenAI model: ${model}. ` +
+          `Supported: ${Object.keys(OPENAI_MODELS).join(', ')}`
+        );
+      }
+
+      return createOpenAIProvider(
+        model,
+        overrides?.apiKey ?? process.env.OPENAI_API_KEY
+      );
+    }
+
+    default:
+      throw new Error(
+        `Unknown provider: ${provider}. ` +
+        `Supported: google, openai, ollama`
+      );
   }
-
-  // Default to OpenAI
-  const model = overrides?.model ?? 
-    process.env.EMBEDDING_MODEL ?? 
-    'text-embedding-3-small';
-
-  if (!isValidOpenAIModel(model)) {
-    throw new Error(
-      `Invalid OpenAI model: ${model}. ` +
-      `Supported: ${Object.keys(OPENAI_MODELS).join(', ')}`
-    );
-  }
-
-  return createOpenAIProvider(
-    model,
-    overrides?.apiKey ?? process.env.OPENAI_API_KEY
-  );
 }
 
 /**
- * Get default provider (OpenAI text-embedding-3-small)
+ * Get default provider (Google Gemini - free via AI Studio)
  */
 export function getDefaultProvider(): EmbeddingProvider {
-  return createOpenAIProvider('text-embedding-3-small');
+  return createGoogleProvider('text-embedding-004');
 }
 
 /**
@@ -236,6 +276,13 @@ function defaultHash(text: string): string {
 }
 
 /**
+ * Validate Google model name
+ */
+function isValidGoogleModel(model: string): model is keyof typeof GOOGLE_MODELS {
+  return model in GOOGLE_MODELS;
+}
+
+/**
  * Validate OpenAI model name
  */
 function isValidOpenAIModel(model: string): model is keyof typeof OPENAI_MODELS {
@@ -253,9 +300,12 @@ function isValidOllamaModel(model: string): model is keyof typeof OLLAMA_MODELS 
  * Get model dimensions
  */
 export function getModelDimensions(
-  provider: 'openai' | 'ollama',
+  provider: 'google' | 'openai' | 'ollama',
   model: string
 ): number {
+  if (provider === 'google' && isValidGoogleModel(model)) {
+    return GOOGLE_MODELS[model].dimensions;
+  }
   if (provider === 'openai' && isValidOpenAIModel(model)) {
     return OPENAI_MODELS[model].dimensions;
   }
