@@ -19,56 +19,13 @@
 [![Lighthouse](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/lighthouse.yml?label=Lighthouse&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![All Contributors](https://img.shields.io/github/all-contributors/rejisterjack/rag-starter-kit?color=ee8449&style=flat-square)](#contributors)
 
-[🚀 Live Demo](https://rag-starter-kit.vercel.app/) · [📖 Documentation](./docs) · [🐛 Report Bug](../../issues) · [✨ Request Feature](../../issues)
+[🚀 Live Demo](https://rag-starter-kit.vercel.app/) · [🐛 Report Bug](../../issues) · [✨ Request Feature](../../issues)
 
 <img src="https://img.shields.io/badge/100%25_FREE_AI-✓-brightgreen?style=for-the-badge&logo=openai" alt="100% Free AI" />
 
 </div>
 
 ---
-
-## 🎥 Demo Preview
-
-<div align="center">
-
-### 🖼️ Screenshots
-
-<table>
-  <tr>
-    <td width="50%">
-      <img src="./public/screenshots/light/chat-interface.png" alt="Chat Interface" />
-      <p align="center"><b>Chat Interface</b> - Streaming RAG with source citations</p>
-    </td>
-    <td width="50%">
-      <img src="./public/screenshots/light/document-upload.png" alt="Document Upload" />
-      <p align="center"><b>Document Upload</b> - Drag & drop PDF, DOCX, TXT</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="./public/screenshots/dark/chat-interface.png" alt="Dark Mode" />
-      <p align="center"><b>Dark Mode</b> - Beautiful dark theme</p>
-    </td>
-    <td width="50%">
-      <img src="./public/screenshots/mobile/chat-ios.png" alt="Mobile View" />
-      <p align="center"><b>Mobile Responsive</b> - Works on all devices</p>
-    </td>
-  </tr>
-</table>
-
-> 📝 **Note**: Screenshots are placeholders. Add your own screenshots to `public/screenshots/` directory.
-
-### 🎬 Live Demo
-
-<div align="center">
-
-[![Demo Video Thumbnail](https://img.youtube.com/vi/PLACEHOLDER/0.jpg)](https://www.youtube.com/watch?v=PLACEHOLDER)
-
-**▶️ Watch the 2-minute demo video**
-
-Or try the **[Live Demo](https://rag-starter-kit.vercel.app/)** →
-
-</div>
 
 ### ✨ Feature Highlights
 
@@ -125,23 +82,20 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 
 - PDF, DOCX, TXT, MD support
 - Background processing with Inngest
-- OCR for scanned PDFs (upcoming)
 - Automatic text extraction and chunking
-- Document versioning and history
 - Multi-document chat context
 
 </details>
 
 <details>
-<summary><b>🔐 Enterprise Security</b></summary>
+<summary><b>🔐 Security</b></summary>
 
 - NextAuth.js v5 with OAuth (GitHub, Google)
 - Row-level database isolation
 - Rate limiting with Upstash Redis
-- Comprehensive audit logging
+- Audit logging
 - Input validation with Zod
 - API key authentication
-- SAML SSO support (enterprise)
 
 </details>
 
@@ -153,7 +107,6 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 - User presence tracking
 - Multi-user workspaces
 - Role-based access control
-- Live cursor sync
 
 </details>
 
@@ -161,11 +114,9 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 <summary><b>📊 Monitoring & Analytics</b></summary>
 
 - **Plausible Analytics** - Privacy-focused, self-hosted in Docker
-- **PostHog** - Product analytics (optional, cloud or self-hosted)
-- **Real-time metrics** - Chat usage, document processing
-- **Audit logging** - Complete security trail
+- **PostHog** - Product analytics (optional)
+- **Audit logging** - Security event tracking
 - **Rate limiting** - Redis-based with per-endpoint config
-- **Health checks** - `/api/health` endpoint
 
 </details>
 
@@ -248,22 +199,6 @@ docker-compose up
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/rejisterjack/rag-starter-kit)
 
 ---
-
-## 📊 Performance Scores
-
-<div align="center">
-
-| Metric | Score | Status |
-|--------|-------|--------|
-| **Performance** | 🎯 95/100 | ✅ Excellent |
-| **Accessibility** | 🎯 98/100 | ✅ Excellent |
-| **Best Practices** | 🎯 100/100 | ✅ Perfect |
-| **SEO** | 🎯 100/100 | ✅ Perfect |
-| **PWA** | 🎯 90/100 | ✅ Excellent |
-
-*Lighthouse CI runs on every PR. [View latest report](https://github.com/rejisterjack/rag-starter-kit/actions/workflows/lighthouse.yml)*
-
-</div>
 
 ## 📊 Comparison with Alternatives
 
@@ -389,7 +324,6 @@ rag-starter-kit/
 │   │   └── realtime/       # WebSocket/SSE
 │   └── hooks/              # Custom React hooks
 ├── prisma/                 # Database schema & migrations
-├── docs/                   # Comprehensive documentation
 ├── tests/                  # Unit, integration, E2E tests
 ├── docker-compose.*.yml    # Docker setups
 └── .github/workflows/      # CI/CD pipelines
@@ -397,85 +331,20 @@ rag-starter-kit/
 
 ---
 
-## 📚 Documentation
-
-### Getting Started
-- [🚀 Development Setup](./docs/guides/setup.md) — Complete local development guide
-- [🆓 Free AI Setup Guide](./docs/FREE_AI_SETUP.md) — Configure free OpenRouter + Google AI
-- [🏗️ Architecture Guide](./docs/architecture.md) — System design and data flow
-
-### API Documentation
-- [📡 API Overview](./docs/api/README.md) — API introduction and authentication
-- [💬 Chat API](./docs/api/chat.md) — Streaming chat endpoints
-- [📄 Documents API](./docs/api/documents.md) — Document upload and management
-- [🔐 Authentication](./docs/api/authentication.md) — OAuth, SAML, API keys
-- [⚡ Rate Limiting](./docs/api/rate-limiting.md) — Usage limits and best practices
-- [🔗 Webhooks](./docs/api/webhooks.md) — Event notifications
-
-### Developer Guides
-- [➕ Adding New Models](./docs/guides/adding-new-models.md) — Integrate custom LLMs
-- [🎨 Customizing UI](./docs/guides/customizing-ui.md) — Theming and components
-- [🚢 Deploying](./docs/guides/deploying.md) — Deployment options (Vercel, Docker, AWS)
-- [🔧 Troubleshooting](./docs/guides/troubleshooting.md) — Common issues and solutions
-
-### Architecture Decisions
-- [ADR 001: Why Next.js](./docs/adr/001-why-nextjs.md)
-- [ADR 002: Database Choice](./docs/adr/002-database-choice.md)
-- [ADR 003: AI Provider Strategy](./docs/adr/003-ai-provider-strategy.md)
-- [ADR 004: Authentication](./docs/adr/004-authentication.md)
-- [ADR 005: RAG Pipeline](./docs/adr/005-rag-pipeline.md)
-- [ADR 006: Security](./docs/adr/006-security.md)
-
-### Additional Topics
-- [🐳 Docker Architecture](./docs/DOCKER_ARCHITECTURE.md) — Complete Docker guide
-- [🐳 Docker Deployment](./docs/deployment/docker.md) — Self-hosted deployment
-- [📋 Production Checklist](./docs/deployment/production-checklist.md)
-- [🗣️ Voice Features](./docs/voice-features.md)
-- [💬 Real-time Collaboration](./docs/REALTIME_COLLABORATION.md)
-- [🎨 Customization](./docs/customization.md)
-
----
-
 ## 🤝 Contributing
 
-We welcome contributions from the community! Please read our [Contributing Guide](./CONTRIBUTING.md) for details.
-
-### Quick Start for Contributors
+Contributions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ```bash
-# Fork and clone
+# Quick start for contributors
 git clone https://github.com/YOUR_USERNAME/rag-starter-kit.git
-cd rag-starter-kit
-
-# Install dependencies
-pnpm install
-
-# Set up environment
+cd rag-starter-kit && pnpm install
 cp .env.example .env
 # Edit .env with your API keys
-
-# Start development
 docker-compose up
 ```
 
-### Contribution Workflow
-
-1. **Fork** the repository
-2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
-3. **Make** your changes with tests
-4. **Run** checks: `pnpm check`
-5. **Commit** with conventional commits: `git commit -m 'feat: add amazing feature'`
-6. **Push** to your fork: `git push origin feature/amazing-feature`
-7. **Open** a Pull Request
-
-### Code Standards
-
-- **TypeScript** strict mode enabled
-- **Biome** for linting and formatting
-- **Conventional Commits** for commit messages
-- **Test coverage** required for new features
-
-See [Contributors](./CONTRIBUTORS.md) for our amazing community!
+See [Contributors](./CONTRIBUTORS.md) for our community!
 
 ---
 
@@ -490,24 +359,18 @@ The RAG Starter Kit implements comprehensive security measures:
 - **RBAC** with workspace-level permissions
 
 ### Data Protection
-- **Field-level encryption** for sensitive data
 - **Row-level security** via workspace isolation
-- **TLS 1.3** for all connections
-- **Secure headers** (CSP, HSTS, X-Frame-Options)
+- **TLS** for all connections
+- **Secure headers** (CSP, HSTS)
 
 ### Input Validation
 - **Zod schemas** for all API inputs
 - **SQL injection prevention** via Prisma ORM
 - **XSS protection** with React's built-in escaping
-- **Prompt injection** defenses for LLM interactions
 
-### Monitoring & Compliance
-- **Audit logging** for all security events
+### Monitoring
+- **Audit logging** for security events
 - **Rate limiting** with progressive penalties
-- **IP reputation** tracking
-- **GDPR-compliant** data handling
-
-See [Security Documentation](./docs/adr/006-security.md) for details.
 
 Report vulnerabilities to [security@example.com](mailto:security@example.com). See [SECURITY.md](./SECURITY.md) for details.
 
@@ -544,7 +407,7 @@ Thanks to all the amazing people who have contributed to this project!
     <tr>
       <td align="center" valign="top" width="14.28%">
         <a href="https://github.com/rejisterjack">
-          <img src="https://avatars.githubusercontent.com/u/placeholder" width="100px;" alt="Rejister Jack"/><br />
+          <img src="https://github.com/rejisterjack.png" width="100px;" alt="Rejister Jack"/><br />
           <sub><b>Rejister Jack</b></sub>
         </a>
       </td>
