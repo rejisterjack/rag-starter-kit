@@ -122,6 +122,7 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactEl
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased`}
+        suppressHydrationWarning
       >
         <div className="vibrant-bg" />
         <Providers>

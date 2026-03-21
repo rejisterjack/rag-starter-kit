@@ -44,7 +44,6 @@ export { prisma } from './db';
 export * from './experiments';
 // Export
 export * from './export';
-export * from './observability';
 // RAG (includes all agentic features)
 export * from './rag';
 

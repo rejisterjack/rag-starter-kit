@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
+import { SessionProvider } from 'next-auth/react';
 import { type ReactNode, useState } from 'react';
 
 import { PostHogProvider } from './providers/posthog-provider';
@@ -36,15 +37,17 @@ export function Providers({ children }: ProvidersProps): React.ReactElement {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange={false}
-      >
-        <PostHogProvider>{children}</PostHogProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <SessionProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange={false}
+        >
+          <PostHogProvider>{children}</PostHogProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </SessionProvider>
   );
 }

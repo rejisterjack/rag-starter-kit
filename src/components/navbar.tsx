@@ -3,15 +3,25 @@
 import Link from "next/link";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Menu, X, Github } from "lucide-react";
+import {
+  MessageSquare,
+  Menu,
+  X,
+  Github,
+  User,
+  LogOut,
+  Loader2,
+} from "lucide-react";
 
-const navLinks = [
-  { href: "/chat", label: "Chat" },
-];
+const navLinks = [{ href: "/chat", label: "Chat" }];
 
 export function Navbar(): React.ReactElement {
   const [isOpen, setIsOpen] = useState(false);
+  const { data: session, status } = useSession();
+  const isLoading = status === "loading";
+  const isLoggedIn = !!session?.user;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
@@ -36,22 +46,46 @@ export function Navbar(): React.ReactElement {
             ))}
           </nav>
 
-          {/* Desktop CTA */}
+          {/* Desktop User Section */}
           <div className="hidden md:flex items-center gap-4">
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground"
-            >
-              <Link href="https://github.com/ragstarterkit/rag-starter-kit">
-                <Github className="mr-2 h-4 w-4" />
-                GitHub
-              </Link>
-            </Button>
-            <Button asChild size="sm" className="rounded-full">
-              <Link href="/chat">Get Started</Link>
-            </Button>
+            {isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            ) : isLoggedIn ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    {session.user?.email?.split("@")[0] || "User"}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => signOut({ callbackUrl: "/" })}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign out
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                >
+                  <Link href="https://github.com/ragstarterkit/rag-starter-kit">
+                    <Github className="mr-2 h-4 w-4" />
+                    GitHub
+                  </Link>
+                </Button>
+                <Button asChild size="sm" className="rounded-full">
+                  <Link href="/login">Sign in</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -59,7 +93,11 @@ export function Navbar(): React.ReactElement {
             onClick={() => setIsOpen(!isOpen)}
             className="md:hidden p-2 text-muted-foreground hover:text-foreground"
           >
-            {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {isOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
           </button>
         </div>
       </div>
@@ -84,21 +122,47 @@ export function Navbar(): React.ReactElement {
                   {link.label}
                 </Link>
               ))}
-              <div className="pt-3 border-t border-border space-y-2">
-                <Button
-                  asChild
-                  variant="outline"
-                  className="w-full justify-start"
-                >
-                  <Link href="https://github.com/ragstarterkit/rag-starter-kit">
-                    <Github className="mr-2 h-4 w-4" />
-                    GitHub
-                  </Link>
-                </Button>
-                <Button asChild className="w-full">
-                  <Link href="/chat">Get Started</Link>
-                </Button>
-              </div>
+
+              {isLoading ? (
+                <div className="py-2">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : isLoggedIn ? (
+                <>
+                  <div className="flex items-center gap-2 py-2 px-3 rounded-lg bg-muted">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {session.user?.email || "User"}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      signOut({ callbackUrl: "/" });
+                    }}
+                    className="w-full flex items-center gap-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <div className="pt-3 border-t border-border space-y-2">
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full justify-start"
+                  >
+                    <Link href="https://github.com/ragstarterkit/rag-starter-kit">
+                      <Github className="mr-2 h-4 w-4" />
+                      GitHub
+                    </Link>
+                  </Button>
+                  <Button asChild className="w-full">
+                    <Link href="/login">Sign in</Link>
+                  </Button>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
