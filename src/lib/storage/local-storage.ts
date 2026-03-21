@@ -7,7 +7,7 @@
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { Readable } from 'node:stream';
+import type { Readable } from 'node:stream';
 import { logger } from '@/lib/logger';
 
 // =============================================================================

@@ -1,187 +1,126 @@
 /**
- * OpenAI API Mock
+ * OpenAI Mock for Testing
  * 
- * Provides mocks for OpenAI API responses used in RAG pipeline.
+ * Mock implementation of OpenAI API for unit and integration tests.
  */
 
 import { vi } from 'vitest';
 
-/**
- * Mock OpenAI embedding response
- */
-export const mockEmbeddingResponse = {
-  object: 'list' as const,
-  data: [
-    {
-      object: 'embedding' as const,
-      embedding: Array(1536).fill(0).map(() => Math.random() - 0.5),
-      index: 0,
-    },
-  ],
-  model: 'text-embedding-3-small',
-  usage: {
-    prompt_tokens: 10,
-    total_tokens: 10,
-  },
-};
-
-/**
- * Creates mock embeddings for multiple texts
- */
-export const createMockEmbeddings = (count: number, dimension: number = 1536) => {
-  return Array(count).fill(0).map((_, i) => ({
-    object: 'embedding' as const,
-    embedding: Array(dimension).fill(0).map(() => Math.random() - 0.5),
-    index: i,
-  }));
-};
-
-/**
- * Mock chat completion response (non-streaming)
- */
-export const mockChatCompletionResponse = {
-  id: 'chatcmpl-mock-id',
-  object: 'chat.completion' as const,
-  created: Date.now(),
-  model: 'gpt-4o-mini',
-  choices: [
-    {
-      index: 0,
-      message: {
-        role: 'assistant' as const,
-        content: 'This is a mock response from the assistant.',
-        refusal: null,
-      },
-      finish_reason: 'stop' as const,
-      logprobs: null,
-    },
-  ],
-  usage: {
-    prompt_tokens: 150,
-    completion_tokens: 25,
-    total_tokens: 175,
-  },
-  system_fingerprint: 'fp_mock',
-};
-
-/**
- * Creates a mock streaming response chunk
- */
-export const createMockStreamChunk = (content: string, isLast: boolean = false) => ({
-  id: 'chatcmpl-mock-id',
-  object: 'chat.completion.chunk' as const,
-  created: Date.now(),
-  model: 'gpt-4o-mini',
-  choices: [
-    {
-      index: 0,
-      delta: {
-        role: 'assistant' as const,
-        content,
-      },
-      finish_reason: isLast ? 'stop' as const : null,
-      logprobs: null,
-    },
-  ],
-  system_fingerprint: 'fp_mock',
-});
-
-/**
- * Mock OpenAI client
- */
-export const createMockOpenAIClient = () => {
-  return {
-    embeddings: {
-      create: vi.fn().mockResolvedValue(mockEmbeddingResponse),
-    },
-    chat: {
-      completions: {
-        create: vi.fn().mockResolvedValue(mockChatCompletionResponse),
-      },
-    },
-  };
-};
-
-/**
- * Mock OpenAI class constructor
- */
-export const MockOpenAI = vi.fn().mockImplementation(() => createMockOpenAIClient());
-
-/**
- * Creates a mock streaming iterator for chat completions
- */
-export function* mockStreamingResponse(chunks: string[]) {
-  for (let i = 0; i < chunks.length; i++) {
-    yield createMockStreamChunk(chunks[i], i === chunks.length - 1);
-  }
-}
-
-/**
- * Async generator version for async iteration
- */
-export async function* mockAsyncStreamingResponse(chunks: string[]) {
-  for (let i = 0; i < chunks.length; i++) {
-    await new Promise(resolve => setTimeout(resolve, 10));
-    yield createMockStreamChunk(chunks[i], i === chunks.length - 1);
-  }
-}
-
-/**
- * Reset all OpenAI mocks
- */
-export const resetOpenAIMocks = (): void => {
-  vi.clearAllMocks();
-};
-
-/**
- * Helper to set up OpenAI mock for embeddings
- */
-export const mockEmbeddingsCreate = (
-  mockClient: ReturnType<typeof createMockOpenAIClient>,
-  embeddings?: number[][]
-): void => {
-  const response = {
-    ...mockEmbeddingResponse,
-    data: embeddings 
-      ? embeddings.map((embedding, i) => ({
-          object: 'embedding' as const,
-          embedding,
-          index: i,
-        }))
-      : mockEmbeddingResponse.data,
-  };
-  mockClient.embeddings.create.mockResolvedValue(response);
-};
-
-/**
- * Helper to set up OpenAI mock for chat completions
- */
-export const mockChatCompletionsCreate = (
-  mockClient: ReturnType<typeof createMockOpenAIClient>,
-  response?: string
-): void => {
-  mockClient.chat.completions.create.mockResolvedValue({
-    ...mockChatCompletionResponse,
+// Mock OpenAI responses
+export const mockOpenAIResponses = {
+  chatCompletion: {
+    id: 'chatcmpl-test',
+    object: 'chat.completion',
+    created: Date.now(),
+    model: 'gpt-4o-mini',
     choices: [
       {
-        ...mockChatCompletionResponse.choices[0],
+        index: 0,
         message: {
-          ...mockChatCompletionResponse.choices[0].message,
-          content: response ?? mockChatCompletionResponse.choices[0].message.content,
+          role: 'assistant',
+          content: 'This is a test response from the mock OpenAI API.',
         },
+        finish_reason: 'stop',
       },
     ],
-  });
+    usage: {
+      prompt_tokens: 10,
+      completion_tokens: 20,
+      total_tokens: 30,
+    },
+  },
+  streamingChunk: {
+    id: 'chatcmpl-test',
+    object: 'chat.completion.chunk',
+    created: Date.now(),
+    model: 'gpt-4o-mini',
+    choices: [
+      {
+        index: 0,
+        delta: {
+          content: 'Test chunk',
+        },
+        finish_reason: null,
+      },
+    ],
+  },
+  embedding: {
+    object: 'list',
+    data: [
+      {
+        object: 'embedding',
+        index: 0,
+        embedding: Array(1536).fill(0).map(() => Math.random() - 0.5),
+      },
+    ],
+    model: 'text-embedding-3-small',
+    usage: {
+      prompt_tokens: 10,
+      total_tokens: 10,
+    },
+  },
 };
 
-/**
- * Helper to set up OpenAI mock for streaming chat completions
- */
-export const mockStreamingChatCompletionsCreate = (
-  mockClient: ReturnType<typeof createMockOpenAIClient>,
-  chunks: string[]
-): void => {
-  mockClient.chat.completions.create.mockResolvedValue(
-    mockAsyncStreamingResponse(chunks)
-  );
+// Mock OpenAI client
+export const mockOpenAI = {
+  chat: {
+    completions: {
+      create: vi.fn(),
+    },
+  },
+  embeddings: {
+    create: vi.fn(),
+  },
 };
+
+// Reset all OpenAI mocks
+export function resetOpenAIMocks() {
+  mockOpenAI.chat.completions.create.mockReset();
+  mockOpenAI.embeddings.create.mockReset();
+  
+  // Set default mock returns
+  mockOpenAI.chat.completions.create.mockResolvedValue(mockOpenAIResponses.chatCompletion);
+  mockOpenAI.embeddings.create.mockResolvedValue(mockOpenAIResponses.embedding);
+}
+
+// Setup streaming mock
+export function setupStreamingMock(chunks: string[] = ['Test', ' response', ' from', ' stream']) {
+  const streamChunks = chunks.map((content, index) => ({
+    ...mockOpenAIResponses.streamingChunk,
+    choices: [
+      {
+        ...mockOpenAIResponses.streamingChunk.choices[0],
+        delta: { content },
+        finish_reason: index === chunks.length - 1 ? 'stop' : null,
+      },
+    ],
+  }));
+
+  mockOpenAI.chat.completions.create.mockResolvedValue(
+    createAsyncIterable(streamChunks)
+  );
+}
+
+// Helper to create async iterable
+function createAsyncIterable<T>(items: T[]): AsyncIterable<T> {
+  return {
+    [Symbol.asyncIterator]: async function* () {
+      for (const item of items) {
+        yield item;
+      }
+    },
+  };
+}
+
+// Mock OpenAI module
+vi.mock('openai', () => ({
+  default: vi.fn().mockImplementation(() => mockOpenAI),
+}));
+
+// Mock AI SDK
+vi.mock('ai', () => ({
+  streamText: vi.fn(),
+  generateText: vi.fn(),
+  embed: vi.fn(),
+  embedMany: vi.fn(),
+}));

@@ -5,6 +5,7 @@ import { Providers } from '@/components/providers';
 import { Toaster } from '@/components/ui/toaster';
 import { PWAScripts } from '@/components/pwa/pwa-scripts';
 import { Navbar } from '@/components/navbar';
+import { StructuredData } from '@/components/seo';
 import '@/styles/globals.css';
 
 const geistSans = Geist({
@@ -19,13 +20,15 @@ const geistMono = Geist_Mono({
   display: 'swap',
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rag-starter-kit.vercel.app';
+
 export const metadata: Metadata = {
   title: {
-    default: 'RAG Chatbot',
-    template: '%s | RAG Chatbot',
+    default: 'RAG Starter Kit - Production-Ready RAG Chatbot',
+    template: '%s | RAG Starter Kit',
   },
   description:
-    'A production-ready RAG (Retrieval-Augmented Generation) chatbot powered by Next.js, LangChain, and PostgreSQL pgvector.',
+    'A production-ready RAG (Retrieval-Augmented Generation) chatbot boilerplate powered by Next.js 15, LangChain, and PostgreSQL pgvector. Build AI-powered document chatbots in minutes.',
   keywords: [
     'RAG',
     'chatbot',
@@ -35,46 +38,81 @@ export const metadata: Metadata = {
     'OpenAI',
     'pgvector',
     'PostgreSQL',
+    'retrieval-augmented generation',
+    'document chatbot',
+    'AI boilerplate',
   ],
-  authors: [{ name: 'Your Name' }],
-  creator: 'Your Name',
-  metadataBase: new URL(
-    process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
-  ),
+  authors: [{ name: 'RAG Starter Kit Team' }],
+  creator: 'RAG Starter Kit Team',
+  publisher: 'RAG Starter Kit',
+  metadataBase: new URL(siteUrl),
+  alternates: {
+    canonical: '/',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: '/',
-    siteName: 'RAG Chatbot',
-    title: 'RAG Chatbot',
-    description: 'A production-ready RAG chatbot powered by Next.js and LangChain.',
+    url: siteUrl,
+    siteName: 'RAG Starter Kit',
+    title: 'RAG Starter Kit - Production-Ready RAG Chatbot',
+    description: 'Build AI-powered document chatbots with Next.js, LangChain, and PostgreSQL pgvector.',
+    images: [
+      {
+        url: '/og',
+        width: 1200,
+        height: 630,
+        alt: 'RAG Starter Kit - Production-Ready RAG Chatbot Boilerplate',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'RAG Chatbot',
-    description: 'A production-ready RAG chatbot powered by Next.js and LangChain.',
+    title: 'RAG Starter Kit - Production-Ready RAG Chatbot',
+    description: 'Build AI-powered document chatbots with Next.js, LangChain, and PostgreSQL pgvector.',
+    images: ['/og'],
+    creator: '@ragstarterkit',
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
   },
   // PWA manifest
   manifest: '/manifest.json',
   // Apple specific PWA tags
   appleWebApp: {
     capable: true,
-    title: 'RAG Chatbot',
+    title: 'RAG Starter Kit',
     statusBarStyle: 'default',
+    startupImage: '/icons/icon-512x512.png',
   },
   // Application icons
   icons: {
     icon: [
-      { url: '/icons/icon-192x192.png', sizes: '192x192' },
-      { url: '/icons/icon-512x512.png', sizes: '512x512' },
+      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },
     ],
     apple: [
-      { url: '/icons/icon-192x192.png', sizes: '192x192' },
+      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-152x152.png', sizes: '152x152', type: 'image/png' },
     ],
+    shortcut: [{ url: '/icons/icon-192x192.png', sizes: '192x192' }],
+  },
+  // Additional metadata
+  category: 'technology',
+  classification: 'Software Development',
+  other: {
+    'og:site_name': 'RAG Starter Kit',
+    'twitter:domain': 'rag-starter-kit.vercel.app',
   },
 };
 
@@ -132,6 +170,7 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactEl
           </div>
           <Toaster />
         </Providers>
+        <StructuredData />
         {/* PWA Scripts - Service Worker Registration */}
         <PWAScripts />
       </body>

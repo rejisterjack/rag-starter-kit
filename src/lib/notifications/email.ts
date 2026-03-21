@@ -5,6 +5,8 @@
  * Falls back to console logging in development if not configured.
  */
 
+import { logger } from '@/lib/logger';
+
 // =============================================================================
 // HTML Escaping Utility (Security)
 // =============================================================================

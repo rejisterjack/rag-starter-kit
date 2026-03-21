@@ -8,16 +8,13 @@ import {
   Bot,
   Database,
   Zap,
-  FileText,
   Shield,
   Workflow,
   Sparkles,
   MessageSquare,
   Upload,
-  Search,
   Github,
   ChevronRight,
-  CheckCircle2,
 } from "lucide-react";
 
 // Animation variants

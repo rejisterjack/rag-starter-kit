@@ -2,7 +2,7 @@
 
 import type { AuditLogResult } from '@/lib/audit/audit-logger';
 import { Badge } from '@/components/ui/badge';
-import { AuditEvent, AuditSeverity } from '@prisma/client';
+import type { AuditEvent, AuditSeverity } from '@prisma/client';
 import { motion, type Variants } from 'framer-motion';
 
 interface RecentAuditLogsProps {

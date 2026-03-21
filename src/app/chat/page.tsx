@@ -5,8 +5,8 @@ import { ChatContainer } from "@/components/chat/chat-container";
 import { DocumentList } from "@/components/documents/document-list";
 import { DocumentPreview } from "@/components/documents/document-preview";
 import { useChat } from "@/hooks/use-chat";
-import { type Source } from "@/components/chat/citations";
-import { type Document } from "@/components/documents/document-card";
+import type { Source } from "@/components/chat/citations";
+import type { Document } from "@/components/documents/document-card";
 
 // Demo documents for initial state
 const DEMO_DOCUMENTS: Document[] = [

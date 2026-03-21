@@ -8,9 +8,9 @@
 
 import { RetryableError, withRetry } from '@/lib/utils/retry';
 import {
-  EmbeddingProvider,
-  EmbeddingConfig,
-  BatchEmbeddingResult,
+  type EmbeddingProvider,
+  type EmbeddingConfig,
+  type BatchEmbeddingResult,
   OLLAMA_MODELS,
   type OllamaModel,
 } from './types';

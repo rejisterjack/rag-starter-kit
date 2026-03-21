@@ -129,7 +129,7 @@ export async function middleware(req: NextRequest) {
 
   if (isLoggedIn && user) {
     requestHeaders.set('x-user-id', user.id as string);
-    requestHeaders.set('x-user-role', user.role ?? 'USER');
+    requestHeaders.set('x-user-role', (user.role as string) ?? 'USER');
     if (user.workspaceId) {
       requestHeaders.set('x-workspace-id', user.workspaceId as string);
     }

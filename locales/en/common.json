@@ -1,0 +1,137 @@
+{
+  "metadata": {
+    "title": "RAG Starter Kit - Production-Ready RAG Chatbot",
+    "description": "A production-ready RAG (Retrieval-Augmented Generation) chatbot boilerplate powered by Next.js 15, LangChain, and PostgreSQL pgvector."
+  },
+  "navigation": {
+    "home": "Home",
+    "chat": "Chat",
+    "documents": "Documents",
+    "settings": "Settings",
+    "signIn": "Sign In",
+    "signOut": "Sign Out"
+  },
+  "hero": {
+    "badge": "Open Source on GitHub",
+    "title": "Build AI-Powered",
+    "titleHighlight": "Document Chatbots",
+    "description": "A production-ready RAG starter kit powered by Next.js, LangChain, and PostgreSQL. Deploy intelligent chatbots that understand your documents in minutes, not months.",
+    "primaryCta": "Start Chatting",
+    "secondaryCta": "View on GitHub",
+    "stats": {
+      "fasterSetup": "Faster Setup",
+      "uptime": "Uptime SLA",
+      "components": "Components"
+    }
+  },
+  "features": {
+    "title": "Everything You Need",
+    "subtitle": "A complete toolkit for building production-ready RAG applications without the boilerplate.",
+    "rag": {
+      "title": "Intelligent RAG",
+      "description": "Context-aware responses using LangChain and pgvector for unprecedented accuracy and recall."
+    },
+    "ingestion": {
+      "title": "Seamless Ingestion",
+      "description": "Upload and instantly process PDFs, Word docs, and text files with intelligent auto-chunking."
+    },
+    "latency": {
+      "title": "Ultra-low Latency",
+      "description": "Lightning-fast token streaming engineered for natural, uninterrupted conversation flow."
+    },
+    "memory": {
+      "title": "Persistent Memory",
+      "description": "State-of-the-art semantic memory powered by PostgreSQL with pgvector extension."
+    },
+    "enterprise": {
+      "title": "Enterprise Ready",
+      "description": "Built with NextAuth, role-based access, and audit logging for production deployments."
+    },
+    "async": {
+      "title": "Async Processing",
+      "description": "Background job processing with Inngest for handling large documents and batch operations."
+    }
+  },
+  "howItWorks": {
+    "title": "How It Works",
+    "subtitle": "Get up and running in three simple steps. No complex configuration required.",
+    "steps": {
+      "1": {
+        "title": "Upload Documents",
+        "description": "Drag and drop your PDFs, Word documents, or text files. We handle the rest."
+      },
+      "2": {
+        "title": "Automatic Processing",
+        "description": "Our system chunks, embeds, and indexes your content using state-of-the-art AI models."
+      },
+      "3": {
+        "title": "Start Chatting",
+        "description": "Ask questions in natural language and get accurate, cited answers from your documents."
+      }
+    }
+  },
+  "techStack": {
+    "title": "Modern Tech Stack",
+    "subtitle": "Built with the latest technologies for performance, scalability, and developer experience."
+  },
+  "cta": {
+    "title": "Ready to Get Started?",
+    "description": "Deploy your own AI-powered document chatbot in minutes. Clone the repo, set your environment variables, and start chatting.",
+    "primary": "Try Demo",
+    "secondary": "Clone Repository"
+  },
+  "footer": {
+    "builtWith": "Built with ❤️ using Next.js, LangChain, and PostgreSQL"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to your account to continue",
+      "email": "Email",
+      "password": "Password",
+      "forgotPassword": "Forgot password?",
+      "submit": "Sign in",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up",
+      "orContinueWith": "Or continue with email"
+    },
+    "signUp": {
+      "title": "Create an account",
+      "subtitle": "Get started with your next-gen intelligence suite",
+      "name": "Full name",
+      "email": "Email",
+      "password": "Password",
+      "passwordHint": "At least 8 characters, mixed case & numbers",
+      "confirmPassword": "Confirm password",
+      "submit": "Create account",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign in"
+    },
+    "errors": {
+      "invalidEmail": "Please enter a valid email address",
+      "invalidPassword": "Password must be at least 8 characters with uppercase, lowercase, and number",
+      "passwordsDontMatch": "Passwords do not match",
+      "generic": "An error occurred. Please try again."
+    }
+  },
+  "chat": {
+    "placeholder": "Type your message...",
+    "send": "Send",
+    "upload": "Upload",
+    "newChat": "New Chat",
+    "sources": "Sources",
+    "thinking": "Thinking...",
+    "error": "Something went wrong. Please try again."
+  },
+  "documents": {
+    "title": "Documents",
+    "upload": "Upload Document",
+    "dragDrop": "Drag and drop files here, or click to select",
+    "supportedFormats": "Supported formats: PDF, DOCX, TXT, MD",
+    "processing": "Processing...",
+    "completed": "Completed",
+    "failed": "Failed",
+    "delete": "Delete",
+    "preview": "Preview"
+  }
+}

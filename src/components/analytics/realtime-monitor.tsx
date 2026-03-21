@@ -1,285 +1,115 @@
 'use client';
 
-import {
-  Activity,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  type LucideIcon,
-  MessageSquare,
-  RefreshCw,
-  Users,
-  Wifi,
-  WifiOff,
-} from 'lucide-react';
-import * as React from 'react';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Activity, Users, MessageSquare, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export interface RealtimeEvent {
-  id: string;
-  type: 'query' | 'response' | 'error' | 'user' | 'system';
-  message: string;
-  timestamp: Date;
-  metadata?: Record<string, string | number>;
+interface RealtimeMetrics {
+  activeUsers: number;
+  activeChats: number;
+  queriesPerMinute: number;
+  tokensPerMinute: number;
 }
 
-export interface RealtimeMetric {
-  id: string;
-  label: string;
-  value: number | string;
-  unit?: string;
-  icon?: LucideIcon;
-  trend?: 'up' | 'down' | 'neutral';
-  color?: string;
-}
+export function RealtimeMonitor() {
+  const [metrics, setMetrics] = useState<RealtimeMetrics>({
+    activeUsers: 0,
+    activeChats: 0,
+    queriesPerMinute: 0,
+    tokensPerMinute: 0,
+  });
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-export interface RealtimeMonitorProps {
-  title?: string;
-  description?: string;
-  metrics: RealtimeMetric[];
-  events: RealtimeEvent[];
-  isConnected?: boolean;
-  lastUpdated?: Date;
-  maxEvents?: number;
-  loading?: boolean;
-  onRefresh?: () => void;
-  className?: string;
-}
+  useEffect(() => {
+    // Simulate real-time data updates
+    const updateMetrics = () => {
+      setMetrics({
+        activeUsers: Math.floor(Math.random() * 50) + 10,
+        activeChats: Math.floor(Math.random() * 20) + 5,
+        queriesPerMinute: Math.floor(Math.random() * 100) + 20,
+        tokensPerMinute: Math.floor(Math.random() * 5000) + 1000,
+      });
+      setLastUpdate(new Date());
+    };
 
-const eventTypeConfig: Record<
-  RealtimeEvent['type'],
-  { icon: LucideIcon; color: string; label: string }
-> = {
-  query: { icon: MessageSquare, color: 'text-blue-500', label: 'Query' },
-  response: { icon: CheckCircle2, color: 'text-green-500', label: 'Response' },
-  error: { icon: AlertCircle, color: 'text-red-500', label: 'Error' },
-  user: { icon: Users, color: 'text-purple-500', label: 'User' },
-  system: { icon: Activity, color: 'text-orange-500', label: 'System' },
-};
+    updateMetrics();
+    const interval = setInterval(updateMetrics, 5000);
 
-function ConnectionStatus({
-  isConnected,
-  lastUpdated,
-}: {
-  isConnected: boolean;
-  lastUpdated?: Date;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <div
-        className={cn(
-          'h-2 w-2 rounded-full animate-pulse',
-          isConnected ? 'bg-green-500' : 'bg-red-500'
-        )}
-      />
-      <span className="text-xs text-muted-foreground">{isConnected ? 'Live' : 'Disconnected'}</span>
-      {lastUpdated && isConnected && (
-        <span className="text-xs text-muted-foreground">
-          · Updated {lastUpdated.toLocaleTimeString()}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function MetricCard({ metric }: { metric: RealtimeMetric }) {
-  const Icon = metric.icon || Activity;
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-      <div
-        className={cn(
-          'h-10 w-10 rounded-lg flex items-center justify-center',
-          metric.color ? '' : 'bg-background'
-        )}
-        style={metric.color ? { backgroundColor: `${metric.color}20` } : undefined}
-      >
-        <Icon
-          className={cn('h-5 w-5', metric.color || 'text-muted-foreground')}
-          style={metric.color ? { color: metric.color } : undefined}
-        />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground truncate">{metric.label}</p>
-        <div className="flex items-baseline gap-1">
-          <span className="text-xl font-bold">{metric.value}</span>
-          {metric.unit && <span className="text-xs text-muted-foreground">{metric.unit}</span>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EventItem({ event }: { event: RealtimeEvent }) {
-  const config = eventTypeConfig[event.type];
-  const Icon = config.icon;
-
-  return (
-    <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-      <div className={cn('mt-0.5', config.color)}>
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs">
-            {config.label}
-          </Badge>
-          <span className="text-xs text-muted-foreground">
-            {event.timestamp.toLocaleTimeString()}
-          </span>
-        </div>
-        <p className="text-sm mt-1">{event.message}</p>
-        {event.metadata && Object.keys(event.metadata).length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {Object.entries(event.metadata).map(([key, value]) => (
-              <span
-                key={key}
-                className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded"
-              >
-                {key}: {value}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-export function RealtimeMonitor({
-  title = 'Real-time Monitor',
-  description,
-  metrics,
-  events,
-  isConnected = true,
-  lastUpdated,
-  maxEvents = 50,
-  loading = false,
-  onRefresh,
-  className,
-}: RealtimeMonitorProps) {
-  const scrollRef = React.useRef<HTMLDivElement>(null);
-  const [autoScroll, setAutoScroll] = React.useState(true);
-
-  // Auto-scroll to bottom when new events arrive
-  React.useEffect(() => {
-    if (autoScroll && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [autoScroll]);
-
-  // Handle scroll to toggle auto-scroll
-  const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
-    setAutoScroll(isAtBottom);
+    return () => clearInterval(interval);
   }, []);
 
-  if (loading) {
-    return (
-      <Card className={className}>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <Skeleton className="h-5 w-32" />
-              {description && <Skeleton className="h-4 w-48 mt-2" />}
-            </div>
-            <Skeleton className="h-6 w-20" />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 rounded-lg" />
-            ))}
-          </div>
-          <Skeleton className="h-48 rounded-lg" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const displayEvents = events.slice(-maxEvents);
+  const items = [
+    {
+      label: 'Active Users',
+      value: metrics.activeUsers,
+      icon: Users,
+      color: 'text-blue-500',
+      bgColor: 'bg-blue-500/10',
+    },
+    {
+      label: 'Active Chats',
+      value: metrics.activeChats,
+      icon: MessageSquare,
+      color: 'text-green-500',
+      bgColor: 'bg-green-500/10',
+    },
+    {
+      label: 'Queries/min',
+      value: metrics.queriesPerMinute,
+      icon: Activity,
+      color: 'text-purple-500',
+      bgColor: 'bg-purple-500/10',
+    },
+    {
+      label: 'Tokens/min',
+      value: metrics.tokensPerMinute.toLocaleString(),
+      icon: Zap,
+      color: 'text-amber-500',
+      bgColor: 'bg-amber-500/10',
+    },
+  ];
 
   return (
-    <Card className={className}>
+    <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              {isConnected ? (
-                <Wifi className="h-5 w-5 text-green-500" />
-              ) : (
-                <WifiOff className="h-5 w-5 text-red-500" />
-              )}
-              {title}
-            </CardTitle>
-            {description && <CardDescription>{description}</CardDescription>}
+            <CardTitle>Real-time Activity</CardTitle>
+            <CardDescription>Live metrics updates</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            <ConnectionStatus isConnected={isConnected} lastUpdated={lastUpdated} />
-            {onRefresh && (
-              <button
-                onClick={onRefresh}
-                className="p-1.5 rounded-md hover:bg-muted transition-colors"
-                title="Refresh"
-              >
-                <RefreshCw className="h-4 w-4 text-muted-foreground" />
-              </button>
-            )}
+          <div className="flex items-center space-x-2">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Live
+            </span>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {metrics.map((metric) => (
-            <MetricCard key={metric.id} metric={metric} />
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4">
+          {items.map((item) => (
+            <div
+              key={item.label}
+              className="flex items-center space-x-3 p-3 rounded-lg border"
+            >
+              <div className={cn('p-2 rounded-md', item.bgColor)}>
+                <item.icon className={cn('h-4 w-4', item.color)} />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{item.label}</p>
+                <p className="text-lg font-semibold">{item.value}</p>
+              </div>
+            </div>
           ))}
         </div>
-
-        {/* Events Feed */}
-        <div className="rounded-lg border">
-          <div className="px-4 py-2 border-b bg-muted/50">
-            <h4 className="text-sm font-medium">Recent Events</h4>
-          </div>
-          <ScrollArea className="h-64" ref={scrollRef} onScroll={handleScroll}>
-            <div className="divide-y">
-              {displayEvents.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No events yet</p>
-                </div>
-              ) : (
-                displayEvents.map((event) => <EventItem key={event.id} event={event} />)
-              )}
-            </div>
-          </ScrollArea>
-        </div>
+        <p className="text-xs text-muted-foreground mt-4 text-center">
+          Last updated: {lastUpdate.toLocaleTimeString()}
+        </p>
       </CardContent>
     </Card>
   );
 }
-
-// Hook for simulating real-time data updates
-export function useRealtimeData(options: { refreshInterval?: number; enabled?: boolean } = {}) {
-  const { refreshInterval = 5000, enabled = true } = options;
-  const [tick, setTick] = React.useState(0);
-
-  React.useEffect(() => {
-    if (!enabled) return;
-
-    const interval = setInterval(() => {
-      setTick((t) => t + 1);
-    }, refreshInterval);
-
-    return () => clearInterval(interval);
-  }, [refreshInterval, enabled]);
-
-  return { tick, refresh: () => setTick((t) => t + 1) };
-}
-
-export default RealtimeMonitor;

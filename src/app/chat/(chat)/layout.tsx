@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import React from "react";
+import type React from "react";
 
 interface ChatLayoutProps {
   children: React.ReactNode;

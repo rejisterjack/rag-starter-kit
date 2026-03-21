@@ -3,14 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Github, Loader2, Mail, User } from 'lucide-react';
+import { Loader2, Mail, User } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { motion, type Variants } from 'framer-motion';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+// import { Separator } from '@/components/ui/separator';
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -89,10 +89,11 @@ export default function RegisterPage(): React.ReactElement {
     }
   };
 
-  const handleOAuthSignUp = (provider: string) => {
-    setIsLoading(true);
-    signIn(provider, { callbackUrl: '/chat' });
-  };
+  // OAuth signup disabled - no GitHub/Google credentials configured
+  // const handleOAuthSignUp = (provider: string) => {
+  //   setIsLoading(true);
+  //   signIn(provider, { callbackUrl: '/chat' });
+  // };
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">

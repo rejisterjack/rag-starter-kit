@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
-import { WebhookStatus } from '@prisma/client';
+import type { WebhookStatus } from '@prisma/client';
 
 // ============================================================================
 // Types & Validation

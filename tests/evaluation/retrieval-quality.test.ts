@@ -6,7 +6,7 @@
  */
 
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { runRAGPipeline } from '@/lib/rag/engine';
+import { generateRAGResponse } from '@/lib/rag/engine';
 import { mockPrisma } from '@/tests/utils/mocks/prisma';
 import { evaluateAnswer, evaluateRetrieval } from './utils';
 

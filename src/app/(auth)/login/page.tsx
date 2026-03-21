@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Github, Loader2, Mail, AlertTriangle } from 'lucide-react';
+import { Loader2, Mail, AlertTriangle } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { motion, type Variants } from 'framer-motion';
 
@@ -114,10 +114,11 @@ export default function LoginPage(): React.ReactElement {
     }
   };
 
-  const handleOAuthLogin = (provider: string) => {
-    setIsLoading(true);
-    signIn(provider, { callbackUrl });
-  };
+  // OAuth login disabled - no GitHub/Google credentials configured
+  // const handleOAuthLogin = (provider: string) => {
+  //   setIsLoading(true);
+  //   signIn(provider, { callbackUrl });
+  // };
 
   const handleSSOSelected = useCallback((method: SSOMethod, workspaceId: string) => {
     setIsLoading(true);

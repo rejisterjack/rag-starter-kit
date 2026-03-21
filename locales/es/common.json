@@ -1,0 +1,137 @@
+{
+  "metadata": {
+    "title": "RAG Starter Kit - Chatbot RAG Listo para Producción",
+    "description": "Una plantilla de chatbot RAG (Generación Aumentada por Recuperación) lista para producción, impulsada por Next.js 15, LangChain y PostgreSQL pgvector."
+  },
+  "navigation": {
+    "home": "Inicio",
+    "chat": "Chat",
+    "documents": "Documentos",
+    "settings": "Configuración",
+    "signIn": "Iniciar Sesión",
+    "signOut": "Cerrar Sesión"
+  },
+  "hero": {
+    "badge": "Código Abierto en GitHub",
+    "title": "Construye Chatbots de IA",
+    "titleHighlight": "para Documentos",
+    "description": "Un kit de inicio RAG listo para producción impulsado por Next.js, LangChain y PostgreSQL. Despliega chatbots inteligentes que entienden tus documentos en minutos, no meses.",
+    "primaryCta": "Comenzar Chat",
+    "secondaryCta": "Ver en GitHub",
+    "stats": {
+      "fasterSetup": "Configuración Más Rápida",
+      "uptime": "Uptime SLA",
+      "components": "Componentes"
+    }
+  },
+  "features": {
+    "title": "Todo lo que Necesitas",
+    "subtitle": "Un kit de herramientas completo para construir aplicaciones RAG listas para producción sin el código repetitivo.",
+    "rag": {
+      "title": "RAG Inteligente",
+      "description": "Respuestas contextuales usando LangChain y pgvector para una precisión y recuperación sin precedentes."
+    },
+    "ingestion": {
+      "title": "Ingesta Perfecta",
+      "description": "Sube y procesa instantáneamente PDFs, documentos Word y archivos de texto con fragmentación inteligente automática."
+    },
+    "latency": {
+      "title": "Latencia Ultra-baja",
+      "description": "Transmisión de tokens ultra rápida diseñada para un flujo de conversación natural e ininterrumpido."
+    },
+    "memory": {
+      "title": "Memoria Persistente",
+      "description": "Memoria semántica de última generación impulsada por PostgreSQL con extensión pgvector."
+    },
+    "enterprise": {
+      "title": "Listo para Empresas",
+      "description": "Construido con NextAuth, control de acceso basado en roles y registro de auditoría para despliegues en producción."
+    },
+    "async": {
+      "title": "Procesamiento Asíncrono",
+      "description": "Procesamiento de trabajos en segundo plano con Inngest para manejar documentos grandes y operaciones por lotes."
+    }
+  },
+  "howItWorks": {
+    "title": "Cómo Funciona",
+    "subtitle": "Ponte en marcha en tres simples pasos. Sin configuración compleja requerida.",
+    "steps": {
+      "1": {
+        "title": "Sube Documentos",
+        "description": "Arrastra y suelta tus PDFs, documentos Word o archivos de texto. Nosotros nos encargamos del resto."
+      },
+      "2": {
+        "title": "Procesamiento Automático",
+        "description": "Nuestro sistema fragmenta, embebe e indexa tu contenido usando modelos de IA de última generación."
+      },
+      "3": {
+        "title": "Comienza a Chatear",
+        "description": "Haz preguntas en lenguaje natural y obtén respuestas precisas y citadas de tus documentos."
+      }
+    }
+  },
+  "techStack": {
+    "title": "Stack Tecnológico Moderno",
+    "subtitle": "Construido con las últimas tecnologías para rendimiento, escalabilidad y experiencia de desarrollo."
+  },
+  "cta": {
+    "title": "¿Listo para Comenzar?",
+    "description": "Despliega tu propio chatbot de documentos con IA en minutos. Clona el repositorio, configura tus variables de entorno y comienza a chatear.",
+    "primary": "Probar Demo",
+    "secondary": "Clonar Repositorio"
+  },
+  "footer": {
+    "builtWith": "Construido con ❤️ usando Next.js, LangChain y PostgreSQL"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Bienvenido de vuelta",
+      "subtitle": "Inicia sesión en tu cuenta para continuar",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "submit": "Iniciar sesión",
+      "noAccount": "¿No tienes una cuenta?",
+      "signUp": "Regístrate",
+      "orContinueWith": "O continúa con correo"
+    },
+    "signUp": {
+      "title": "Crear una cuenta",
+      "subtitle": "Comienza con tu suite de inteligencia de próxima generación",
+      "name": "Nombre completo",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "passwordHint": "Al menos 8 caracteres, mayúsculas, minúsculas y números",
+      "confirmPassword": "Confirmar contraseña",
+      "submit": "Crear cuenta",
+      "hasAccount": "¿Ya tienes una cuenta?",
+      "signIn": "Iniciar sesión"
+    },
+    "errors": {
+      "invalidEmail": "Por favor ingresa un correo electrónico válido",
+      "invalidPassword": "La contraseña debe tener al menos 8 caracteres con mayúscula, minúscula y número",
+      "passwordsDontMatch": "Las contraseñas no coinciden",
+      "generic": "Ocurrió un error. Por favor intenta de nuevo."
+    }
+  },
+  "chat": {
+    "placeholder": "Escribe tu mensaje...",
+    "send": "Enviar",
+    "upload": "Subir",
+    "newChat": "Nuevo Chat",
+    "sources": "Fuentes",
+    "thinking": "Pensando...",
+    "error": "Algo salió mal. Por favor intenta de nuevo."
+  },
+  "documents": {
+    "title": "Documentos",
+    "upload": "Subir Documento",
+    "dragDrop": "Arrastra y suelta archivos aquí, o haz clic para seleccionar",
+    "supportedFormats": "Formatos soportados: PDF, DOCX, TXT, MD",
+    "processing": "Procesando...",
+    "completed": "Completado",
+    "failed": "Fallido",
+    "delete": "Eliminar",
+    "preview": "Vista previa"
+  }
+}

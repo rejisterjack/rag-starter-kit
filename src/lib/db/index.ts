@@ -12,7 +12,7 @@
 export { prisma, type PrismaClient } from './client';
 
 import type { Chat, Document, DocumentChunk, IngestionJob, Message } from '@/types';
-import { type Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { prisma } from './client';
 
 // ---------------------------------------------------------------------------
