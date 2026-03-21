@@ -40,7 +40,6 @@ services:
       - /app/.next
     ports:
       - "3000:3000"
-      - "5555:5555"
     environment:
       - NODE_ENV=development
       - NEXT_TELEMETRY_DISABLED=1
@@ -139,6 +138,23 @@ services:
     networks:
       - rag-network
 
+  clickhouse:
+    container_name: rag-clickhouse
+    image: clickhouse/clickhouse-server:24.3-alpine
+    environment:
+      - CLICKHOUSE_DB=plausible
+      - CLICKHOUSE_USER=plausible
+      - CLICKHOUSE_PASSWORD=plausible
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - rag-network
+
   plausible:
     container_name: rag-plausible
     image: plausible/analytics:latest
@@ -146,9 +162,32 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgres://postgres:postgres@rag-db:5432/plausible
-      - SECRET_KEY_BASE=dev-secret-key-base-change-in-production-min-64-characters-long
+      - CLICKHOUSE_DATABASE_URL=http://plausible:plausible@rag-clickhouse:8123/plausible
+      - SECRET_KEY_BASE=b1Fvtocj/vJnDOJJ/LBc7xpr1uIwtk/ReoB97ORG/6Ao7wJmS9GwC+IpJwg7WJIa
       - BASE_URL=http://localhost:8000
       - DISABLE_REGISTRATION=false
+    command: sh -c "sleep 10 && /entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run"
+    depends_on:
+      db:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    networks:
+      - rag-network
+
+  prisma-studio:
+    container_name: rag-prisma-studio
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@rag-db:5432/ragdb
+    ports:
+      - "5555:5555"
+    command: ["pnpm", "prisma", "studio", "--port", "5555", "--browser", "none"]
     depends_on:
       db:
         condition: service_healthy
@@ -159,6 +198,7 @@ volumes:
   postgres_data:
   minio_data:
   redis_data:
+  clickhouse_data:
 
 networks:
   rag-network:
