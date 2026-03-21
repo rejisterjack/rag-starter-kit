@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import { Toaster } from '@/components/ui/toaster';
 import { PWAScripts } from '@/components/pwa/pwa-scripts';
+import { Navbar } from '@/components/navbar';
 import '@/styles/globals.css';
 
 const geistSans = Geist({
@@ -125,6 +126,7 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactEl
         <div className="vibrant-bg" />
         <Providers>
           <div className="relative flex min-h-screen flex-col">
+            <Navbar />
             <main className="flex-1">{children}</main>
           </div>
           <Toaster />
