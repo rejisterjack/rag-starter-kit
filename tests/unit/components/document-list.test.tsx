@@ -60,7 +60,11 @@ describe('DocumentList', () => {
     const mockOnSelectAll = vi.fn();
 
     render(
-      <DocumentList documents={sampleDocuments as Document[]} selectable onSelectAll={mockOnSelectAll} />
+      <DocumentList
+        documents={sampleDocuments as Document[]}
+        selectable
+        onSelectAll={mockOnSelectAll}
+      />
     );
 
     const selectAllCheckbox = screen.getByLabelText(/select all/i);

@@ -21,16 +21,13 @@ export default function AnalyticsPage(): React.ReactElement {
             <Construction className="h-5 w-5 text-yellow-500" />
             <CardTitle>Coming Soon</CardTitle>
           </div>
-          <CardDescription>
-            Advanced analytics dashboard is under development.
-          </CardDescription>
+          <CardDescription>Advanced analytics dashboard is under development.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center py-12 space-y-4">
           <BarChart3 className="h-16 w-16 text-muted-foreground/50" />
           <p className="text-muted-foreground text-center max-w-md">
-            This page will display detailed metrics about your RAG usage,
-            including chat history, document processing stats, token usage,
-            and real-time activity monitoring.
+            This page will display detailed metrics about your RAG usage, including chat history,
+            document processing stats, token usage, and real-time activity monitoring.
           </p>
         </CardContent>
       </Card>

@@ -236,10 +236,15 @@ class UpstashRateLimiter implements RateLimiterBackend {
 
     if (!this.limits.has(key)) {
       const Ratelimit = this.ratelimit as new (config: unknown) => unknown;
-      const ratelimitModule = this.ratelimit as { slidingWindow: (limit: number, window: string) => unknown };
+      const ratelimitModule = this.ratelimit as {
+        slidingWindow: (limit: number, window: string) => unknown;
+      };
       const limiter = new Ratelimit({
         redis: this.redis,
-        limiter: ratelimitModule.slidingWindow(config.limit, this.msToWindowString(config.windowMs)),
+        limiter: ratelimitModule.slidingWindow(
+          config.limit,
+          this.msToWindowString(config.windowMs)
+        ),
         analytics: true,
         prefix: `ratelimit:${config.prefix}`,
       });

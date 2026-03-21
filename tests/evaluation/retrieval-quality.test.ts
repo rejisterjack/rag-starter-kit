@@ -62,7 +62,9 @@ describe('Retrieval Quality', () => {
             returnContext: true,
           });
 
-          const retrievedDocIds = [...new Set(context.map((c: { documentId: string }) => c.documentId))];
+          const retrievedDocIds = [
+            ...new Set(context.map((c: { documentId: string }) => c.documentId)),
+          ];
           const relevantRetrieved = testCase.expectedDocs.filter((doc) =>
             retrievedDocIds.some((id) => id.includes(doc.replace('.pdf', '')))
           );
@@ -90,7 +92,9 @@ describe('Retrieval Quality', () => {
             returnContext: true,
           });
 
-          const retrievedDocIds = [...new Set(context.map((c: { documentId: string }) => c.documentId))];
+          const retrievedDocIds = [
+            ...new Set(context.map((c: { documentId: string }) => c.documentId)),
+          ];
           const relevantRetrieved = retrievedDocIds.filter((id) =>
             testCase.expectedDocs.some((doc) => id.includes(doc.replace('.pdf', '')))
           );
@@ -210,7 +214,9 @@ describe('Retrieval Quality', () => {
           // Check if answer claims are supported by context
           const claims = extractClaims(content);
           const supportedClaims = claims.filter((claim) =>
-            context.some((c: { content: string }) => c.content.toLowerCase().includes(claim.toLowerCase()))
+            context.some((c: { content: string }) =>
+              c.content.toLowerCase().includes(claim.toLowerCase())
+            )
           );
 
           const faithfulness = claims.length > 0 ? supportedClaims.length / claims.length : 1;

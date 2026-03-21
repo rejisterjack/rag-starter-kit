@@ -37,9 +37,7 @@ export function generateWebhookSecret(): string {
 /**
  * Rotate webhook secret
  */
-export async function rotateWebhookSecret(
-  webhookId: string
-): Promise<RotationResult> {
+export async function rotateWebhookSecret(webhookId: string): Promise<RotationResult> {
   try {
     const webhook = await prisma.webhook.findUnique({
       where: { id: webhookId },

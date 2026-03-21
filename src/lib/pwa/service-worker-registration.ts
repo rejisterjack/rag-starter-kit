@@ -275,7 +275,9 @@ export async function requestBackgroundSync(tag: string = 'sync-messages'): Prom
 
   try {
     const registration = await navigator.serviceWorker.ready;
-    await (registration as unknown as { sync: { register: (tag: string) => Promise<void> } }).sync.register(tag);
+    await (
+      registration as unknown as { sync: { register: (tag: string) => Promise<void> } }
+    ).sync.register(tag);
     return true;
   } catch (_error) {
     return false;

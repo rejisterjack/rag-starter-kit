@@ -442,7 +442,10 @@ export async function processMentions(
         conversationId: message.chatId,
         mentionedUserId: mentionedUser.id,
         mentionedByUserId: senderUserId,
-        content: content.slice(Math.max(0, matchResult.index - 20), matchResult.index + matchResult[0].length + 20),
+        content: content.slice(
+          Math.max(0, matchResult.index - 20),
+          matchResult.index + matchResult[0].length + 20
+        ),
         read: false,
         createdAt: new Date(),
       };

@@ -130,7 +130,9 @@ export function PromptLibrary({
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <label htmlFor="prompt-name" className="text-sm font-medium">Name</label>
+                <label htmlFor="prompt-name" className="text-sm font-medium">
+                  Name
+                </label>
                 <Input
                   id="prompt-name"
                   value={newPrompt.name}
@@ -139,7 +141,9 @@ export function PromptLibrary({
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="prompt-description" className="text-sm font-medium">Description</label>
+                <label htmlFor="prompt-description" className="text-sm font-medium">
+                  Description
+                </label>
                 <Input
                   id="prompt-description"
                   value={newPrompt.description}
@@ -148,7 +152,9 @@ export function PromptLibrary({
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="prompt-template" className="text-sm font-medium">Template</label>
+                <label htmlFor="prompt-template" className="text-sm font-medium">
+                  Template
+                </label>
                 <Textarea
                   id="prompt-template"
                   value={newPrompt.template}
@@ -163,7 +169,9 @@ export function PromptLibrary({
                 )}
               </div>
               <div className="space-y-2">
-                <label htmlFor="prompt-tags" className="text-sm font-medium">Tags (comma separated)</label>
+                <label htmlFor="prompt-tags" className="text-sm font-medium">
+                  Tags (comma separated)
+                </label>
                 <Input
                   id="prompt-tags"
                   value={newPrompt.tags.join(', ')}

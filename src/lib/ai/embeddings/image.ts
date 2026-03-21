@@ -39,9 +39,13 @@ async function loadCLIPModel() {
     const { AutoModel, AutoProcessor } = await import('@xenova/transformers');
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    clipModel = await (AutoModel as unknown as { from_pretrained: (model: string) => Promise<unknown> }).from_pretrained(CLIP_MODEL);
+    clipModel = await (
+      AutoModel as unknown as { from_pretrained: (model: string) => Promise<unknown> }
+    ).from_pretrained(CLIP_MODEL);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    clipProcessor = await (AutoProcessor as unknown as { from_pretrained: (model: string) => Promise<unknown> }).from_pretrained(CLIP_MODEL);
+    clipProcessor = await (
+      AutoProcessor as unknown as { from_pretrained: (model: string) => Promise<unknown> }
+    ).from_pretrained(CLIP_MODEL);
     return { model: clipModel, processor: clipProcessor };
   } catch (_error) {
     throw new Error('Failed to load CLIP model for image embeddings');
@@ -157,7 +161,9 @@ export async function generateImageEmbedding(imageBuffer: Buffer | string): Prom
 
     // Generate embedding
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const output = await (model as (input: unknown) => Promise<{ image_embeds: { data: Float32Array } }>)(processed);
+    const output = await (
+      model as (input: unknown) => Promise<{ image_embeds: { data: Float32Array } }>
+    )(processed);
     const embedding = output.image_embeds.data;
 
     // Convert to regular array and normalize
@@ -234,7 +240,9 @@ export async function generateTextEmbeddingForImageSearch(text: string): Promise
 
     // Generate embedding
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const output = await (model as (input: unknown) => Promise<{ text_embeds: { data: Float32Array } }>)(processed);
+    const output = await (
+      model as (input: unknown) => Promise<{ text_embeds: { data: Float32Array } }>
+    )(processed);
     const embedding = output.text_embeds.data;
 
     // Convert to regular array and normalize

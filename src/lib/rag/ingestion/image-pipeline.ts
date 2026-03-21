@@ -67,7 +67,9 @@ export async function extractImagesFromPDF(pdfBuffer: Buffer): Promise<Extracted
     const images: ExtractedImage[] = [];
 
     // Get PDF info to determine page count
-    const pdfParse = await import('pdf-parse') as unknown as { default: (buffer: Buffer, options?: { max?: number }) => Promise<{ numpages: number }> };
+    const pdfParse = (await import('pdf-parse')) as unknown as {
+      default: (buffer: Buffer, options?: { max?: number }) => Promise<{ numpages: number }>;
+    };
     const pdfData = await pdfParse.default(pdfBuffer, { max: 0 });
     const pageCount = pdfData.numpages;
 

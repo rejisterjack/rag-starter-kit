@@ -213,17 +213,25 @@ function StepItem({
         collapsible && 'cursor-pointer hover:border-primary/50',
         isExpanded && 'border-primary/50'
       )}
-      onClick={collapsible ? () => {
-        onToggle();
-        onClick?.();
-      } : undefined}
-      onKeyDown={collapsible ? (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onToggle();
-          onClick?.();
-        }
-      } : undefined}
+      onClick={
+        collapsible
+          ? () => {
+              onToggle();
+              onClick?.();
+            }
+          : undefined
+      }
+      onKeyDown={
+        collapsible
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onToggle();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
       role={collapsible ? 'button' : undefined}
       tabIndex={collapsible ? 0 : undefined}
       aria-expanded={collapsible ? isExpanded : undefined}

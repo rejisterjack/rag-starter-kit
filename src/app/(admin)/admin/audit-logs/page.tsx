@@ -169,7 +169,9 @@ export default function AuditLogsPage(): React.ReactElement {
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
           <div className="w-full sm:w-auto">
-            <label htmlFor="event-filter" className="text-sm font-medium mb-2 block">Event Type</label>
+            <label htmlFor="event-filter" className="text-sm font-medium mb-2 block">
+              Event Type
+            </label>
             <Select
               value={eventFilter}
               onValueChange={(value) => {
@@ -192,7 +194,9 @@ export default function AuditLogsPage(): React.ReactElement {
           </div>
 
           <div className="w-full sm:w-auto">
-            <label htmlFor="severity-filter" className="text-sm font-medium mb-2 block">Severity</label>
+            <label htmlFor="severity-filter" className="text-sm font-medium mb-2 block">
+              Severity
+            </label>
             <Select
               value={severityFilter}
               onValueChange={(value) => {

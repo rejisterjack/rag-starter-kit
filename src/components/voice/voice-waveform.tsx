@@ -105,7 +105,13 @@ interface VoiceWaveformCSSProps {
   className?: string;
 }
 
-const WAVEFORM_BAR_KEYS = ['waveform-bar-1', 'waveform-bar-2', 'waveform-bar-3', 'waveform-bar-4', 'waveform-bar-5'] as const;
+const WAVEFORM_BAR_KEYS = [
+  'waveform-bar-1',
+  'waveform-bar-2',
+  'waveform-bar-3',
+  'waveform-bar-4',
+  'waveform-bar-5',
+] as const;
 
 export function VoiceWaveformCSS({ isActive, className }: VoiceWaveformCSSProps) {
   return (

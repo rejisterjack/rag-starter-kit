@@ -223,69 +223,69 @@ function BranchNode({
         {/* Actions menu */}
       </button>
       <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={(e) => e.stopPropagation()}
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => onSwitchBranch(node.id)}>
+            <Check className="mr-2 h-4 w-4" />
+            Switch to branch
+          </DropdownMenuItem>
+
+          {onRenameBranch && (
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsRenaming(true);
+              }}
             >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onSwitchBranch(node.id)}>
-              <Check className="mr-2 h-4 w-4" />
-              Switch to branch
+              <Edit3 className="mr-2 h-4 w-4" />
+              Rename
             </DropdownMenuItem>
+          )}
 
-            {onRenameBranch && (
+          {onCompareBranches && allBranches.length > 1 && (
+            <>
+              <DropdownMenuSeparator />
+              {allBranches
+                .filter((b) => b.id !== node.id)
+                .slice(0, 5)
+                .map((otherBranch) => (
+                  <DropdownMenuItem
+                    key={otherBranch.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCompareBranches(node.id, otherBranch.id);
+                    }}
+                  >
+                    <GitBranch className="mr-2 h-4 w-4" />
+                    Compare with "{otherBranch.name}"
+                  </DropdownMenuItem>
+                ))}
+            </>
+          )}
+
+          {!isRoot && onDeleteBranch && (
+            <>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsRenaming(true);
-                }}
+                onClick={handleDelete}
+                className="text-destructive focus:text-destructive"
               >
-                <Edit3 className="mr-2 h-4 w-4" />
-                Rename
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete branch
               </DropdownMenuItem>
-            )}
-
-            {onCompareBranches && allBranches.length > 1 && (
-              <>
-                <DropdownMenuSeparator />
-                {allBranches
-                  .filter((b) => b.id !== node.id)
-                  .slice(0, 5)
-                  .map((otherBranch) => (
-                    <DropdownMenuItem
-                      key={otherBranch.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onCompareBranches(node.id, otherBranch.id);
-                      }}
-                    >
-                      <GitBranch className="mr-2 h-4 w-4" />
-                      Compare with "{otherBranch.name}"
-                    </DropdownMenuItem>
-                  ))}
-              </>
-            )}
-
-            {!isRoot && onDeleteBranch && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleDelete}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete branch
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* Render children */}
       {hasChildren && isExpanded && (
