@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 import type { webpack } from "next/dist/compiled/webpack/webpack";
 import type { Header } from "next/dist/lib/load-custom-routes";
-import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
 	output: "standalone",
@@ -56,9 +55,6 @@ const nextConfig: NextConfig = {
 		ignoreDuringBuilds: true,
 	},
 	poweredByHeader: false,
-
-	// Sentry source maps configuration
-	productionBrowserSourceMaps: true,
 
 	async headers(): Promise<Header[]> {
 		const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
@@ -136,63 +132,4 @@ const nextConfig: NextConfig = {
 	},
 };
 
-// Sentry configuration options
-const sentryWebpackPluginOptions = {
-	// For all available options, see:
-	// https://github.com/getsentry/sentry-webpack-plugin#options
-
-	// Suppresses source map uploading logs during build
-	silent: true,
-
-	// Organization and project settings
-	org: process.env.SENTRY_ORG || undefined,
-	project: process.env.SENTRY_PROJECT || undefined,
-
-	// Auth token for build-time source map upload
-	// This should be set as SENTRY_AUTH_TOKEN env variable
-	authToken: process.env.SENTRY_AUTH_TOKEN,
-
-	// Release version - auto-detected from git by default
-	// Can be overridden with SENTRY_RELEASE env variable
-	release: {
-		name: process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA,
-	},
-
-	// Upload source maps
-	sourcemaps: {
-		assets: "./.next/**/*",
-		ignore: ["node_modules/**/*"],
-	},
-
-	// Enable telemetry
-	telemetry: true,
-
-	// Tunnel events through your own server (optional, helps with ad blockers)
-	// tunnelRoute: "/monitoring",
-
-	// Hides source maps from generated client bundles
-	hideSourceMaps: true,
-
-	// Automatically tree-shake Sentry logger statements to reduce bundle size
-	disableLogger: process.env.NODE_ENV === "production",
-
-	// Enables automatic instrumentation of Vercel Cron Monitors
-	// See: https://vercel.com/docs/cron-jobs
-	automaticVercelMonitors: true,
-
-	// Widen the upload plugin options
-	widenClientFileUpload: true,
-	reactComponentAnnotation: {
-		enabled: true,
-	},
-};
-
-// Export the config wrapped with Sentry
-// Use SENTRY_DISABLE_BUILD_PLUGIN to skip Sentry during build
-const isSentryDisabled =
-	process.env.SENTRY_DISABLE_BUILD_PLUGIN === "true" ||
-	!process.env.SENTRY_DSN;
-
-export default isSentryDisabled
-	? nextConfig
-	: withSentryConfig(nextConfig, sentryWebpackPluginOptions);
+export default nextConfig;

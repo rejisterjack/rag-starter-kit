@@ -1,23 +1,42 @@
 services:
   app:
+    container_name: rag-app
     build:
       context: .
       dockerfile: Dockerfile
-      target: runner
+      target: development
+      args:
+        - PNPM_CACHE_ID=rag-pnpm-store
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
     ports:
-      - "3000:3000"
+      - "3000:3000"   # Next.js dev server
+      - "5555:5555"   # Prisma Studio (make db-studio)
     environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/ragdb?schema=public
-      - POSTGRES_PRISMA_URL=postgresql://postgres:postgres@db:5432/ragdb?schema=public&pgbouncer=true
-      - POSTGRES_URL_NON_POOLING=postgresql://postgres:postgres@db:5432/ragdb?schema=public
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+      # Primary connection string used by the Prisma pg adapter at runtime
+      - DATABASE_URL=postgresql://postgres:postgres@rag-db:5432/ragdb
+      # Direct (unpooled) connection used by Prisma Migrate CLI
+      - DATABASE_URL_UNPOOLED=postgresql://postgres:postgres@rag-db:5432/ragdb
       - NEXTAUTH_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-secret-change-in-production}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-rag-local-dev-placeholder-key-not-real}
       - AUTH_GITHUB_ID=${AUTH_GITHUB_ID}
       - AUTH_GITHUB_SECRET=${AUTH_GITHUB_SECRET}
-      - INNGEST_EVENT_KEY=${INNGEST_EVENT_KEY}
-      - INNGEST_SIGNING_KEY=${INNGEST_SIGNING_KEY}
+      - INNGEST_EVENT_KEY=${INNGEST_EVENT_KEY:-local}
+      - INNGEST_SIGNING_KEY=${INNGEST_SIGNING_KEY:-signkey-test-123456789}
+      - S3_ENDPOINT=http://rag-minio:9000
+      - S3_ACCESS_KEY_ID=minioadmin
+      - S3_SECRET_ACCESS_KEY=minioadmin
+      - S3_REGION=us-east-1
+      - S3_FORCE_PATH_STYLE=true
+      - S3_BUCKET_DOCUMENTS=documents
+      - S3_BUCKET_EXPORTS=exports
+      - S3_BUCKET_ATTACHMENTS=attachments
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
     depends_on:
       db:
         condition: service_healthy
@@ -25,52 +44,47 @@ services:
       - rag-network
 
   db:
+    container_name: rag-db
     image: pgvector/pgvector:pg16
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=ragdb
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # No host port — use Prisma Studio (localhost:5555) or:
+    #   docker compose -f docker-compose.dev.yml exec db psql -U postgres -d ragdb
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ragdb"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
     networks:
       - rag-network
-    command: >
-      sh -c "
-        docker-entrypoint.sh postgres &
-        sleep 5 &&
-        psql -U postgres -d ragdb -c 'CREATE EXTENSION IF NOT EXISTS vector;' || true &&
-        wait
-      "
 
   inngest:
+    container_name: rag-inngest
     image: inngest/inngest:latest
-    command: "inngest dev -u http://app:3000/api/inngest"
+    command: "inngest dev -u http://rag-app:3000/api/inngest"
     ports:
-      - "8288:8288"
+      - "8288:8288"   # Inngest dashboard
     depends_on:
       - app
     networks:
       - rag-network
 
-  # MinIO S3-compatible object storage
   minio:
-    image: minio/minio:latest
     container_name: rag-minio
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+    image: minio/minio:latest
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     volumes:
       - minio_data:/data
+    ports:
+      - "9001:9001"   # MinIO console (http://localhost:9001)
+    # Port 9000 (API) is internal — the app reaches it via http://rag-minio:9000
     command: server /data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -80,16 +94,15 @@ services:
     networks:
       - rag-network
 
-  # Create default buckets on startup
   minio-init:
+    container_name: rag-minio-init
     image: minio/mc:latest
     depends_on:
       minio:
         condition: service_healthy
     entrypoint: >
       sh -c "
-        sleep 5 &&
-        mc alias set local http://minio:9000 minioadmin minioadmin &&
+        mc alias set local http://rag-minio:9000 minioadmin minioadmin &&
         mc mb local/documents --ignore-existing &&
         mc mb local/exports --ignore-existing &&
         mc mb local/attachments --ignore-existing &&

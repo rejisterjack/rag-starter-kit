@@ -1,13 +1,12 @@
 "use client";
 
 /**
- * React Error Boundary with Sentry Integration
+ * React Error Boundary
  *
  * Catches JavaScript errors anywhere in the child component tree,
- * logs those errors to Sentry, and displays a fallback UI.
+ * logs those errors to console, and displays a fallback UI.
  */
 
-import * as Sentry from "@sentry/nextjs";
 import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCcw, Home } from "lucide-react";
@@ -19,8 +18,6 @@ interface Props {
 	fallback?: ReactNode;
 	/** Called when an error is caught */
 	onError?: (error: Error, errorInfo: ErrorInfo) => void;
-	/** Sentry tags to add to the error report */
-	tags?: Record<string, string>;
 	/** Reset the error boundary when this value changes */
 	resetKeys?: Array<string | number>;
 }
@@ -29,7 +26,6 @@ interface State {
 	hasError: boolean;
 	error?: Error;
 	errorInfo?: ErrorInfo;
-	eventId?: string;
 }
 
 /**
@@ -42,8 +38,6 @@ function DefaultFallback({
 	error?: Error;
 	onReset: () => void;
 }) {
-	const eventId = Sentry.lastEventId();
-
 	return (
 		<div className="min-h-[400px] flex items-center justify-center p-6">
 			<div className="max-w-md w-full bg-card border rounded-lg shadow-sm p-6 text-center">
@@ -58,20 +52,8 @@ function DefaultFallback({
 				</h2>
 
 				<p className="text-muted-foreground mb-4">
-					We apologize for the inconvenience. Our team has been
-					notified and is working on a fix.
+					We apologize for the inconvenience. Please try again.
 				</p>
-
-				{eventId && (
-					<div className="bg-muted rounded p-3 mb-4">
-						<p className="text-xs text-muted-foreground mb-1">
-							Error Reference:
-						</p>
-						<code className="text-xs font-mono break-all">
-							{eventId}
-						</code>
-					</div>
-				)}
 
 				{process.env.NODE_ENV === "development" && error && (
 					<div className="bg-muted rounded p-3 mb-4 text-left overflow-auto">
@@ -117,7 +99,7 @@ function DefaultFallback({
  *
  * Usage:
  * ```tsx
- * <ErrorBoundary tags={{ section: 'dashboard' }}>
+ * <ErrorBoundary>
  *   <Dashboard />
  * </ErrorBoundary>
  * ```
@@ -135,18 +117,6 @@ export class ErrorBoundary extends Component<Props, State> {
 	componentDidCatch(error: Error, errorInfo: ErrorInfo) {
 		// Update state with error info
 		this.setState({ errorInfo });
-
-		// Capture error to Sentry with component stack
-		const eventId = Sentry.captureException(error, {
-			contexts: {
-				react: {
-					componentStack: errorInfo.componentStack,
-				},
-			},
-			tags: this.props.tags,
-		});
-
-		this.setState({ eventId });
 
 		// Call optional onError callback
 		this.props.onError?.(error, errorInfo);
@@ -176,7 +146,6 @@ export class ErrorBoundary extends Component<Props, State> {
 			hasError: false,
 			error: undefined,
 			errorInfo: undefined,
-			eventId: undefined,
 		});
 	};
 

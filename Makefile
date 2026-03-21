@@ -22,9 +22,21 @@ down:
 logs:
 	$(DC) logs -f
 
-# Rebuild the docker images
+# Rebuild the docker images (use --no-cache for clean rebuild)
 build:
-	$(DC) build
+	DOCKER_BUILDKIT=1 $(DC) build
+
+# Fast rebuild with cache (recommended for development)
+rebuild:
+	DOCKER_BUILDKIT=1 $(DC) build --progress=plain
+
+# Clean build - no cache, fresh start
+clean-build:
+	DOCKER_BUILDKIT=1 $(DC) build --no-cache
+
+# Prune all Docker build cache (use when builds are slow)
+prune-cache:
+	docker builder prune -f
 
 # Install dependencies inside the running app container
 install:
@@ -58,9 +70,9 @@ db-generate:
 db-migrate:
 	$(APP) pnpm db:migrate
 
-# Open Prisma Studio
+# Open Prisma Studio (accessible at http://localhost:5555)
 db-studio:
-	$(APP) pnpm db:studio
+	$(APP) pnpm prisma studio --hostname 0.0.0.0
 
 # Seed the database
 db-seed:

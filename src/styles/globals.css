@@ -33,70 +33,73 @@
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
-  /* Custom Glow/Glass Colors */
+  /* Custom Glow/Glass Colors for visionOS feel */
   --color-glass: hsl(var(--glass));
   --color-glass-border: hsl(var(--glass-border));
+  --color-glass-highlight: hsl(var(--glass-highlight));
   
-  /* Border Radius */
-  --radius-xl: calc(var(--radius) + 8px);
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
+  /* Border Radius for softer, rounder Apple feel */
+  --radius-xl: calc(var(--radius) + 12px);
+  --radius-lg: calc(var(--radius) + 4px);
+  --radius-md: var(--radius);
   --radius-sm: calc(var(--radius) - 4px);
   
-  /* Font Family */
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  /* Font Family - Ensure we rely on System fonts if Geist fails */
+  --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 :root {
-  /* Crisp Light Mode with subtle violet/blue tones */
-  --background: 0 0% 100%;
+  /* High contrast, clean light mode (macOS light) */
+  --background: 0 0% 98%;
   --foreground: 240 10% 4%;
-  --card: 0 0% 100%;
+  --card: 0 0% 100% / 0.7;
   --card-foreground: 240 10% 4%;
-  --popover: 0 0% 100%;
+  --popover: 0 0% 100% / 0.7;
   --popover-foreground: 240 10% 4%;
-  --primary: 260 100% 64%; /* Vibrant purple/blue */
+  --primary: 220 100% 50%; /* iOS Blue */
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 5% 96%;
+  --secondary: 240 5% 94%;
   --secondary-foreground: 240 6% 10%;
-  --muted: 240 5% 96%;
+  --muted: 240 5% 94%;
   --muted-foreground: 240 4% 46%;
-  --accent: 250 100% 95%;
-  --accent-foreground: 260 100% 64%;
+  --accent: 220 100% 95%;
+  --accent-foreground: 220 100% 50%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
-  --border: 240 6% 90%;
-  --input: 240 6% 90%;
-  --ring: 260 100% 64%;
+  --border: 240 6% 90% / 0.5;
+  --input: 240 6% 90% / 0.5;
+  --ring: 220 100% 50%;
   --glass: 0 0% 100% / 0.6;
-  --glass-border: 240 6% 90% / 0.5;
-  --radius: 0.75rem;
+  --glass-border: 0 0% 100% / 0.8;
+  --glass-highlight: 0 0% 100% / 0.4;
+  --radius: 1rem;
 }
 
 .dark {
-  /* State of the art Dark Mode: Deep space black -> midnight blue, neon accents */
-  --background: 240 10% 3%;
+  /* Deep, vibrant dark mode (visionOS dark) */
+  --background: 240 10% 2%;
   --foreground: 0 0% 98%;
-  --card: 240 10% 5%;
+  --card: 240 10% 6% / 0.5;
   --card-foreground: 0 0% 98%;
-  --popover: 240 10% 5%;
+  --popover: 240 10% 6% / 0.5;
   --popover-foreground: 0 0% 98%;
-  --primary: 260 100% 68%; /* Neon violet */
+  --primary: 260 100% 75%; /* Vibrant violet */
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 5% 10%;
+  --secondary: 240 5% 12% / 0.5;
   --secondary-foreground: 0 0% 98%;
-  --muted: 240 5% 10%;
+  --muted: 240 5% 12% / 0.5;
   --muted-foreground: 240 5% 65%;
-  --accent: 260 40% 15%;
-  --accent-foreground: 260 100% 75%;
+  --accent: 260 40% 20% / 0.5;
+  --accent-foreground: 260 100% 85%;
   --destructive: 0 63% 40%;
   --destructive-foreground: 0 0% 98%;
-  --border: 240 5% 15%;
-  --input: 240 5% 15%;
-  --ring: 260 100% 68%;
-  --glass: 240 10% 5% / 0.4;
-  --glass-border: 240 5% 20% / 0.4;
+  --border: 0 0% 100% / 0.1;
+  --input: 0 0% 100% / 0.1;
+  --ring: 260 100% 75%;
+  --glass: 240 5% 10% / 0.4;
+  --glass-border: 0 0% 100% / 0.15;
+  --glass-highlight: 0 0% 100% / 0.05;
 }
 
 @layer base {
@@ -106,65 +109,110 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    /* Added subtle radial gradient for premium feel */
-    background-image: radial-gradient(circle at top center, hsl(var(--primary) / 0.05), transparent 40%);
-    background-attachment: fixed;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-/* Glassmorphism Utilities */
+/* Glassmorphism Utilities (Apple Spatial Design) */
 @layer utilities {
-  .glass {
-    background-color: hsl(var(--glass));
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+  .glass-light {
+    background: hsl(var(--glass));
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
     border: 1px solid hsl(var(--glass-border));
+    box-shadow: 
+      0 4px 24px -1px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 0 hsl(var(--glass-highlight));
+  }
+
+  .glass-heavy {
+    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--background) / 0.3) 100%);
+    backdrop-filter: blur(32px) saturate(200%);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: 
+      0 8px 32px -4px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 0 hsl(var(--glass-highlight)),
+      inset 0 0 20px 0 hsl(var(--glass-highlight));
   }
   
   .glass-panel {
-    background: linear-gradient(135deg, hsl(var(--card) / 0.6) 0%, hsl(var(--card) / 0.2) 100%);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: hsl(var(--glass) / 0.7);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
     border: 1px solid hsl(var(--glass-border));
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    box-shadow: 0 12px 48px -12px rgba(0, 0, 0, 0.3);
   }
 
-  /* Typography Enhancements */
+  /* Vibrant Backgrounds for visionOS feel */
+  .vibrant-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    overflow: hidden;
+    background: hsl(var(--background));
+  }
+  
+  .vibrant-bg::before,
+  .vibrant-bg::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.5;
+    animation: float 20s infinite ease-in-out alternate;
+  }
+
+  .vibrant-bg::before {
+    top: -10%;
+    left: -10%;
+    width: 70vw;
+    height: 70vw;
+    background: radial-gradient(circle, hsl(var(--primary) / 0.3), transparent 70%);
+  }
+
+  .vibrant-bg::after {
+    bottom: -20%;
+    right: -10%;
+    width: 60vw;
+    height: 60vw;
+    background: radial-gradient(circle, hsl(320 100% 60% / 0.2), transparent 70%);
+    animation-delay: -10s;
+  }
+
+  @keyframes float {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(5%, 5%) scale(1.1); }
+  }
+
   .text-gradient {
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    background-image: linear-gradient(to right, hsl(var(--primary)), hsl(290 100% 68%));
+    background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(320 100% 70%));
   }
 
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--muted-foreground) / 0.5) transparent;
   }
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
+  .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background-color: hsl(var(--muted-foreground) / 0.3);
-    border-radius: 4px;
+    border-radius: 99px;
   }
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(var(--muted-foreground) / 0.6);
-  }
-  .scrollbar-none {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .scrollbar-none::-webkit-scrollbar {
-    display: none;
-  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover { background-color: hsl(var(--muted-foreground) / 0.6); }
+  .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
 }
 
-/* Focus visible styles refined */
 *:focus-visible {
   outline: none;
   --tw-ring-offset-width: 2px;
@@ -201,11 +249,12 @@
 
 /* Enhanced Prose styles */
 .prose pre {
-  background-color: hsl(var(--muted));
+  background-color: hsl(var(--muted) / 0.5);
+  backdrop-filter: blur(8px);
   border-radius: var(--radius);
   padding: 1rem;
   overflow-x: auto;
-  border: 1px solid hsl(var(--border) / 0.5);
+  border: 1px solid hsl(var(--border));
 }
 .prose pre code {
   background-color: transparent;
@@ -213,11 +262,11 @@
   font-size: 0.875rem;
 }
 .prose code {
-  background-color: hsl(var(--muted));
+  background-color: hsl(var(--muted) / 0.8);
   padding: 0.25rem 0.375rem;
   border-radius: 0.25rem;
   font-size: 0.875rem;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-family: var(--font-mono);
 }
 .prose h1, .prose h2, .prose h3, .prose h4 {
   font-weight: 600;

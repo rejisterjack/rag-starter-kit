@@ -1,60 +1,91 @@
 # =============================================================================
-# Multi-stage Production Dockerfile for RAG Starter Kit
+# Optimized Multi-stage Dockerfile for RAG Starter Kit
 # =============================================================================
-# This Dockerfile creates an optimized production build
-# Usage:
-#   docker build -t rag-starter-kit .
-#   docker run -p 3000:3000 --env-file .env.production rag-starter-kit
+# Key optimizations:
+#   - Standalone output properly used (no full node_modules in production)
+#   - Minimal production image with only necessary files
+#   - BuildKit cache mounts for pnpm store
 # =============================================================================
 
+ARG PNPM_CACHE_ID=rag-pnpm-store
+
 # -----------------------------------------------------------------------------
-# Stage 1: Dependencies
+# Stage 1: development — hot-reload dev image
+# -----------------------------------------------------------------------------
+FROM node:20-alpine AS development
+RUN apk add --no-cache libc6-compat openssl
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Copy only dependency files first for caching
+COPY package.json pnpm-lock.yaml ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+
+# Install dependencies with cache mount
+RUN --mount=type=cache,id=${PNPM_CACHE_ID},target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
+
+# Generate Prisma client
+RUN pnpm db:generate
+
+EXPOSE 3000 5555
+
+CMD ["pnpm", "dev"]
+
+# -----------------------------------------------------------------------------
+# Stage 2: deps — production dependencies only
 # -----------------------------------------------------------------------------
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm@10.0.0
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Copy package files and prisma schema (needed for postinstall)
 COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma
+COPY prisma.config.ts ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install production dependencies only
+RUN --mount=type=cache,id=${PNPM_CACHE_ID},target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --prod
 
 # -----------------------------------------------------------------------------
-# Stage 2: Builder
+# Stage 3: builder — compile the Next.js application
 # -----------------------------------------------------------------------------
 FROM node:20-alpine AS builder
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm@10.0.0
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Copy dependencies from deps stage
+# Copy production deps
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package.json ./package.json
+
+# Copy source
 COPY . .
 
-# Generate Prisma Client
-RUN npx prisma generate
-
-# Build the application
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Build with dummy env vars (will be replaced at runtime)
-RUN --mount=type=secret,id=NEXTAUTH_SECRET \
-    --mount=type=secret,id=DATABASE_URL \
-    NEXTAUTH_SECRET=$(cat /run/secrets/NEXTAUTH_SECRET 2>/dev/null || echo "build-time-secret") \
-    DATABASE_URL=$(cat /run/secrets/DATABASE_URL 2>/dev/null || echo "postgres://dummy:dummy@localhost:5432/dummy") \
+# Generate Prisma Client
+RUN pnpm db:generate
+
+# Build with dummy values for build-time env vars
+RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" \
+    NEXTAUTH_SECRET="build-time-placeholder-secret-32chars!!" \
     pnpm build
 
 # -----------------------------------------------------------------------------
-# Stage 3: Runner (Production)
+# Stage 4: runner — minimal production image
 # -----------------------------------------------------------------------------
 FROM node:20-alpine AS runner
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -62,40 +93,31 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Install pnpm for running migrations
-RUN npm install -g pnpm@10.0.0
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Copy necessary files from builder
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/prisma ./prisma
-
-# Set correct permissions for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
-
-# Copy standalone output
+# Copy only the standalone output - NO full node_modules!
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Copy node_modules for Prisma
-COPY --from=builder /app/node_modules/.pnpm ./node_modules/.pnpm
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+# Copy only Prisma files needed for migrations
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder /app/package.json ./package.json
+
+# Copy only the Prisma CLI and required binaries (not full dev deps)
 COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Switch to non-root user
 USER nextjs
 
-# Expose port
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
 
-# Start the application
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+# Use shell form to run migrations then start
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node server.js"]

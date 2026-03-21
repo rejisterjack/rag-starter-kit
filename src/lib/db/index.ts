@@ -1,46 +1,23 @@
-import { type Prisma, PrismaClient } from '@prisma/client';
+/**
+ * Database module — public API
+ *
+ * All consumers should import from here, not from sub-modules directly.
+ * The Prisma singleton lives in ./client.ts to avoid circular dependencies
+ * with ./init.ts (which also needs the client).
+ */
+
+// ---------------------------------------------------------------------------
+// Re-export the singleton Prisma client
+// ---------------------------------------------------------------------------
+export { prisma, type PrismaClient } from './client';
 
 import type { Chat, Document, DocumentChunk, IngestionJob, Message } from '@/types';
+import { type Prisma } from '@prisma/client';
+import { prisma } from './client';
 
-// PrismaClient is attached to the `global` object in development to prevent
-// exhausting your database connection limit.
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
-
-// Lazy initialization to avoid build-time errors
-function getPrismaClient(): PrismaClient {
-  if (globalForPrisma.prisma) {
-    return globalForPrisma.prisma;
-  }
-
-  // During build, return a mock to avoid initialization errors
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
-    return new Proxy({} as PrismaClient, {
-      get() {
-        return () => Promise.resolve({});
-      },
-    });
-  }
-
-  const client = new PrismaClient();
-  if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.prisma = client;
-  }
-  return client;
-}
-
-export const prisma = globalForPrisma.prisma ?? getPrismaClient();
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
-// Re-export PrismaClient type
-export type { PrismaClient };
-
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Database Initialization
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 export {
   ensureVectorIndex,
   initializeDatabase,
@@ -48,11 +25,9 @@ export {
   resetDatabaseInitialization,
 } from './init';
 
-// ============================================================================
-// Re-export all database modules
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 // Batch Operations
+// ---------------------------------------------------------------------------
 export {
   type BatchInsertOptions,
   type BatchInsertResult,
@@ -67,7 +42,10 @@ export {
   streamProcessChunks,
   validateChunks,
 } from './batch-operations';
+
+// ---------------------------------------------------------------------------
 // Vector Cache
+// ---------------------------------------------------------------------------
 export {
   type CacheConfig,
   type CacheProvider,
@@ -79,7 +57,10 @@ export {
   SemanticCache,
   type SemanticCacheEntry,
 } from './vector-cache';
+
+// ---------------------------------------------------------------------------
 // Vector Operations
+// ---------------------------------------------------------------------------
 export {
   analyzeVectorIndex,
   calculateHNSWParams,
@@ -102,7 +83,10 @@ export {
   type VectorStats,
   vacuumVectorTable,
 } from './vector-operations';
+
+// ---------------------------------------------------------------------------
 // Vector Store
+// ---------------------------------------------------------------------------
 export {
   type ChunkInsertData as VectorChunkInsertData,
   createVectorStore,
@@ -316,8 +300,6 @@ export async function createDocumentChunks(
     embedding?: number[];
   }>
 ): Promise<void> {
-  // Note: Raw query needed for vector insertion
-  // This is a simplified version - production would use a proper vector insertion
   await prisma.documentChunk.createMany({
     data: chunks.map((chunk) => ({
       documentId: chunk.documentId,
@@ -339,8 +321,6 @@ export async function searchSimilarChunks(
   limit = 5,
   threshold = 0.7
 ): Promise<DocumentChunk[]> {
-  // Raw SQL query for vector similarity search
-  // Requires pgvector extension
   const result = await prisma.$queryRaw<DocumentChunk[]>`
     SELECT 
       dc.id,

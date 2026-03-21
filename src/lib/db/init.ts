@@ -5,7 +5,7 @@
  */
 
 import { logger } from '../logger';
-import { prisma } from './index';
+import { prisma } from './client';
 
 // Track initialization state
 let isInitialized = false;

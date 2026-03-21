@@ -120,8 +120,9 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactEl
         <link rel="prefetch" href="/offline" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased`}
       >
+        <div className="vibrant-bg" />
         <Providers>
           <div className="relative flex min-h-screen flex-col">
             <main className="flex-1">{children}</main>
