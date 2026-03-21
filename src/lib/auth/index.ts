@@ -99,16 +99,16 @@ export const {
   providers: [
     // GitHub OAuth Provider
     GitHub({
-      clientId: process.env.AUTH_GITHUB_ID!,
-      clientSecret: process.env.AUTH_GITHUB_SECRET!,
+      clientId: process.env.AUTH_GITHUB_ID as string,
+      clientSecret: process.env.AUTH_GITHUB_SECRET as string,
       // allowDangerousEmailAccountLinking is intentionally NOT enabled
       // to prevent OAuth account takeover attacks
     }),
 
     // Google OAuth Provider
     Google({
-      clientId: process.env.AUTH_GOOGLE_ID!,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+      clientId: process.env.AUTH_GOOGLE_ID as string,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET as string,
       // allowDangerousEmailAccountLinking is intentionally NOT enabled
       // to prevent OAuth account takeover attacks
       authorization: {

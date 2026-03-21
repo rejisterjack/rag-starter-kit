@@ -91,6 +91,7 @@ export function ReasoningSteps({
       {collapsible && steps.length > 1 && (
         <div className="flex items-center justify-end gap-2">
           <button
+            type="button"
             onClick={expandAll}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -98,6 +99,7 @@ export function ReasoningSteps({
           </button>
           <span className="text-muted-foreground">·</span>
           <button
+            type="button"
             onClick={collapseAll}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -202,6 +204,8 @@ function StepItem({
   };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: Interactive element with conditional role, tabIndex, and keyboard handler
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: Conditional ARIA props based on interactive state
     <div
       className={cn(
         'rounded-lg border transition-all',
@@ -209,10 +213,20 @@ function StepItem({
         collapsible && 'cursor-pointer hover:border-primary/50',
         isExpanded && 'border-primary/50'
       )}
-      onClick={() => {
+      onClick={collapsible ? () => {
         onToggle();
         onClick?.();
-      }}
+      } : undefined}
+      onKeyDown={collapsible ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onToggle();
+          onClick?.();
+        }
+      } : undefined}
+      role={collapsible ? 'button' : undefined}
+      tabIndex={collapsible ? 0 : undefined}
+      aria-expanded={collapsible ? isExpanded : undefined}
     >
       {/* Step Header */}
       <div className="flex items-center gap-2 p-3">

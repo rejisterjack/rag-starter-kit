@@ -13,6 +13,7 @@ export function PWAScripts() {
     <Script
       id="pwa-register-sw"
       strategy="afterInteractive"
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: Required for PWA service worker registration inline script
       dangerouslySetInnerHTML={{
         __html: `
           (function() {

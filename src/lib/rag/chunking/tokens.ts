@@ -6,21 +6,27 @@
 import type { TokenCount } from './types';
 
 // Tiktoken encoding (loaded dynamically)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let encoding: any | null = null;
+let encoding: { encode: (text: string) => number[]; decode: (tokens: number[]) => string } | null =
+  null;
 
 /**
  * Initialize tiktoken encoding
  * This is done lazily to avoid loading overhead until needed
  */
-async function getEncoding(): Promise<unknown | null> {
+async function getEncoding(): Promise<{
+  encode: (text: string) => number[];
+  decode: (tokens: number[]) => string;
+} | null> {
   if (encoding) return encoding;
 
   try {
     // Dynamic import to avoid issues if js-tiktoken is not installed
-    // @ts-expect-error js-tiktoken is an optional dependency
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tiktoken: any = await import('js-tiktoken');
+    const tiktoken = (await import('js-tiktoken')) as {
+      get_encoding: (name: string) => {
+        encode: (text: string) => number[];
+        decode: (tokens: number[]) => string;
+      };
+    };
     // Use cl100k_base encoding (used by GPT-4, GPT-3.5-turbo, text-embedding-3)
     encoding = tiktoken.get_encoding('cl100k_base');
     return encoding;
@@ -42,8 +48,7 @@ export async function countTokens(text: string): Promise<TokenCount> {
 
   if (enc) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tokens = (enc as any).encode(text) as number[];
+      const tokens = enc.encode(text);
       return {
         total: tokens.length,
         isEstimated: false,
@@ -72,8 +77,7 @@ export async function countTokensForChunks(chunks: string[]): Promise<TokenCount
   if (enc) {
     try {
       for (const chunk of chunks) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const tokens = (enc as any).encode(chunk) as number[];
+        const tokens = enc.encode(chunk);
         perChunk.push(tokens.length);
       }
       return {
@@ -149,14 +153,12 @@ export async function truncateToTokenLimit(text: string, maxTokens: number): Pro
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tokens = (enc as any).encode(text) as number[];
+    const tokens = enc.encode(text);
     if (tokens.length <= maxTokens) {
       return text;
     }
     const truncated = tokens.slice(0, maxTokens);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (enc as any).decode(truncated) as string;
+    return enc.decode(truncated);
   } catch (_error) {
     // Fallback
     return text.slice(0, maxTokens * 4);

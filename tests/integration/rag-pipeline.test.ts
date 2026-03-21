@@ -192,7 +192,9 @@ describe('RAG Pipeline Integration', () => {
       const mockStream = new ReadableStream({
         start(controller) {
           const tokens = ['The', ' Q1', ' revenue', ' was', ' $32', ' million', '.'];
-          tokens.forEach((token) => controller.enqueue(new TextEncoder().encode(token)));
+          for (const token of tokens) {
+            controller.enqueue(new TextEncoder().encode(token));
+          }
           controller.close();
         },
       });

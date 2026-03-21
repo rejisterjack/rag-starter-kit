@@ -283,9 +283,9 @@ export class VoiceActivityDetector {
         return;
       }
 
-      // Get frequency data (cast to satisfy TypeScript - the API expects Uint8Array but types differ)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      this.analyser.getByteFrequencyData(this.frequencyData as any);
+      // Get frequency data
+      // @ts-expect-error Uint8Array type variant mismatch
+      this.analyser.getByteFrequencyData(this.frequencyData);
 
       // Calculate volume with optional noise filtering
       const volume = this.options.enableNoiseFilter
@@ -477,7 +477,9 @@ export class VoiceActivityDetector {
     }
 
     if (this.microphoneStream) {
-      this.microphoneStream.getTracks().forEach((track) => track.stop());
+      for (const track of this.microphoneStream.getTracks()) {
+        track.stop();
+      }
       this.microphoneStream = null;
     }
 

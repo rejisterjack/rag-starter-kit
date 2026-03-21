@@ -86,7 +86,7 @@ export function Markdown({ content, className, onCitationClick }: MarkdownProps)
                   const citationIndex = parseInt(part, 10);
                   return (
                     <CitationLink
-                      key={`citation-${index}`}
+                      key={`citation-${citationIndex}`}
                       index={citationIndex}
                       onClick={onCitationClick}
                     />

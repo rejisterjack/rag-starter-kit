@@ -123,14 +123,26 @@ export function DocumentCard({
   const FileIcon = getFileIcon(document.type);
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: Interactive element with conditional role, tabIndex, and keyboard handler
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: Conditional ARIA props based on interactive state
     <div
       className={cn(
         'group relative rounded-lg border bg-card p-3 transition-all',
         'hover:border-primary/50 hover:shadow-sm',
         isSelected && 'border-primary ring-1 ring-primary',
+        onPreview && 'cursor-pointer',
         className
       )}
       onClick={() => onPreview?.(document)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onPreview?.(document);
+        }
+      }}
+      role={onPreview ? 'button' : undefined}
+      tabIndex={onPreview ? 0 : undefined}
+      aria-label={onPreview ? `Preview document: ${document.name}` : undefined}
     >
       <div className="flex items-start gap-3">
         {/* File icon */}

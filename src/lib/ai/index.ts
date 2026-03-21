@@ -130,11 +130,10 @@ export async function streamChatCompletion(messages: UIMessage[], config: Partia
 
   for (const model of modelsToTry) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = streamText({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: OpenRouter SDK type compatibility
         model: openrouter.chat(model) as any,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: UIMessage to ModelMessage conversion
         messages: messages as any,
         temperature: modelConfig.temperature,
         maxOutputTokens: modelConfig.maxTokens,
@@ -168,11 +167,10 @@ export async function generateChatCompletion(
 
   for (const model of modelsToTry) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await generateText({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: OpenRouter SDK type compatibility
         model: openrouter.chat(model) as any,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: UIMessage to ModelMessage conversion
         messages: messages as any,
         temperature: modelConfig.temperature,
         maxOutputTokens: modelConfig.maxTokens,

@@ -109,7 +109,8 @@ export class HierarchicalChunker implements Chunker {
 
     for (const pattern of this.headingPatterns) {
       const regex = new RegExp(pattern.source, 'gm');
-      let match;
+      let match: RegExpExecArray | null = null;
+      // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex exec pattern
       while ((match = regex.exec(document)) !== null) {
         const headingText = match[1]?.trim() || match[0].trim();
         const level = this.estimateHeadingLevel(match[0]);

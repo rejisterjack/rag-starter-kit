@@ -153,7 +153,26 @@ export function teardown(data: { startTime: string }) {
 /**
  * Custom metrics and checks
  */
-export function handleSummary(data: any) {
+interface K6MetricValue {
+  values?: {
+    value?: number;
+    count?: number;
+    passes?: number;
+    avg?: number;
+    'p(95)'?: number;
+    'p(99)'?: number;
+  };
+  thresholds?: Record<string, unknown>;
+}
+
+interface K6SummaryData {
+  state: {
+    testRunDuration: string;
+  };
+  metrics: Record<string, K6MetricValue>;
+}
+
+export function handleSummary(data: K6SummaryData) {
   return {
     'performance-results.json': JSON.stringify(data, null, 2),
     stdout: `
@@ -172,8 +191,8 @@ REQUEST METRICS:
 
 THRESHOLDS:
 ${Object.entries(data.metrics)
-  .filter(([_, v]: [string, any]) => v.thresholds)
-  .map(([k, v]: [string, any]) => `- ${k}: ${v.thresholds ? 'PASS' : 'FAIL'}`)
+  .filter(([_, v]) => v.thresholds)
+  .map(([k, v]) => `- ${k}: ${v.thresholds ? 'PASS' : 'FAIL'}`)
   .join('\n')}
 
 ========================================

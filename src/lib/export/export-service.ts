@@ -71,6 +71,7 @@ export class ExportService {
     this.activeJobs = new Set();
 
     // Initialize storage
+    // biome-ignore lint/suspicious/noConsole: Initialization error should be logged
     this.storage.initialize().catch(console.error);
   }
 

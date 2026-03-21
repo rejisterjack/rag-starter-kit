@@ -92,156 +92,168 @@ export { ChunkingError } from './types';
 /**
  * Chunking Engine - Factory for creating and using chunkers
  */
-export class ChunkingEngine {
-  private static chunkerCache: Map<ChunkingStrategy, Chunker> = new Map();
+const chunkerCache: Map<ChunkingStrategy, Chunker> = new Map();
 
-  /**
-   * Create a chunker instance for the given strategy
-   */
-  static create(strategy: ChunkingStrategy): Chunker {
-    // Check cache first
-    const cached = ChunkingEngine.chunkerCache.get(strategy);
-    if (cached) {
-      return cached;
-    }
-
-    let chunker: Chunker;
-
-    switch (strategy) {
-      case 'semantic':
-        chunker = new SemanticChunker();
-        break;
-
-      case 'hierarchical':
-        chunker = new HierarchicalChunker();
-        break;
-
-      case 'late':
-        chunker = new LateChunker();
-        break;
-      default:
-        chunker = new FixedChunker();
-        break;
-    }
-
-    // Cache the chunker
-    ChunkingEngine.chunkerCache.set(strategy, chunker);
-
-    return chunker;
+/**
+ * Create a chunker instance for the given strategy
+ */
+function createChunker(strategy: ChunkingStrategy): Chunker {
+  // Check cache first
+  const cached = chunkerCache.get(strategy);
+  if (cached) {
+    return cached;
   }
 
-  /**
-   * Chunk a document using the specified strategy
-   */
-  static async chunk(document: string, options: ChunkingOptions): Promise<Chunk[]> {
-    const chunker = ChunkingEngine.create(options.strategy);
-    return chunker.chunk(document, options);
+  let chunker: Chunker;
+
+  switch (strategy) {
+    case 'semantic':
+      chunker = new SemanticChunker();
+      break;
+
+    case 'hierarchical':
+      chunker = new HierarchicalChunker();
+      break;
+
+    case 'late':
+      chunker = new LateChunker();
+      break;
+    default:
+      chunker = new FixedChunker();
+      break;
   }
 
-  /**
-   * Chunk multiple documents
-   */
-  static async chunkBatch(
-    documents: Array<{ id: string; content: string }>,
-    options: ChunkingOptions
-  ): Promise<Array<{ documentId: string; chunks: Chunk[] }>> {
-    const chunker = ChunkingEngine.create(options.strategy);
+  // Cache the chunker
+  chunkerCache.set(strategy, chunker);
 
-    const results = await Promise.all(
-      documents.map(async (doc) => {
-        const chunks = await chunker.chunk(doc.content, {
-          ...options,
-          documentId: doc.id,
-        });
-        return { documentId: doc.id, chunks };
-      })
-    );
-
-    return results;
-  }
-
-  /**
-   * Analyze document and recommend best strategy
-   */
-  static analyze(document: string): DocumentProfile {
-    const analyzer = new DocumentAnalyzer();
-    return analyzer.analyze(document);
-  }
-
-  /**
-   * Smart chunk - analyzes document and uses recommended strategy
-   */
-  static async smartChunk(
-    document: string,
-    overrides?: Partial<ChunkingOptions>
-  ): Promise<{ chunks: Chunk[]; profile: DocumentProfile }> {
-    const profile = ChunkingEngine.analyze(document);
-    const strategy = overrides?.strategy ?? profile.recommendedStrategy;
-
-    const options: ChunkingOptions = {
-      strategy,
-      chunkSize: overrides?.chunkSize,
-      chunkOverlap: overrides?.chunkOverlap,
-      ...overrides,
-    };
-
-    const chunks = await ChunkingEngine.chunk(document, options);
-
-    return { chunks, profile };
-  }
-
-  /**
-   * Get statistics for chunks
-   */
-  static async getStats(chunks: Chunk[]): Promise<ChunkStats> {
-    if (chunks.length === 0) {
-      return {
-        totalChunks: 0,
-        avgChunkSize: 0,
-        minChunkSize: 0,
-        maxChunkSize: 0,
-        estimatedTokens: 0,
-        avgTokensPerChunk: 0,
-        sizeDistribution: { small: 0, medium: 0, large: 0, extraLarge: 0 },
-      };
-    }
-
-    const sizes = chunks.map((c) => c.content.length);
-    const totalSize = sizes.reduce((a, b) => a + b, 0);
-    const minSize = Math.min(...sizes);
-    const maxSize = Math.max(...sizes);
-    const avgSize = Math.round(totalSize / chunks.length);
-
-    // Import token utilities
-    const { estimateTokensForChunks } = await import('./tokens');
-    const tokenCounts = estimateTokensForChunks(chunks.map((c) => c.content));
-
-    // Calculate size distribution
-    const distribution = {
-      small: sizes.filter((s) => s < 100).length,
-      medium: sizes.filter((s) => s >= 100 && s < 500).length,
-      large: sizes.filter((s) => s >= 500 && s < 1000).length,
-      extraLarge: sizes.filter((s) => s >= 1000).length,
-    };
-
-    return {
-      totalChunks: chunks.length,
-      avgChunkSize: avgSize,
-      minChunkSize: minSize,
-      maxChunkSize: maxSize,
-      estimatedTokens: tokenCounts.total,
-      avgTokensPerChunk: Math.round(tokenCounts.total / chunks.length),
-      sizeDistribution: distribution,
-    };
-  }
-
-  /**
-   * Clear chunker cache
-   */
-  static clearCache(): void {
-    ChunkingEngine.chunkerCache.clear();
-  }
+  return chunker;
 }
+
+/**
+ * Chunk a document using the specified strategy
+ */
+async function chunkDocument(document: string, options: ChunkingOptions): Promise<Chunk[]> {
+  const chunker = createChunker(options.strategy);
+  return chunker.chunk(document, options);
+}
+
+/**
+ * Chunk multiple documents
+ */
+async function chunkBatch(
+  documents: Array<{ id: string; content: string }>,
+  options: ChunkingOptions
+): Promise<Array<{ documentId: string; chunks: Chunk[] }>> {
+  const chunker = createChunker(options.strategy);
+
+  const results = await Promise.all(
+    documents.map(async (doc) => {
+      const chunks = await chunker.chunk(doc.content, {
+        ...options,
+        documentId: doc.id,
+      });
+      return { documentId: doc.id, chunks };
+    })
+  );
+
+  return results;
+}
+
+/**
+ * Analyze document and recommend best strategy
+ */
+function analyzeDocument(document: string): DocumentProfile {
+  const analyzer = new DocumentAnalyzer();
+  return analyzer.analyze(document);
+}
+
+/**
+ * Smart chunk - analyzes document and uses recommended strategy
+ */
+async function smartChunkDocument(
+  document: string,
+  overrides?: Partial<ChunkingOptions>
+): Promise<{ chunks: Chunk[]; profile: DocumentProfile }> {
+  const profile = analyzeDocument(document);
+  const strategy = overrides?.strategy ?? profile.recommendedStrategy;
+
+  const options: ChunkingOptions = {
+    strategy,
+    chunkSize: overrides?.chunkSize,
+    chunkOverlap: overrides?.chunkOverlap,
+    ...overrides,
+  };
+
+  const chunks = await chunkDocument(document, options);
+
+  return { chunks, profile };
+}
+
+/**
+ * Get statistics for chunks
+ */
+async function getChunkStats(chunks: Chunk[]): Promise<ChunkStats> {
+  if (chunks.length === 0) {
+    return {
+      totalChunks: 0,
+      avgChunkSize: 0,
+      minChunkSize: 0,
+      maxChunkSize: 0,
+      estimatedTokens: 0,
+      avgTokensPerChunk: 0,
+      sizeDistribution: { small: 0, medium: 0, large: 0, extraLarge: 0 },
+    };
+  }
+
+  const sizes = chunks.map((c) => c.content.length);
+  const totalSize = sizes.reduce((a, b) => a + b, 0);
+  const minSize = Math.min(...sizes);
+  const maxSize = Math.max(...sizes);
+  const avgSize = Math.round(totalSize / chunks.length);
+
+  // Import token utilities
+  const { estimateTokensForChunks } = await import('./tokens');
+  const tokenCounts = estimateTokensForChunks(chunks.map((c) => c.content));
+
+  // Calculate size distribution
+  const distribution = {
+    small: sizes.filter((s) => s < 100).length,
+    medium: sizes.filter((s) => s >= 100 && s < 500).length,
+    large: sizes.filter((s) => s >= 500 && s < 1000).length,
+    extraLarge: sizes.filter((s) => s >= 1000).length,
+  };
+
+  return {
+    totalChunks: chunks.length,
+    avgChunkSize: avgSize,
+    minChunkSize: minSize,
+    maxChunkSize: maxSize,
+    estimatedTokens: tokenCounts.total,
+    avgTokensPerChunk: Math.round(tokenCounts.total / chunks.length),
+    sizeDistribution: distribution,
+  };
+}
+
+/**
+ * Clear chunker cache
+ */
+function clearChunkerCache(): void {
+  chunkerCache.clear();
+}
+
+/**
+ * Chunking Engine - Namespace exposing all chunking operations
+ * @deprecated Use individual functions directly instead
+ */
+export const ChunkingEngine = {
+  create: createChunker,
+  chunk: chunkDocument,
+  chunkBatch,
+  analyze: analyzeDocument,
+  smartChunk: smartChunkDocument,
+  getStats: getChunkStats,
+  clearCache: clearChunkerCache,
+};
 
 /**
  * Convenience function for fixed-size chunking
@@ -250,7 +262,7 @@ export async function chunkFixed(
   document: string,
   options?: Omit<ChunkingOptions, 'strategy'>
 ): Promise<Chunk[]> {
-  return ChunkingEngine.chunk(document, {
+  return chunkDocument(document, {
     ...options,
     strategy: 'fixed',
   });
@@ -266,7 +278,7 @@ export async function chunkSemantic(
     similarityThreshold?: number;
   }
 ): Promise<Chunk[]> {
-  return ChunkingEngine.chunk(document, {
+  return chunkDocument(document, {
     ...options,
     strategy: 'semantic',
   });
@@ -281,7 +293,7 @@ export async function chunkHierarchical(
     hierarchicalLevels?: number;
   }
 ): Promise<Chunk[]> {
-  return ChunkingEngine.chunk(document, {
+  return chunkDocument(document, {
     ...options,
     strategy: 'hierarchical',
   });
@@ -380,7 +392,7 @@ export async function chunkLate(
     getTokenEmbeddings: (text: string) => Promise<number[][]>;
   }
 ): Promise<Chunk[]> {
-  return ChunkingEngine.chunk(document, {
+  return chunkDocument(document, {
     ...options,
     strategy: 'late',
   });
@@ -393,7 +405,7 @@ export async function smartChunk(
   document: string,
   overrides?: Partial<ChunkingOptions>
 ): Promise<{ chunks: Chunk[]; profile: DocumentProfile }> {
-  return ChunkingEngine.smartChunk(document, overrides);
+  return smartChunkDocument(document, overrides);
 }
 
 // Default export

@@ -74,7 +74,7 @@ export function createMockFailingProvider(
  */
 export function createMockRateLimitedProvider(): EmbeddingProvider {
   const rateLimitError = new Error('Rate limit exceeded');
-  (rateLimitError as any).status = 429;
+  (rateLimitError as unknown as { status: number }).status = 429;
 
   return {
     name: 'rate-limited',

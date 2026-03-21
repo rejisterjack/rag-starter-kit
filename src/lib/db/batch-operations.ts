@@ -501,7 +501,8 @@ export function findDuplicates(chunks: ChunkInsertData[]): {
 
   const unique = Array.from(uniqueIndices)
     .sort((a, b) => a - b)
-    .map((i) => chunks[i]!);
+    .map((i) => chunks[i])
+    .filter((chunk): chunk is NonNullable<typeof chunk> => chunk !== undefined);
 
   return { duplicates, unique };
 }

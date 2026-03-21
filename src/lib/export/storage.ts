@@ -381,6 +381,7 @@ export class ExportStorage {
     }, CLEANUP_INTERVAL_MS);
 
     // Initial cleanup
+    // biome-ignore lint/suspicious/noConsole: Error handling for background cleanup
     this.cleanupExpired().catch(console.error);
   }
 }

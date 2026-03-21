@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 
+// biome-ignore lint/suspicious/noShadowRestrictedNames: Next.js error page convention
 export default function Error({
   error,
   reset,

@@ -27,7 +27,7 @@ export function TopList({ title, items, description, className }: TopListProps) 
       <CardContent>
         <div className="space-y-4">
           {items.map((item, index) => (
-            <div key={index} className="flex items-center justify-between space-x-4">
+            <div key={item.label} className="flex items-center justify-between space-x-4">
               <div className="flex items-center space-x-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
                   <span className="text-sm font-semibold text-primary">{index + 1}</span>

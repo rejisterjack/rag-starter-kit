@@ -198,9 +198,10 @@ export async function getAuthRoute(
       params.set('returnUrl', returnUrl);
     }
 
+    const workspaceId = lookup.workspaceId ?? '';
     return {
       type: 'sso',
-      redirectUrl: getSSORedirectUrl(primaryMethod, lookup.workspaceId!, baseUrl, email),
+      redirectUrl: getSSORedirectUrl(primaryMethod, workspaceId, baseUrl, email),
       workspace: lookup,
     };
   }

@@ -500,7 +500,9 @@ export class SpeechService {
     }
 
     if (this.microphoneStream) {
-      this.microphoneStream.getTracks().forEach((track) => track.stop());
+      for (const track of this.microphoneStream.getTracks()) {
+        track.stop();
+      }
       this.microphoneStream = null;
     }
 

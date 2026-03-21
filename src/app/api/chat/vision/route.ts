@@ -128,7 +128,7 @@ export async function POST(req: Request) {
       try {
         if (image || imageUrl) {
           // Search by the provided image
-          const queryImage = image ? base64ToBuffer(image) : imageUrl!;
+          const queryImage = image ? base64ToBuffer(image) : (imageUrl as string);
           const searchResults = await searchByImage(queryImage, workspaceId || userId, {
             topK: config?.topK || 3,
             includeChunks: true,
@@ -187,7 +187,7 @@ export async function POST(req: Request) {
     if (shouldStream) {
       const result = streamText({
         model: google('gemini-1.5-flash'),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: AI SDK type compatibility
         messages: visionMessages as any,
         temperature: config?.temperature ?? 0.7,
         maxOutputTokens: config?.maxTokens ?? 2000,
@@ -212,7 +212,7 @@ export async function POST(req: Request) {
     } else {
       const result = await generateText({
         model: google('gemini-1.5-flash'),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: AI SDK type compatibility
         messages: visionMessages as any,
         temperature: config?.temperature ?? 0.7,
         maxOutputTokens: config?.maxTokens ?? 2000,

@@ -121,6 +121,7 @@ export function StructuredData({
   return (
     <script
       type="application/ld+json"
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: Required for SEO JSON-LD structured data
       dangerouslySetInnerHTML={{
         __html: JSON.stringify(structuredData),
       }}

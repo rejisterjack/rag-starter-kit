@@ -24,12 +24,10 @@ export async function GET(req: Request): Promise<Response> {
     const workspaceId = searchParams.get('workspaceId') ?? undefined;
 
     // Parse date range
-    const startDate = searchParams.get('startDate')
-      ? new Date(searchParams.get('startDate')!)
-      : undefined;
-    const endDate = searchParams.get('endDate')
-      ? new Date(searchParams.get('endDate')!)
-      : undefined;
+    const startDateParam = searchParams.get('startDate');
+    const startDate = startDateParam ? new Date(startDateParam) : undefined;
+    const endDateParam = searchParams.get('endDate');
+    const endDate = endDateParam ? new Date(endDateParam) : undefined;
 
     // Validate event type
     const validEvent = event && Object.values(AuditEvent).includes(event) ? event : undefined;

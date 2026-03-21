@@ -149,6 +149,7 @@ export function MentionsInput({
           <div className="py-1">
             {filteredUsers.map((user, index) => (
               <button
+                type="button"
                 key={user.id}
                 onClick={() => insertMention(user)}
                 className={cn(

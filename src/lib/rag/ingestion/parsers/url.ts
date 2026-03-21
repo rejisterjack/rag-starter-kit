@@ -79,8 +79,7 @@ async function loadPlaywright(): Promise<PlaywrightModule | null> {
   try {
     // Dynamic import for optional dependency
     // @ts-expect-error - playwright is an optional dependency
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pw = (await import('playwright')) as any;
+    const pw = (await import('playwright')) as PlaywrightModule;
     playwrightInstance = pw as unknown as PlaywrightModule;
     return playwrightInstance;
   } catch {
@@ -143,8 +142,7 @@ async function scrapeWithPlaywright(
     headless: true,
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let page: PlaywrightPage = null as any;
+  let page: PlaywrightPage | null = null;
 
   try {
     page = await context.newPage();
@@ -191,8 +189,7 @@ async function scrapeWithPlaywright(
       scrapedAt: new Date(),
     };
   } finally {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (page as any)?.close?.();
+    await page?.close?.();
     await context.close();
   }
 }

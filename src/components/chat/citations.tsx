@@ -17,6 +17,7 @@ export function CitationLink({ index, onClick }: CitationLinkProps) {
         <TooltipTrigger asChild>
           <sup>
             <button
+              type="button"
               onClick={() => onClick?.(index)}
               className={cn(
                 'inline-flex items-center justify-center rounded-full',
@@ -78,8 +79,19 @@ interface CitationCardProps {
 
 export function CitationCard({ source, onClick }: CitationCardProps) {
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: Interactive element with conditional role, tabIndex, and keyboard handler
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: Conditional ARIA props based on interactive state
     <div
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={onClick ? `View source: ${source.documentName}` : undefined}
       className={cn(
         'group relative rounded-lg border bg-card p-3',
         'transition-all duration-200',

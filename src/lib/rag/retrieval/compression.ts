@@ -347,7 +347,8 @@ export class ContextualCompressor {
     while (totalTokens > availableTokens && result.length > 1) {
       // Remove lowest scoring chunk
       result.sort((a, b) => a.score - b.score);
-      const removed = result.shift()!;
+      const removed = result.shift();
+      if (!removed) break;
       totalTokens -= estimateTokens(removed.content);
     }
 

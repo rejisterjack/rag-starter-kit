@@ -130,24 +130,27 @@ export function PromptLibrary({
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Name</label>
+                <label htmlFor="prompt-name" className="text-sm font-medium">Name</label>
                 <Input
+                  id="prompt-name"
                   value={newPrompt.name}
                   onChange={(e) => setNewPrompt((p) => ({ ...p, name: e.target.value }))}
                   placeholder="e.g., Code Review"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Description</label>
+                <label htmlFor="prompt-description" className="text-sm font-medium">Description</label>
                 <Input
+                  id="prompt-description"
                   value={newPrompt.description}
                   onChange={(e) => setNewPrompt((p) => ({ ...p, description: e.target.value }))}
                   placeholder="Brief description of this prompt"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Template</label>
+                <label htmlFor="prompt-template" className="text-sm font-medium">Template</label>
                 <Textarea
+                  id="prompt-template"
                   value={newPrompt.template}
                   onChange={(e) => setNewPrompt((p) => ({ ...p, template: e.target.value }))}
                   placeholder="Enter your prompt template. Use {{variable}} for dynamic values."
@@ -160,8 +163,9 @@ export function PromptLibrary({
                 )}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Tags (comma separated)</label>
+                <label htmlFor="prompt-tags" className="text-sm font-medium">Tags (comma separated)</label>
                 <Input
+                  id="prompt-tags"
                   value={newPrompt.tags.join(', ')}
                   onChange={(e) =>
                     setNewPrompt((p) => ({

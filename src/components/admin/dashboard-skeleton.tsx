@@ -7,6 +7,7 @@ export function DashboardSkeleton(): React.ReactElement {
       {/* Stats Skeleton */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: Static skeleton items
           <Card key={i}>
             <CardHeader className="pb-2">
               <Skeleton className="h-4 w-24" />
@@ -28,6 +29,7 @@ export function DashboardSkeleton(): React.ReactElement {
           </CardHeader>
           <CardContent className="space-y-4">
             {Array.from({ length: 5 }).map((_, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: Static skeleton items
               <div key={i} className="flex items-start gap-3">
                 <Skeleton className="h-6 w-6 rounded-full" />
                 <div className="flex-1">
@@ -49,6 +51,7 @@ export function DashboardSkeleton(): React.ReactElement {
           </CardHeader>
           <CardContent className="space-y-4">
             {Array.from({ length: 4 }).map((_, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: Static skeleton items
               <div key={i} className="flex items-center justify-between">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-6 w-20" />

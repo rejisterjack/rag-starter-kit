@@ -505,12 +505,12 @@ export async function getOCRVersion(): Promise<{
   const tesseract = await import('tesseract.js');
   const worker = await createWorker();
   // Get version info from worker
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const versionInfo = await (worker as any).getVersion?.();
+  const versionInfo = await (
+    worker as { getVersion?: () => Promise<{ tesseractVersion?: string }> }
+  ).getVersion?.();
   await worker.terminate();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tesseractVersion = (tesseract as any).version || 'unknown';
+  const tesseractVersion = (tesseract as { version?: string }).version || 'unknown';
 
   return {
     tesseractVersion: versionInfo?.tesseractVersion || 'unknown',

@@ -283,11 +283,22 @@ export function UploadDropzone({
   return (
     <div className={cn('w-full space-y-4', className)}>
       {/* Dropzone */}
+      {/* biome-ignore lint/a11y/useSemanticElements: Div is used as dropzone with complex drag/drop behavior */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => !disabled && inputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (!disabled) {
+              inputRef.current?.click();
+            }
+          }
+        }}
+        role="button"
+        tabIndex={disabled ? -1 : 0}
         className={cn(
           'relative cursor-pointer rounded-lg border-2 border-dashed p-8 transition-colors',
           'hover:border-gray-400 hover:bg-gray-50',
@@ -637,6 +648,7 @@ export function useUpload(options: UseUploadOptions = {}) {
       setFiles((prev) => [...prev, ...uploadFilesList]);
 
       // Start upload for each file
+      // biome-ignore lint: forEach is intentionally used for side effects
       uploadFilesList.forEach((file) => uploadFileFn(file));
     },
     [uploadFileFn]

@@ -135,8 +135,18 @@ export function InstallPrompt({
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in"
         onClick={() => setShowInstructions(false)}
+        onKeyDown={(e) => e.key === 'Escape' && setShowInstructions(false)}
+        role="dialog"
+        aria-modal="true"
+        aria-label="iOS installation instructions"
+        tabIndex={-1}
       >
-        <div className="animate-slide-up" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="animate-slide-up"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          role="document"
+        >
           <Card className="w-full max-w-md">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -150,7 +160,8 @@ export function InstallPrompt({
             <CardContent>
               <ol className="space-y-3">
                 {getInstallInstructions().map((step, index) => (
-                  <li key={index} className="flex items-start gap-3">
+                  // biome-ignore lint/suspicious/noArrayIndexKey: Static instruction steps
+                  <li key={`step-${index}`} className="flex items-start gap-3">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
                       {index + 1}
                     </span>

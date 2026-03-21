@@ -78,10 +78,10 @@ function CustomLegend({
 
   return (
     <ul className="space-y-2 mt-4">
-      {payload.map((entry, index) => {
+      {payload.map((entry) => {
         const percentage = total > 0 ? ((entry.payload.value / total) * 100).toFixed(1) : '0';
         return (
-          <li key={`legend-${index}`} className="flex items-center justify-between text-sm">
+          <li key={`legend-${entry.value}`} className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
               <span className="text-muted-foreground">{entry.value}</span>
@@ -185,8 +185,8 @@ export function DistributionChart({
                   paddingAngle={2}
                   dataKey="value"
                 >
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                  {chartData.map((entry) => (
+                    <Cell key={`cell-${entry.name}`} fill={entry.color} strokeWidth={0} />
                   ))}
                 </Pie>
                 <Tooltip content={<ChartTooltip total={total} valueFormatter={valueFormatter} />} />

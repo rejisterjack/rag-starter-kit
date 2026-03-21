@@ -383,7 +383,8 @@ export class RealtimeService {
       this.eventHandlers.set(event, new Set());
     }
 
-    const handlers = this.eventHandlers.get(event)!;
+    const handlers = this.eventHandlers.get(event);
+    if (!handlers) return () => {};
     const wrappedHandler = handler as (data: unknown) => void;
     handlers.add(wrappedHandler);
 

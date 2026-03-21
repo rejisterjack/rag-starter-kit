@@ -44,8 +44,7 @@ const _csrfUtilities = doubleCsrf({
 });
 
 // Destructure after to avoid type issues
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { generateToken } = _csrfUtilities as any;
+const { generateCsrfToken: generateToken } = _csrfUtilities;
 
 // =============================================================================
 // Token Generation
@@ -211,6 +210,7 @@ export function CsrfTokenInput(): React.ReactElement {
 export function CsrfTokenScript(): React.ReactElement {
   return (
     <script
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: CSRF token initialization script requires inline execution
       dangerouslySetInnerHTML={{
         __html: `
           (function() {

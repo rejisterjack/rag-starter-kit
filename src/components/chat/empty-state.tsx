@@ -52,10 +52,11 @@ export function EmptyState({ onSuggestionClick, onUploadClick, className }: Empt
   }, []);
 
   return (
-    <div
+    <section
       className={cn('flex h-full flex-col items-center justify-center p-8', className)}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
+      aria-label="Empty state"
     >
       <div className="mx-auto max-w-2xl text-center">
         {/* Welcome header */}
@@ -93,8 +94,9 @@ export function EmptyState({ onSuggestionClick, onUploadClick, className }: Empt
         </div>
 
         {/* Upload zone */}
-        <div
-          className="mb-8 rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/30 p-8 transition-colors hover:border-primary/50 hover:bg-muted/50"
+        <button
+          type="button"
+          className="mb-8 w-full rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/30 p-8 transition-colors hover:border-primary/50 hover:bg-muted/50"
           onClick={onUploadClick}
         >
           <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
@@ -103,7 +105,7 @@ export function EmptyState({ onSuggestionClick, onUploadClick, className }: Empt
           <Button variant="outline" className="mt-4" size="sm">
             Choose Files
           </Button>
-        </div>
+        </button>
 
         {/* Suggested questions */}
         <div>
@@ -123,6 +125,6 @@ export function EmptyState({ onSuggestionClick, onUploadClick, className }: Empt
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

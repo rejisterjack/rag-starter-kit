@@ -431,7 +431,9 @@ export function diversifyWithMMR(
   const remaining = [...chunks];
 
   // Select first chunk (highest relevance)
-  selected.push(remaining.shift()!);
+  const firstChunk = remaining.shift();
+  if (!firstChunk) return chunks;
+  selected.push(firstChunk);
 
   while (selected.length < topN && remaining.length > 0) {
     // Calculate MMR scores for remaining chunks

@@ -405,7 +405,6 @@ export async function processMentions(
   // Extract mentions (@username or @user-id)
   const mentionRegex = /@([a-zA-Z0-9_-]+)/g;
   const mentions: Mention[] = [];
-  let match: RegExpExecArray | null;
 
   const message = await prisma.message.findUnique({
     where: { id: messageId },
@@ -418,8 +417,10 @@ export async function processMentions(
 
   const mentionedUsernames = new Set<string>();
 
-  while ((match = mentionRegex.exec(content)) !== null) {
-    const username = match[1];
+  let matchResult: RegExpExecArray | null = null;
+  // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex iteration pattern
+  while ((matchResult = mentionRegex.exec(content)) !== null) {
+    const username = matchResult[1];
     if (mentionedUsernames.has(username)) continue;
     mentionedUsernames.add(username);
 
@@ -441,7 +442,7 @@ export async function processMentions(
         conversationId: message.chatId,
         mentionedUserId: mentionedUser.id,
         mentionedByUserId: senderUserId,
-        content: content.slice(Math.max(0, match.index - 20), match.index + match[0].length + 20),
+        content: content.slice(Math.max(0, matchResult.index - 20), matchResult.index + matchResult[0].length + 20),
         read: false,
         createdAt: new Date(),
       };

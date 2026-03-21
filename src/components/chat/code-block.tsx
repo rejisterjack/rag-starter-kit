@@ -59,7 +59,8 @@ export function CodeBlock({
             <div className="flex">
               <div className="select-none pr-4 text-right text-muted-foreground">
                 {lines.map((_, i) => (
-                  <div key={i} className="leading-relaxed">
+                  // biome-ignore lint/suspicious/noArrayIndexKey: Line numbers are stable based on position
+                  <div key={`line-${i}`} className="leading-relaxed">
                     {i + 1}
                   </div>
                 ))}

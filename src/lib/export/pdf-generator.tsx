@@ -169,6 +169,7 @@ function ConversationPDF({ conversation, citations, options }: ConversationPDFPr
         {/* Messages */}
         <View style={styles.section}>
           {conversation.messages.map((message, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: Index is stable for PDF export
             <View key={index} style={styles.messageContainer}>
               <View style={styles.messageHeader}>
                 <Text style={styles.role}>{message.role}</Text>
@@ -184,6 +185,7 @@ function ConversationPDF({ conversation, citations, options }: ConversationPDFPr
           <View style={styles.citationsSection}>
             <Text style={styles.citationsTitle}>Citations</Text>
             {citations.map((citation, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: Index is stable for PDF export
               <Text key={index} style={styles.citation}>
                 [{index + 1}] {citation.documentName}
                 {citation.page ? `, Page ${citation.page}` : ''}
@@ -333,6 +335,7 @@ export async function generateBulkPDF(
     <PDFDocument>
       {conversations.map((conversation, convIndex) => (
         <Page
+          // biome-ignore lint/suspicious/noArrayIndexKey: Index is stable for PDF export
           key={convIndex}
           size={(options.pageSize || 'A4') as PDFPageSize}
           style={styles.page as PDFPageProps['style']}
@@ -346,6 +349,7 @@ export async function generateBulkPDF(
           </View>
           <View style={styles.section}>
             {conversation.messages.map((message, msgIndex) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: Index is stable for PDF export
               <View key={msgIndex} style={styles.messageContainer}>
                 <View style={styles.messageHeader}>
                   <Text style={styles.role}>{message.role}</Text>
@@ -361,6 +365,7 @@ export async function generateBulkPDF(
             <View style={styles.citationsSection}>
               <Text style={styles.citationsTitle}>Citations</Text>
               {allCitations[convIndex].map((citation, idx) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: Index is stable for PDF export
                 <Text key={idx} style={styles.citation}>
                   [{idx + 1}] {citation.documentName}
                   {citation.page ? `, Page ${citation.page}` : ''}

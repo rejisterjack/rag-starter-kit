@@ -105,12 +105,14 @@ interface VoiceWaveformCSSProps {
   className?: string;
 }
 
+const WAVEFORM_BAR_KEYS = ['waveform-bar-1', 'waveform-bar-2', 'waveform-bar-3', 'waveform-bar-4', 'waveform-bar-5'] as const;
+
 export function VoiceWaveformCSS({ isActive, className }: VoiceWaveformCSSProps) {
   return (
     <div className={cn('flex items-center gap-0.5 h-5', className)}>
-      {[...Array(5)].map((_, i) => (
+      {WAVEFORM_BAR_KEYS.map((key, i) => (
         <div
-          key={i}
+          key={key}
           className={cn(
             'w-1 rounded-full bg-current transition-all duration-150',
             isActive && 'animate-pulse'

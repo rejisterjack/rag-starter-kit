@@ -79,7 +79,11 @@ function getUserMemory(userId: string, workspaceId?: string): MemoryEntry[] {
   if (!memoryStore.has(key)) {
     memoryStore.set(key, []);
   }
-  return memoryStore.get(key)!;
+  const memory = memoryStore.get(key);
+  if (!memory) {
+    throw new Error('Memory should exist after initialization');
+  }
+  return memory;
 }
 
 // ============================================================================
@@ -259,11 +263,13 @@ export class AgentMemory {
     }
 
     // Filter by date range
-    if (query.since != null) {
-      results = results.filter((e) => e.updatedAt >= query.since!);
+    const since = query.since;
+    if (since != null) {
+      results = results.filter((e) => e.updatedAt >= since);
     }
-    if (query.until != null) {
-      results = results.filter((e) => e.updatedAt <= query.until!);
+    const until = query.until;
+    if (until != null) {
+      results = results.filter((e) => e.updatedAt <= until);
     }
 
     // Filter out expired entries
@@ -518,7 +524,8 @@ export class AgentMemory {
     const initialLength = userMemory.length;
 
     for (let i = userMemory.length - 1; i >= 0; i--) {
-      if (userMemory[i]?.expiresAt && userMemory[i]?.expiresAt! < now) {
+      const expiresAt = userMemory[i]?.expiresAt;
+      if (expiresAt && expiresAt < now) {
         userMemory.splice(i, 1);
       }
     }

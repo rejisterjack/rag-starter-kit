@@ -105,6 +105,7 @@ export function AnalyticsDashboard() {
       <div className="p-6 space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: Loading skeleton uses index as key
             <div key={i} className="h-32 rounded-lg border bg-card animate-pulse" />
           ))}
         </div>

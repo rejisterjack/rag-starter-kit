@@ -100,12 +100,14 @@ export function CommentThread({
     return parts.map((part, idx) => {
       if (part.startsWith('@')) {
         return (
-          <span key={idx} className="font-medium text-blue-500">
+          // biome-ignore lint/suspicious/noArrayIndexKey: Mention rendering uses content-based key
+          <span key={`mention-${part.slice(1)}-${idx}`} className="font-medium text-blue-500">
             {part}
           </span>
         );
       }
-      return part;
+      // biome-ignore lint/suspicious/noArrayIndexKey: Text parts use index as stable identifier
+      return <span key={`text-${idx}`}>{part}</span>;
     });
   };
 

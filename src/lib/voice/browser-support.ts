@@ -339,7 +339,9 @@ export async function requestMicrophonePermission(): Promise<boolean> {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     // Stop all tracks immediately (we just needed permission)
-    stream.getTracks().forEach((track) => track.stop());
+    for (const track of stream.getTracks()) {
+      track.stop();
+    }
     return true;
   } catch (_error) {
     return false;

@@ -293,21 +293,26 @@ function MessageContent({ content, isRTL }: MessageContentProps) {
           // Code block
           const code = part.replace(/```(\w+)?\n?/, '').replace(/```$/, '');
           return (
-            <View key={index} style={styles.codeBlock}>
+            // biome-ignore lint/suspicious/noArrayIndexKey: Stable array from split operation, index is safe
+            <View key={`code-${part.slice(0, 20)}-${index}`} style={styles.codeBlock}>
               <Text>{code}</Text>
             </View>
           );
         } else if (part.startsWith('`') && part.endsWith('`')) {
           // Inline code
           return (
-            <Text key={index} style={styles.inlineCode}>
+            // biome-ignore lint/suspicious/noArrayIndexKey: Stable array from split operation, index is safe
+            <Text key={`inline-${part.slice(0, 20)}-${index}`} style={styles.inlineCode}>
               {part.slice(1, -1)}
             </Text>
           );
         } else {
           // Regular text with bold formatting
           const textWithBold = part.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
-          return <Text key={index}>{textWithBold}</Text>;
+          return (
+            // biome-ignore lint/suspicious/noArrayIndexKey: Stable array from split operation, index is safe
+            <Text key={`text-${part.slice(0, 20)}-${index}`}>{textWithBold}</Text>
+          );
         }
       })}
     </View>

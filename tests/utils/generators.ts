@@ -16,7 +16,7 @@ export const Faker = {
     int: (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min,
     float: (min: number, max: number) => Math.random() * (max - min) + min,
     boolean: () => Math.random() > 0.5,
-    arrayElement: <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]!,
+    arrayElement: <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)] as T,
     arrayElements: <T>(arr: T[], count: number): T[] => {
       const shuffled = [...arr].sort(() => 0.5 - Math.random());
       return shuffled.slice(0, count);

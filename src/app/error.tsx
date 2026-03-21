@@ -9,6 +9,7 @@ interface ErrorProps {
   reset: () => void;
 }
 
+// biome-ignore lint/suspicious/noShadowRestrictedNames: Next.js error page convention
 export default function Error({ error, reset }: ErrorProps): React.ReactElement {
   useEffect(() => {}, []);
 

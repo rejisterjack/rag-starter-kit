@@ -169,7 +169,7 @@ export default function AuditLogsPage(): React.ReactElement {
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
           <div className="w-full sm:w-auto">
-            <label className="text-sm font-medium mb-2 block">Event Type</label>
+            <label htmlFor="event-filter" className="text-sm font-medium mb-2 block">Event Type</label>
             <Select
               value={eventFilter}
               onValueChange={(value) => {
@@ -177,7 +177,7 @@ export default function AuditLogsPage(): React.ReactElement {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectTrigger id="event-filter" className="w-full sm:w-[200px]">
                 <SelectValue placeholder="All Events" />
               </SelectTrigger>
               <SelectContent>
@@ -192,7 +192,7 @@ export default function AuditLogsPage(): React.ReactElement {
           </div>
 
           <div className="w-full sm:w-auto">
-            <label className="text-sm font-medium mb-2 block">Severity</label>
+            <label htmlFor="severity-filter" className="text-sm font-medium mb-2 block">Severity</label>
             <Select
               value={severityFilter}
               onValueChange={(value) => {
@@ -200,7 +200,7 @@ export default function AuditLogsPage(): React.ReactElement {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectTrigger id="severity-filter" className="w-full sm:w-[150px]">
                 <SelectValue placeholder="All Severities" />
               </SelectTrigger>
               <SelectContent>

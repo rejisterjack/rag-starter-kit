@@ -339,10 +339,10 @@ export async function setTyping(
   const redis = getRedisClient();
   const key = getTypingKey(roomId);
 
-  if (isTyping) {
+  if (isTyping && user) {
     const typingData: TypingState = {
       userId,
-      user: user!,
+      user,
       startedAt: Date.now(),
       roomId,
     };
@@ -412,7 +412,7 @@ export async function updateCursor(
 
   const cursorData: CursorState = {
     userId,
-    user: user!,
+    user: user ?? { id: userId, name: 'Unknown', email: '' },
     position,
     timestamp: Date.now(),
   };

@@ -90,15 +90,15 @@ export function MessageInput({
         {/* File attachments */}
         {files.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
-            {files.map((file, index) => (
-              <Badge key={index} variant="secondary" className="flex items-center gap-1 pr-1">
+            {files.map((file, fileIndex) => (
+              <Badge key={file.name} variant="secondary" className="flex items-center gap-1 pr-1">
                 <Paperclip className="h-3 w-3" />
                 <span className="max-w-[150px] truncate">{file.name}</span>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-4 w-4 rounded-full p-0 hover:bg-muted"
-                  onClick={() => removeFile(index)}
+                  onClick={() => removeFile(fileIndex)}
                 >
                   <X className="h-3 w-3" />
                 </Button>

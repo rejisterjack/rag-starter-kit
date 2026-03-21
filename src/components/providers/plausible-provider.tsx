@@ -40,8 +40,7 @@ function PlausiblePageView(): null {
     if (!isPlausibleConfigured()) return;
 
     // Track page view
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const plausible = (window as any).plausible;
+    const plausible = (window as unknown as { plausible?: (event: string, props?: { u?: string }) => void }).plausible;
     if (plausible) {
       const url = searchParams?.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
       plausible('pageview', { u: url });
@@ -85,8 +84,7 @@ export function PlausibleProvider({ children }: PlausibleProviderProps): React.R
  */
 export function trackEvent(eventName: string, props?: Record<string, string | number>): void {
   if (typeof window === 'undefined') return;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const plausible = (window as any).plausible;
+  const plausible = (window as unknown as { plausible?: (event: string, props?: { props?: Record<string, string | number> }) => void }).plausible;
   if (plausible) {
     plausible(eventName, { props });
   }
@@ -97,6 +95,5 @@ export function trackEvent(eventName: string, props?: Record<string, string | nu
  */
 export function usePlausibleReady(): boolean {
   if (typeof window === 'undefined') return false;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return !!(window as any).plausible;
+  return !!(window as unknown as { plausible?: unknown }).plausible;
 }

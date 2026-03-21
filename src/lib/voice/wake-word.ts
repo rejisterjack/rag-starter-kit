@@ -393,7 +393,9 @@ export class WakeWordDetector {
         },
       });
       // Stop tracks immediately, we just need permission
-      stream.getTracks().forEach((track) => track.stop());
+      for (const track of stream.getTracks()) {
+        track.stop();
+      }
       return true;
     } catch (_error) {
       return false;

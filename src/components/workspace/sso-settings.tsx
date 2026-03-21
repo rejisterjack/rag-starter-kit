@@ -288,6 +288,7 @@ export function SSOSettings({
                 <Badge key={domain} variant="secondary" className="flex items-center gap-1">
                   {domain}
                   <button
+                    type="button"
                     onClick={() => handleRemoveDomain(domain)}
                     className="ml-1 hover:text-destructive"
                     disabled={!settings.ssoEnabled}

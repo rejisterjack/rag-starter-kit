@@ -109,6 +109,7 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
         className={cn(
           'flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent',
@@ -137,9 +138,9 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
 
           {!isLoading && query.trim() === '' && recentSearches.length > 0 && (
             <CommandGroup heading="Recent Searches">
-              {recentSearches.map((search, index) => (
+              {recentSearches.map((search) => (
                 <CommandItem
-                  key={index}
+                  key={search}
                   onSelect={() => setQuery(search)}
                   className="flex items-center gap-2"
                 >

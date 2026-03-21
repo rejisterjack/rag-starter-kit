@@ -87,10 +87,10 @@ export const allUsers: Partial<User>[] = [
  */
 export const regularUserSession = {
   user: {
-    id: regularUser.id!,
-    email: regularUser.email!,
-    name: regularUser.name!,
-    image: regularUser.image!,
+    id: regularUser.id as string,
+    email: regularUser.email as string,
+    name: regularUser.name as string,
+    image: regularUser.image as string,
   },
   expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 };
@@ -100,10 +100,10 @@ export const regularUserSession = {
  */
 export const adminUserSession = {
   user: {
-    id: adminUser.id!,
-    email: adminUser.email!,
-    name: adminUser.name!,
-    image: adminUser.image!,
+    id: adminUser.id as string,
+    email: adminUser.email as string,
+    name: adminUser.name as string,
+    image: adminUser.image as string,
   },
   expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 };

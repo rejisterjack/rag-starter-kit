@@ -139,7 +139,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     }
 
     return () => {
-      unsubscribeRef.current.forEach((unsub) => unsub());
+      for (const unsub of unsubscribeRef.current) {
+        unsub();
+      }
       service.stopListening();
     };
   }, [
@@ -150,6 +152,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     onListeningStart,
     onListeningStop,
     onTranscriptChange,
+    // biome-ignore lint/correctness/useExhaustiveDependencies: speechOptions spread is intentional
     speechOptions,
   ]);
 
@@ -158,10 +161,12 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     if (serviceRef.current) {
       serviceRef.current.configure(speechOptions);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     speechOptions.language,
     speechOptions.continuous,
     speechOptions.interimResults,
+    // biome-ignore lint/correctness/useExhaustiveDependencies: speechOptions included alongside its properties
     speechOptions,
   ]);
 
@@ -346,7 +351,9 @@ export function useVoiceOutput(options: UseVoiceOutputOptions = {}): UseVoiceOut
     ];
 
     return () => {
-      unsubscribeRef.current.forEach((unsub) => unsub());
+      for (const unsub of unsubscribeRef.current) {
+        unsub();
+      }
       if (window.speechSynthesis) {
         window.speechSynthesis.onvoiceschanged = null;
       }
@@ -687,10 +694,14 @@ export function useVoiceActivity(options: UseVoiceActivityOptions = {}): UseVoic
     }
 
     return () => {
-      unsubRef.current.forEach((unsub) => unsub());
+      for (const unsub of unsubRef.current) {
+        unsub();
+      }
       vad.destroy();
       vadRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // biome-ignore lint/correctness/useExhaustiveDependencies: vadOptions spread is intentional
   }, [isSupported, autoStart, onNoise, onVoiceEnd, onVoiceStart, onVolumeChange, vadOptions]);
 
   // Update options when they change
@@ -699,6 +710,7 @@ export function useVoiceActivity(options: UseVoiceActivityOptions = {}): UseVoic
       vadRef.current.updateOptions(vadOptions);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    // biome-ignore lint/correctness/useExhaustiveDependencies: vadOptions object is stable
   }, [vadOptions]);
 
   const start = useCallback(async () => {
@@ -830,10 +842,14 @@ export function useWakeWord(options: UseWakeWordOptions = {}): UseWakeWordReturn
     }
 
     return () => {
-      unsubRef.current.forEach((unsub) => unsub());
+      for (const unsub of unsubRef.current) {
+        unsub();
+      }
       detector.destroy();
       detectorRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // biome-ignore lint/correctness/useExhaustiveDependencies: wakeWordOptions spread is intentional
   }, [isSupported, autoStart, onError, onListening, onWake, wakeWordOptions]);
 
   // Update options when they change (excluding callback-related options)
@@ -842,6 +858,7 @@ export function useWakeWord(options: UseWakeWordOptions = {}): UseWakeWordReturn
       detectorRef.current.updateOptions(wakeWordOptions);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    // biome-ignore lint/correctness/useExhaustiveDependencies: wakeWordOptions object is stable
   }, [wakeWordOptions]);
 
   const start = useCallback(async () => {

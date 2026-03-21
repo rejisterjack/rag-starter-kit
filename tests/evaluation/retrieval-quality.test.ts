@@ -62,7 +62,7 @@ describe('Retrieval Quality', () => {
             returnContext: true,
           });
 
-          const retrievedDocIds = [...new Set(context.map((c: any) => c.documentId))];
+          const retrievedDocIds = [...new Set(context.map((c: { documentId: string }) => c.documentId))];
           const relevantRetrieved = testCase.expectedDocs.filter((doc) =>
             retrievedDocIds.some((id) => id.includes(doc.replace('.pdf', '')))
           );
@@ -90,7 +90,7 @@ describe('Retrieval Quality', () => {
             returnContext: true,
           });
 
-          const retrievedDocIds = [...new Set(context.map((c: any) => c.documentId))];
+          const retrievedDocIds = [...new Set(context.map((c: { documentId: string }) => c.documentId))];
           const relevantRetrieved = retrievedDocIds.filter((id) =>
             testCase.expectedDocs.some((doc) => id.includes(doc.replace('.pdf', '')))
           );
@@ -122,7 +122,7 @@ describe('Retrieval Quality', () => {
           });
 
           // Find rank of first relevant document
-          const firstRelevantIndex = context.findIndex((c: any) =>
+          const firstRelevantIndex = context.findIndex((c: { documentId: string }) =>
             testCase.expectedDocs.some((doc) => c.documentId.includes(doc.replace('.pdf', '')))
           );
 
@@ -149,7 +149,7 @@ describe('Retrieval Quality', () => {
           });
 
           // Assign relevance scores (1 if in expected docs, 0 otherwise)
-          const relevanceScores = context.map((c: any) =>
+          const relevanceScores = context.map((c: { documentId: string }) =>
             testCase.expectedDocs.some((doc) => c.documentId.includes(doc.replace('.pdf', '')))
               ? 1
               : 0
@@ -210,7 +210,7 @@ describe('Retrieval Quality', () => {
           // Check if answer claims are supported by context
           const claims = extractClaims(content);
           const supportedClaims = claims.filter((claim) =>
-            context.some((c: any) => c.content.toLowerCase().includes(claim.toLowerCase()))
+            context.some((c: { content: string }) => c.content.toLowerCase().includes(claim.toLowerCase()))
           );
 
           const faithfulness = claims.length > 0 ? supportedClaims.length / claims.length : 1;

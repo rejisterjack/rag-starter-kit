@@ -57,7 +57,9 @@ function initPostHog() {
     return;
   }
 
-  posthog.init(POSTHOG_KEY!, {
+  if (!POSTHOG_KEY) return;
+
+  posthog.init(POSTHOG_KEY, {
     api_host: POSTHOG_HOST,
     // Session recording configuration
     session_recording: {

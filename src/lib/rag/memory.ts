@@ -12,6 +12,11 @@ import type { Source } from '@/types';
 // Types
 // =============================================================================
 
+// Type for Prisma JSON fields - use Prisma's JsonValue
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: Prisma JSON types are complex
+type PrismaJsonInput = any;
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -114,9 +119,9 @@ export class ConversationMemory {
         content: message.content,
         role: message.role.toUpperCase() as 'USER' | 'ASSISTANT' | 'SYSTEM',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        sources: (message.sources as any) ?? undefined,
+        sources: message.sources as unknown as PrismaJsonInput,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tokensUsed: (message.tokensUsed as any) ?? undefined,
+        tokensUsed: message.tokensUsed as unknown as PrismaJsonInput,
       },
     });
 
@@ -141,9 +146,9 @@ export class ConversationMemory {
             content: msg.content,
             role: msg.role.toUpperCase() as 'USER' | 'ASSISTANT' | 'SYSTEM',
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            sources: (msg.sources as any) ?? undefined,
+            sources: msg.sources as unknown as PrismaJsonInput,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            tokensUsed: (msg.tokensUsed as any) ?? undefined,
+            tokensUsed: msg.tokensUsed as unknown as PrismaJsonInput,
           },
         })
       )

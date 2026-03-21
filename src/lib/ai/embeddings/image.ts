@@ -39,9 +39,9 @@ async function loadCLIPModel() {
     const { AutoModel, AutoProcessor } = await import('@xenova/transformers');
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    clipModel = await (AutoModel as any).from_pretrained(CLIP_MODEL);
+    clipModel = await (AutoModel as unknown as { from_pretrained: (model: string) => Promise<unknown> }).from_pretrained(CLIP_MODEL);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    clipProcessor = await (AutoProcessor as any).from_pretrained(CLIP_MODEL);
+    clipProcessor = await (AutoProcessor as unknown as { from_pretrained: (model: string) => Promise<unknown> }).from_pretrained(CLIP_MODEL);
     return { model: clipModel, processor: clipProcessor };
   } catch (_error) {
     throw new Error('Failed to load CLIP model for image embeddings');
@@ -132,7 +132,7 @@ async function preprocessImage(imageData: Buffer | string): Promise<unknown> {
 
   // Process image with CLIP processor
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const processed = await (processor as any)(imageData);
+  const processed = await (processor as (data: Buffer) => Promise<unknown>)(imageData);
   return processed;
 }
 
@@ -157,9 +157,8 @@ export async function generateImageEmbedding(imageBuffer: Buffer | string): Prom
 
     // Generate embedding
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const output = await (model as any)(processed);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const embedding = output.image_embeds.data as Float32Array;
+    const output = await (model as (input: unknown) => Promise<{ image_embeds: { data: Float32Array } }>)(processed);
+    const embedding = output.image_embeds.data;
 
     // Convert to regular array and normalize
     const embeddingArray = Array.from(embedding);
@@ -231,13 +230,12 @@ export async function generateTextEmbeddingForImageSearch(text: string): Promise
 
     // Process text
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const processed = await (processor as any)(text);
+    const processed = await (processor as (text: string) => Promise<unknown>)(text);
 
     // Generate embedding
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const output = await (model as any)(processed);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const embedding = output.text_embeds.data as Float32Array;
+    const output = await (model as (input: unknown) => Promise<{ text_embeds: { data: Float32Array } }>)(processed);
+    const embedding = output.text_embeds.data;
 
     // Convert to regular array and normalize
     const embeddingArray = Array.from(embedding);

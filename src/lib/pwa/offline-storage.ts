@@ -348,6 +348,7 @@ export const cachedChats = {
         const result = request.result as CachedChat | undefined;
         if (result) {
           // Update last accessed
+          // biome-ignore lint/suspicious/noConsole: Error handling for background touch
           cachedChats.touch(id).catch(console.error);
         }
         resolve(result || null);
@@ -467,6 +468,7 @@ export const cachedDocuments = {
       request.onsuccess = () => {
         const result = request.result as CachedDocument | undefined;
         if (result) {
+          // biome-ignore lint/suspicious/noConsole: Error handling for background touch
           cachedDocuments.touch(id).catch(console.error);
         }
         resolve(result || null);

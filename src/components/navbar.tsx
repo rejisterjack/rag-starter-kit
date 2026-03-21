@@ -77,6 +77,7 @@ export function Navbar(): React.ReactElement {
 
           {/* Mobile Menu Button */}
           <button
+            type="button"
             onClick={() => setIsOpen(!isOpen)}
             className="md:hidden p-2 text-muted-foreground hover:text-foreground"
           >
@@ -119,6 +120,7 @@ export function Navbar(): React.ReactElement {
                     </span>
                   </div>
                   <button
+                    type="button"
                     onClick={() => {
                       setIsOpen(false);
                       signOut({ callbackUrl: '/' });

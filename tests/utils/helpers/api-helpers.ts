@@ -206,9 +206,10 @@ export function getRateLimitHeaders(response: Response): {
   return {
     limit: parseInt(response.headers.get('X-RateLimit-Limit') || '0', 10),
     remaining: parseInt(response.headers.get('X-RateLimit-Remaining') || '0', 10),
-    reset: response.headers.get('X-RateLimit-Reset')
-      ? new Date(response.headers.get('X-RateLimit-Reset')!)
-      : null,
+    reset: (() => {
+      const resetHeader = response.headers.get('X-RateLimit-Reset');
+      return resetHeader ? new Date(resetHeader) : null;
+    })(),
   };
 }
 

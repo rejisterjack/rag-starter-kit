@@ -284,8 +284,7 @@ export async function getStorageEstimate(): Promise<{
     return {
       usage: estimate.usage || 0,
       quota: estimate.quota || 0,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      usageDetails: (estimate as any).usageDetails as Record<string, number> | undefined,
+      usageDetails: (estimate as { usageDetails?: Record<string, number> }).usageDetails,
     };
   } catch (_error) {
     return null;

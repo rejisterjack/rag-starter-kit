@@ -138,6 +138,7 @@ function MessageDiff({ messageA, messageB, type, isHighlighted }: MessageDiffPro
       )}
     >
       <button
+        type="button"
         className="w-full flex items-center gap-2 px-3 py-2 bg-muted/30 hover:bg-muted/50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -334,7 +335,7 @@ export function BranchComparisonView({
                 ) : (
                   significantDifferences.map((diff, index) => (
                     <MessageDiff
-                      key={index}
+                      key={`diff-${diff.type}-${diff.messageA?.id ?? diff.messageB?.id ?? index}`}
                       messageA={diff.messageA}
                       messageB={diff.messageB}
                       type={diff.type}

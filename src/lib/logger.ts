@@ -50,12 +50,16 @@ class Logger {
     if (this.isDevelopment) {
       const consoleFn =
         level === 'error'
-          ? console.error
+          ? // biome-ignore lint/suspicious/noConsole: Intentional console logging in development
+            console.error
           : level === 'warn'
-            ? console.warn
+            ? // biome-ignore lint/suspicious/noConsole: Intentional console logging in development
+              console.warn
             : level === 'debug'
-              ? console.debug
-              : console.log;
+              ? // biome-ignore lint/suspicious/noConsole: Intentional console logging in development
+                console.debug
+              : // biome-ignore lint/suspicious/noConsole: Intentional console logging in development
+                console.log;
       consoleFn(`[${formatted.level}] ${message}`, context || '');
       return;
     }

@@ -67,33 +67,30 @@ export async function extractImagesFromPDF(pdfBuffer: Buffer): Promise<Extracted
     const images: ExtractedImage[] = [];
 
     // Get PDF info to determine page count
-    const pdfParse = await import('pdf-parse');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parseFn = (pdfParse as any).default;
-    const pdfData = await parseFn(pdfBuffer, { max: 0 });
+    const pdfParse = await import('pdf-parse') as unknown as { default: (buffer: Buffer, options?: { max?: number }) => Promise<{ numpages: number }> };
+    const pdfData = await pdfParse.default(pdfBuffer, { max: 0 });
     const pageCount = pdfData.numpages;
 
     // Configure pdf2pic
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const convert = (pdf2picModule as any).fromBuffer(pdfBuffer, {
+    const convert = pdf2picModule.fromBuffer(pdfBuffer, {
       density: 150, // DPI
       format: 'png',
       width: 1200,
       height: 1600,
       preserveAspectRatio: true,
-    });
+    }) as (
+      pageNum: number,
+      options: { responseType: string }
+    ) => Promise<{ buffer?: Buffer | Uint8Array; size?: { width?: number; height?: number } }>;
 
     // Extract images from each page
     for (let pageNum = 1; pageNum <= Math.min(pageCount, 50); pageNum++) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const result = (await convert(pageNum, { responseType: 'buffer' })) as any;
+        const result = await convert(pageNum, { responseType: 'buffer' });
 
         if (result?.buffer) {
           images.push({
-            buffer: Buffer.isBuffer(result.buffer)
-              ? result.buffer
-              : Buffer.from(result.buffer as Uint8Array),
+            buffer: Buffer.isBuffer(result.buffer) ? result.buffer : Buffer.from(result.buffer),
             filename: `page_${pageNum}.png`,
             mimeType: 'image/png',
             pageNumber: pageNum,

@@ -7,6 +7,7 @@
  * - Disabled (for local dev without Redis)
  */
 
+import type Redis from 'ioredis';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { logger } from '@/lib/logger';
 
@@ -126,10 +127,8 @@ class InMemoryRateLimiter implements RateLimiterBackend {
 // Redis Rate Limiter (ioredis)
 // =============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 class RedisRateLimiter implements RateLimiterBackend {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private redis: any = null;
+  private redis: Redis | null = null;
   private connected = false;
 
   constructor(redisUrl: string) {
@@ -140,12 +139,14 @@ class RedisRateLimiter implements RateLimiterBackend {
       maxRetriesPerRequest: 3,
     });
 
-    this.redis.on('connect', () => {
+    // biome-ignore lint/style/noNonNullAssertion: Assigned in constructor above
+    this.redis!.on('connect', () => {
       this.connected = true;
       logger.info('Redis rate limiter connected');
     });
 
-    this.redis.on('error', (err: Error) => {
+    // biome-ignore lint/style/noNonNullAssertion: Assigned in constructor above
+    this.redis!.on('error', (err: Error) => {
       this.connected = false;
       logger.warn('Redis connection error', { error: err.message });
     });
@@ -203,12 +204,9 @@ class RedisRateLimiter implements RateLimiterBackend {
 // Upstash Rate Limiter (for serverless)
 // =============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 class UpstashRateLimiter implements RateLimiterBackend {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private ratelimit: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private limits = new Map<string, any>();
+  private ratelimit: unknown = null;
+  private limits = new Map<string, unknown>();
 
   constructor() {
     try {
@@ -227,7 +225,7 @@ class UpstashRateLimiter implements RateLimiterBackend {
     }
   }
 
-  private redis: any;
+  private redis: unknown;
 
   async checkLimit(identifier: string, config: RateLimitConfig): Promise<RateLimitResult> {
     if (!this.ratelimit || !this.redis) {
@@ -237,17 +235,26 @@ class UpstashRateLimiter implements RateLimiterBackend {
     const key = `${config.prefix}:${config.limit}:${config.windowMs}`;
 
     if (!this.limits.has(key)) {
-      const limiter = new this.ratelimit({
+      const Ratelimit = this.ratelimit as new (config: unknown) => unknown;
+      const ratelimitModule = this.ratelimit as { slidingWindow: (limit: number, window: string) => unknown };
+      const limiter = new Ratelimit({
         redis: this.redis,
-        limiter: this.ratelimit.slidingWindow(config.limit, this.msToWindowString(config.windowMs)),
+        limiter: ratelimitModule.slidingWindow(config.limit, this.msToWindowString(config.windowMs)),
         analytics: true,
         prefix: `ratelimit:${config.prefix}`,
       });
       this.limits.set(key, limiter);
     }
 
-    const limiter = this.limits.get(key)!;
-    const result = await limiter.limit(identifier);
+    const limiter = this.limits.get(key);
+    if (!limiter) {
+      return inMemoryLimiter.checkLimit(identifier, config);
+    }
+    const result = await (
+      limiter as {
+        limit: (id: string) => Promise<{ success: boolean; remaining: number; reset: number }>;
+      }
+    ).limit(identifier);
 
     return {
       success: result.success,
@@ -363,8 +370,7 @@ export function addRateLimitHeaders(headers: Headers, result: RateLimitResult): 
  * Get Redis client for other security modules
  * Returns null if Redis is not configured
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getRedisClient(): any | null {
+export function getRedisClient(): unknown | null {
   try {
     if (process.env.REDIS_URL) {
       const { Redis } = require('ioredis');
@@ -433,5 +439,5 @@ export const redis = (() => {
       del: () => ({ exec: async () => [] }),
       exec: async () => [],
     }),
-  } as unknown as any;
+  } as unknown as Redis;
 })();

@@ -120,14 +120,13 @@ export function VoiceTranscriptPanel({
   const hasTranscript = fullTranscript.length > 0;
 
   return (
-    <div
+    <section
       className={cn(
         'rounded-lg border bg-card p-4 shadow-sm',
         isListening && 'border-primary/50 ring-1 ring-primary/20',
         error && 'border-destructive/50 ring-1 ring-destructive/20',
         className
       )}
-      role="region"
       aria-label="Voice transcript panel"
     >
       {/* Header */}
@@ -290,7 +289,7 @@ export function VoiceTranscriptPanel({
           </Button>
         )}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -330,6 +329,7 @@ export function TranscriptBadge({
       <div className="flex items-center gap-1">
         {onEdit && (
           <button
+            type="button"
             onClick={onEdit}
             className="p-0.5 hover:bg-muted-foreground/10 rounded"
             aria-label="Edit transcript"
@@ -339,6 +339,7 @@ export function TranscriptBadge({
         )}
         {onClear && (
           <button
+            type="button"
             onClick={onClear}
             className="p-0.5 hover:bg-muted-foreground/10 rounded"
             aria-label="Clear transcript"
@@ -382,13 +383,14 @@ export function TranscriptHistory({
       <h4 className="text-xs font-semibold uppercase text-muted-foreground">Recent Transcripts</h4>
       <div className="space-y-1">
         {items.map((item) => (
-          <div
+          <button
+            type="button"
             key={item.id}
-            className="group flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-muted cursor-pointer"
+            className="group flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-muted cursor-pointer w-full text-left"
             onClick={() => onItemClick?.(item)}
           >
             <span className="text-sm truncate flex-1">{item.text}</span>
-            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
               {!item.isFinal && (
                 <Badge variant="outline" className="text-[10px] h-5">
                   Draft
@@ -396,18 +398,19 @@ export function TranscriptHistory({
               )}
               {onItemDelete && (
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     onItemDelete(item.id);
                   }}
-                  className="p-1 hover:bg-destructive/10 rounded"
+                  className="p-1 hover:bg-destructive/10 rounded inline-flex"
                   aria-label="Delete transcript"
                 >
                   <X className="h-3 w-3 text-destructive" />
                 </button>
               )}
-            </div>
-          </div>
+            </span>
+          </button>
         ))}
       </div>
     </div>

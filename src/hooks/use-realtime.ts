@@ -232,7 +232,9 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     }
 
     return () => {
-      unsubscribers.forEach((unsub) => unsub());
+      for (const unsub of unsubscribers) {
+        unsub();
+      }
     };
   }, [service, onMessage, onTyping, onPresence, onCursor, onNotification, onError]);
 

@@ -64,7 +64,9 @@ export class TextToSpeechService {
   private emit(eventType: TTSEventType, event: SpeechSynthesisEvent) {
     const handlers = this.eventHandlers.get(eventType);
     if (handlers) {
-      handlers.forEach((handler) => handler(event));
+      for (const handler of handlers) {
+        handler(event);
+      }
     }
   }
 

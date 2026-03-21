@@ -275,8 +275,7 @@ export async function requestBackgroundSync(tag: string = 'sync-messages'): Prom
 
   try {
     const registration = await navigator.serviceWorker.ready;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (registration as any).sync.register(tag);
+    await (registration as unknown as { sync: { register: (tag: string) => Promise<void> } }).sync.register(tag);
     return true;
   } catch (_error) {
     return false;

@@ -88,7 +88,8 @@ function extractMetadata(html: string): HTMLMetadata {
 
   // Meta tags
   const metaRegex = /<meta[^>]+>/gi;
-  let match;
+  let match: RegExpExecArray | null;
+  // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex iteration pattern
   while ((match = metaRegex.exec(html)) !== null) {
     const metaTag = match[0];
 
@@ -196,8 +197,9 @@ function extractMainContent(html: string): string {
 function extractSections(html: string): HTMLSection[] {
   const sections: HTMLSection[] = [];
   const headingRegex = /<(h[1-6])[^>]*>([^<]*)<\/(h[1-6])>/gi;
-  let match;
+  let match: RegExpExecArray | null;
 
+  // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex iteration pattern
   while ((match = headingRegex.exec(html)) !== null) {
     sections.push({
       tag: match[1],
@@ -216,8 +218,9 @@ function extractImages(html: string): Array<{ src: string; alt: string }> {
   const seen = new Set<string>();
 
   const imgRegex = /<img[^>]+>/gi;
-  let match;
+  let match: RegExpExecArray | null;
 
+  // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex iteration pattern
   while ((match = imgRegex.exec(html)) !== null) {
     const imgTag = match[0];
     const srcMatch = imgTag.match(/src=["']([^"']+)["']/i);
@@ -246,8 +249,9 @@ function extractLinks(html: string): Array<{ href: string; text: string }> {
   const seen = new Set<string>();
 
   const linkRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>([^<]*)<\/a>/gi;
-  let match;
+  let match: RegExpExecArray | null;
 
+  // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex iteration pattern
   while ((match = linkRegex.exec(html)) !== null) {
     const href = match[1];
     const text = decodeHtmlEntities(match[2].trim());

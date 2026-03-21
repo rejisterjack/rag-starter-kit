@@ -69,12 +69,24 @@ export function DocumentPreview({
             <ScrollArea className="h-full">
               <div className="p-6 space-y-4">
                 {chunks.map((chunk) => (
+                  // biome-ignore lint/a11y/noStaticElementInteractions: Interactive element with conditional role, tabIndex, and keyboard handler
+                  // biome-ignore lint/a11y/useAriaPropsSupportedByRole: Conditional ARIA props based on interactive state
                   <div
                     key={chunk.id}
                     onClick={() => onChunkClick?.(chunk)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onChunkClick?.(chunk);
+                      }
+                    }}
+                    role={onChunkClick ? 'button' : undefined}
+                    tabIndex={onChunkClick ? 0 : undefined}
+                    aria-label={onChunkClick ? `View chunk ${chunk.index + 1}` : undefined}
                     className={cn(
                       'relative rounded-lg border p-4 transition-all',
-                      'hover:border-primary/50 cursor-pointer',
+                      'hover:border-primary/50',
+                      onChunkClick && 'cursor-pointer',
                       chunk.isHighlighted && 'border-primary bg-primary/5',
                       highlightedChunkId === chunk.id && 'ring-2 ring-primary ring-offset-2'
                     )}

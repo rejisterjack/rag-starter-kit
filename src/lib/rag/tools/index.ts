@@ -104,6 +104,8 @@ export function getAllTools() {
  */
 export function createToolRegistry(): ToolRegistry {
   const registry = new ToolRegistry();
-  getAllTools().forEach((tool) => registry.register(tool));
+  getAllTools().forEach((tool): void => {
+    registry.register(tool);
+  });
   return registry;
 }

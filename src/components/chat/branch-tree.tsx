@@ -111,9 +111,10 @@ function BranchNode({
 
   return (
     <div className="select-none">
-      <div
+      <button
+        type="button"
         className={cn(
-          'group flex items-center gap-1 py-2 pr-2 rounded-md transition-colors cursor-pointer',
+          'group flex items-center gap-1 py-2 pr-2 rounded-md transition-colors cursor-pointer w-full text-left',
           isActive
             ? 'bg-primary/10 border-l-2 border-primary'
             : 'hover:bg-muted border-l-2 border-transparent'
@@ -220,7 +221,8 @@ function BranchNode({
         </TooltipProvider>
 
         {/* Actions menu */}
-        <DropdownMenu>
+      </button>
+      <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
@@ -284,7 +286,6 @@ function BranchNode({
             )}
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
 
       {/* Render children */}
       {hasChildren && isExpanded && (
@@ -489,6 +490,7 @@ export function BranchTreePanel({ isOpen, onClose, ...branchTreeProps }: BranchT
         <Button variant="ghost" size="icon" onClick={onClose}>
           <span className="sr-only">Close</span>
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <title>Close</title>
             <path
               strokeLinecap="round"
               strokeLinejoin="round"

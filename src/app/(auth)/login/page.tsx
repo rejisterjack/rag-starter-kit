@@ -184,7 +184,8 @@ export default function LoginPage(): React.ReactElement {
           className="w-full bg-background/30 border-white/5 opacity-50 cursor-not-allowed"
           title="Google login temporarily unavailable"
         >
-          <svg className="mr-2 h-4 w-4 opacity-60" viewBox="0 0 24 24">
+          <svg className="mr-2 h-4 w-4 opacity-60" viewBox="0 0 24 24" role="img" aria-label="Google logo">
+            <title>Google</title>
             <path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
               fill="#4285F4"
@@ -373,7 +374,8 @@ function SSOLoginButton({
       {isLoading ? (
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
       ) : workspaceLogo ? (
-        <img src={workspaceLogo} alt="" className="mr-2 h-4 w-4 object-contain" />
+        // biome-ignore lint/performance/noImgElement: External dynamic image
+        <img src={workspaceLogo} alt="Workspace logo" className="mr-2 h-4 w-4 object-contain" />
       ) : (
         <svg
           className="mr-2 h-5 w-5 opacity-70"
@@ -381,7 +383,10 @@ function SSOLoginButton({
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
+          role="img"
+          aria-label="Shield icon"
         >
+          <title>Shield</title>
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
       )}

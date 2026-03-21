@@ -62,6 +62,7 @@ const ProviderIcon = ({
     case 'google_workspace':
       return (
         <svg className={className} viewBox="0 0 24 24">
+          <title>Google Workspace Icon</title>
           <path
             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
             fill="#4285F4"
@@ -83,18 +84,21 @@ const ProviderIcon = ({
     case 'azure_ad':
       return (
         <svg className={className} viewBox="0 0 24 24" fill="#0078D4">
+          <title>Azure AD Icon</title>
           <path d="M5 3v18l7-3 7 3V3H5zm12 13l-5-2-5 2V5h10v11z" />
         </svg>
       );
     case 'okta':
       return (
         <svg className={className} viewBox="0 0 24 24" fill="#007DC1">
+          <title>Okta Icon</title>
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
         </svg>
       );
     case 'auth0':
       return (
         <svg className={className} viewBox="0 0 24 24" fill="#EB5424">
+          <title>Auth0 Icon</title>
           <path d="M12 2L2 20h20L12 2zm0 3.5L18.5 18h-13L12 5.5z" />
         </svg>
       );

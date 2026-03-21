@@ -108,7 +108,11 @@ export async function POST(req: Request) {
     }
 
     // Step 4: Handle different search modes
-    let results;
+    let results:
+      | Awaited<ReturnType<typeof searchMultiModal>>
+      | Awaited<ReturnType<typeof searchByImage>>
+      | Awaited<ReturnType<typeof searchImagesByText>>
+      | null;
 
     // Multi-modal search (text + image)
     if ((imageFile || imageUrl) && textQuery) {
@@ -177,8 +181,13 @@ export async function POST(req: Request) {
 
         const arrayBuffer = await imageFile.arrayBuffer();
         imageBuffer = Buffer.from(arrayBuffer);
+      } else if (imageUrl) {
+        imageBuffer = imageUrl;
       } else {
-        imageBuffer = imageUrl as string;
+        return NextResponse.json(
+          { error: 'No image provided', code: 'MISSING_IMAGE' },
+          { status: 400 }
+        );
       }
 
       results = await searchByImage(imageBuffer, workspaceId || userId, {

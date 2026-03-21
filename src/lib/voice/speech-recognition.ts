@@ -111,7 +111,9 @@ export class SpeechRecognitionService {
         });
       }
 
-      this.resultHandlers.forEach((handler) => handler(results));
+      for (const handler of this.resultHandlers) {
+        handler(results);
+      }
     };
 
     this.recognition.onerror = (event) => {
@@ -119,14 +121,18 @@ export class SpeechRecognitionService {
         error: event.error as SpeechRecognitionErrorType,
         message: this.getErrorMessage(event.error as SpeechRecognitionErrorType),
       };
-      this.errorHandlers.forEach((handler) => handler(error));
+      for (const handler of this.errorHandlers) {
+        handler(error);
+      }
     };
   }
 
   private emit(eventType: SpeechRecognitionEventType, event?: Event) {
     const handlers = this.eventHandlers.get(eventType);
     if (handlers) {
-      handlers.forEach((handler) => handler(event || new Event(eventType)));
+      for (const handler of handlers) {
+        handler(event || new Event(eventType));
+      }
     }
   }
 
