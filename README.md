@@ -198,6 +198,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 | **State** | [TanStack Query](https://tanstack.com/query) + [Zustand](https://github.com/pmndrs/zustand) |
 | **Testing** | [Vitest](https://vitest.dev/) + [Playwright](https://playwright.dev/) |
 | **Analytics** | [Plausible](https://plausible.io/) (self-hosted) + [PostHog](https://posthog.com/) (optional) |
+| **DevOps** | [Docker](https://docker.com/), [Docker Compose](https://docs.docker.com/compose/) |
 | **Linting** | [Biome](https://biomejs.dev/) |
 
 ---
@@ -386,6 +387,7 @@ rag-starter-kit/
 - [🆓 Free AI Setup Guide](./docs/FREE_AI_SETUP.md) — Configure free OpenRouter + Google AI
 - [🏗️ Architecture Guide](./docs/architecture.md) — System design and data flow
 - [🎨 Customization](./docs/customization.md) — Models, UI, and RAG pipeline
+- [🐳 Docker Architecture](./docs/DOCKER_ARCHITECTURE.md) — Complete Docker guide
 - [🐳 Docker Deployment](./docs/deployment/docker.md) — Self-hosted deployment
 - [📋 Production Checklist](./docs/deployment/production-checklist.md)
 - [🔧 Troubleshooting](./docs/deployment/troubleshooting.md)

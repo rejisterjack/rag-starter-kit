@@ -204,24 +204,18 @@ docker-compose -f docker-compose.dev.yml up -d
 ### 2. Configure Environment
 
 ```bash
-cp .env.local.example .env.local
-# Edit .env.local with your API keys
+cp .env.example .env
+# Edit .env with your API keys
 ```
 
-### 3. Run Development Server
+### 3. Start All Services
 
 ```bash
-# With WebSocket support (recommended)
-pnpm dev:ws
+# Start everything (PostgreSQL, Redis, MinIO, Inngest, Plausible, Next.js)
+docker-compose up
 
-# Or standard Next.js dev server
-pnpm dev
-```
-
-### 4. Start Background Jobs
-
-```bash
-pnpm inngest:dev
+# Or detached mode
+docker-compose up -d
 ```
 
 ---
