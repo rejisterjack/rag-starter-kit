@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from './button';
-import { Loader2, Plus, Trash2, Save } from 'lucide-react';
+import { Loader2, Send, Trash2, Upload } from 'lucide-react';
 
 const meta: Meta<typeof Button> = {
   title: 'UI/Button',
@@ -9,7 +9,7 @@ const meta: Meta<typeof Button> = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'A versatile button component with multiple variants and sizes.',
+        component: 'Button component with multiple variants and sizes. Built on top of Radix UI.',
       },
     },
   },
@@ -18,32 +18,20 @@ const meta: Meta<typeof Button> = {
     variant: {
       control: 'select',
       options: ['default', 'destructive', 'outline', 'secondary', 'ghost', 'link'],
-      description: 'The visual style of the button',
     },
     size: {
       control: 'select',
       options: ['default', 'sm', 'lg', 'icon'],
-      description: 'The size of the button',
-    },
-    disabled: {
-      control: 'boolean',
-      description: 'Whether the button is disabled',
-    },
-    loading: {
-      control: 'boolean',
-      description: 'Whether to show a loading spinner',
     },
     asChild: {
       control: 'boolean',
-      description: 'Render as a child element',
     },
   },
 };
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<typeof Button>;
 
-// Default button
 export const Default: Story = {
   args: {
     children: 'Button',
@@ -52,145 +40,117 @@ export const Default: Story = {
   },
 };
 
-// Variants
-export const Variants: Story = {
-  render: () => (
-    <div className="flex flex-wrap gap-4">
-      <Button variant="default">Default</Button>
-      <Button variant="secondary">Secondary</Button>
-      <Button variant="destructive">Destructive</Button>
-      <Button variant="outline">Outline</Button>
-      <Button variant="ghost">Ghost</Button>
-      <Button variant="link">Link</Button>
-    </div>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'All available button variants.',
-      },
-    },
+export const Secondary: Story = {
+  args: {
+    children: 'Secondary',
+    variant: 'secondary',
   },
 };
 
-// Sizes
-export const Sizes: Story = {
-  render: () => (
-    <div className="flex flex-wrap items-center gap-4">
-      <Button size="sm">Small</Button>
-      <Button size="default">Default</Button>
-      <Button size="lg">Large</Button>
-      <Button size="icon">
-        <Plus className="h-4 w-4" />
-      </Button>
-    </div>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'All available button sizes.',
-      },
-    },
+export const Destructive: Story = {
+  args: {
+    children: 'Delete',
+    variant: 'destructive',
   },
 };
 
-// With Icons
-export const WithIcons: Story = {
-  render: () => (
-    <div className="flex flex-wrap gap-4">
-      <Button>
-        <Plus className="mr-2 h-4 w-4" />
-        Add New
-      </Button>
-      <Button variant="outline">
-        <Save className="mr-2 h-4 w-4" />
-        Save
-      </Button>
-      <Button variant="destructive">
-        <Trash2 className="mr-2 h-4 w-4" />
-        Delete
-      </Button>
-    </div>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Buttons with icons.',
-      },
-    },
+export const Outline: Story = {
+  args: {
+    children: 'Outline',
+    variant: 'outline',
   },
 };
 
-// Loading State
+export const Ghost: Story = {
+  args: {
+    children: 'Ghost',
+    variant: 'ghost',
+  },
+};
+
+export const Link: Story = {
+  args: {
+    children: 'Link Button',
+    variant: 'link',
+  },
+};
+
+export const Small: Story = {
+  args: {
+    children: 'Small',
+    size: 'sm',
+  },
+};
+
+export const Large: Story = {
+  args: {
+    children: 'Large Button',
+    size: 'lg',
+  },
+};
+
+export const WithIcon: Story = {
+  args: {
+    children: (
+      <>
+        <Send className="mr-2 h-4 w-4" />
+        Send Message
+      </>
+    ),
+  },
+};
+
+export const IconOnly: Story = {
+  args: {
+    children: <Trash2 className="h-4 w-4" />,
+    size: 'icon',
+    variant: 'outline',
+    'aria-label': 'Delete',
+  },
+};
+
 export const Loading: Story = {
   args: {
-    children: 'Loading',
-    loading: true,
+    children: (
+      <>
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        Processing...
+      </>
+    ),
     disabled: true,
   },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Button in loading state shows a spinner and is disabled.',
-      },
-    },
+};
+
+export const UploadButton: Story = {
+  args: {
+    children: (
+      <>
+        <Upload className="mr-2 h-4 w-4" />
+        Upload Document
+      </>
+    ),
+    variant: 'outline',
   },
 };
 
-// Disabled State
-export const Disabled: Story = {
+export const AllVariants: Story = {
   render: () => (
-    <div className="flex flex-wrap gap-4">
-      <Button disabled>Disabled</Button>
-      <Button variant="secondary" disabled>
-        Disabled
-      </Button>
-      <Button variant="outline" disabled>
-        Disabled
-      </Button>
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-2">
+        <Button variant="default">Default</Button>
+        <Button variant="secondary">Secondary</Button>
+        <Button variant="destructive">Destructive</Button>
+      </div>
+      <div className="flex gap-2">
+        <Button variant="outline">Outline</Button>
+        <Button variant="ghost">Ghost</Button>
+        <Button variant="link">Link</Button>
+      </div>
+      <div className="flex gap-2">
+        <Button size="sm">Small</Button>
+        <Button size="default">Default</Button>
+        <Button size="lg">Large</Button>
+      </div>
     </div>
   ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Disabled buttons are not interactive.',
-      },
-    },
-  },
-};
-
-// As Link
-export const AsLink: Story = {
-  render: () => (
-    <Button asChild>
-      <a href="https://example.com" target="_blank" rel="noopener noreferrer">
-        External Link
-      </a>
-    </Button>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Button rendered as a link element.',
-      },
-    },
-  },
-};
-
-// Playground
-export const Playground: Story = {
-  args: {
-    children: 'Playground Button',
-    variant: 'default',
-    size: 'default',
-    disabled: false,
-    loading: false,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Customize the button using the controls panel.',
-      },
-    },
-  },
 };

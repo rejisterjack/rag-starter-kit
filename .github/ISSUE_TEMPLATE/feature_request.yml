@@ -1,0 +1,68 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please fill out the information below.
+
+  - type: checkboxes
+    attributes:
+      label: Prerequisites
+      options:
+        - label: I have searched existing issues and this is not a duplicate
+          required: true
+
+  - type: textarea
+    attributes:
+      label: Feature description
+      description: A clear and concise description of the feature you'd like
+      placeholder: I would like to be able to...
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Problem it solves
+      description: What problem does this feature solve? What is the use case?
+      placeholder: Currently, users cannot...
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Proposed solution
+      description: How do you think this should work?
+      placeholder: The feature could work by...
+
+  - type: textarea
+    attributes:
+      label: Alternatives considered
+      description: What alternative solutions have you considered?
+
+  - type: dropdown
+    attributes:
+      label: Feature area
+      options:
+        - UI/UX
+        - Authentication
+        - Document Processing
+        - RAG Pipeline
+        - AI Models
+        - Real-time Collaboration
+        - Voice Features
+        - PWA
+        - Performance
+        - Security
+        - Deployment
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add any other context, mockups, or examples

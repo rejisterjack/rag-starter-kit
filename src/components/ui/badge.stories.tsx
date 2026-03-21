@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Badge } from './badge';
+import { Check, X, AlertCircle, Info } from 'lucide-react';
 
 const meta: Meta<typeof Badge> = {
   title: 'UI/Badge',
@@ -8,24 +9,16 @@ const meta: Meta<typeof Badge> = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'A badge component for displaying status or labels.',
+        component: 'Badge component for displaying status, labels, and counts.',
       },
     },
   },
   tags: ['autodocs'],
-  argTypes: {
-    variant: {
-      control: 'select',
-      options: ['default', 'secondary', 'destructive', 'outline'],
-      description: 'The visual style of the badge',
-    },
-  },
 };
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<typeof Badge>;
 
-// Default badge
 export const Default: Story = {
   args: {
     children: 'Badge',
@@ -33,63 +26,124 @@ export const Default: Story = {
   },
 };
 
-// Variants
-export const Variants: Story = {
+export const Secondary: Story = {
+  args: {
+    children: 'Secondary',
+    variant: 'secondary',
+  },
+};
+
+export const Destructive: Story = {
+  args: {
+    children: 'Error',
+    variant: 'destructive',
+  },
+};
+
+export const Outline: Story = {
+  args: {
+    children: 'Outline',
+    variant: 'outline',
+  },
+};
+
+export const Success: Story = {
+  args: {
+    children: (
+      <>
+        <Check className="mr-1 h-3 w-3" />
+        Completed
+      </>
+    ),
+    className: 'bg-green-100 text-green-800 hover:bg-green-100',
+  },
+};
+
+export const Warning: Story = {
+  args: {
+    children: (
+      <>
+        <AlertCircle className="mr-1 h-3 w-3" />
+        Warning
+      </>
+    ),
+    className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
+  },
+};
+
+export const Info: Story = {
+  args: {
+    children: (
+      <>
+        <Info className="mr-1 h-3 w-3" />
+        Info
+      </>
+    ),
+    className: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
+  },
+};
+
+export const Processing: Story = {
+  args: {
+    children: (
+      <>
+        <div className="mr-1 h-2 w-2 animate-pulse rounded-full bg-current" />
+        Processing
+      </>
+    ),
+  },
+};
+
+export const WithCount: Story = {
+  args: {
+    children: 'Messages 12',
+  },
+};
+
+export const Dismissible: Story = {
+  args: {
+    children: (
+      <>
+        Tag
+        <X className="ml-1 h-3 w-3 cursor-pointer" />
+      </>
+    ),
+    variant: 'secondary',
+  },
+};
+
+export const AllVariants: Story = {
   render: () => (
-    <div className="flex flex-wrap gap-4">
+    <div className="flex flex-wrap gap-2">
       <Badge>Default</Badge>
       <Badge variant="secondary">Secondary</Badge>
       <Badge variant="destructive">Destructive</Badge>
       <Badge variant="outline">Outline</Badge>
+      <Badge className="bg-green-100 text-green-800">Success</Badge>
+      <Badge className="bg-yellow-100 text-yellow-800">Warning</Badge>
+      <Badge className="bg-blue-100 text-blue-800">Info</Badge>
     </div>
   ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'All available badge variants.',
-      },
-    },
-  },
 };
 
-// Common Use Cases
-export const UseCases: Story = {
+export const DocumentStatus: Story = {
   render: () => (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2">
-        <Badge>Active</Badge>
-        <Badge variant="secondary">Pending</Badge>
-        <Badge variant="destructive">Error</Badge>
-        <Badge variant="outline">Draft</Badge>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Badge>New</Badge>
-        <Badge variant="secondary">Beta</Badge>
-        <Badge variant="destructive">Deprecated</Badge>
-        <Badge variant="outline">Archived</Badge>
+    <div className="flex flex-col gap-2">
+      <div className="flex gap-2">
+        <Badge className="bg-gray-100 text-gray-800">Pending</Badge>
+        <Badge className="bg-blue-100 text-blue-800">
+          <div className="mr-1 h-2 w-2 animate-pulse rounded-full bg-current" />
+          Processing
+        </Badge>
+        <Badge className="bg-green-100 text-green-800">
+          <Check className="mr-1 h-3 w-3" />
+          Completed
+        </Badge>
+        <Badge variant="destructive">
+          <X className="mr-1 h-3 w-3" />
+          Failed
+        </Badge>
       </div>
     </div>
   ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Common use cases for badges.',
-      },
-    },
-  },
-};
-
-// Playground
-export const Playground: Story = {
-  args: {
-    children: 'Custom Badge',
-    variant: 'default',
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Customize the badge using the controls panel.',
-      },
-    },
-  },
 };

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Input } from './input';
-import { Label } from './label';
+import { Search, Mail, Lock, User } from 'lucide-react';
 
 const meta: Meta<typeof Input> = {
   title: 'UI/Input',
@@ -9,32 +9,16 @@ const meta: Meta<typeof Input> = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'A form input component for text entry.',
+        component: 'Input component with support for icons, states, and sizes.',
       },
     },
   },
   tags: ['autodocs'],
-  argTypes: {
-    type: {
-      control: 'select',
-      options: ['text', 'email', 'password', 'number', 'tel', 'url'],
-      description: 'The type of input',
-    },
-    disabled: {
-      control: 'boolean',
-      description: 'Whether the input is disabled',
-    },
-    placeholder: {
-      control: 'text',
-      description: 'Placeholder text',
-    },
-  },
 };
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<typeof Input>;
 
-// Default input
 export const Default: Story = {
   args: {
     placeholder: 'Enter text...',
@@ -42,122 +26,96 @@ export const Default: Story = {
   },
 };
 
-// With Label
 export const WithLabel: Story = {
   render: () => (
     <div className="grid w-full max-w-sm items-center gap-1.5">
-      <Label htmlFor="email">Email</Label>
-      <Input type="email" id="email" placeholder="Email" />
+      <label htmlFor="email" className="text-sm font-medium">
+        Email
+      </label>
+      <Input type="email" id="email" placeholder="Enter your email" />
     </div>
   ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Input with an associated label.',
-      },
-    },
-  },
 };
 
-// Input Types
-export const Types: Story = {
+export const WithIcon: Story = {
   render: () => (
-    <div className="grid w-full max-w-sm gap-4">
-      <div>
-        <Label htmlFor="text">Text</Label>
-        <Input type="text" id="text" placeholder="Text input" />
-      </div>
-      <div>
-        <Label htmlFor="email">Email</Label>
-        <Input type="email" id="email" placeholder="Email input" />
-      </div>
-      <div>
-        <Label htmlFor="password">Password</Label>
-        <Input type="password" id="password" placeholder="Password input" />
-      </div>
-      <div>
-        <Label htmlFor="number">Number</Label>
-        <Input type="number" id="number" placeholder="Number input" />
-      </div>
+    <div className="relative w-full max-w-sm">
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input className="pl-10" placeholder="Search documents..." />
     </div>
   ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Different input types.',
-      },
-    },
+};
+
+export const Email: Story = {
+  args: {
+    type: 'email',
+    placeholder: 'name@example.com',
   },
 };
 
-// Disabled State
+export const Password: Story = {
+  args: {
+    type: 'password',
+    placeholder: 'Enter password',
+  },
+};
+
 export const Disabled: Story = {
   args: {
-    placeholder: 'Disabled input',
     disabled: true,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Disabled input cannot be interacted with.',
-      },
-    },
+    placeholder: 'Disabled input',
+    value: 'Cannot edit this',
   },
 };
 
-// With Error
 export const WithError: Story = {
   render: () => (
     <div className="grid w-full max-w-sm items-center gap-1.5">
-      <Label htmlFor="error">Email</Label>
+      <label htmlFor="username" className="text-sm font-medium">
+        Username
+      </label>
       <Input
-        type="email"
-        id="error"
-        placeholder="Email"
-        aria-invalid="true"
-        className="border-destructive"
+        id="username"
+        placeholder="Enter username"
+        className="border-red-500 focus-visible:ring-red-500"
       />
-      <p className="text-sm text-destructive">Please enter a valid email address.</p>
+      <p className="text-sm text-red-500">Username is already taken</p>
     </div>
   ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Input with error state and message.',
-      },
-    },
-  },
 };
 
-// File Input
 export const File: Story = {
-  render: () => (
-    <div className="grid w-full max-w-sm items-center gap-1.5">
-      <Label htmlFor="picture">Picture</Label>
-      <Input id="picture" type="file" />
-    </div>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'File input for uploading files.',
-      },
-    },
+  args: {
+    type: 'file',
   },
 };
 
-// Playground
-export const Playground: Story = {
+export const Number: Story = {
   args: {
-    placeholder: 'Type something...',
-    type: 'text',
-    disabled: false,
+    type: 'number',
+    placeholder: '0',
+    min: 0,
+    max: 100,
   },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Customize the input using the controls panel.',
-      },
-    },
-  },
+};
+
+export const AllVariants: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4 w-full max-w-sm">
+      <div className="relative">
+        <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input className="pl-10" placeholder="Username" />
+      </div>
+      <div className="relative">
+        <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input className="pl-10" type="email" placeholder="Email" />
+      </div>
+      <div className="relative">
+        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input className="pl-10" type="password" placeholder="Password" />
+      </div>
+      <Input placeholder="Regular input" />
+      <Input disabled placeholder="Disabled input" />
+    </div>
+  ),
 };
