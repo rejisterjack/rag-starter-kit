@@ -1,7 +1,13 @@
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
+/**
+ * Rate Limiter
+ * 
+ * Supports multiple Redis backends:
+ * - Upstash Redis (for serverless/production)
+ * - ioredis (for Docker/self-hosted)
+ * - Disabled (for local dev without Redis)
+ */
+
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
-import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
 // =============================================================================
@@ -10,315 +16,9 @@ import { logger } from '@/lib/logger';
 
 export interface RateLimitConfig {
   limit: number;
-  window: string; // e.g., '1 h', '1 m', '1 s'
+  windowMs: number; // milliseconds
   prefix?: string;
 }
-
-export const rateLimits = {
-  // Chat endpoints
-  chat: { limit: 50, window: '1 h', prefix: 'chat' },
-  chatStream: { limit: 50, window: '1 h', prefix: 'chat_stream' },
-
-  // Ingestion endpoints
-  ingest: { limit: 10, window: '1 h', prefix: 'ingest' },
-  ingestUrl: { limit: 20, window: '1 h', prefix: 'ingest_url' },
-
-  // API endpoints
-  api: { limit: 100, window: '1 m', prefix: 'api' },
-  apiKey: { limit: 1000, window: '1 m', prefix: 'api_key' },
-
-  // Authentication endpoints
-  login: { limit: 5, window: '5 m', prefix: 'login' },
-  register: { limit: 3, window: '1 h', prefix: 'register' },
-  passwordReset: { limit: 3, window: '1 h', prefix: 'password_reset' },
-
-  // Workspace endpoints
-  workspace: { limit: 50, window: '1 m', prefix: 'workspace' },
-
-  // Document endpoints
-  documents: { limit: 30, window: '1 m', prefix: 'documents' },
-
-  // Admin endpoints
-  admin: { limit: 100, window: '1 m', prefix: 'admin' },
-
-  // Voice endpoints
-  voice: { limit: 30, window: '1 h', prefix: 'voice' },
-
-  // Agent endpoints
-  agent: { limit: 50, window: '1 h', prefix: 'agent' },
-
-  // Export endpoints
-  export: { limit: 10, window: '1 h', prefix: 'export' },
-} as const;
-
-export type RateLimitType = keyof typeof rateLimits;
-
-// =============================================================================
-// Rate Limiter Class
-// =============================================================================
-
-export class RateLimiter {
-  private redis: Redis;
-  private limits: Map<string, Ratelimit>;
-
-  constructor() {
-    // Initialize Redis client
-    this.redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL || '',
-      token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
-    });
-
-    this.limits = new Map();
-  }
-
-  /**
-   * Get or create a rate limiter for a specific configuration
-   */
-  private getLimiter(config: RateLimitConfig): Ratelimit {
-    const key = `${config.prefix}:${config.limit}:${config.window}`;
-
-    if (!this.limits.has(key)) {
-      const limiter = new Ratelimit({
-        redis: this.redis,
-        limiter: Ratelimit.slidingWindow(
-          config.limit,
-          config.window as `${number} ${'s' | 'm' | 'h' | 'd'}`
-        ),
-        analytics: true,
-        prefix: `ratelimit:${config.prefix}`,
-      });
-
-      this.limits.set(key, limiter);
-    }
-
-    return this.limits.get(key)!;
-  }
-
-  /**
-   * Check rate limit for an identifier
-   */
-  async checkLimit(
-    identifier: string,
-    config: RateLimitConfig | RateLimitType
-  ): Promise<{
-    success: boolean;
-    limit: number;
-    remaining: number;
-    reset: number;
-  }> {
-    const rateConfig = typeof config === 'string' ? rateLimits[config] : config;
-    const limiter = this.getLimiter(rateConfig);
-
-    const result = await limiter.limit(identifier);
-
-    return {
-      success: result.success,
-      limit: rateConfig.limit,
-      remaining: result.remaining,
-      reset: result.reset,
-    };
-  }
-
-  /**
-   * Check rate limit with fallback to database if Redis is unavailable
-   */
-  async checkLimitWithFallback(
-    identifier: string,
-    config: RateLimitConfig | RateLimitType,
-    options?: {
-      userId?: string;
-      workspaceId?: string;
-      endpoint?: string;
-    }
-  ): Promise<{
-    success: boolean;
-    limit: number;
-    remaining: number;
-    reset: number;
-  }> {
-    try {
-      return await this.checkLimit(identifier, config);
-    } catch (error) {
-      logger.error('Redis rate limit error, falling back to database', {
-        error: error instanceof Error ? error.message : 'Unknown',
-      });
-      return this.checkLimitDatabase(identifier, config, options);
-    }
-  }
-
-  /**
-   * Database fallback for rate limiting
-   */
-  private async checkLimitDatabase(
-    identifier: string,
-    config: RateLimitConfig | RateLimitType,
-    options?: {
-      userId?: string;
-      workspaceId?: string;
-      endpoint?: string;
-    }
-  ): Promise<{
-    success: boolean;
-    limit: number;
-    remaining: number;
-    reset: number;
-  }> {
-    const rateConfig = typeof config === 'string' ? rateLimits[config] : config;
-    const windowMs = this.parseWindowToMs(rateConfig.window);
-    const now = new Date();
-    const resetAt = new Date(now.getTime() + windowMs);
-
-    // Get or create rate limit record
-    let rateLimit = await prisma.rateLimit.findFirst({
-      where: {
-        key: identifier,
-        type: options?.endpoint || 'default',
-      },
-    });
-
-    // Reset if window has passed
-    if (rateLimit && rateLimit.windowStart < now) {
-      rateLimit = await prisma.rateLimit.update({
-        where: { id: rateLimit.id },
-        data: {
-          requests: 0,
-          windowStart: now,
-        },
-      });
-    }
-
-    // Create new record if doesn't exist
-    if (!rateLimit) {
-      rateLimit = await prisma.rateLimit.create({
-        data: {
-          key: identifier,
-          type: options?.userId ? 'USER' : options?.workspaceId ? 'WORKSPACE' : 'IP',
-          requests: 0,
-          windowStart: now,
-          userId: options?.userId,
-        },
-      });
-    }
-
-    // Increment count
-    const updated = await prisma.rateLimit.update({
-      where: { id: rateLimit.id },
-      data: { requests: { increment: 1 } },
-    });
-
-    const success = updated.requests <= rateConfig.limit;
-    const remaining = Math.max(0, rateConfig.limit - updated.requests);
-
-    // Log rate limit hit
-    if (!success) {
-      await logAuditEvent({
-        event: AuditEvent.RATE_LIMIT_HIT,
-        userId: options?.userId,
-        workspaceId: options?.workspaceId,
-        metadata: {
-          identifier,
-          endpoint: options?.endpoint,
-          limit: rateConfig.limit,
-          window: rateConfig.window,
-        },
-        severity: 'WARNING',
-      });
-    }
-
-    return {
-      success,
-      limit: rateConfig.limit,
-      remaining,
-      reset: resetAt.getTime(),
-    };
-  }
-
-  /**
-   * Parse window string to milliseconds
-   */
-  private parseWindowToMs(window: string): number {
-    const match = window.match(/^(\d+)\s*(s|m|h|d)$/);
-    if (!match) return 3600000; // Default 1 hour
-
-    const value = parseInt(match[1], 10);
-    const unit = match[2];
-
-    const multipliers: Record<string, number> = {
-      s: 1000,
-      m: 60 * 1000,
-      h: 60 * 60 * 1000,
-      d: 24 * 60 * 60 * 1000,
-    };
-
-    return value * (multipliers[unit] || multipliers.h);
-  }
-
-  /**
-   * Reset rate limit for an identifier
-   */
-  async resetLimit(identifier: string, config: RateLimitConfig | RateLimitType): Promise<void> {
-    const rateConfig = typeof config === 'string' ? rateLimits[config] : config;
-
-    try {
-      await this.redis.del(`ratelimit:${rateConfig.prefix}:${identifier}`);
-    } catch (error) {
-      logger.error('Failed to reset rate limit in Redis', {
-        error: error instanceof Error ? error.message : 'Unknown',
-      });
-    }
-
-    // Also reset in database
-    await prisma.rateLimit.deleteMany({
-      where: { key: identifier },
-    });
-  }
-
-  /**
-   * Get rate limit status
-   */
-  async getLimitStatus(
-    identifier: string,
-    config: RateLimitConfig | RateLimitType
-  ): Promise<{
-    limit: number;
-    remaining: number;
-    reset: number;
-  } | null> {
-    try {
-      const rateConfig = typeof config === 'string' ? rateLimits[config] : config;
-      const limiter = this.getLimiter(rateConfig);
-      const result = await limiter.getRemaining(identifier);
-
-      return {
-        limit: rateConfig.limit,
-        remaining: result.remaining,
-        reset: result.reset,
-      };
-    } catch (error) {
-      logger.error('Failed to get rate limit status', {
-        error: error instanceof Error ? error.message : 'Unknown',
-      });
-      return null;
-    }
-  }
-}
-
-// =============================================================================
-// Singleton Instance
-// =============================================================================
-
-let rateLimiter: RateLimiter | null = null;
-
-export function getRateLimiter(): RateLimiter {
-  if (!rateLimiter) {
-    rateLimiter = new RateLimiter();
-  }
-  return rateLimiter;
-}
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
 
 export interface RateLimitResult {
   success: boolean;
@@ -327,59 +27,328 @@ export interface RateLimitResult {
   reset: number;
 }
 
-/**
- * Check rate limit for an API request
- */
+export const rateLimits = {
+  // Chat endpoints
+  chat: { limit: 50, windowMs: 60 * 60 * 1000, prefix: 'chat' }, // 50/hour
+  chatStream: { limit: 50, windowMs: 60 * 60 * 1000, prefix: 'chat_stream' },
+
+  // Ingestion endpoints
+  ingest: { limit: 10, windowMs: 60 * 60 * 1000, prefix: 'ingest' }, // 10/hour
+  ingestUrl: { limit: 20, windowMs: 60 * 60 * 1000, prefix: 'ingest_url' },
+
+  // API endpoints
+  api: { limit: 100, windowMs: 60 * 1000, prefix: 'api' }, // 100/min
+  apiKey: { limit: 1000, windowMs: 60 * 1000, prefix: 'api_key' },
+
+  // Authentication endpoints
+  login: { limit: 5, windowMs: 5 * 60 * 1000, prefix: 'login' }, // 5/5min
+  register: { limit: 3, windowMs: 60 * 60 * 1000, prefix: 'register' }, // 3/hour
+  passwordReset: { limit: 3, windowMs: 60 * 60 * 1000, prefix: 'password_reset' },
+
+  // Workspace endpoints
+  workspace: { limit: 50, windowMs: 60 * 1000, prefix: 'workspace' },
+
+  // Document endpoints
+  documents: { limit: 30, windowMs: 60 * 1000, prefix: 'documents' },
+
+  // Admin endpoints
+  admin: { limit: 100, windowMs: 60 * 1000, prefix: 'admin' },
+
+  // Voice endpoints
+  voice: { limit: 30, windowMs: 60 * 60 * 1000, prefix: 'voice' },
+
+  // Agent endpoints
+  agent: { limit: 50, windowMs: 60 * 60 * 1000, prefix: 'agent' },
+
+  // Export endpoints
+  export: { limit: 10, windowMs: 60 * 60 * 1000, prefix: 'export' },
+} as const;
+
+export type RateLimitType = keyof typeof rateLimits;
+
+// =============================================================================
+// Rate Limiter Interface
+// =============================================================================
+
+interface RateLimiterBackend {
+  checkLimit(identifier: string, config: RateLimitConfig): Promise<RateLimitResult>;
+}
+
+// =============================================================================
+// In-Memory Rate Limiter (for local dev without Redis)
+// =============================================================================
+
+class InMemoryRateLimiter implements RateLimiterBackend {
+  private storage = new Map<string, { count: number; resetTime: number }>();
+
+  async checkLimit(identifier: string, config: RateLimitConfig): Promise<RateLimitResult> {
+    const key = `${config.prefix}:${identifier}`;
+    const now = Date.now();
+    const windowStart = now - config.windowMs;
+
+    const record = this.storage.get(key);
+    
+    if (!record || record.resetTime < now) {
+      // New window
+      const resetTime = now + config.windowMs;
+      this.storage.set(key, { count: 1, resetTime });
+      return {
+        success: true,
+        limit: config.limit,
+        remaining: config.limit - 1,
+        reset: resetTime,
+      };
+    }
+
+    if (record.count >= config.limit) {
+      return {
+        success: false,
+        limit: config.limit,
+        remaining: 0,
+        reset: record.resetTime,
+      };
+    }
+
+    record.count++;
+    return {
+      success: true,
+      limit: config.limit,
+      remaining: config.limit - record.count,
+      reset: record.resetTime,
+    };
+  }
+}
+
+// =============================================================================
+// Redis Rate Limiter (ioredis)
+// =============================================================================
+
+class RedisRateLimiter implements RateLimiterBackend {
+  private redis: typeof import('ioredis').prototype | null = null;
+  private connected = false;
+
+  constructor(redisUrl: string) {
+    // Lazy load ioredis
+    const Redis = require('ioredis');
+    this.redis = new Redis(redisUrl, {
+      retryStrategy: (times: number) => Math.min(times * 50, 2000),
+      maxRetriesPerRequest: 3,
+    });
+
+    this.redis.on('connect', () => {
+      this.connected = true;
+      logger.info('Redis rate limiter connected');
+    });
+
+    this.redis.on('error', (err: Error) => {
+      this.connected = false;
+      logger.warn('Redis connection error:', err.message);
+    });
+  }
+
+  async checkLimit(identifier: string, config: RateLimitConfig): Promise<RateLimitResult> {
+    if (!this.redis || !this.connected) {
+      // Fallback to in-memory if Redis is down
+      logger.warn('Redis unavailable, using in-memory rate limit');
+      return inMemoryLimiter.checkLimit(identifier, config);
+    }
+
+    const key = `ratelimit:${config.prefix}:${identifier}`;
+    const windowMs = config.windowMs;
+    const now = Date.now();
+    const windowStart = now - windowMs;
+
+    try {
+      // Use Redis sorted set for sliding window
+      const multi = this.redis.multi();
+      
+      // Remove old entries outside the window
+      multi.zremrangebyscore(key, 0, windowStart);
+      
+      // Count current entries
+      multi.zcard(key);
+      
+      // Add current request
+      multi.zadd(key, now, `${now}-${Math.random()}`);
+      
+      // Set expiry on the key
+      multi.pexpire(key, windowMs);
+      
+      const results = await multi.exec();
+      const count = (results?.[1]?.[1] as number) || 0;
+      
+      const remaining = Math.max(0, config.limit - count - 1);
+      const reset = now + windowMs;
+
+      return {
+        success: count < config.limit,
+        limit: config.limit,
+        remaining,
+        reset,
+      };
+    } catch (error) {
+      logger.error('Redis rate limit error:', error);
+      // Fallback to in-memory on error
+      return inMemoryLimiter.checkLimit(identifier, config);
+    }
+  }
+}
+
+// =============================================================================
+// Upstash Rate Limiter (for serverless)
+// =============================================================================
+
+class UpstashRateLimiter implements RateLimiterBackend {
+  private ratelimit: ReturnType<typeof import('@upstash/ratelimit').Ratelimit> | null = null;
+  private limits = new Map<string, typeof this.ratelimit>();
+
+  constructor() {
+    try {
+      const { Ratelimit } = require('@upstash/ratelimit');
+      const { Redis } = require('@upstash/redis');
+
+      const redis = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL || '',
+        token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+      });
+
+      this.ratelimit = Ratelimit;
+      this.redis = redis;
+    } catch {
+      logger.warn('Upstash not configured, falling back to Redis/ioredis');
+    }
+  }
+
+  private redis: any;
+
+  async checkLimit(identifier: string, config: RateLimitConfig): Promise<RateLimitResult> {
+    if (!this.ratelimit || !this.redis) {
+      return inMemoryLimiter.checkLimit(identifier, config);
+    }
+
+    const key = `${config.prefix}:${config.limit}:${config.windowMs}`;
+    
+    if (!this.limits.has(key)) {
+      const limiter = new this.ratelimit({
+        redis: this.redis,
+        limiter: this.ratelimit.slidingWindow(
+          config.limit,
+          this.msToWindowString(config.windowMs)
+        ),
+        analytics: true,
+        prefix: `ratelimit:${config.prefix}`,
+      });
+      this.limits.set(key, limiter);
+    }
+
+    const limiter = this.limits.get(key)!;
+    const result = await limiter.limit(identifier);
+
+    return {
+      success: result.success,
+      limit: config.limit,
+      remaining: result.remaining,
+      reset: result.reset,
+    };
+  }
+
+  private msToWindowString(ms: number): `${number} ${'s' | 'm' | 'h' | 'd'}` {
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 60) return `${seconds} s`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} h`;
+    return `${Math.floor(hours / 24)} d`;
+  }
+}
+
+// =============================================================================
+// Global Rate Limiter Instance
+// =============================================================================
+
+const inMemoryLimiter = new InMemoryRateLimiter();
+let rateLimiterBackend: RateLimiterBackend | null = null;
+
+function getRateLimiter(): RateLimiterBackend {
+  if (rateLimiterBackend) {
+    return rateLimiterBackend;
+  }
+
+  // Priority: Upstash -> Redis (ioredis) -> In-Memory
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    logger.info('Using Upstash Redis for rate limiting');
+    rateLimiterBackend = new UpstashRateLimiter();
+  } else if (process.env.REDIS_URL) {
+    logger.info('Using Redis (ioredis) for rate limiting');
+    rateLimiterBackend = new RedisRateLimiter(process.env.REDIS_URL);
+  } else {
+    logger.info('Using in-memory rate limiting (configure REDIS_URL for production)');
+    rateLimiterBackend = inMemoryLimiter;
+  }
+
+  return rateLimiterBackend;
+}
+
+// =============================================================================
+// Public API
+// =============================================================================
+
+export async function checkRateLimit(
+  identifier: string,
+  type: RateLimitType
+): Promise<RateLimitResult> {
+  const config = rateLimits[type];
+  const limiter = getRateLimiter();
+  return limiter.checkLimit(identifier, config);
+}
+
 export async function checkApiRateLimit(
   identifier: string,
   type: RateLimitType,
-  options?: {
-    userId?: string;
-    workspaceId?: string;
-    endpoint?: string;
-  }
+  metadata?: { userId?: string; workspaceId?: string; endpoint?: string }
 ): Promise<RateLimitResult> {
-  const limiter = getRateLimiter();
-  return limiter.checkLimitWithFallback(identifier, type, options);
+  const result = await checkRateLimit(identifier, type);
+
+  // Log rate limit violations
+  if (!result.success && metadata?.userId) {
+    await logAuditEvent({
+      event: AuditEvent.RATE_LIMIT_EXCEEDED,
+      userId: metadata.userId,
+      workspaceId: metadata.workspaceId,
+      metadata: {
+        endpoint: metadata.endpoint,
+        rateLimitType: type,
+        identifier,
+      },
+      severity: 'WARNING',
+    });
+  }
+
+  return result;
 }
 
-/**
- * Get identifier for rate limiting
- */
 export function getRateLimitIdentifier(
   req: Request,
-  options?: {
-    userId?: string;
-    apiKeyId?: string;
-    workspaceId?: string;
-  }
+  context?: { userId?: string; workspaceId?: string }
 ): string {
-  // Use API key ID if available
-  if (options?.apiKeyId) {
-    return `api:${options.apiKeyId}`;
+  // Use user ID if authenticated, otherwise use IP
+  if (context?.userId) {
+    return `user:${context.userId}`;
   }
 
-  // Use user ID if available
-  if (options?.userId) {
-    return `user:${options.userId}`;
-  }
-
-  // Use workspace ID if available
-  if (options?.workspaceId) {
-    return `workspace:${options.workspaceId}`;
-  }
-
-  // Fall back to IP address
-  const forwardedFor = req.headers.get('x-forwarded-for');
-  const ip = forwardedFor?.split(',')[0]?.trim() || 'unknown';
+  // Get IP from request headers
+  const forwarded = req.headers.get('x-forwarded-for');
+  const ip = forwarded ? forwarded.split(',')[0] : req.headers.get('x-real-ip') || 'unknown';
+  
   return `ip:${ip}`;
 }
 
-/**
- * Apply rate limit to response headers
- */
-export function addRateLimitHeaders(headers: Headers, result: RateLimitResult): void {
+export function addRateLimitHeaders(
+  headers: Headers,
+  result: RateLimitResult
+): void {
   headers.set('X-RateLimit-Limit', result.limit.toString());
   headers.set('X-RateLimit-Remaining', result.remaining.toString());
-  headers.set('X-RateLimit-Reset', Math.ceil(result.reset / 1000).toString());
+  headers.set('X-RateLimit-Reset', new Date(result.reset).toISOString());
 }

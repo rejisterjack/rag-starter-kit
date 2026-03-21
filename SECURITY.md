@@ -38,7 +38,7 @@ This project implements the following security measures:
 - **Authorization**: Role-based access control (RBAC) for workspaces
 - **Data Isolation**: Row-level security with userId/workspaceId filtering
 - **Input Validation**: Zod schema validation on all inputs
-- **Rate Limiting**: Upstash Redis-based rate limiting
+- **Rate Limiting**: Redis-based rate limiting (Upstash or Docker Redis)
 - **Audit Logging**: Comprehensive audit trail for sensitive operations
 - **Secure Storage**: Environment variables for secrets, never commit credentials
 - **TypeScript**: Strict type checking to prevent runtime errors

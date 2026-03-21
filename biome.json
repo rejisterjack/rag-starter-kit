@@ -31,7 +31,7 @@
       "tests/**/*.ts",
       "tests/**/*.tsx",
       "prisma/**/*.ts",
-      "scripts/**/*.ts"
+      "server.ts"
     ],
     "ignoreUnknown": true
   },
@@ -51,7 +51,7 @@
   },
   "overrides": [
     {
-      "includes": ["prisma/seed.ts", "scripts/**/*.ts"],
+      "includes": ["prisma/seed.ts", "server.ts"],
       "linter": {
         "rules": {
           "suspicious": {

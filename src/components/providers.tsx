@@ -6,6 +6,7 @@ import { SessionProvider } from 'next-auth/react';
 import { type ReactNode, useState } from 'react';
 
 import { PostHogProvider } from './providers/posthog-provider';
+import { PlausibleProvider } from './providers/plausible-provider';
 
 /**
  * Props for the Providers component
@@ -45,7 +46,9 @@ export function Providers({ children }: ProvidersProps): React.ReactElement {
           enableSystem
           disableTransitionOnChange={false}
         >
-          <PostHogProvider>{children}</PostHogProvider>
+          <PostHogProvider>
+            <PlausibleProvider>{children}</PlausibleProvider>
+          </PostHogProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </SessionProvider>

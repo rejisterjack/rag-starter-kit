@@ -47,8 +47,11 @@ This checklist covers all the steps required to deploy the RAG Starter Kit to pr
 ### 1. Database Migration
 
 ```bash
+# Backup database first
+pg_dump $DATABASE_URL > backup-$(date +%Y%m%d).sql
+
 # Run migrations in production
-./scripts/migrate.sh --backup
+pnpm db:migrate:prod
 ```
 
 - [ ] Backup created successfully
@@ -135,7 +138,7 @@ In case of issues:
 2. **Database Rollback** (if needed)
    ```bash
    # Restore from backup
-   ./scripts/backup.sh --restore
+   psql $DATABASE_URL < backup.sql
    ```
 
 3. **Communication**
@@ -188,7 +191,8 @@ vercel logs --all
 pnpm prisma studio
 
 # Create backup
-./scripts/backup.sh --s3 --bucket your-bucket
+# Upload to S3
+aws s3 cp backup.sql s3://your-bucket/backups/
 
 # Run health check
 curl https://your-domain.com/api/health

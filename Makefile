@@ -1,83 +1,111 @@
-.PHONY: all up down logs install dev build start lint format check test db-generate db-migrate db-studio db-seed inngest
+# RAG Starter Kit - Docker Makefile
+# All commands run inside Docker containers - no local dependencies needed
 
-DC = docker compose -f docker-compose.dev.yml
-APP = $(DC) exec app
+.PHONY: all dev prod down logs build clean-build prune install lint format check test \
+        db-generate db-migrate db-migrate-prod db-studio db-seed backup
 
-# Default target
-all: dev
+DC_DEV = docker compose -f docker-compose.dev.yml
+DC_PROD = docker compose -f docker-compose.prod.yml
+APP_DEV = $(DC_DEV) exec app
 
-# Start the development environment (attached)
+# =============================================================================
+# Development
+# =============================================================================
+
+# Start development environment (attached)
 dev:
-	$(DC) up
+	$(DC_DEV) up
 
-# Start the development environment (detached)
+# Start development environment (detached)
 up:
-	$(DC) up -d
+	$(DC_DEV) up -d
 
-# Stop the development environment
+# Stop all services
 down:
-	$(DC) down
+	$(DC_DEV) down
+	$(DC_PROD) down
 
 # View logs
 logs:
-	$(DC) logs -f
+	$(DC_DEV) logs -f
 
-# Rebuild the docker images (use --no-cache for clean rebuild)
+# =============================================================================
+# Build
+# =============================================================================
+
+# Build/rebuild development images
 build:
-	DOCKER_BUILDKIT=1 $(DC) build
+	DOCKER_BUILDKIT=1 $(DC_DEV) build
 
-# Fast rebuild with cache (recommended for development)
-rebuild:
-	DOCKER_BUILDKIT=1 $(DC) build --progress=plain
-
-# Clean build - no cache, fresh start
+# Clean build (no cache)
 clean-build:
-	DOCKER_BUILDKIT=1 $(DC) build --no-cache
+	DOCKER_BUILDKIT=1 $(DC_DEV) build --no-cache
 
-# Prune all Docker build cache (use when builds are slow)
-prune-cache:
+# Prune Docker cache
+prune:
 	docker builder prune -f
 
-# Install dependencies inside the running app container
-install:
-	$(APP) pnpm install
+# =============================================================================
+# Production
+# =============================================================================
 
-# Start the production server using the prod compose file
-start:
-	docker compose -f docker-compose.prod.yml up -d
+# Start production environment
+prod:
+	$(DC_PROD) up -d
 
-# Run Biome linter and fix issues
-lint:
-	$(APP) pnpm lint:fix
+# Start production with backups
+prod-with-backup:
+	$(DC_PROD) --profile backup up -d
 
-# Format code with Biome
-format:
-	$(APP) pnpm format
+# =============================================================================
+# Database
+# =============================================================================
 
-# Run Biome checks and fix issues
-check:
-	$(APP) pnpm check:fix
-
-# Run all tests
-test:
-	$(APP) pnpm test
-
-# Generate Prisma client
 db-generate:
-	$(APP) pnpm db:generate
+	$(APP_DEV) pnpm db:generate
 
-# Run Prisma database migrations
 db-migrate:
-	$(APP) pnpm db:migrate
+	$(APP_DEV) pnpm db:migrate
 
-# Open Prisma Studio (accessible at http://localhost:5555)
+db-migrate-prod:
+	$(DC_PROD) exec app pnpm db:migrate:prod
+
 db-studio:
-	$(APP) pnpm prisma studio --hostname 0.0.0.0
+	$(APP_DEV) pnpm prisma studio --hostname 0.0.0.0
 
-# Seed the database
 db-seed:
-	$(APP) pnpm db:seed
+	$(APP_DEV) pnpm db:seed
 
-# Restart or start the Inngest service
-inngest:
-	$(DC) up -d inngest
+# Create database backup
+backup:
+	mkdir -p backups
+	$(DC_DEV) exec db pg_dump -U postgres ragdb | gzip > backups/backup-$$(date +%Y%m%d-%H%M%S).sql.gz
+
+# =============================================================================
+# Code Quality
+# =============================================================================
+
+install:
+	$(APP_DEV) pnpm install
+
+lint:
+	$(APP_DEV) pnpm lint:fix
+
+format:
+	$(APP_DEV) pnpm format
+
+check:
+	$(APP_DEV) pnpm check:fix
+
+# =============================================================================
+# Testing
+# =============================================================================
+
+test:
+	$(APP_DEV) pnpm test
+
+test-run:
+	$(APP_DEV) pnpm test:run
+
+test-coverage:
+	$(APP_DEV) pnpm test:coverage

@@ -158,6 +158,18 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 </details>
 
 <details>
+<summary><b>📊 Monitoring & Analytics</b></summary>
+
+- **Plausible Analytics** - Privacy-focused, self-hosted in Docker
+- **PostHog** - Product analytics (optional, cloud or self-hosted)
+- **Real-time metrics** - Chat usage, document processing
+- **Audit logging** - Complete security trail
+- **Rate limiting** - Redis-based with per-endpoint config
+- **Health checks** - `/api/health` endpoint
+
+</details>
+
+<details>
 <summary><b>🎙️ Voice Features</b></summary>
 
 - Speech-to-text (Web Speech API + Whisper)
@@ -185,6 +197,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 | **Background Jobs** | [Inngest](https://www.inngest.com/) |
 | **State** | [TanStack Query](https://tanstack.com/query) + [Zustand](https://github.com/pmndrs/zustand) |
 | **Testing** | [Vitest](https://vitest.dev/) + [Playwright](https://playwright.dev/) |
+| **Analytics** | [Plausible](https://plausible.io/) (self-hosted) + [PostHog](https://posthog.com/) (optional) |
 | **Linting** | [Biome](https://biomejs.dev/) |
 
 ---
@@ -203,21 +216,18 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 git clone https://github.com/rejisterjack/rag-starter-kit.git
 cd rag-starter-kit
 
-# 2. Install dependencies
-pnpm install
-
-# 3. Get FREE API keys:
+# 2. Get FREE API keys:
 # - OpenRouter: https://openrouter.ai/keys
 # - Google AI Studio: https://aistudio.google.com/app/apikey
 
-# 4. Configure environment
-cp .env.docker .env.local
-# Edit .env.local with your API keys
+# 3. Configure environment
+cp .env.example .env
+# Edit .env with your API keys
 
-# 5. Start all services (PostgreSQL, MinIO, Inngest, Next.js)
-make up
+# 4. Start all services (PostgreSQL, Redis, MinIO, Inngest, Plausible, Next.js)
+docker-compose up
 
-# 6. Open http://localhost:3000 🎉
+# 5. Open http://localhost:3000 🎉
 ```
 
 **Services started:**
@@ -228,6 +238,7 @@ make up
 | Prisma Studio | http://localhost:5555 | Database GUI |
 | Inngest Dashboard | http://localhost:8288 | Background jobs |
 | MinIO Console | http://localhost:9001 | S3 storage (minioadmin/minioadmin) |
+| Plausible Analytics | http://localhost:8000 | Privacy-focused analytics |
 
 ### Option B — One-Click Deploy
 
@@ -303,25 +314,36 @@ graph TB
 
 ## 🔑 Environment Variables
 
-Copy `.env.docker` → `.env.local` for development.
+Just **2 files**:
+
+| File | Purpose | Git |
+|------|---------|-----|
+| `.env.example` | Template with all options | ✅ Tracked |
+| `.env` | Your actual secrets | ❌ Ignored |
+
+### Quick Setup
+
+```bash
+# 1. Copy the template
+cp .env.example .env
+
+# 2. Get your FREE API keys:
+# - OpenRouter: https://openrouter.ai/keys
+# - Google AI: https://aistudio.google.com/app/apikey
+
+# 3. Edit .env with your keys
+
+# 4. Start the stack
+docker-compose up
+```
 
 ### Required (FREE)
 
 | Variable | Description | Get Key |
 |----------|-------------|---------|
-| `OPENROUTER_API_KEY` | Chat/LLM models | [openrouter.ai/keys](https://openrouter.ai/keys) |
-| `GOOGLE_API_KEY` | Embeddings | [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) |
+| `OPENROUTER_API_KEY` | Chat/LLM (free models) | [openrouter.ai/keys](https://openrouter.ai/keys) |
+| `GOOGLE_API_KEY` | Embeddings (1,500/day free) | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
 | `NEXTAUTH_SECRET` | JWT signing | `openssl rand -base64 32` |
-
-### Optional
-
-| Variable | Description |
-|----------|-------------|
-| `AUTH_GITHUB_ID/SECRET` | GitHub OAuth |
-| `AUTH_GOOGLE_ID/SECRET` | Google OAuth |
-| `UPSTASH_REDIS_*` | Rate limiting |
-| `SENTRY_DSN` | Error tracking |
-| `NEXT_PUBLIC_POSTHOG_KEY` | Analytics |
 
 ---
 

@@ -1,3 +1,28 @@
+# ============================================
+# RAG Starter Kit - Docker Development Stack
+# ============================================
+#
+# 🚀 QUICK START:
+# 1. Copy .env.example to .env and add your API keys:
+#    cp .env.example .env
+#
+# 2. Edit .env with your actual API keys:
+#    - OPENROUTER_API_KEY (get free: https://openrouter.ai/keys)
+#    - GOOGLE_API_KEY (get free: https://aistudio.google.com/app/apikey)
+#    - NEXTAUTH_SECRET (generate: openssl rand -base64 32)
+#
+# 3. Start all services:
+#    docker-compose up
+#
+# 4. Access the services:
+#    - App: http://localhost:3000
+#    - Prisma Studio: http://localhost:5555
+#    - Inngest: http://localhost:8288
+#    - MinIO Console: http://localhost:9001
+#    - Plausible Analytics: http://localhost:8000
+#
+# ============================================
+
 services:
   app:
     container_name: rag-app
@@ -7,50 +32,29 @@ services:
       target: development
       args:
         - PNPM_CACHE_ID=rag-pnpm-store
+    env_file:
+      - .env
     volumes:
       - .:/app
       - /app/node_modules
       - /app/.next
     ports:
-      - "3000:3000"   # Next.js dev server
-      - "5555:5555"   # Prisma Studio (make db-studio)
+      - "3000:3000"
+      - "5555:5555"
     environment:
       - NODE_ENV=development
       - NEXT_TELEMETRY_DISABLED=1
-      # Primary connection string used by the Prisma pg adapter at runtime
+      # Service URLs (internal Docker network)
       - DATABASE_URL=postgresql://postgres:postgres@rag-db:5432/ragdb
-      # Direct (unpooled) connection used by Prisma Migrate CLI
       - DATABASE_URL_UNPOOLED=postgresql://postgres:postgres@rag-db:5432/ragdb
-      - NEXTAUTH_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-secret-change-in-production}
-      # 🔴 REQUIRED: OpenRouter (FREE chat models) - https://openrouter.ai/keys
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-sk-or-v1-demo}
-      - LLM_PROVIDER=openrouter
-      - DEFAULT_MODEL=deepseek/deepseek-chat:free
-      
-      # 🟡 REQUIRED: Google AI Studio (FREE embeddings) - https://aistudio.google.com/app/apikey
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-demo-key}
-      - EMBEDDING_PROVIDER=google
-      - EMBEDDING_MODEL=text-embedding-004
-      - EMBEDDING_DIMENSIONS=768
-      
-      # Fallback/OpenAI (optional)
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-placeholder}
-      - AUTH_GITHUB_ID=${AUTH_GITHUB_ID}
-      - AUTH_GITHUB_SECRET=${AUTH_GITHUB_SECRET}
-      - INNGEST_EVENT_KEY=${INNGEST_EVENT_KEY:-local}
-      - INNGEST_SIGNING_KEY=${INNGEST_SIGNING_KEY:-signkey-test-123456789}
+      - REDIS_URL=redis://rag-redis:6379
       - S3_ENDPOINT=http://rag-minio:9000
-      - S3_ACCESS_KEY_ID=minioadmin
-      - S3_SECRET_ACCESS_KEY=minioadmin
-      - S3_REGION=us-east-1
-      - S3_FORCE_PATH_STYLE=true
-      - S3_BUCKET_DOCUMENTS=documents
-      - S3_BUCKET_EXPORTS=exports
-      - S3_BUCKET_ATTACHMENTS=attachments
-      - NEXT_PUBLIC_APP_URL=http://localhost:3000
     depends_on:
       db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     networks:
       - rag-network
@@ -64,8 +68,6 @@ services:
       - POSTGRES_DB=ragdb
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # No host port — use Prisma Studio (localhost:5555) or:
-    #   docker compose -f docker-compose.dev.yml exec db psql -U postgres -d ragdb
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d ragdb"]
       interval: 5s
@@ -75,14 +77,17 @@ services:
     networks:
       - rag-network
 
-  inngest:
-    container_name: rag-inngest
-    image: inngest/inngest:latest
-    command: "inngest dev -u http://rag-app:3000/api/inngest"
-    ports:
-      - "8288:8288"   # Inngest dashboard
-    depends_on:
-      - app
+  redis:
+    container_name: rag-redis
+    image: redis:7-alpine
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     networks:
       - rag-network
 
@@ -95,8 +100,7 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "9001:9001"   # MinIO console (http://localhost:9001)
-    # Port 9000 (API) is internal — the app reaches it via http://rag-minio:9000
+      - "9001:9001"
     command: server /data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -124,9 +128,37 @@ services:
     networks:
       - rag-network
 
+  inngest:
+    container_name: rag-inngest
+    image: inngest/inngest:latest
+    command: "inngest dev -u http://rag-app:3000/api/inngest"
+    ports:
+      - "8288:8288"
+    depends_on:
+      - app
+    networks:
+      - rag-network
+
+  plausible:
+    container_name: rag-plausible
+    image: plausible/analytics:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@rag-db:5432/plausible
+      - SECRET_KEY_BASE=dev-secret-key-base-change-in-production-min-64-characters-long
+      - BASE_URL=http://localhost:8000
+      - DISABLE_REGISTRATION=false
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - rag-network
+
 volumes:
   postgres_data:
   minio_data:
+  redis_data:
 
 networks:
   rag-network:

@@ -99,13 +99,16 @@ async function checkOpenAI(): Promise<HealthCheck> {
 }
 
 /**
- * Check Redis/Upstash if configured
+ * Check Redis if configured (supports Upstash or local Redis)
  */
 async function checkRedis(): Promise<HealthCheck> {
   const start = Date.now();
 
+  const isUpstash = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN;
+  const isLocalRedis = process.env.REDIS_URL;
+
   // Skip if not configured
-  if (!process.env.UPSTASH_REDIS_REST_URL) {
+  if (!isUpstash && !isLocalRedis) {
     return {
       name: 'redis',
       healthy: true,
@@ -115,20 +118,27 @@ async function checkRedis(): Promise<HealthCheck> {
   }
 
   try {
-    // Dynamic import to avoid issues if not installed
-    const { Redis } = await import('@upstash/redis');
-    const redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-
-    await redis.ping();
+    if (isUpstash) {
+      // Upstash Redis
+      const { Redis } = await import('@upstash/redis');
+      const redis = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      });
+      await redis.ping();
+    } else {
+      // Local Redis via ioredis
+      const Redis = await import('ioredis');
+      const redis = new Redis.default(process.env.REDIS_URL);
+      await redis.ping();
+      await redis.quit();
+    }
 
     return {
       name: 'redis',
       healthy: true,
       responseTime: Date.now() - start,
-      details: { configured: true },
+      details: { configured: true, type: isUpstash ? 'upstash' : 'redis' },
     };
   } catch (error) {
     return {

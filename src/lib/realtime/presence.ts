@@ -19,7 +19,7 @@ export function getRedisClient(): Redis {
 
     if (!url || !token) {
       throw new Error(
-        'Redis configuration missing. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.'
+        'Redis configuration missing. Set either UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN (for Upstash) or REDIS_URL (for local Redis).'
       );
     }
 
@@ -31,9 +31,12 @@ export function getRedisClient(): Redis {
   return redis;
 }
 
-// Check if Redis is configured
+// Check if Redis is configured (supports Upstash or local Redis)
 export function isRedisConfigured(): boolean {
-  return !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+  return !!(
+    (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) ||
+    process.env.REDIS_URL
+  );
 }
 
 // =============================================================================

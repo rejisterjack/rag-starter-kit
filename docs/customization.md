@@ -300,15 +300,20 @@ CREATE INDEX idx_messages_chat_created ON messages(chat_id, created_at);
 
 ### Caching
 
-Add Redis caching for frequent queries:
+Add Redis caching for frequent queries. Supports Upstash (serverless) or local Redis:
 
 ```typescript
+// Option 1: Upstash (for serverless/Vercel)
 import { Redis } from '@upstash/redis';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
+
+// Option 2: ioredis (for Docker/self-hosted)
+import Redis from 'ioredis';
+const redis = new Redis(process.env.REDIS_URL);
 
 export async function getCachedChats(userId: string) {
   const cacheKey = `chats:${userId}`;
@@ -327,22 +332,22 @@ export async function getCachedChats(userId: string) {
 
 ### Rate Limiting
 
-Implement rate limiting on API routes:
+Rate limiting is built-in and automatically uses Redis if available (Upstash or local):
 
 ```typescript
-import { Ratelimit } from '@upstash/ratelimit';
-
-const ratelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(10, '1 m'), // 10 requests per minute
-});
+import { checkRateLimit } from '@/lib/security/rate-limiter';
 
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
-  const { success } = await ratelimit.limit(ip);
+  const result = await checkRateLimit(ip, 'api');
   
-  if (!success) {
-    return new Response('Too many requests', { status: 429 });
+  if (!result.success) {
+    return new Response('Too many requests', { 
+      status: 429,
+      headers: {
+        'X-RateLimit-Reset': new Date(result.reset).toISOString(),
+      }
+    });
   }
   
   // Process request...

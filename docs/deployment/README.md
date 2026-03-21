@@ -8,16 +8,17 @@ For a new production deployment:
 
 1. **Set up environment variables**:
    ```bash
-   ./scripts/setup-env.sh production
+   cp .env.example .env
+   # Edit .env with production values
    ```
 
 2. **Configure Vercel**:
    - Connect your GitHub repository
-   - Add environment variables from `.env.production`
+   - Add environment variables from `.env`
 
 3. **Set up database**:
    ```bash
-   ./scripts/migrate.sh
+   pnpm db:migrate:prod
    ```
 
 4. **Deploy**:
@@ -109,29 +110,35 @@ See `.env.production.example` for all required variables.
 
 | Variable | Description |
 |----------|-------------|
-| `UPSTASH_REDIS_REST_URL` | Redis for rate limiting |
+| `REDIS_URL` or `UPSTASH_REDIS_REST_URL` | Redis for rate limiting & presence |
 | `SENTRY_DSN` | Error tracking |
 | `GITHUB_CLIENT_ID` | OAuth login |
 
-## Scripts Reference
+## Useful Commands
 
 ### Environment Setup
 ```bash
-./scripts/setup-env.sh [development|production]
+cp .env.example .env
+# Edit .env with your values
 ```
-Interactive script to set up environment variables.
 
 ### Database Migration
 ```bash
-./scripts/migrate.sh [--dry-run] [--force] [--backup]
+# Development
+pnpm db:migrate
+
+# Production
+pnpm db:migrate:prod
 ```
-Production-safe migration with pre/post checks.
 
 ### Database Backup
 ```bash
-./scripts/backup.sh [--s3] [--bucket NAME] [--retention DAYS]
+# Using Docker
+pg_dump $DATABASE_URL > backup.sql
+
+# Using Prisma
+pnpm prisma migrate diff --from-url $DATABASE_URL --to-url $DATABASE_URL --script > schema.sql
 ```
-Create database backups with optional S3 upload.
 
 ## Monitoring
 
