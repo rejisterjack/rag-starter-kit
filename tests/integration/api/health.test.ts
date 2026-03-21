@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll, afterAll } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { createMockRequest } from '@/tests/utils/helpers/setup';
 
 describe('Health API', () => {
@@ -27,7 +27,7 @@ describe('Health API', () => {
     const data = await response.json();
 
     const checkNames = data.checks.map((c: { name: string }) => c.name);
-    
+
     expect(checkNames).toContain('database');
     expect(checkNames).toContain('vector_extension');
     expect(checkNames).toContain('openai');

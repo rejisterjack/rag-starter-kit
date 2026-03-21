@@ -341,8 +341,7 @@ export async function requestMicrophonePermission(): Promise<boolean> {
     // Stop all tracks immediately (we just needed permission)
     stream.getTracks().forEach((track) => track.stop());
     return true;
-  } catch (error) {
-    console.error('Microphone permission denied:', error);
+  } catch (_error) {
     return false;
   }
 }

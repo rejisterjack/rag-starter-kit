@@ -1,19 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Activity, Clock, FileText, MessageSquare, Users, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MetricsCard } from './metrics-card';
+import { RealtimeMonitor } from './realtime-monitor';
 import { TimeSeriesChart } from './time-series-chart';
 import { TopList } from './top-list';
-import { RealtimeMonitor } from './realtime-monitor';
-import {
-  Users,
-  MessageSquare,
-  FileText,
-  Activity,
-  Clock,
-  Zap,
-} from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface AnalyticsData {
   metrics: {
@@ -59,7 +52,7 @@ export function AnalyticsDashboard() {
     // In production, this would be an API call
     const fetchData = async () => {
       setIsLoading(true);
-      
+
       // Mock data - replace with actual API call
       const mockData: AnalyticsData = {
         metrics: {
@@ -105,17 +98,14 @@ export function AnalyticsDashboard() {
     };
 
     fetchData();
-  }, [timeRange]);
+  }, []);
 
   if (isLoading || !data) {
     return (
       <div className="p-6 space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-32 rounded-lg border bg-card animate-pulse"
-            />
+            <div key={i} className="h-32 rounded-lg border bg-card animate-pulse" />
           ))}
         </div>
       </div>

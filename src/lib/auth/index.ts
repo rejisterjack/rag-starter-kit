@@ -1,39 +1,39 @@
 /**
  * @fileoverview Authentication Module - NextAuth.js v5 implementation
- * 
+ *
  * Provides comprehensive authentication including:
  * - OAuth providers (GitHub, Google)
  * - Email/password credentials
  * - SAML 2.0 SSO for enterprise
  * - API key authentication
  * - JWT-based sessions with workspace context
- * 
+ *
  * ## Features
- * 
+ *
  * - **Multi-provider OAuth**: GitHub, Google with secure account linking
  * - **SAML SSO**: Enterprise single sign-on (Okta, Azure AD, OneLogin)
  * - **Session Management**: JWT-based with automatic refresh
  * - **Workspace Context**: Sessions include active workspace and role
  * - **Audit Logging**: All auth events logged for compliance
- * 
+ *
  * ## Usage
- * 
+ *
  * ```typescript
  * import { auth, signIn, signOut } from '@/lib/auth';
- * 
+ *
  * // In server components
  * const session = await auth();
  * if (!session) redirect('/login');
- * 
+ *
  * // In API routes
  * const session = await auth();
  * const userId = session?.user?.id;
- * 
+ *
  * // Sign in
  * await signIn('github');
  * await signIn('credentials', { email, password });
  * ```
- * 
+ *
  * @module auth
  * @requires next-auth
  * @requires @auth/prisma-adapter
@@ -242,8 +242,6 @@ export const {
   events: {
     // Handle new user creation
     async createUser({ user }) {
-      console.log('New user created:', user.email);
-
       // Create default workspace for new user
       if (user.id) {
         try {
@@ -266,8 +264,6 @@ export const {
 
     // Handle successful sign-in
     async signIn({ user, account }) {
-      console.log('User signed in:', user.email, 'via', account?.provider);
-
       // Log OAuth sign-ins
       if (account?.provider !== 'credentials' && user.id) {
         await logAuditEvent({

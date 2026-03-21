@@ -54,7 +54,6 @@ export class CohereReranker implements Reranker {
     this.topN = topN;
 
     if (!this.apiKey) {
-      console.warn('[CohereReranker] No API key provided, re-ranking will fail');
     }
   }
 
@@ -101,11 +100,8 @@ export class CohereReranker implements Reranker {
           retrievalMethod: `${chunks[result.index].retrievalMethod}-cohere`,
         }))
         .slice(0, this.topN);
-
-      console.log(`[CohereReranker] Re-ranked ${chunks.length} chunks`);
       return rerankedChunks;
-    } catch (error) {
-      console.error('[CohereReranker] Re-ranking failed:', error);
+    } catch (_error) {
       // Return original chunks sorted by original score
       return chunks.sort((a, b) => b.score - a.score);
     }
@@ -191,8 +187,6 @@ export class LocalReranker implements Reranker {
 
     // Sort by score and return top N
     const reranked = scoredChunks.sort((a, b) => b.score - a.score).slice(0, this.topN);
-
-    console.log(`[LocalReranker] Re-ranked ${chunks.length} chunks`);
     return reranked;
   }
 
@@ -393,7 +387,6 @@ export function createReranker(config?: Partial<RerankConfig>): Reranker {
       return new CohereReranker(config?.apiKey, config?.model, config?.topN);
     case 'local':
       return new LocalReranker(config?.topN);
-    case 'none':
     default:
       // Return a no-op reranker
       return {

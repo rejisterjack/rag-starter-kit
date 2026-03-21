@@ -3,41 +3,38 @@
  * Exports all LLM-related functionality
  */
 
-// Providers
-export {
-  OpenAIProvider,
-  OPENAI_MODELS,
-} from './openai';
-
-export {
-  OpenRouterProvider,
-  OPENROUTER_FREE_MODELS,
-} from './openrouter';
-
-export {
-  OllamaProvider,
-  OLLAMA_MODELS,
-} from './ollama';
-
 // Factory
 export {
   createLLMProvider,
   createProviderFromEnv,
   getDefaultConfig,
 } from './factory';
+export {
+  OLLAMA_MODELS,
+  OllamaProvider,
+} from './ollama';
+// Providers
+export {
+  OPENAI_MODELS,
+  OpenAIProvider,
+} from './openai';
+export {
+  OPENROUTER_FREE_MODELS,
+  OpenRouterProvider,
+} from './openrouter';
 
 // Types
 export type {
+  LLMConfig,
+  LLMError,
   LLMMessage,
   LLMOptions,
-  LLMResponse,
-  StreamingLLMResponse,
   LLMProvider,
-  LLMConfig,
+  LLMResponse,
+  ModelUnavailableError,
+  OllamaConfig,
   OpenAIConfig,
   OpenRouterConfig,
-  OllamaConfig,
-  LLMError,
   RateLimitError,
-  ModelUnavailableError,
+  StreamingLLMResponse,
 } from './types';

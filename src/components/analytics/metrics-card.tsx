@@ -1,8 +1,8 @@
 'use client';
 
+import { ArrowDown, ArrowUp, type LucideIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { ArrowDown, ArrowUp, type LucideIcon } from 'lucide-react';
 
 interface MetricsCardProps {
   title: string;
@@ -27,18 +27,14 @@ export function MetricsCard({
   return (
     <Card className={cn('transition-all hover:shadow-md', className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         <div className="rounded-md bg-primary/10 p-2">
           <Icon className="h-4 w-4 text-primary" />
         </div>
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        )}
+        {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
         {trend && (
           <div className="flex items-center gap-1 mt-2">
             {trend.isPositive ? (
@@ -54,9 +50,7 @@ export function MetricsCard({
             >
               {trend.value}%
             </span>
-            <span className="text-xs text-muted-foreground ml-1">
-              vs last month
-            </span>
+            <span className="text-xs text-muted-foreground ml-1">vs last month</span>
           </div>
         )}
       </CardContent>

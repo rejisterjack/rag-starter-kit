@@ -37,7 +37,6 @@ export class ToolRegistry {
    */
   register(tool: Tool): void {
     if (this.tools.has(tool.name)) {
-      console.warn(`Tool "${tool.name}" already exists. Overwriting.`);
     }
     this.tools.set(tool.name, tool);
   }

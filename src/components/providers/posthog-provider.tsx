@@ -14,9 +14,9 @@
  * - Supports feature flags
  */
 
+import { usePathname, useSearchParams } from 'next/navigation';
 import posthog from 'posthog-js';
 import { PostHogProvider as PHProvider, usePostHog } from 'posthog-js/react';
-import { usePathname, useSearchParams } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
 
 // PostHog configuration
@@ -37,7 +37,6 @@ function shouldEnablePostHog(): boolean {
   // Don't enable if no API key is configured
   if (!POSTHOG_KEY) {
     if (!IS_DEV) {
-      console.warn('[PostHog] NEXT_PUBLIC_POSTHOG_KEY not configured');
     }
     return false;
   }
@@ -82,7 +81,6 @@ function initPostHog() {
     // Custom properties for all events
     loaded: () => {
       if (IS_DEV) {
-        console.log('[PostHog] Loaded successfully');
       }
     },
     // Persistence based on consent
@@ -168,9 +166,7 @@ function PostHogPageView(): null {
   useEffect(() => {
     if (pathname && posthogClient?.__loaded) {
       // Construct full URL
-      const url = searchParams?.toString()
-        ? `${pathname}?${searchParams.toString()}`
-        : pathname;
+      const url = searchParams?.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
 
       // Capture page view
       posthogClient.capture('$pageview', {
@@ -180,7 +176,6 @@ function PostHogPageView(): null {
       });
 
       if (IS_DEV && ENABLE_IN_DEV) {
-        console.log('[PostHog] Page view:', url);
       }
     }
   }, [pathname, searchParams, posthogClient]);

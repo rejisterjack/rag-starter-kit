@@ -202,7 +202,7 @@ export class HybridRetriever {
    * Perform hybrid retrieval
    */
   async retrieve(query: string, options: RetrievalOptions): Promise<RetrievedChunk[]> {
-    const startTime = Date.now();
+    const _startTime = Date.now();
     const topK = options.topK ?? 5;
 
     // Generate embedding for vector search
@@ -219,10 +219,6 @@ export class HybridRetriever {
         topK: topK * 2,
       }),
     ]);
-
-    console.log(
-      `[HybridRetriever] Vector: ${vectorResults.length}, Keyword: ${keywordResults.length} results`
-    );
 
     // Apply RRF fusion
     const fusedResults = reciprocalRankFusion([vectorResults, keywordResults], this.config.rrfK);
@@ -244,10 +240,6 @@ export class HybridRetriever {
     // Limit to topK
     finalChunks = finalChunks.slice(0, topK);
 
-    console.log(
-      `[HybridRetriever] Fused to ${finalChunks.length} chunks in ${Date.now() - startTime}ms`
-    );
-
     return finalChunks;
   }
 
@@ -255,7 +247,7 @@ export class HybridRetriever {
    * Retrieve with weighted score fusion (alternative to RRF)
    */
   async retrieveWeighted(query: string, options: RetrievalOptions): Promise<RetrievedChunk[]> {
-    const startTime = Date.now();
+    const _startTime = Date.now();
     const topK = options.topK ?? 5;
 
     // Generate embedding for vector search
@@ -283,10 +275,6 @@ export class HybridRetriever {
 
     // Deduplicate and limit
     finalChunks = deduplicateChunks(finalChunks).slice(0, topK);
-
-    console.log(
-      `[HybridRetriever] Weighted fusion: ${finalChunks.length} chunks in ${Date.now() - startTime}ms`
-    );
 
     return finalChunks;
   }

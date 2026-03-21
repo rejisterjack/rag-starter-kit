@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
+import { motion } from 'framer-motion';
 import {
   ArrowRight,
   Bot,
-  Database,
-  Zap,
-  Shield,
-  Workflow,
-  Sparkles,
-  MessageSquare,
-  Upload,
-  Github,
   ChevronRight,
-} from "lucide-react";
+  Database,
+  Github,
+  MessageSquare,
+  Shield,
+  Sparkles,
+  Upload,
+  Workflow,
+  Zap,
+} from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 // Animation variants
 const fadeInUp = {
@@ -35,76 +35,74 @@ const staggerContainer = {
 const features = [
   {
     icon: Bot,
-    title: "Intelligent RAG",
+    title: 'Intelligent RAG',
     description:
-      "Context-aware responses using LangChain and pgvector for unprecedented accuracy and recall.",
+      'Context-aware responses using LangChain and pgvector for unprecedented accuracy and recall.',
   },
   {
     icon: Upload,
-    title: "Seamless Ingestion",
+    title: 'Seamless Ingestion',
     description:
-      "Upload and instantly process PDFs, Word docs, and text files with intelligent auto-chunking.",
+      'Upload and instantly process PDFs, Word docs, and text files with intelligent auto-chunking.',
   },
   {
     icon: Zap,
-    title: "Ultra-low Latency",
+    title: 'Ultra-low Latency',
     description:
-      "Lightning-fast token streaming engineered for natural, uninterrupted conversation flow.",
+      'Lightning-fast token streaming engineered for natural, uninterrupted conversation flow.',
   },
   {
     icon: Database,
-    title: "Persistent Memory",
-    description:
-      "State-of-the-art semantic memory powered by PostgreSQL with pgvector extension.",
+    title: 'Persistent Memory',
+    description: 'State-of-the-art semantic memory powered by PostgreSQL with pgvector extension.',
   },
   {
     icon: Shield,
-    title: "Enterprise Ready",
+    title: 'Enterprise Ready',
     description:
-      "Built with NextAuth, role-based access, and audit logging for production deployments.",
+      'Built with NextAuth, role-based access, and audit logging for production deployments.',
   },
   {
     icon: Workflow,
-    title: "Async Processing",
+    title: 'Async Processing',
     description:
-      "Background job processing with Inngest for handling large documents and batch operations.",
+      'Background job processing with Inngest for handling large documents and batch operations.',
   },
 ];
 
 const steps = [
   {
-    number: "01",
-    title: "Upload Documents",
-    description:
-      "Drag and drop your PDFs, Word documents, or text files. We handle the rest.",
+    number: '01',
+    title: 'Upload Documents',
+    description: 'Drag and drop your PDFs, Word documents, or text files. We handle the rest.',
   },
   {
-    number: "02",
-    title: "Automatic Processing",
+    number: '02',
+    title: 'Automatic Processing',
     description:
-      "Our system chunks, embeds, and indexes your content using state-of-the-art AI models.",
+      'Our system chunks, embeds, and indexes your content using state-of-the-art AI models.',
   },
   {
-    number: "03",
-    title: "Start Chatting",
+    number: '03',
+    title: 'Start Chatting',
     description:
-      "Ask questions in natural language and get accurate, cited answers from your documents.",
+      'Ask questions in natural language and get accurate, cited answers from your documents.',
   },
 ];
 
 const techStack = [
-  { name: "Next.js 15", category: "Framework" },
-  { name: "React 19", category: "UI" },
-  { name: "TypeScript", category: "Language" },
-  { name: "Tailwind CSS", category: "Styling" },
-  { name: "PostgreSQL", category: "Database" },
-  { name: "pgvector", category: "Vector Search" },
-  { name: "Prisma", category: "ORM" },
-  { name: "LangChain", category: "AI Framework" },
-  { name: "OpenAI", category: "AI Models" },
-  { name: "Inngest", category: "Background Jobs" },
-  { name: "MinIO", category: "Object Storage" },
-  { name: "NextAuth", category: "Authentication" },
+  { name: 'Next.js 15', category: 'Framework' },
+  { name: 'React 19', category: 'UI' },
+  { name: 'TypeScript', category: 'Language' },
+  { name: 'Tailwind CSS', category: 'Styling' },
+  { name: 'PostgreSQL', category: 'Database' },
+  { name: 'pgvector', category: 'Vector Search' },
+  { name: 'Prisma', category: 'ORM' },
+  { name: 'LangChain', category: 'AI Framework' },
+  { name: 'OpenAI', category: 'AI Models' },
+  { name: 'Inngest', category: 'Background Jobs' },
+  { name: 'MinIO', category: 'Object Storage' },
+  { name: 'NextAuth', category: 'Authentication' },
 ];
 
 export default function HomePage(): React.ReactElement {
@@ -152,9 +150,8 @@ export default function HomePage(): React.ReactElement {
               variants={fadeInUp}
               className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground"
             >
-              A production-ready RAG starter kit powered by Next.js, LangChain,
-              and PostgreSQL. Deploy intelligent chatbots that understand your
-              documents in minutes, not months.
+              A production-ready RAG starter kit powered by Next.js, LangChain, and PostgreSQL.
+              Deploy intelligent chatbots that understand your documents in minutes, not months.
             </motion.p>
 
             {/* CTA Buttons */}
@@ -191,17 +188,13 @@ export default function HomePage(): React.ReactElement {
               className="mt-16 grid grid-cols-3 gap-8 border-y border-border py-8 sm:gap-12"
             >
               {[
-                { value: "10x", label: "Faster Setup" },
-                { value: "99.9%", label: "Uptime SLA" },
-                { value: "50+", label: "Components" },
+                { value: '10x', label: 'Faster Setup' },
+                { value: '99.9%', label: 'Uptime SLA' },
+                { value: '50+', label: 'Components' },
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
-                  <div className="text-2xl font-bold text-foreground sm:text-3xl">
-                    {stat.value}
-                  </div>
-                  <div className="mt-1 text-sm text-muted-foreground">
-                    {stat.label}
-                  </div>
+                  <div className="text-2xl font-bold text-foreground sm:text-3xl">{stat.value}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
                 </div>
               ))}
             </motion.div>
@@ -223,8 +216,8 @@ export default function HomePage(): React.ReactElement {
               Everything You Need
             </h2>
             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              A complete toolkit for building production-ready RAG applications
-              without the boilerplate.
+              A complete toolkit for building production-ready RAG applications without the
+              boilerplate.
             </p>
           </motion.div>
 
@@ -244,9 +237,7 @@ export default function HomePage(): React.ReactElement {
                 <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                   <feature.icon className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  {feature.title}
-                </h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">{feature.title}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
                   {feature.description}
                 </p>
@@ -270,8 +261,7 @@ export default function HomePage(): React.ReactElement {
               How It Works
             </h2>
             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Get up and running in three simple steps. No complex configuration
-              required.
+              Get up and running in three simple steps. No complex configuration required.
             </p>
           </motion.div>
 
@@ -286,16 +276,12 @@ export default function HomePage(): React.ReactElement {
                 className="relative"
               >
                 <div className="flex items-center gap-4 mb-4">
-                  <span className="text-4xl font-bold text-primary/30">
-                    {step.number}
-                  </span>
+                  <span className="text-4xl font-bold text-primary/30">{step.number}</span>
                   {index < steps.length - 1 && (
                     <div className="hidden lg:block flex-1 h-px bg-border" />
                   )}
                 </div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">
-                  {step.title}
-                </h3>
+                <h3 className="text-xl font-semibold text-foreground mb-2">{step.title}</h3>
                 <p className="text-muted-foreground">{step.description}</p>
               </motion.div>
             ))}
@@ -317,8 +303,8 @@ export default function HomePage(): React.ReactElement {
               Modern Tech Stack
             </h2>
             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Built with the latest technologies for performance, scalability,
-              and developer experience.
+              Built with the latest technologies for performance, scalability, and developer
+              experience.
             </p>
           </motion.div>
 
@@ -335,12 +321,8 @@ export default function HomePage(): React.ReactElement {
                 variants={fadeInUp}
                 className="group inline-flex items-center gap-2 rounded-full bg-card border border-border px-4 py-2 hover:border-primary/50 hover:bg-primary/5 transition-all"
               >
-                <span className="text-sm font-medium text-foreground">
-                  {tech.name}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {tech.category}
-                </span>
+                <span className="text-sm font-medium text-foreground">{tech.name}</span>
+                <span className="text-xs text-muted-foreground">{tech.category}</span>
               </motion.div>
             ))}
           </motion.div>
@@ -368,8 +350,8 @@ export default function HomePage(): React.ReactElement {
                 Ready to Get Started?
               </h2>
               <p className="mt-4 text-lg text-primary-foreground/80 max-w-2xl mx-auto">
-                Deploy your own AI-powered document chatbot in minutes. Clone the
-                repo, set your environment variables, and start chatting.
+                Deploy your own AI-powered document chatbot in minutes. Clone the repo, set your
+                environment variables, and start chatting.
               </p>
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button

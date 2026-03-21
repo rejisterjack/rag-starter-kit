@@ -79,14 +79,8 @@ export async function logAuditEvent(input: LogAuditEventInput): Promise<void> {
           userAgent: input.userAgent,
         },
       })
-      .catch((error) => {
-        // Log to console if database logging fails
-        console.error('Failed to write audit log:', error);
-      });
-  } catch (error) {
-    // Never throw from audit logging
-    console.error('Audit logging error:', error);
-  }
+      .catch((_error) => {});
+  } catch (_error) {}
 }
 
 /**

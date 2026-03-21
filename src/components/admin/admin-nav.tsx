@@ -1,8 +1,8 @@
 'use client';
 
+import { BarChart3, LayoutDashboard, Shield, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, LayoutDashboard, Shield, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavItem {

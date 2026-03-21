@@ -9,8 +9,8 @@
  * - Authenticate and save storage state
  */
 
+import { execSync } from 'node:child_process';
 import { chromium, type FullConfig } from '@playwright/test';
-import { execSync } from 'child_process';
 
 // import path from 'path';
 

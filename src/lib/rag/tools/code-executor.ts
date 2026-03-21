@@ -16,7 +16,10 @@ const CodeExecutorParamsSchema = z.object({
   code: z.string().describe('The JavaScript code to execute'),
   timeout: z.number().optional().describe('Execution timeout in milliseconds (default: 5000)'),
   memoryLimit: z.number().optional().describe('Memory limit in MB (default: 50)'),
-  context: z.record(z.string(), z.unknown()).optional().describe('Variables to inject into the execution context'),
+  context: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe('Variables to inject into the execution context'),
 });
 
 type CodeExecutorParams = z.infer<typeof CodeExecutorParamsSchema>;
@@ -80,7 +83,7 @@ const DANGEROUS_PATTERNS = [
   /__filename/i,
   /module\.exports/i,
   /exports\./i,
-  
+
   // Network access
   /fetch\s*\(/i,
   /XMLHttpRequest/i,
@@ -91,7 +94,7 @@ const DANGEROUS_PATTERNS = [
   /document\./i,
   /window\./i,
   /globalThis\./i,
-  
+
   // Dangerous globals
   /eval\s*\(/i,
   /Function\s*\(/i,
@@ -101,16 +104,16 @@ const DANGEROUS_PATTERNS = [
   /clearTimeout/i,
   /clearInterval/i,
   /clearImmediate/i,
-  
+
   // Prototype pollution
   /__proto__/i,
   /prototype\s*\[/i,
   /constructor\s*\[/i,
-  
+
   // Dynamic imports
   /import\s*\(/i,
   /import\s+.*\s+from/i,
-  
+
   // Workers
   /Worker/i,
   /SharedArrayBuffer/i,
@@ -145,7 +148,7 @@ function validateCode(code: string): { valid: boolean; error?: string } {
     /for\s*\(\s*;\s*;\s*\)/i,
     /while\s*\(\s*1\s*\)/i,
   ];
-  
+
   for (const pattern of loopPatterns) {
     if (pattern.test(code)) {
       return {
@@ -168,24 +171,30 @@ function createSandbox(context: Record<string, unknown> = {}): SandboxContext {
     // Safe console implementation
     console: {
       log: (...args: unknown[]) => {
-        logs.push(args.map(arg => 
-          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-        ).join(' '));
+        logs.push(
+          args.map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg))).join(' ')
+        );
       },
       error: (...args: unknown[]) => {
-        logs.push(`[ERROR] ${args.map(arg => 
-          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-        ).join(' ')}`);
+        logs.push(
+          `[ERROR] ${args
+            .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
+            .join(' ')}`
+        );
       },
       warn: (...args: unknown[]) => {
-        logs.push(`[WARN] ${args.map(arg => 
-          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-        ).join(' ')}`);
+        logs.push(
+          `[WARN] ${args
+            .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
+            .join(' ')}`
+        );
       },
       info: (...args: unknown[]) => {
-        logs.push(`[INFO] ${args.map(arg => 
-          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-        ).join(' ')}`);
+        logs.push(
+          `[INFO] ${args
+            .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
+            .join(' ')}`
+        );
       },
     },
 
@@ -205,8 +214,8 @@ function createSandbox(context: Record<string, unknown> = {}): SandboxContext {
     Promise: Promise,
     parseInt: parseInt,
     parseFloat: parseFloat,
-    isNaN: isNaN,
-    isFinite: isFinite,
+    isNaN: Number.isNaN,
+    isFinite: Number.isFinite,
     encodeURI: encodeURI,
     decodeURI: decodeURI,
     encodeURIComponent: encodeURIComponent,
@@ -250,7 +259,7 @@ async function executeInSandbox(
 
   // Use Function constructor with sandbox bindings
   const sandboxKeys = Object.keys(sandbox);
-  const sandboxValues = sandboxKeys.map(key => (sandbox as Record<string, unknown>)[key]);
+  const sandboxValues = sandboxKeys.map((key) => (sandbox as Record<string, unknown>)[key]);
 
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
   const fn = new Function(...sandboxKeys, wrappedCode);
@@ -258,7 +267,7 @@ async function executeInSandbox(
   // Execute with timeout using Promise.race
   const executionPromise = Promise.resolve().then(() => {
     const result = fn(...sandboxValues);
-    
+
     // Capture any remaining logs
     if ((sandbox._logs as string[]).length > 0) {
       logs.push(...(sandbox._logs as string[]));
@@ -321,7 +330,9 @@ Examples:
       // Check memory limit (rough estimate)
       const codeSizeMB = Buffer.byteLength(code, 'utf8') / (1024 * 1024);
       if (codeSizeMB > memoryLimit) {
-        return createErrorResult(`Code size (${codeSizeMB.toFixed(2)}MB) exceeds memory limit (${memoryLimit}MB)`);
+        return createErrorResult(
+          `Code size (${codeSizeMB.toFixed(2)}MB) exceeds memory limit (${memoryLimit}MB)`
+        );
       }
 
       // Execute code
@@ -406,8 +417,13 @@ export async function executeCodeBatch(
     code: string;
     context?: Record<string, unknown>;
   }>
-): Promise<Record<string, { success: boolean; result?: unknown; error?: string; logs?: string[] }>> {
-  const results: Record<string, { success: boolean; result?: unknown; error?: string; logs?: string[] }> = {};
+): Promise<
+  Record<string, { success: boolean; result?: unknown; error?: string; logs?: string[] }>
+> {
+  const results: Record<
+    string,
+    { success: boolean; result?: unknown; error?: string; logs?: string[] }
+  > = {};
 
   for (const { name, code, context } of snippets) {
     results[name] = await executeCode(code, { context });

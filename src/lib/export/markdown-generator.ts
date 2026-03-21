@@ -341,9 +341,6 @@ export class MarkdownGenerator {
 
       case 'apa':
         return `${num}. ${citation.documentName}${citation.page ? `, p. ${citation.page}` : ''}.`;
-
-      case 'footnotes':
-      case 'endnotes':
       default:
         return `[^${num}]: ${citation.documentName}${citation.page ? `, Page ${citation.page}` : ''}`;
     }
@@ -379,7 +376,6 @@ export class MarkdownGenerator {
         return date.toISOString();
       case 'relative':
         return this.getRelativeTime(date);
-      case 'locale':
       default:
         return date.toLocaleString();
     }
@@ -461,7 +457,7 @@ export function citationsToFootnotes(citations: ExportCitation[]): string {
     return `[^${index + 1}]: ${citation.documentName}${pageInfo}`;
   });
 
-  return '\n\n' + lines.join('\n') + '\n';
+  return `\n\n${lines.join('\n')}\n`;
 }
 
 /**

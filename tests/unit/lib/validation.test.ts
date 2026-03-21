@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  validateEmail,
-  validateUrl,
-  validateFileType,
-  validateFileSize,
-  validateApiKey,
   sanitizeInput,
+  validateApiKey,
+  validateEmail,
+  validateFileSize,
+  validateFileType,
+  validateUrl,
 } from '@/lib/security/validation';
 
 describe('Validation Utilities', () => {
@@ -26,7 +26,7 @@ describe('Validation Utilities', () => {
     });
 
     it('should reject emails exceeding max length', () => {
-      const longEmail = 'a'.repeat(250) + '@example.com';
+      const longEmail = `${'a'.repeat(250)}@example.com`;
       expect(validateEmail(longEmail)).toBe(false);
     });
   });

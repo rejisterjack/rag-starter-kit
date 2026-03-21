@@ -1,10 +1,10 @@
 /**
  * @fileoverview RAG Chain - Core RAG pipeline implementation
- * 
+ *
  * This module orchestrates the complete Retrieval-Augmented Generation pipeline,
- * including document retrieval, context building, prompt construction, and 
+ * including document retrieval, context building, prompt construction, and
  * response generation. It provides both synchronous and streaming interfaces.
- * 
+ *
  * @example
  * ```typescript
  * // Basic usage
@@ -14,7 +14,7 @@
  *   workspaceId: "ws_123",
  *   userId: "user_456"
  * });
- * 
+ *
  * // Streaming usage
  * for await (const event of chain.stream({
  *   query: "Explain this document",
@@ -26,7 +26,7 @@
  *   }
  * }
  * ```
- * 
+ *
  * @module rag/chain
  * @see {@link module:rag/retrieval} for retrieval implementation
  * @see {@link module:ai/llm} for LLM provider interface
@@ -164,45 +164,39 @@ export class RAGChain {
    */
   async invoke(params: RAGChainParams): Promise<RAGResponse> {
     const { query, workspaceId, history = [], config = {} } = params;
+    // Step 1: Retrieve relevant chunks
+    const sources = await this.retrievalEngine.retrieve(query, workspaceId, config);
 
-    try {
-      // Step 1: Retrieve relevant chunks
-      const sources = await this.retrievalEngine.retrieve(query, workspaceId, config);
+    // Step 2: Build context from sources
+    const context = buildContext(sources);
 
-      // Step 2: Build context from sources
-      const context = buildContext(sources);
+    // Step 3: Build messages
+    const messages = this.promptBuilder.buildMessages({
+      query,
+      context,
+      history,
+      config,
+    });
 
-      // Step 3: Build messages
-      const messages = this.promptBuilder.buildMessages({
-        query,
-        context,
-        history,
-        config,
-      });
+    // Step 4: Generate response
+    const llmOptions: LLMOptions = {
+      model: config.model,
+      temperature: config.temperature,
+      maxTokens: config.maxTokens,
+    };
 
-      // Step 4: Generate response
-      const llmOptions: LLMOptions = {
-        model: config.model,
-        temperature: config.temperature,
-        maxTokens: config.maxTokens,
-      };
+    const response = await this.llmProvider.generate(messages, llmOptions);
 
-      const response = await this.llmProvider.generate(messages, llmOptions);
+    // Calculate confidence based on source relevance
+    const confidence = this.calculateConfidence(sources);
 
-      // Calculate confidence based on source relevance
-      const confidence = this.calculateConfidence(sources);
-
-      return {
-        answer: response.content,
-        sources,
-        usage: response.usage,
-        confidence,
-        model: response.model,
-      };
-    } catch (error) {
-      console.error('RAG chain error:', error);
-      throw error;
-    }
+    return {
+      answer: response.content,
+      sources,
+      usage: response.usage,
+      confidence,
+      model: response.model,
+    };
   }
 
   /**
@@ -283,7 +277,6 @@ export class RAGChain {
         },
       };
     } catch (error) {
-      console.error('RAG chain streaming error:', error);
       yield {
         type: 'error',
         data: {

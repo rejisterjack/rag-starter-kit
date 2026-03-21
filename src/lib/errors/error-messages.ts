@@ -1,6 +1,6 @@
 /**
  * Error Messages
- * 
+ *
  * User-friendly error messages with i18n support.
  * Messages are organized by error category and provide
  * actionable suggestions when applicable.

@@ -5,77 +5,74 @@
 
 // RAG Chain
 export {
-  RAGChain,
+  createCustomRAGChain,
+  createRAGChain,
   DefaultPromptBuilder,
   DefaultRetrievalEngine,
-  createRAGChain,
-  createCustomRAGChain,
-  type RetrievedChunk,
   type Message,
-  type RAGResponse,
-  type StreamEvent,
-  type RAGChainParams,
   type PromptBuilder,
+  RAGChain,
+  type RAGChainParams,
+  type RAGResponse,
   type RetrievalEngine,
+  type RetrievedChunk,
+  type StreamEvent,
 } from './chain';
-
-// Memory
-export {
-  ConversationMemory,
-  createConversationMemory,
-  formatMessagesForContext,
-  extractKeyFacts,
-  type MemoryConfig,
-  type ConversationSummary,
-} from './memory';
-
 // Citations
 export {
+  type Citation,
   CitationHandler,
+  type CitationMatch,
   createCitationHandler,
-  sourcesToChunks,
   extractCitationNumbers,
+  formatCitationForDisplay,
+  getMostRelevantCitation,
+  type HighlightedSource,
   removeCitations,
   replaceCitationsWithLinks,
   sortCitationsByScore,
-  getMostRelevantCitation,
-  formatCitationForDisplay,
-  type Citation,
-  type HighlightedSource,
-  type CitationMatch,
+  sourcesToChunks,
 } from './citations';
-
 // Error Handling
 export {
-  ResilientRAGChain,
-  FallbackLLMProvider,
   CircuitBreaker,
-  ResilientRAGError,
-  withRetry,
-  createResilientRAGChain,
-  createFallbackProvider,
   createCircuitBreaker,
-  type FallbackConfig,
-  type ResilientRAGResponse,
+  createFallbackProvider,
+  createResilientRAGChain,
   type ErrorContext,
   type ErrorHandler,
+  type FallbackConfig,
+  FallbackLLMProvider,
+  ResilientRAGChain,
+  ResilientRAGError,
+  type ResilientRAGResponse,
+  withRetry,
 } from './error-handling';
+// Memory
+export {
+  ConversationMemory,
+  type ConversationSummary,
+  createConversationMemory,
+  extractKeyFacts,
+  formatMessagesForContext,
+  type MemoryConfig,
+} from './memory';
 
 // Token Budget
 export {
-  TokenBudgetManager,
-  createTokenBudgetManager,
-  estimateTokens,
-  estimateMessageTokens,
-  truncateToTokens,
-  getModelTokenLimits,
-  validateTokenConfig,
+  type AllocationResult,
   calculateTokenStats,
+  createTokenBudgetManager,
+  estimateMessageTokens,
+  estimateTokens,
+  getModelTokenLimits,
   MODEL_TOKEN_LIMITS,
+  type ModelTokenLimits,
   type TokenAllocation,
   type TokenBudget,
-  type AllocationResult,
-  type ModelTokenLimits,
+  TokenBudgetManager,
+  truncateToTokens,
+  validateTokenConfig,
 } from './token-budget';
 
 // ============================================================================
@@ -83,97 +80,89 @@ export {
 // ============================================================================
 
 // Query Router
-export {
-  QueryRouter,
-  QueryType,
-  createQueryRouter,
-  classifyQuery,
-  type QueryClassification,
-  type RouterConfig,
-} from './agent';
-
 // ReAct Agent
-export {
-  ReActAgent,
-  createReActAgent,
-  type ReActStep,
-  type ReActResult,
-  type AgentContext,
-  type ReActConfig,
-} from './agent';
-
 // Multi-Step Reasoning
 export {
-  MultiStepReasoner,
+  type AgentContext,
+  classifyQuery,
   createMultiStepReasoner,
-  type SubQuery,
-  type SubQueryResult,
-  type MultiStepResult,
+  createQueryRouter,
+  createReActAgent,
   type MultiStepConfig,
   type MultiStepContext,
+  MultiStepReasoner,
+  type MultiStepResult,
+  type QueryClassification,
+  QueryRouter,
+  QueryType,
+  ReActAgent,
+  type ReActConfig,
+  type ReActResult,
+  type ReActStep,
+  type RouterConfig,
+  type SubQuery,
+  type SubQueryResult,
 } from './agent';
-
-// Tools
-export {
-  type Tool,
-  type ToolResult,
-  ToolRegistry,
-  createTool,
-  createSuccessResult,
-  createErrorResult,
-  calculatorTool,
-  calculate,
-  convert,
-  calculateBatch,
-  createWebSearchTool,
-  getDefaultWebSearchProvider,
-  type WebSearchProvider,
-  type WebSearchResult,
-  type WebSearchOptions,
-  TavilyProvider,
-  SerpAPIProvider,
-  DuckDuckGoProvider,
-  searchDocumentsTool,
-  documentSummaryTool,
-  documentMetadataTool,
-  semanticSearchTool,
-  compareDocumentsTool,
-  documentTools,
-  currentTimeTool,
-  getAllTools,
-  createToolRegistry,
-} from './tools';
-
 // Conversation Branching
 export {
-  forkConversation,
-  quickBranch,
-  editMessage,
-  truncateConversation,
-  compareBranches,
-  listBranches,
-  getConversationTree,
-  mergeBranch,
-  type ConversationBranch,
   type BranchComparison,
+  type ConversationBranch,
+  compareBranches,
   type EditMessageResult,
+  editMessage,
+  forkConversation,
+  getConversationTree,
+  listBranches,
+  mergeBranch,
+  quickBranch,
+  truncateConversation,
 } from './conversation-branch';
+// Tools
+export {
+  calculate,
+  calculateBatch,
+  calculatorTool,
+  compareDocumentsTool,
+  convert,
+  createErrorResult,
+  createSuccessResult,
+  createTool,
+  createToolRegistry,
+  createWebSearchTool,
+  currentTimeTool,
+  DuckDuckGoProvider,
+  documentMetadataTool,
+  documentSummaryTool,
+  documentTools,
+  getAllTools,
+  getDefaultWebSearchProvider,
+  SerpAPIProvider,
+  searchDocumentsTool,
+  semanticSearchTool,
+  TavilyProvider,
+  type Tool,
+  ToolRegistry,
+  type ToolResult,
+  type WebSearchOptions,
+  type WebSearchProvider,
+  type WebSearchResult,
+} from './tools';
 
 // ============================================================================
 // Retrieval (re-exported for convenience)
 // ============================================================================
 
 export {
-  generateQueryEmbedding,
-  searchSimilarChunks,
-  searchSimilarChunksByDocuments,
-  retrieveSources,
-  retrieveSourcesWithCache,
-  buildContext,
-  formatSourceCitations,
-  rerankSources,
-  deduplicateSources,
   aggregateByDocument,
+  buildContext,
+  deduplicateSources,
+  formatSourceCitations,
+  generateQueryEmbedding,
   getSourceDocumentStats,
   hybridSearch,
+  rerankSources,
+  retrieveSources,
+  retrieveSourcesWithCache,
+  searchSimilarChunks,
+  searchSimilarChunksByDocuments,
 } from './retrieval';

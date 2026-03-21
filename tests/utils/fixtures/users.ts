@@ -1,6 +1,6 @@
 /**
  * User Fixtures
- * 
+ *
  * Sample users for testing authentication and authorization.
  */
 

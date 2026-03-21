@@ -48,7 +48,7 @@ const defaultConfig: RAGConfig = {
 /**
  * Best OpenRouter free models - tried in order if primary fails
  */
-const MODEL_FALLBACK_CHAIN = [
+const _MODEL_FALLBACK_CHAIN = [
   'deepseek/deepseek-chat:free',
   'mistralai/mistral-7b-instruct:free',
   'meta-llama/llama-3.1-8b-instruct:free',

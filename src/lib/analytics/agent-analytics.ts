@@ -39,15 +39,17 @@ export interface AgentQueryMetrics {
   steps: number;
   toolCalls: number;
   latency: number;
-  tokensUsed: {
-    prompt: number;
-    completion: number;
-    total: number;
-  } | {
-    inputTokens: number;
-    outputTokens: number;
-    totalTokens: number;
-  };
+  tokensUsed:
+    | {
+        prompt: number;
+        completion: number;
+        total: number;
+      }
+    | {
+        inputTokens: number;
+        outputTokens: number;
+        totalTokens: number;
+      };
   toolUsage: Record<string, number>;
   errorType?: string;
   terminated?: boolean;
@@ -128,7 +130,7 @@ export class AgentAnalytics {
    */
   startSession(userId: string, workspaceId?: string): string {
     const sessionId = crypto.randomUUID();
-    
+
     this.currentSession = {
       sessionId,
       userId,
@@ -171,7 +173,7 @@ export class AgentAnalytics {
       }
       this.currentSession.totalSteps += metrics.steps;
       this.currentSession.totalToolCalls += metrics.toolCalls;
-      
+
       // Get total tokens
       let totalTokens = 0;
       if ('total' in metrics.tokensUsed) {
@@ -180,9 +182,11 @@ export class AgentAnalytics {
         totalTokens = metrics.tokensUsed.totalTokens;
       }
       this.currentSession.totalTokensUsed += totalTokens;
-      
+
       // Update running average latency
-      const totalLatency = this.currentSession.averageLatency * (this.currentSession.totalQueries - 1) + metrics.latency;
+      const totalLatency =
+        this.currentSession.averageLatency * (this.currentSession.totalQueries - 1) +
+        metrics.latency;
       this.currentSession.averageLatency = totalLatency / this.currentSession.totalQueries;
     }
 
@@ -232,12 +236,15 @@ export class AgentAnalytics {
     });
 
     // Group by tool name
-    const toolStats = new Map<string, {
-      totalCalls: number;
-      successfulCalls: number;
-      totalLatency: number;
-      lastUsed: Date;
-    }>();
+    const toolStats = new Map<
+      string,
+      {
+        totalCalls: number;
+        successfulCalls: number;
+        totalLatency: number;
+        lastUsed: Date;
+      }
+    >();
 
     for (const usage of filteredUsages) {
       const stats = toolStats.get(usage.toolName) ?? {
@@ -246,12 +253,12 @@ export class AgentAnalytics {
         totalLatency: 0,
         lastUsed: usage.timestamp,
       };
-      
+
       stats.totalCalls++;
       if (usage.success) stats.successfulCalls++;
       stats.totalLatency += usage.latency;
       if (usage.timestamp > stats.lastUsed) stats.lastUsed = usage.timestamp;
-      
+
       toolStats.set(usage.toolName, stats);
     }
 
@@ -304,12 +311,12 @@ export class AgentAnalytics {
 
     // Estimate step efficiency
     const successfulQueries = filteredQueries.filter((q) => q.success);
-    const avgStepsSuccessful = successfulQueries.length > 0
-      ? successfulQueries.reduce((sum, q) => sum + q.steps, 0) / successfulQueries.length
-      : 0;
-    const stepEfficiency = avgStepsSuccessful > 0 
-      ? Math.max(0.5, 1 - (avgStepsSuccessful - 2) / 10)
-      : 0;
+    const avgStepsSuccessful =
+      successfulQueries.length > 0
+        ? successfulQueries.reduce((sum, q) => sum + q.steps, 0) / successfulQueries.length
+        : 0;
+    const stepEfficiency =
+      avgStepsSuccessful > 0 ? Math.max(0.5, 1 - (avgStepsSuccessful - 2) / 10) : 0;
 
     return {
       averageStepsPerQuery: Math.round((totalSteps / filteredQueries.length) * 100) / 100,
@@ -347,7 +354,7 @@ export class AgentAnalytics {
     const totalQueries = queries.length;
     const completedQueries = queries.filter((q) => q.success).length;
     const totalLatency = queries.reduce((sum, q) => sum + q.latency, 0);
-    
+
     // Calculate total tokens
     const totalTokens = queries.reduce((sum, q) => {
       if ('total' in q.tokensUsed) {
@@ -358,12 +365,16 @@ export class AgentAnalytics {
     }, 0);
 
     // Get tool usage stats
-    const toolUsage = await this.getToolUsageStats(userId, workspaceId, 
+    const toolUsage = await this.getToolUsageStats(
+      userId,
+      workspaceId,
       Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
     );
 
     // Get reasoning quality
-    const reasoningQuality = await this.getReasoningQualityMetrics(userId, workspaceId,
+    const reasoningQuality = await this.getReasoningQualityMetrics(
+      userId,
+      workspaceId,
       Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
     );
 
@@ -382,7 +393,7 @@ export class AgentAnalytics {
       .sort((a, b) => b[1].count - a[1].count)
       .slice(0, 10)
       .map(([query, stats]) => ({
-        query: query.length > 100 ? query.substring(0, 100) + '...' : query,
+        query: query.length > 100 ? `${query.substring(0, 100)}...` : query,
         count: stats.count,
         averageLatency: Math.round((stats.totalLatency / stats.count) * 100) / 100,
       }));
@@ -421,12 +432,10 @@ export class AgentAnalytics {
       overview: {
         totalSessions: sessions.length,
         totalQueries,
-        completionRate: totalQueries > 0 
-          ? Math.round((completedQueries / totalQueries) * 1000) / 10 
-          : 0,
-        averageLatency: totalQueries > 0 
-          ? Math.round((totalLatency / totalQueries) * 100) / 100 
-          : 0,
+        completionRate:
+          totalQueries > 0 ? Math.round((completedQueries / totalQueries) * 1000) / 10 : 0,
+        averageLatency:
+          totalQueries > 0 ? Math.round((totalLatency / totalQueries) * 100) / 100 : 0,
         totalTokensUsed: totalTokens,
       },
       toolUsage,
@@ -440,7 +449,10 @@ export class AgentAnalytics {
   /**
    * Get real-time agent stats
    */
-  async getRealtimeStats(userId?: string, workspaceId?: string): Promise<{
+  async getRealtimeStats(
+    userId?: string,
+    workspaceId?: string
+  ): Promise<{
     activeSessions: number;
     queriesLastHour: number;
     averageLatencyLastHour: number;
@@ -463,9 +475,12 @@ export class AgentAnalytics {
     });
 
     const queriesLastHour = recentQueries.length;
-    const averageLatencyLastHour = queriesLastHour > 0
-      ? Math.round((recentQueries.reduce((sum, q) => sum + q.latency, 0) / queriesLastHour) * 100) / 100
-      : 0;
+    const averageLatencyLastHour =
+      queriesLastHour > 0
+        ? Math.round(
+            (recentQueries.reduce((sum, q) => sum + q.latency, 0) / queriesLastHour) * 100
+          ) / 100
+        : 0;
 
     // Count tool calls in last hour
     const toolCallsLastHour = toolUsageStore.filter((t) => {

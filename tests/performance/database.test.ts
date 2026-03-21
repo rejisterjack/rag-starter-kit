@@ -1,13 +1,13 @@
 /**
  * Database Query Performance Tests
- * 
+ *
  * Tests for measuring database query performance.
  * Run with: pnpm vitest run tests/performance/database.test.ts
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { generateTestChunks } from '@tests/utils/generators';
+import { describe, expect, it } from 'vitest';
 import { prisma } from '@/lib/db';
-import { generateTestDocuments, generateTestChunks } from '@tests/utils/generators';
 
 describe('Database Query Performance', () => {
   // Performance thresholds (in milliseconds)
@@ -112,7 +112,9 @@ describe('Database Query Performance', () => {
 
   describe('Vector Search Queries', () => {
     it('should perform vector similarity search within threshold', async () => {
-      const queryVector = Array(1536).fill(0).map(() => Math.random());
+      const queryVector = Array(1536)
+        .fill(0)
+        .map(() => Math.random());
 
       const start = performance.now();
 
@@ -130,7 +132,9 @@ describe('Database Query Performance', () => {
     });
 
     it('should perform vector search with filters within threshold', async () => {
-      const queryVector = Array(1536).fill(0).map(() => Math.random());
+      const queryVector = Array(1536)
+        .fill(0)
+        .map(() => Math.random());
 
       const start = performance.now();
 

@@ -160,14 +160,19 @@ test.describe('Chat', () => {
       await page.click('[data-testid="agent-mode"]');
 
       // Ask a complex question
-      await page.fill('[data-testid="chat-input"]', 'Analyze the financial trends and provide recommendations');
+      await page.fill(
+        '[data-testid="chat-input"]',
+        'Analyze the financial trends and provide recommendations'
+      );
       await page.click('[data-testid="send-button"]');
 
       // Should show agent thinking steps
       await expect(page.locator('[data-testid="agent-thinking"]')).toBeVisible();
 
       // Wait for response
-      await expect(page.locator('[data-testid="streaming-indicator"]')).toBeHidden({ timeout: 60000 });
+      await expect(page.locator('[data-testid="streaming-indicator"]')).toBeHidden({
+        timeout: 60000,
+      });
 
       // Should show final response
       await expect(page.locator('[data-testid="assistant-message"]').last()).not.toBeEmpty();
@@ -386,7 +391,9 @@ test.describe('Chat', () => {
       await page.goto('/chat');
 
       // History should be preserved
-      await expect(page.locator('[data-testid="user-message"]')).toContainText('Save this conversation');
+      await expect(page.locator('[data-testid="user-message"]')).toContainText(
+        'Save this conversation'
+      );
     });
   });
 

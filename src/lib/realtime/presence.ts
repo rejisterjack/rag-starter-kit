@@ -125,7 +125,6 @@ export async function updatePresence(
   data: Omit<PresenceData, 'lastSeen' | 'connectedAt'>
 ): Promise<void> {
   if (!isRedisConfigured()) {
-    console.warn('Redis not configured, skipping presence update');
     return;
   }
 

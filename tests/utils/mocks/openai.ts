@@ -1,6 +1,6 @@
 /**
  * OpenAI Mock for Testing
- * 
+ *
  * Mock implementation of OpenAI API for unit and integration tests.
  */
 
@@ -50,7 +50,9 @@ export const mockOpenAIResponses = {
       {
         object: 'embedding',
         index: 0,
-        embedding: Array(1536).fill(0).map(() => Math.random() - 0.5),
+        embedding: Array(1536)
+          .fill(0)
+          .map(() => Math.random() - 0.5),
       },
     ],
     model: 'text-embedding-3-small',
@@ -77,7 +79,7 @@ export const mockOpenAI = {
 export function resetOpenAIMocks() {
   mockOpenAI.chat.completions.create.mockReset();
   mockOpenAI.embeddings.create.mockReset();
-  
+
   // Set default mock returns
   mockOpenAI.chat.completions.create.mockResolvedValue(mockOpenAIResponses.chatCompletion);
   mockOpenAI.embeddings.create.mockResolvedValue(mockOpenAIResponses.embedding);
@@ -96,9 +98,7 @@ export function setupStreamingMock(chunks: string[] = ['Test', ' response', ' fr
     ],
   }));
 
-  mockOpenAI.chat.completions.create.mockResolvedValue(
-    createAsyncIterable(streamChunks)
-  );
+  mockOpenAI.chat.completions.create.mockResolvedValue(createAsyncIterable(streamChunks));
 }
 
 // Helper to create async iterable

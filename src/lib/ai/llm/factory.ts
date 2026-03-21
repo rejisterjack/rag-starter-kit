@@ -3,23 +3,23 @@
  * Factory function to create LLM provider instances based on configuration
  */
 
+import { OllamaProvider } from './ollama';
 import { OpenAIProvider } from './openai';
 import { OpenRouterProvider } from './openrouter';
-import { OllamaProvider } from './ollama';
 import {
-  type LLMProvider,
   type LLMConfig,
+  LLMError,
+  type LLMProvider,
+  type OllamaConfig,
   type OpenAIConfig,
   type OpenRouterConfig,
-  type OllamaConfig,
-  LLMError,
 } from './types';
 
+export { OLLAMA_MODELS, OllamaProvider } from './ollama';
+export { OPENAI_MODELS, OpenAIProvider } from './openai';
+export { OPENROUTER_FREE_MODELS, OpenRouterProvider } from './openrouter';
 // Re-export all types and providers
 export * from './types';
-export { OpenAIProvider, OPENAI_MODELS } from './openai';
-export { OpenRouterProvider, OPENROUTER_FREE_MODELS } from './openrouter';
-export { OllamaProvider, OLLAMA_MODELS } from './ollama';
 
 /**
  * Create an LLM provider based on configuration
@@ -76,11 +76,7 @@ export function createProviderFromEnv(): LLMProvider {
       return new OllamaProvider(config);
     }
     default:
-      throw new LLMError(
-        `Unknown provider from env: ${provider}`,
-        'UNKNOWN_PROVIDER',
-        false
-      );
+      throw new LLMError(`Unknown provider from env: ${provider}`, 'UNKNOWN_PROVIDER', false);
   }
 }
 

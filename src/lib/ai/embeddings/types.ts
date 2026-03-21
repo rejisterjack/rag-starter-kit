@@ -1,6 +1,6 @@
 /**
  * Embedding Provider Types
- * 
+ *
  * Common interfaces for all embedding providers.
  */
 
@@ -30,7 +30,7 @@ export interface EmbeddingConfig {
 
 /**
  * Embedding Provider Interface
- * 
+ *
  * All embedding providers must implement this interface.
  */
 export interface EmbeddingProvider {
@@ -40,21 +40,21 @@ export interface EmbeddingProvider {
   readonly modelName: string;
   /** Embedding dimensions */
   readonly dimensions: number;
-  
+
   /**
    * Embed a single query string
    * @param text - The text to embed
    * @returns Promise resolving to the embedding vector
    */
   embedQuery(text: string): Promise<number[]>;
-  
+
   /**
    * Embed multiple documents in batches
    * @param texts - Array of texts to embed
    * @returns Promise resolving to array of embedding vectors
    */
   embedDocuments(texts: string[]): Promise<number[][]>;
-  
+
   /**
    * Get provider health status
    * @returns Promise resolving to boolean indicating if provider is available

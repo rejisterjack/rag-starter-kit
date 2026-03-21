@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { checkPermission, Permission } from '@/lib/workspace/permissions';
 import { generateWebhookSecret } from '@/lib/webhooks/delivery';
+import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // ============================================================================
 // Types

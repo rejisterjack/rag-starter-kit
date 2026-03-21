@@ -55,7 +55,6 @@ export class SpeechRecognitionService {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognitionAPI) {
-      console.warn('Speech Recognition API not supported in this browser');
       return;
     }
 
@@ -105,7 +104,7 @@ export class SpeechRecognitionService {
               confidence: alternative.confidence,
             },
           ],
-          [0]: {
+          0: {
             transcript: alternative.transcript,
             confidence: alternative.confidence,
           },
@@ -149,12 +148,10 @@ export class SpeechRecognitionService {
   // Public API
   start(): boolean {
     if (!this.recognition) {
-      console.error('Speech Recognition not initialized');
       return false;
     }
 
     if (this.isListening) {
-      console.warn('Speech Recognition is already listening');
       return false;
     }
 
@@ -162,8 +159,7 @@ export class SpeechRecognitionService {
       this.recognition.start();
       this.isListening = true;
       return true;
-    } catch (error) {
-      console.error('Failed to start speech recognition:', error);
+    } catch (_error) {
       return false;
     }
   }
@@ -173,9 +169,7 @@ export class SpeechRecognitionService {
 
     try {
       this.recognition.stop();
-    } catch (error) {
-      console.error('Failed to stop speech recognition:', error);
-    }
+    } catch (_error) {}
   }
 
   abort(): void {
@@ -184,16 +178,14 @@ export class SpeechRecognitionService {
     try {
       this.recognition.abort();
       this.isListening = false;
-    } catch (error) {
-      console.error('Failed to abort speech recognition:', error);
-    }
+    } catch (_error) {}
   }
 
   on(event: SpeechRecognitionEventType, handler: EventHandler): () => void {
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, new Set());
     }
-    this.eventHandlers.get(event)!.add(handler);
+    this.eventHandlers.get(event)?.add(handler);
 
     return () => {
       this.eventHandlers.get(event)?.delete(handler);

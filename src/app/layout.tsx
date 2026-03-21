@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
-
-import { Providers } from '@/components/providers';
-import { Toaster } from '@/components/ui/toaster';
-import { PWAScripts } from '@/components/pwa/pwa-scripts';
 import { Navbar } from '@/components/navbar';
+import { Providers } from '@/components/providers';
+import { PWAScripts } from '@/components/pwa/pwa-scripts';
 import { StructuredData } from '@/components/seo';
+import { Toaster } from '@/components/ui/toaster';
 import { CsrfTokenScript } from '@/lib/security/csrf.tsx';
 import '@/styles/globals.css';
 
@@ -56,7 +55,8 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName: 'RAG Starter Kit',
     title: 'RAG Starter Kit - Production-Ready RAG Chatbot',
-    description: 'Build AI-powered document chatbots with Next.js, LangChain, and PostgreSQL pgvector.',
+    description:
+      'Build AI-powered document chatbots with Next.js, LangChain, and PostgreSQL pgvector.',
     images: [
       {
         url: '/og',
@@ -69,7 +69,8 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'RAG Starter Kit - Production-Ready RAG Chatbot',
-    description: 'Build AI-powered document chatbots with Next.js, LangChain, and PostgreSQL pgvector.',
+    description:
+      'Build AI-powered document chatbots with Next.js, LangChain, and PostgreSQL pgvector.',
     images: ['/og'],
     creator: '@ragstarterkit',
   },
@@ -146,16 +147,16 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactEl
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="msapplication-TileColor" content="#18181b" />
         <meta name="msapplication-tap-highlight" content="no" />
-        
+
         {/* PWA icons for iOS */}
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
         <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-152x152.png" />
-        
+
         {/* Splash screen images for iOS */}
         <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png" />
-        
+
         {/* Prefetch offline page */}
         <link rel="prefetch" href="/offline" />
       </head>

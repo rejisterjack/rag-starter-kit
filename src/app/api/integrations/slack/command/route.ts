@@ -6,10 +6,9 @@
  */
 
 import { type NextRequest, NextResponse } from 'next/server';
-
-import { logger } from '@/lib/logger';
 import { prisma } from '@/lib/db';
 import { SlackIntegration } from '@/lib/integrations/slack';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -174,7 +173,7 @@ async function verifySlackRequest(
     // Check if timestamp is within 5 minutes to prevent replay attacks
     const now = Math.floor(Date.now() / 1000);
     const requestTime = parseInt(timestamp, 10);
-    if (isNaN(requestTime) || Math.abs(now - requestTime) > 300) {
+    if (Number.isNaN(requestTime) || Math.abs(now - requestTime) > 300) {
       logger.warn('Slack request timestamp too old', { timestamp, now });
       return false;
     }

@@ -1,12 +1,8 @@
+import { type NextRequest, NextResponse } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth, signIn, signOut } from '@/lib/auth';
+import { generateCsrfToken, validateCsrfToken, withCsrfProtection } from '@/lib/security/csrf';
 import { getMockPrisma, mockPrisma } from '@/tests/utils/mocks/prisma';
-import {
-  generateCsrfToken,
-  validateCsrfToken,
-  withCsrfProtection,
-} from '@/lib/security/csrf';
-import { NextRequest, NextResponse } from 'next/server';
 
 vi.mock('@/lib/db', () => ({
   prisma: mockPrisma,
@@ -152,9 +148,7 @@ describe('Authentication', () => {
     });
 
     it('prevents duplicate email registration', async () => {
-      const mockCreate = vi.fn().mockRejectedValue(
-        new Error('Unique constraint violation')
-      );
+      const mockCreate = vi.fn().mockRejectedValue(new Error('Unique constraint violation'));
       getMockPrisma().user.create = mockCreate;
 
       await expect(
@@ -277,7 +271,7 @@ describe('Authentication', () => {
   describe('OAuth Flows', () => {
     it('links OAuth account to existing user', async () => {
       getMockPrisma().account.findFirst = vi.fn().mockResolvedValue(null);
-      
+
       const mockCreate = vi.fn().mockResolvedValue({
         id: 'account-1',
         userId: 'user-001',

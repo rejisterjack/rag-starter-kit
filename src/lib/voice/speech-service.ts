@@ -84,7 +84,6 @@ export class SpeechService {
 
   private initializeSpeechRecognition(): void {
     if (!isSpeechRecognitionSupported()) {
-      console.warn('[SpeechService] SpeechRecognition not supported');
       return;
     }
 
@@ -97,7 +96,6 @@ export class SpeechService {
 
   private initializeSpeechSynthesis(): void {
     if (!isSpeechSynthesisSupported()) {
-      console.warn('[SpeechService] SpeechSynthesis not supported');
       return;
     }
 
@@ -189,12 +187,10 @@ export class SpeechService {
    */
   async startListening(options?: SpeechRecognitionOptions): Promise<boolean> {
     if (!this.recognition) {
-      console.error('[SpeechService] SpeechRecognition not available');
       return false;
     }
 
     if (this.isListening) {
-      console.warn('[SpeechService] Already listening');
       return true;
     }
 
@@ -218,8 +214,7 @@ export class SpeechService {
       this.interimBuffer = '';
       this.recognition.start();
       return true;
-    } catch (error) {
-      console.error('[SpeechService] Failed to start recognition:', error);
+    } catch (_error) {
       return false;
     }
   }
@@ -232,9 +227,7 @@ export class SpeechService {
 
     try {
       this.recognition.stop();
-    } catch (error) {
-      console.error('[SpeechService] Failed to stop recognition:', error);
-    }
+    } catch (_error) {}
   }
 
   /**
@@ -247,9 +240,7 @@ export class SpeechService {
       this.recognition.abort();
       this.isListening = false;
       this.stopAudioMeter();
-    } catch (error) {
-      console.error('[SpeechService] Failed to abort recognition:', error);
-    }
+    } catch (_error) {}
   }
 
   private handleRecognitionResult(event: SpeechRecognitionEvent): void {
@@ -268,7 +259,7 @@ export class SpeechService {
 
       if (result.isFinal) {
         finalTranscript += transcript;
-        this.transcriptBuffer += transcript + ' ';
+        this.transcriptBuffer += `${transcript} `;
 
         // Check for voice commands
         this.checkForCommands(transcript);
@@ -340,7 +331,6 @@ export class SpeechService {
    */
   speak(text: string, options: TTSSynthesisOptions = {}): boolean {
     if (!this.synthesis) {
-      console.error('[SpeechService] SpeechSynthesis not available');
       return false;
     }
 
@@ -500,9 +490,7 @@ export class SpeechService {
       this.audioLevelInterval = setInterval(() => {
         this.updateAudioLevel();
       }, 50);
-    } catch (error) {
-      console.error('[SpeechService] Failed to start audio meter:', error);
-    }
+    } catch (_error) {}
   }
 
   private stopAudioMeter(): void {
@@ -606,7 +594,7 @@ export class SpeechService {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, new Set());
     }
-    this.eventListeners.get(event)!.add(handler);
+    this.eventListeners.get(event)?.add(handler);
 
     // Return unsubscribe function
     return () => {
@@ -642,9 +630,7 @@ export class SpeechService {
       handlers.forEach((handler) => {
         try {
           handler(data);
-        } catch (error) {
-          console.error(`[SpeechService] Error in event handler for ${event}:`, error);
-        }
+        } catch (_error) {}
       });
     }
   }

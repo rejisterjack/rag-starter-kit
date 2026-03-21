@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
 import { Check, Copy, ExternalLink, Plus, Shield, Trash2, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -96,9 +96,7 @@ export default function SSOManagementPage(): React.ReactElement {
       if (!response.ok) throw new Error('Failed to fetch workspaces');
       const data = await response.json();
       setWorkspaces(data.workspaces);
-    } catch (err) {
-      console.error('Failed to fetch workspaces:', err);
-    }
+    } catch (_err) {}
   }, []);
 
   useEffect(() => {

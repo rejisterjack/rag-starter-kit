@@ -1,21 +1,21 @@
 /**
  * Custom Next.js Server with WebSocket Support
- * 
+ *
  * This server combines Next.js HTTP handling with WebSocket support
  * for full real-time collaboration features.
- * 
+ *
  * Usage:
  * ```bash
  * # Development
  * tsx server.ts
- * 
+ *
  * # Production
  * NODE_ENV=production tsx server.ts
  * ```
  */
 
-import { createServer } from 'http';
-import { parse } from 'url';
+import { createServer } from 'node:http';
+import { parse } from 'node:url';
 import next from 'next';
 import { initRealtimeServer, shutdownRealtimeServer } from '@/lib/realtime/server-init';
 
@@ -61,9 +61,9 @@ async function main() {
   // Graceful shutdown
   const gracefulShutdown = async (signal: string) => {
     console.log(`\n${signal} received, shutting down gracefully...`);
-    
+
     await shutdownRealtimeServer();
-    
+
     server.close(() => {
       console.log('HTTP server closed');
       process.exit(0);

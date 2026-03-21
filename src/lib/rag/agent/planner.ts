@@ -5,8 +5,8 @@
  * tracks plan progress, and handles plan failures and replanning.
  */
 
-import { createProviderFromEnv } from '@/lib/ai/llm';
 import { z } from 'zod';
+import { createProviderFromEnv } from '@/lib/ai/llm';
 
 // ============================================================================
 // Types
@@ -28,19 +28,19 @@ export interface Subtask {
   completedAt?: Date;
 }
 
-export type SubtaskType = 
-  | 'retrieve'      // Get information from documents
-  | 'search'        // Search for information
-  | 'calculate'     // Perform calculations
-  | 'analyze'       // Analyze data or text
-  | 'summarize'     // Summarize information
-  | 'compare'       // Compare items
-  | 'transform'     // Transform data format
-  | 'validate'      // Validate information
-  | 'decide'        // Make a decision
-  | 'execute';      // Execute a tool
+export type SubtaskType =
+  | 'retrieve' // Get information from documents
+  | 'search' // Search for information
+  | 'calculate' // Perform calculations
+  | 'analyze' // Analyze data or text
+  | 'summarize' // Summarize information
+  | 'compare' // Compare items
+  | 'transform' // Transform data format
+  | 'validate' // Validate information
+  | 'decide' // Make a decision
+  | 'execute'; // Execute a tool
 
-export type SubtaskStatus = 
+export type SubtaskStatus =
   | 'pending'
   | 'blocked'
   | 'ready'
@@ -98,8 +98,16 @@ const SubtaskSchema = z.object({
   id: z.string(),
   description: z.string(),
   type: z.enum([
-    'retrieve', 'search', 'calculate', 'analyze', 
-    'summarize', 'compare', 'transform', 'validate', 'decide', 'execute'
+    'retrieve',
+    'search',
+    'calculate',
+    'analyze',
+    'summarize',
+    'compare',
+    'transform',
+    'validate',
+    'decide',
+    'execute',
   ]),
   dependencies: z.array(z.string()),
   estimatedComplexity: z.enum(['low', 'medium', 'high']),
@@ -229,9 +237,7 @@ Respond with a JSON object matching this structure:
       this.validateDependencies(plan);
 
       return plan;
-    } catch (error) {
-      console.error('Failed to parse plan:', error);
-      
+    } catch (_error) {
       // Fallback: create a simple sequential plan
       return this.createFallbackPlan(goal);
     }
@@ -320,7 +326,14 @@ Respond with a JSON object matching this structure:
     plan: ExecutionPlan,
     executor: (subtask: Subtask) => Promise<SubtaskResult>
   ): AsyncGenerator<{
-    type: 'plan_start' | 'subtask_start' | 'subtask_complete' | 'subtask_failed' | 'plan_complete' | 'plan_failed' | 'replanning';
+    type:
+      | 'plan_start'
+      | 'subtask_start'
+      | 'subtask_complete'
+      | 'subtask_failed'
+      | 'plan_complete'
+      | 'plan_failed'
+      | 'replanning';
     data: unknown;
   }> {
     plan.status = 'executing';
@@ -409,7 +422,7 @@ Respond with a JSON object matching this structure:
       .join('\n')}`;
 
     const newPlan = await this.createPlan(plan.goal, context);
-    
+
     // Mark already completed subtasks in the new plan if they match
     for (const newSubtask of newPlan.subtasks) {
       const completed = plan.subtasks.find(
@@ -466,11 +479,10 @@ Respond with a JSON object matching this structure:
 
   private validateDependencies(plan: ExecutionPlan): void {
     const subtaskIds = new Set(plan.subtasks.map((st) => st.id));
-    
+
     for (const subtask of plan.subtasks) {
       for (const depId of subtask.dependencies) {
         if (!subtaskIds.has(depId)) {
-          console.warn(`Subtask ${subtask.id} has invalid dependency: ${depId}`);
           // Remove invalid dependency
           subtask.dependencies = subtask.dependencies.filter((id) => id !== depId);
         }
@@ -558,13 +570,13 @@ Respond with a JSON object matching this structure:
       if (subtask.status === 'ready' || subtask.status === 'in_progress') {
         return false;
       }
-      
+
       // Check if all dependencies are completed
       const depsCompleted = subtask.dependencies.every((depId) => {
         const dep = plan.subtasks.find((st) => st.id === depId);
         return dep?.status === 'completed';
       });
-      
+
       if (depsCompleted) {
         return false;
       }
@@ -639,9 +651,7 @@ export function needsPlanning(query: string): boolean {
   ];
 
   const lowerQuery = query.toLowerCase();
-  const indicatorCount = complexityIndicators.filter((ind) =>
-    lowerQuery.includes(ind)
-  ).length;
+  const indicatorCount = complexityIndicators.filter((ind) => lowerQuery.includes(ind)).length;
 
   return indicatorCount >= 2 || query.length > 150;
 }

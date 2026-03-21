@@ -5,7 +5,7 @@
  * and tracking their performance.
  */
 
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
 
 // ============================================================================
 // Types
@@ -126,7 +126,6 @@ export class PromptExperimentManager {
     void variantId;
     void metrics;
     void metadata;
-    console.log('Experiment result tracking not available');
   }
 
   /**

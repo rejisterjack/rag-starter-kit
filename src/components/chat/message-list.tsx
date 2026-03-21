@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
+import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, Loader2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -78,7 +78,13 @@ export function MessageList({
           {/* Load more button */}
           {hasMore && (
             <div className="flex justify-center py-4 mb-4">
-              <Button variant="outline" size="sm" onClick={onLoadMore} disabled={isLoading} className="rounded-full shadow-sm glass">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onLoadMore}
+                disabled={isLoading}
+                className="rounded-full shadow-sm glass"
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin text-primary" />
@@ -94,7 +100,12 @@ export function MessageList({
           {/* Loading skeleton */}
           <AnimatePresence>
             {isLoading && !messages.length && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6 p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-6 p-4"
+              >
                 <MessageSkeleton align="left" />
                 <MessageSkeleton align="right" />
                 <MessageSkeleton align="left" />
@@ -120,7 +131,7 @@ export function MessageList({
                 key="streaming-message"
                 initial={{ opacity: 0, scale: 0.95, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
                 layout
                 className="mt-4"
               >
@@ -160,14 +171,21 @@ export function MessageList({
   );
 }
 
-function MessageSkeleton({ align = "left" }: { align?: "left" | "right" }) {
-  const isRight = align === "right";
+function MessageSkeleton({ align = 'left' }: { align?: 'left' | 'right' }) {
+  const isRight = align === 'right';
   return (
-    <div className={cn("flex gap-4", isRight && "flex-row-reverse")}>
-      <Skeleton className={cn("h-10 w-10 shrink-0 rounded-full", isRight ? "bg-primary/20" : "bg-emerald-500/20")} />
-      <div className={cn("flex w-full flex-col", isRight ? "items-end" : "items-start")}>
+    <div className={cn('flex gap-4', isRight && 'flex-row-reverse')}>
+      <Skeleton
+        className={cn(
+          'h-10 w-10 shrink-0 rounded-full',
+          isRight ? 'bg-primary/20' : 'bg-emerald-500/20'
+        )}
+      />
+      <div className={cn('flex w-full flex-col', isRight ? 'items-end' : 'items-start')}>
         <Skeleton className="h-5 w-24 rounded-md mb-2 bg-foreground/10" />
-        <Skeleton className={cn("h-20 rounded-2xl bg-foreground/5", isRight ? "w-[60%]" : "w-[80%]")} />
+        <Skeleton
+          className={cn('h-20 rounded-2xl bg-foreground/5', isRight ? 'w-[60%]' : 'w-[80%]')}
+        />
       </div>
     </div>
   );

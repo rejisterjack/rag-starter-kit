@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 describe('Input', () => {
   it('renders correctly', () => {
     render(<Input placeholder="Enter text" />);
-    
+
     const input = screen.getByPlaceholderText('Enter text');
     expect(input).toBeInTheDocument();
     expect(input).toHaveAttribute('type', 'text');
@@ -14,16 +14,16 @@ describe('Input', () => {
   it('handles value changes', () => {
     const handleChange = vi.fn();
     render(<Input onChange={handleChange} />);
-    
+
     const input = screen.getByRole('textbox');
     fireEvent.change(input, { target: { value: 'test value' } });
-    
+
     expect(handleChange).toHaveBeenCalled();
   });
 
   it('can be disabled', () => {
     render(<Input disabled />);
-    
+
     const input = screen.getByRole('textbox');
     expect(input).toBeDisabled();
   });
@@ -50,7 +50,7 @@ describe('Input', () => {
         <span id="help-text">Helpful description</span>
       </>
     );
-    
+
     const input = screen.getByLabelText('Test Label');
     expect(input).toHaveAttribute('aria-describedby', 'help-text');
   });
@@ -58,7 +58,7 @@ describe('Input', () => {
   it('forwards ref correctly', () => {
     const ref = { current: null as HTMLInputElement | null };
     render(<Input ref={ref} />);
-    
+
     expect(ref.current).toBeInstanceOf(HTMLInputElement);
   });
 });

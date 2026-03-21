@@ -9,21 +9,11 @@
 // ---------------------------------------------------------------------------
 // Re-export the singleton Prisma client
 // ---------------------------------------------------------------------------
-export { prisma, type PrismaClient } from './client';
+export { type PrismaClient, prisma } from './client';
 
-import type { Chat, Document, DocumentChunk, IngestionJob, Message } from '@/types';
 import type { Prisma } from '@prisma/client';
+import type { Chat, Document, DocumentChunk, IngestionJob, Message } from '@/types';
 import { prisma } from './client';
-
-// ---------------------------------------------------------------------------
-// Database Initialization
-// ---------------------------------------------------------------------------
-export {
-  ensureVectorIndex,
-  initializeDatabase,
-  isDatabaseInitialized,
-  resetDatabaseInitialization,
-} from './init';
 
 // ---------------------------------------------------------------------------
 // Batch Operations
@@ -42,6 +32,15 @@ export {
   streamProcessChunks,
   validateChunks,
 } from './batch-operations';
+// ---------------------------------------------------------------------------
+// Database Initialization
+// ---------------------------------------------------------------------------
+export {
+  ensureVectorIndex,
+  initializeDatabase,
+  isDatabaseInitialized,
+  resetDatabaseInitialization,
+} from './init';
 
 // ---------------------------------------------------------------------------
 // Vector Cache

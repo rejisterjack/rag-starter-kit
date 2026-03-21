@@ -48,7 +48,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     if (conversationId) {
       loadMessages();
     }
-  }, [conversationId]);
+  }, [conversationId, loadMessages]);
 
   const loadMessages = async (pageNum = 1) => {
     if (!conversationId) return;
@@ -195,7 +195,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         abortControllerRef.current = null;
       }
     },
-    [conversationId, onError, onFinish]
+    [conversationId, onError, onFinish, uploadFiles]
   );
 
   const uploadFiles = async (files: File[]): Promise<string[]> => {

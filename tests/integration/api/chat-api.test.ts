@@ -634,9 +634,7 @@ describe('POST /api/chat', () => {
       const runRAGPipeline = vi.fn().mockResolvedValue({
         stream: mockStream,
         citations: [],
-        agentSteps: [
-          { tool: 'search', input: 'query', output: 'results' },
-        ],
+        agentSteps: [{ tool: 'search', input: 'query', output: 'results' }],
       });
 
       vi.mock('@/lib/rag/engine', () => ({

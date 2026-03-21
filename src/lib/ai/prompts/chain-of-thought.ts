@@ -88,7 +88,7 @@ export function buildCoTPrompt(
       prompt += CHAIN_OF_THOUGHT_PROMPT;
       break;
     case 'detailed':
-      prompt += CHAIN_OF_THOUGHT_PROMPT + '\n\n' + STEP_VERIFICATION_PROMPT;
+      prompt += `${CHAIN_OF_THOUGHT_PROMPT}\n\n${STEP_VERIFICATION_PROMPT}`;
       break;
     case 'react':
       prompt += REACT_PROMPT;
@@ -96,7 +96,7 @@ export function buildCoTPrompt(
   }
 
   if (includeVerification) {
-    prompt += '\n\n' + SELF_CONSISTENCY_PROMPT;
+    prompt += `\n\n${SELF_CONSISTENCY_PROMPT}`;
   }
 
   prompt += `\n\nContext:\n${context}\n\nQuestion: ${question}\n\nYour response:`;
@@ -119,10 +119,10 @@ export function buildCoTMessages(
   const { includeVerification = false, systemPrompt } = options;
 
   let systemContent = systemPrompt ?? `You are a helpful AI assistant.`;
-  systemContent += '\n\n' + CHAIN_OF_THOUGHT_PROMPT;
+  systemContent += `\n\n${CHAIN_OF_THOUGHT_PROMPT}`;
 
   if (includeVerification) {
-    systemContent += '\n\n' + SELF_CONSISTENCY_PROMPT;
+    systemContent += `\n\n${SELF_CONSISTENCY_PROMPT}`;
   }
 
   if (context) {
@@ -225,10 +225,7 @@ export function extractReasoning(response: string): {
 /**
  * Simplified CoT for less complex queries
  */
-export function buildSimplifiedCoTPrompt(
-  context: string,
-  question: string
-): string {
+export function buildSimplifiedCoTPrompt(context: string, question: string): string {
   return `Answer the following question by thinking step-by-step. Show your brief reasoning, then provide the final answer.
 
 Context:
@@ -280,10 +277,7 @@ Synthesis - Best Answer:`;
 /**
  * Self-reflection prompt for answer improvement
  */
-export function buildSelfReflectionPrompt(
-  originalAnswer: string,
-  context: string
-): string {
+export function buildSelfReflectionPrompt(originalAnswer: string, context: string): string {
   return `Review your previous answer and the context to identify potential improvements.
 
 Original Answer:

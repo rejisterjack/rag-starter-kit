@@ -1,25 +1,25 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  FixedChunker,
-  SemanticChunker,
-  HierarchicalChunker,
-  LateChunker,
-  ChunkingEngine,
-  countTokens,
-  estimateTokenCount,
-  ChunkingStrategy,
-  ChunkingError,
-  getParentChunk,
-  getChildChunks,
-  getChunkContextPath,
   buildEnrichedContext,
-  createLateChunkingEmbedder,
-  isLateChunkingSuitable,
-  smartChunk,
+  ChunkingEngine,
+  ChunkingError,
+  ChunkingStrategy,
   chunkFixed,
-  chunkSemantic,
   chunkHierarchical,
   chunkLate,
+  chunkSemantic,
+  countTokens,
+  createLateChunkingEmbedder,
+  estimateTokenCount,
+  FixedChunker,
+  getChildChunks,
+  getChunkContextPath,
+  getParentChunk,
+  HierarchicalChunker,
+  isLateChunkingSuitable,
+  LateChunker,
+  SemanticChunker,
+  smartChunk,
 } from '@/lib/rag/chunking';
 
 describe('Text Chunking', () => {
@@ -162,9 +162,7 @@ describe('Text Chunking', () => {
       const chunker = new SemanticChunker();
       const text = 'Some text';
 
-      await expect(
-        chunker.chunk(text, { maxChunkSize: 100 })
-      ).rejects.toThrow(ChunkingError);
+      await expect(chunker.chunk(text, { maxChunkSize: 100 })).rejects.toThrow(ChunkingError);
     });
   });
 
@@ -188,7 +186,9 @@ Content under heading 2.`;
 
       expect(chunks.length).toBeGreaterThan(0);
       // Should have parent-child relationships
-      const parentChunks = chunks.filter((c) => c.metadata.childIds && c.metadata.childIds.length > 0);
+      const parentChunks = chunks.filter(
+        (c) => c.metadata.childIds && c.metadata.childIds.length > 0
+      );
       expect(parentChunks.length).toBeGreaterThanOrEqual(0);
     });
 
@@ -251,7 +251,7 @@ Content 2`;
 
       // Find chunks with children
       const parents = chunks.filter((c) => c.metadata.childIds && c.metadata.childIds.length > 0);
-      
+
       if (parents.length > 0) {
         const parent = parents[0];
         if (parent.metadata.childIds) {
@@ -278,7 +278,9 @@ Sub content`;
       });
 
       // At least some chunks should have headings
-      const withHeadings = chunks.filter((c) => c.metadata.headings && c.metadata.headings.length > 0);
+      const withHeadings = chunks.filter(
+        (c) => c.metadata.headings && c.metadata.headings.length > 0
+      );
       expect(withHeadings.length).toBeGreaterThanOrEqual(0);
     });
 
@@ -329,7 +331,9 @@ More content`;
       const mockTokenEmbed = async (_text: string) => {
         // Return mock token embeddings (one per ~4 characters)
         const tokenCount = Math.ceil(document.length / 4);
-        return Array(tokenCount).fill(null).map(() => Array(768).fill(0.1));
+        return Array(tokenCount)
+          .fill(null)
+          .map(() => Array(768).fill(0.1));
       };
 
       const chunks = await chunker.chunk(document, {
@@ -378,7 +382,9 @@ More content`;
 
       const mockTokenEmbed = async (text: string) => {
         const tokenCount = Math.min(Math.ceil(text.length / 4), 1000);
-        return Array(tokenCount).fill(null).map(() => Array(768).fill(0.1));
+        return Array(tokenCount)
+          .fill(null)
+          .map(() => Array(768).fill(0.1));
       };
 
       const chunks = await chunker.chunk(document, {
@@ -396,7 +402,9 @@ More content`;
       const document = 'First sentence. Second sentence. Third sentence.';
 
       const mockTokenEmbed = async (_text: string) => {
-        return Array(20).fill(null).map(() => Array(768).fill(0.1));
+        return Array(20)
+          .fill(null)
+          .map(() => Array(768).fill(0.1));
       };
 
       const chunks = await chunker.chunk(document, {
@@ -502,7 +510,7 @@ More content`;
 
     it('should smart chunk with auto strategy selection', async () => {
       const text = '# Structured Document\n\nThis has headings.';
-      
+
       const { chunks, profile } = await ChunkingEngine.smartChunk(text);
 
       expect(chunks.length).toBeGreaterThan(0);
@@ -511,7 +519,7 @@ More content`;
 
     it('should allow strategy override in smart chunk', async () => {
       const text = 'Plain text without structure.';
-      
+
       const { chunks, profile } = await ChunkingEngine.smartChunk(text, {
         strategy: 'semantic',
       });
@@ -551,7 +559,10 @@ More content`;
 
     it('chunkLate should use late strategy', async () => {
       const text = 'Test content for late chunking';
-      const mockTokenEmbed = async () => Array(20).fill(null).map(() => Array(768).fill(0.1));
+      const mockTokenEmbed = async () =>
+        Array(20)
+          .fill(null)
+          .map(() => Array(768).fill(0.1));
 
       const chunks = await chunkLate(text, {
         chunkSize: 2000,
@@ -572,9 +583,21 @@ More content`;
 
   describe('Hierarchical Utilities', () => {
     const mockChunks = [
-      { id: 'parent1', content: 'Parent', metadata: { index: 0, start: 0, end: 6, childIds: ['child1', 'child2'] } },
-      { id: 'child1', content: 'Child 1', metadata: { index: 1, start: 7, end: 14, parentId: 'parent1' } },
-      { id: 'child2', content: 'Child 2', metadata: { index: 2, start: 15, end: 22, parentId: 'parent1' } },
+      {
+        id: 'parent1',
+        content: 'Parent',
+        metadata: { index: 0, start: 0, end: 6, childIds: ['child1', 'child2'] },
+      },
+      {
+        id: 'child1',
+        content: 'Child 1',
+        metadata: { index: 1, start: 7, end: 14, parentId: 'parent1' },
+      },
+      {
+        id: 'child2',
+        content: 'Child 2',
+        metadata: { index: 2, start: 15, end: 22, parentId: 'parent1' },
+      },
       { id: 'orphan', content: 'Orphan', metadata: { index: 3, start: 23, end: 29 } },
     ];
 
@@ -627,11 +650,11 @@ More content`;
       const chunkWithHeadings = {
         id: 'chunk',
         content: 'Content',
-        metadata: { 
-          index: 0, 
-          start: 0, 
-          end: 7, 
-          headings: ['Section 1', 'Subsection 1.1'] 
+        metadata: {
+          index: 0,
+          start: 0,
+          end: 7,
+          headings: ['Section 1', 'Subsection 1.1'],
         },
       };
 
@@ -645,7 +668,11 @@ More content`;
     it('buildEnrichedContext should include parent content when requested', () => {
       const allChunks = [
         { id: 'parent', content: 'Parent content here', metadata: { index: 0, start: 0, end: 19 } },
-        { id: 'child', content: 'Child content', metadata: { index: 1, start: 20, end: 33, parentId: 'parent' } },
+        {
+          id: 'child',
+          content: 'Child content',
+          metadata: { index: 1, start: 20, end: 33, parentId: 'parent' },
+        },
       ];
 
       const context = buildEnrichedContext(allChunks[1], allChunks, {

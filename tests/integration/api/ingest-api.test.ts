@@ -252,7 +252,10 @@ describe('POST /api/ingest', () => {
 
       const supportedTypes = [
         { name: 'doc.pdf', type: 'application/pdf' },
-        { name: 'doc.docx', type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+        {
+          name: 'doc.docx',
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        },
         { name: 'doc.txt', type: 'text/plain' },
         { name: 'doc.md', type: 'text/markdown' },
         { name: 'doc.html', type: 'text/html' },

@@ -1,12 +1,12 @@
 /**
  * Field-Level Encryption
- * 
+ *
  * Provides transparent encryption for sensitive fields using AES-256-GCM.
  * Uses envelope encryption pattern with data encryption keys (DEKs) encrypted
  * by a master key.
  */
 
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync, createHash } from 'crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from 'node:crypto';
 import { logger } from '@/lib/logger';
 
 // =============================================================================
@@ -15,7 +15,7 @@ import { logger } from '@/lib/logger';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
-const AUTH_TAG_LENGTH = 16;
+const _AUTH_TAG_LENGTH = 16;
 const KEY_LENGTH = 32;
 
 // Master key from environment (should be 32 bytes for AES-256)
@@ -76,20 +76,20 @@ export function encryptField(plaintext: string, entityId: string): EncryptedFiel
   try {
     // Get encryption key for this entity
     const key = getDataEncryptionKey(entityId);
-    
+
     // Generate random IV
     const iv = randomBytes(IV_LENGTH);
-    
+
     // Create cipher
     const cipher = createCipheriv(ALGORITHM, key, iv);
-    
+
     // Encrypt
     let ciphertext = cipher.update(plaintext, 'utf8', 'base64');
     ciphertext += cipher.final('base64');
-    
+
     // Get auth tag
     const authTag = cipher.getAuthTag();
-    
+
     return {
       ciphertext,
       iv: iv.toString('base64'),
@@ -115,19 +115,19 @@ export function decryptField(encrypted: EncryptedField, entityId: string): strin
   try {
     // Get encryption key for this entity
     const key = getDataEncryptionKey(entityId);
-    
+
     // Decode components
     const iv = Buffer.from(encrypted.iv, 'base64');
     const authTag = Buffer.from(encrypted.authTag, 'base64');
-    
+
     // Create decipher
     const decipher = createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
-    
+
     // Decrypt
     let plaintext = decipher.update(encrypted.ciphertext, 'base64', 'utf8');
     plaintext += decipher.final('utf8');
-    
+
     return plaintext;
   } catch (error) {
     logger.error('Field decryption failed', {
@@ -160,7 +160,10 @@ export function encryptJSON<T extends Record<string, unknown>>(data: T, entityId
  * @param entityId - Entity identifier
  * @returns Decrypted object
  */
-export function decryptJSON<T extends Record<string, unknown>>(encryptedString: string, entityId: string): T {
+export function decryptJSON<T extends Record<string, unknown>>(
+  encryptedString: string,
+  entityId: string
+): T {
   const encrypted: EncryptedField = JSON.parse(encryptedString);
   const plaintext = decryptField(encrypted, entityId);
   return JSON.parse(plaintext);
@@ -187,18 +190,18 @@ export function encryptFields<T extends Record<string, unknown>>(
 ): T {
   const result = { ...data };
   const entityId = data[config.entityIdField] as string;
-  
+
   if (!entityId) {
     throw new Error(`Entity ID field '${config.entityIdField}' not found in data`);
   }
-  
+
   for (const field of config.fields) {
     if (data[field] !== undefined && data[field] !== null) {
       const encrypted = encryptField(String(data[field]), entityId);
       (result as Record<string, unknown>)[field] = JSON.stringify(encrypted);
     }
   }
-  
+
   return result;
 }
 
@@ -214,11 +217,11 @@ export function decryptFields<T extends Record<string, unknown>>(
 ): T {
   const result = { ...data };
   const entityId = data[config.entityIdField] as string;
-  
+
   if (!entityId) {
     throw new Error(`Entity ID field '${config.entityIdField}' not found in data`);
   }
-  
+
   for (const field of config.fields) {
     const value = data[field];
     if (value !== undefined && value !== null && typeof value === 'string') {
@@ -233,7 +236,7 @@ export function decryptFields<T extends Record<string, unknown>>(
       }
     }
   }
-  
+
   return result;
 }
 
@@ -246,9 +249,7 @@ export function decryptFields<T extends Record<string, unknown>>(
  * @param config - Field encryption configurations by model
  * @returns Prisma middleware function
  */
-export function createEncryptionMiddleware(
-  config: Record<string, FieldEncryptionConfig>
-) {
+export function createEncryptionMiddleware(config: Record<string, FieldEncryptionConfig>) {
   return async function encryptionMiddleware(
     params: {
       model?: string;
@@ -258,35 +259,38 @@ export function createEncryptionMiddleware(
     next: (params: Record<string, unknown>) => Promise<unknown>
   ): Promise<unknown> {
     const modelConfig = params.model ? config[params.model] : undefined;
-    
+
     if (!modelConfig) {
       return next(params);
     }
-    
+
     // Encrypt fields before create/update
-    if (params.action === 'create' || params.action === 'createMany' || 
-        params.action === 'update' || params.action === 'updateMany') {
+    if (
+      params.action === 'create' ||
+      params.action === 'createMany' ||
+      params.action === 'update' ||
+      params.action === 'updateMany'
+    ) {
       if (params.args.data) {
-        params.args.data = encryptFields(
-          params.args.data as Record<string, unknown>,
-          modelConfig
-        );
+        params.args.data = encryptFields(params.args.data as Record<string, unknown>, modelConfig);
       }
     }
-    
+
     // Execute query
     const result = await next(params);
-    
+
     // Decrypt fields in result
     if (result && typeof result === 'object') {
       if (Array.isArray(result)) {
-        return result.map(item => 
-          typeof item === 'object' ? decryptFields(item as Record<string, unknown>, modelConfig) : item
+        return result.map((item) =>
+          typeof item === 'object'
+            ? decryptFields(item as Record<string, unknown>, modelConfig)
+            : item
         );
       }
       return decryptFields(result as Record<string, unknown>, modelConfig);
     }
-    
+
     return result;
   };
 }
@@ -309,7 +313,7 @@ export function rotateEncryptionKey(
 ): EncryptedField {
   // Decrypt with old key
   const plaintext = decryptField(encrypted, oldEntityId);
-  
+
   // Re-encrypt with new key
   return encryptField(plaintext, newEntityId);
 }
@@ -325,7 +329,7 @@ export function rotateEncryptionKey(
  */
 export function isEncrypted(value: unknown): boolean {
   if (typeof value !== 'string') return false;
-  
+
   try {
     const parsed: EncryptedField = JSON.parse(value);
     return !!(
@@ -348,7 +352,7 @@ export function isEncrypted(value: unknown): boolean {
  */
 export function hashForSearch(value: string, entityId: string): string {
   const key = getDataEncryptionKey(entityId);
-  const { createHmac } = require('crypto');
+  const { createHmac } = require('node:crypto');
   return createHmac('sha256', key).update(value).digest('hex');
 }
 
@@ -366,7 +370,7 @@ export async function logEncryptionOperation(
   userId?: string
 ): Promise<void> {
   const { logAuditEvent, AuditEvent } = await import('@/lib/audit/audit-logger');
-  
+
   await logAuditEvent({
     event: AuditEvent.ENCRYPTION_OPERATION,
     userId,
@@ -378,5 +382,3 @@ export async function logEncryptionOperation(
     },
   });
 }
-
-

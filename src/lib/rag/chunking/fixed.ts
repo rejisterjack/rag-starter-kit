@@ -215,7 +215,7 @@ export class FixedChunker implements Chunker {
         result.push(...subChunks);
       } else if (result.length > 0 && result[result.length - 1].length + chunk.length < chunkSize) {
         // Merge with previous chunk if it's small
-        result[result.length - 1] += '\n\n' + chunk;
+        result[result.length - 1] += `\n\n${chunk}`;
       } else {
         result.push(chunk);
       }

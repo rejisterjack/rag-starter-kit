@@ -5,8 +5,8 @@
  * which can be reused by other tests to avoid logging in repeatedly.
  */
 
+import path from 'node:path';
 import { expect, test as setup } from '@playwright/test';
-import path from 'path';
 
 const authFile = path.join(__dirname, '../playwright/.auth/user.json');
 

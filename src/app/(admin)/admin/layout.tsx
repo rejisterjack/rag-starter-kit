@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-
-import { requireAdmin } from '@/lib/auth';
 import { AdminNav } from '@/components/admin/admin-nav';
+import { requireAdmin } from '@/lib/auth';
 
 export const metadata: Metadata = {
   title: 'Admin | RAG Starter Kit',
@@ -31,7 +30,9 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
         {/* Floating Glass Sidebar Navigation */}
         <aside className="hidden lg:flex w-72 flex-col m-4 mr-0 rounded-3xl glass border border-white/5 shadow-2xl backdrop-blur-2xl">
           <div className="p-8 border-b border-border/40">
-            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">Overview</h1>
+            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+              Overview
+            </h1>
             <p className="text-sm text-primary/80 mt-1 font-medium tracking-wide">Command Center</p>
           </div>
           <nav className="flex-1 p-6 space-y-3 overflow-y-auto scrollbar-thin">
@@ -41,9 +42,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Main Content Area */}
         <main className="flex-1 min-h-screen overflow-y-auto">
-          <div className="container mx-auto p-8 lg:p-12 max-w-7xl">
-            {children}
-          </div>
+          <div className="container mx-auto p-8 lg:p-12 max-w-7xl">{children}</div>
         </main>
       </div>
     </div>

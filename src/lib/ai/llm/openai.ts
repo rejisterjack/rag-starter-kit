@@ -3,18 +3,18 @@
  * Implementation of the LLMProvider interface using OpenAI API via Vercel AI SDK
  */
 
-import { streamText, generateText } from 'ai';
 import { openai as openaiProvider } from '@ai-sdk/openai';
+import { generateText, streamText } from 'ai';
 import {
+  LLMError,
   type LLMMessage,
   type LLMOptions,
-  type LLMResponse,
-  type StreamingLLMResponse,
   type LLMProvider,
-  type OpenAIConfig,
-  LLMError,
-  RateLimitError,
+  type LLMResponse,
   ModelUnavailableError,
+  type OpenAIConfig,
+  RateLimitError,
+  type StreamingLLMResponse,
 } from './types';
 
 // Supported OpenAI models
@@ -53,7 +53,7 @@ export class OpenAIProvider implements LLMProvider {
 
   async generate(messages: LLMMessage[], options: LLMOptions = {}): Promise<LLMResponse> {
     const modelName = options.model ?? this.defaultModel;
-    
+
     try {
       const result = await generateText({
         model: this.createModel(modelName),
@@ -85,7 +85,7 @@ export class OpenAIProvider implements LLMProvider {
 
   async stream(messages: LLMMessage[], options: LLMOptions = {}): Promise<StreamingLLMResponse> {
     const modelName = options.model ?? this.defaultModel;
-    
+
     try {
       const result = streamText({
         model: this.createModel(modelName),
@@ -101,11 +101,13 @@ export class OpenAIProvider implements LLMProvider {
       });
 
       // Create a promise that resolves with usage when streaming completes
-      const usagePromise = result.usage.then((usage: { promptTokens?: number; completionTokens?: number; totalTokens?: number }) => ({
-        promptTokens: usage?.promptTokens ?? 0,
-        completionTokens: usage?.completionTokens ?? 0,
-        totalTokens: usage?.totalTokens ?? 0,
-      })) as Promise<{ promptTokens: number; completionTokens: number; totalTokens: number }>;
+      const usagePromise = result.usage.then(
+        (usage: { promptTokens?: number; completionTokens?: number; totalTokens?: number }) => ({
+          promptTokens: usage?.promptTokens ?? 0,
+          completionTokens: usage?.completionTokens ?? 0,
+          totalTokens: usage?.totalTokens ?? 0,
+        })
+      ) as Promise<{ promptTokens: number; completionTokens: number; totalTokens: number }>;
 
       return {
         content: result.textStream,
@@ -125,7 +127,7 @@ export class OpenAIProvider implements LLMProvider {
     options: LLMOptions = {}
   ): Promise<LLMResponse> {
     const primaryModel = options.model ?? this.defaultModel;
-    const modelsToTry = [primaryModel, ...this.fallbackModels.filter(m => m !== primaryModel)];
+    const modelsToTry = [primaryModel, ...this.fallbackModels.filter((m) => m !== primaryModel)];
 
     let lastError: Error | undefined;
 
@@ -169,7 +171,7 @@ export class OpenAIProvider implements LLMProvider {
     options: LLMOptions = {}
   ): Promise<StreamingLLMResponse> {
     const primaryModel = options.model ?? this.defaultModel;
-    const modelsToTry = [primaryModel, ...this.fallbackModels.filter(m => m !== primaryModel)];
+    const modelsToTry = [primaryModel, ...this.fallbackModels.filter((m) => m !== primaryModel)];
 
     let lastError: Error | undefined;
 
@@ -216,20 +218,13 @@ export class OpenAIProvider implements LLMProvider {
       // Try to extract retry-after from error
       const retryMatch = message.match(/retry after (\d+)/i);
       const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) : undefined;
-      
-      return new RateLimitError(
-        `Rate limit exceeded for model ${model}`,
-        retryAfter,
-        error
-      );
+
+      return new RateLimitError(`Rate limit exceeded for model ${model}`, retryAfter, error);
     }
 
     // Handle model unavailability
     if (statusCode === 503 || message.toLowerCase().includes('unavailable')) {
-      return new ModelUnavailableError(
-        `Model ${model} is currently unavailable`,
-        error
-      );
+      return new ModelUnavailableError(`Model ${model} is currently unavailable`, error);
     }
 
     // Handle context length exceeded

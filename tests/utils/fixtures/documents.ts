@@ -216,11 +216,7 @@ export const sampleDocuments: Partial<DocumentWithMetadata>[] = [
 /**
  * Create a mock File object for testing
  */
-export function createMockFile(
-  name: string,
-  type: string,
-  _size: number
-): File {
+export function createMockFile(name: string, type: string, _size: number): File {
   const blob = new Blob(['mock content'], { type });
   return new File([blob], name, { type });
 }
@@ -228,11 +224,7 @@ export function createMockFile(
 /**
  * Mock PDF file
  */
-export const mockPDFFile = createMockFile(
-  'test-document.pdf',
-  'application/pdf',
-  1_000_000
-);
+export const mockPDFFile = createMockFile('test-document.pdf', 'application/pdf', 1_000_000);
 
 /**
  * Mock Word file
@@ -246,29 +238,17 @@ export const mockWordFile = createMockFile(
 /**
  * Mock text file
  */
-export const mockTextFile = createMockFile(
-  'test-document.txt',
-  'text/plain',
-  10_000
-);
+export const mockTextFile = createMockFile('test-document.txt', 'text/plain', 10_000);
 
 /**
  * Mock image file (for testing invalid types)
  */
-export const mockImageFile = createMockFile(
-  'test-image.png',
-  'image/png',
-  2_000_000
-);
+export const mockImageFile = createMockFile('test-image.png', 'image/png', 2_000_000);
 
 /**
  * Invalid file for testing validation
  */
-export const mockInvalidFile = createMockFile(
-  'test.exe',
-  'application/x-msdownload',
-  5_000_000
-);
+export const mockInvalidFile = createMockFile('test.exe', 'application/x-msdownload', 5_000_000);
 
 /**
  * Oversized file for testing size limits

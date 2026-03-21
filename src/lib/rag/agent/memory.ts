@@ -92,11 +92,7 @@ export class AgentMemory {
   private conversationId?: string;
   private workingMemory: WorkingMemoryState;
 
-  constructor(
-    userId: string,
-    workspaceId?: string,
-    conversationId?: string
-  ) {
+  constructor(userId: string, workspaceId?: string, conversationId?: string) {
     this.userId = userId;
     this.workspaceId = workspaceId;
     this.conversationId = conversationId;
@@ -126,17 +122,14 @@ export class AgentMemory {
         take: limit,
       });
 
-      return messages
-        .reverse()
-        .map((msg) => ({
-          id: msg.id,
-          role: msg.role as Message['role'],
-          content: msg.content,
-          createdAt: msg.createdAt,
-          ...(msg.sources ? { sources: msg.sources as unknown as Message['sources'] } : {}),
-        })) as Message[];
-    } catch (error) {
-      console.error('Failed to get recent conversation:', error);
+      return messages.reverse().map((msg) => ({
+        id: msg.id,
+        role: msg.role as Message['role'],
+        content: msg.content,
+        createdAt: msg.createdAt,
+        ...(msg.sources ? { sources: msg.sources as unknown as Message['sources'] } : {}),
+      })) as Message[];
+    } catch (_error) {
       return [];
     }
   }
@@ -144,7 +137,11 @@ export class AgentMemory {
   /**
    * Add a message to the conversation
    */
-  async addMessage(role: 'user' | 'assistant' | 'system', content: string, _metadata?: Record<string, unknown>): Promise<void> {
+  async addMessage(
+    role: 'user' | 'assistant' | 'system',
+    content: string,
+    _metadata?: Record<string, unknown>
+  ): Promise<void> {
     if (!this.conversationId) {
       return;
     }
@@ -158,9 +155,7 @@ export class AgentMemory {
           content,
         },
       });
-    } catch (error) {
-      console.error('Failed to add message:', error);
-    }
+    } catch (_error) {}
   }
 
   /**
@@ -168,19 +163,20 @@ export class AgentMemory {
    */
   async getConversationSummary(): Promise<string> {
     const messages = await this.getRecentConversation(20);
-    
+
     if (messages.length === 0) {
       return '';
     }
 
     // Create a condensed summary
-    const summary = messages.map((msg) => {
-      const role = msg.role === 'user' ? 'User' : 'Assistant';
-      const content = msg.content.length > 200 
-        ? msg.content.substring(0, 200) + '...' 
-        : msg.content;
-      return `${role}: ${content}`;
-    }).join('\n');
+    const summary = messages
+      .map((msg) => {
+        const role = msg.role === 'user' ? 'User' : 'Assistant';
+        const content =
+          msg.content.length > 200 ? `${msg.content.substring(0, 200)}...` : msg.content;
+        return `${role}: ${content}`;
+      })
+      .join('\n');
 
     return summary;
   }
@@ -199,9 +195,7 @@ export class AgentMemory {
     importance: number = 0.5,
     expiresIn?: number // milliseconds
   ): Promise<MemoryEntry> {
-    const expiresAt = expiresIn 
-      ? new Date(Date.now() + expiresIn) 
-      : undefined;
+    const expiresAt = expiresIn ? new Date(Date.now() + expiresIn) : undefined;
 
     const entry: MemoryEntry = {
       id: crypto.randomUUID(),
@@ -215,13 +209,13 @@ export class AgentMemory {
     };
 
     const userMemory = getUserMemory(this.userId, this.workspaceId);
-    
+
     // Remove existing entry with same key
     const existingIndex = userMemory.findIndex((e) => e.key === key);
     if (existingIndex >= 0) {
       userMemory.splice(existingIndex, 1);
     }
-    
+
     userMemory.push(entry);
 
     return entry;
@@ -232,7 +226,7 @@ export class AgentMemory {
    */
   async retrieve(key: string): Promise<MemoryEntry | null> {
     const userMemory = getUserMemory(this.userId, this.workspaceId);
-    
+
     const entry = userMemory.find((e) => {
       if (e.key !== key) return false;
       if (e.expiresAt && e.expiresAt < new Date()) return false;
@@ -293,12 +287,12 @@ export class AgentMemory {
   async delete(key: string): Promise<boolean> {
     const userMemory = getUserMemory(this.userId, this.workspaceId);
     const index = userMemory.findIndex((e) => e.key === key);
-    
+
     if (index >= 0) {
       userMemory.splice(index, 1);
       return true;
     }
-    
+
     return false;
   }
 
@@ -311,10 +305,13 @@ export class AgentMemory {
       minImportance: 0.3,
     });
 
-    return preferences.reduce((acc, entry) => {
-      acc[entry.key] = entry.value;
-      return acc;
-    }, {} as Record<string, unknown>);
+    return preferences.reduce(
+      (acc, entry) => {
+        acc[entry.key] = entry.value;
+        return acc;
+      },
+      {} as Record<string, unknown>
+    );
   }
 
   /**
@@ -411,7 +408,11 @@ export class AgentMemory {
   /**
    * Add a pending action
    */
-  addPendingAction(type: string, description: string, priority: PendingAction['priority'] = 'medium'): string {
+  addPendingAction(
+    type: string,
+    description: string,
+    priority: PendingAction['priority'] = 'medium'
+  ): string {
     const id = crypto.randomUUID();
     this.workingMemory.pendingActions.push({
       id,
@@ -497,7 +498,9 @@ export class AgentMemory {
     if (this.workingMemory.currentTask) {
       parts.push('\nCurrent Task:');
       parts.push(`- Task: ${this.workingMemory.currentTask}`);
-      parts.push(`- Progress: ${this.workingMemory.taskProgress.completedSteps}/${this.workingMemory.taskProgress.totalSteps} steps`);
+      parts.push(
+        `- Progress: ${this.workingMemory.taskProgress.completedSteps}/${this.workingMemory.taskProgress.totalSteps} steps`
+      );
       if (this.workingMemory.taskProgress.currentStep) {
         parts.push(`- Current Step: ${this.workingMemory.taskProgress.currentStep}`);
       }
@@ -513,13 +516,13 @@ export class AgentMemory {
     const userMemory = getUserMemory(this.userId, this.workspaceId);
     const now = new Date();
     const initialLength = userMemory.length;
-    
+
     for (let i = userMemory.length - 1; i >= 0; i--) {
-      if (userMemory[i]?.expiresAt && userMemory[i]!.expiresAt! < now) {
+      if (userMemory[i]?.expiresAt && userMemory[i]?.expiresAt! < now) {
         userMemory.splice(i, 1);
       }
     }
-    
+
     return initialLength - userMemory.length;
   }
 }

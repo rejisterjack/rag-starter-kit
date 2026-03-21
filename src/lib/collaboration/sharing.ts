@@ -6,7 +6,7 @@
  * - @mentions in workspace
  */
 
-import { randomBytes } from 'crypto';
+import { randomBytes } from 'node:crypto';
 import { prisma } from '@/lib/db';
 import type { Message } from '@/types';
 

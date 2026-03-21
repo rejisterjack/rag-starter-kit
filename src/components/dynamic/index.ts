@@ -1,9 +1,9 @@
 /**
  * Dynamic Components Index
- * 
+ *
  * Barrel file for all lazy-loaded components.
  * Import from here to ensure proper code splitting.
- * 
+ *
  * @example
  * ```tsx
  * import { DynamicLineChart, FadeIn, PDFViewer } from '@/components/dynamic';
@@ -12,40 +12,38 @@
 
 // Chart components (lazy-loaded recharts)
 export {
-  DynamicLineChart,
-  DynamicBarChart,
-  DynamicPieChart,
-  DynamicAreaChart,
-  Line,
+  Area,
   Bar,
-  Pie,
+  CartesianGrid,
   Cell,
+  DynamicAreaChart,
+  DynamicBarChart,
+  DynamicLineChart,
+  DynamicPieChart,
+  Legend,
+  Line,
+  Pie,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  Area,
 } from './chart-components';
-
+export type { D3ChartProps } from './d3-visualization';
 // D3 visualizations (lazy-loaded)
 export { D3Chart } from './d3-visualization';
-export type { D3ChartProps } from './d3-visualization';
-
+export type { AnimationProps } from './gsap-animations';
 // GSAP animations (lazy-loaded)
 export { FadeIn, SlideUp, StaggerContainer } from './gsap-animations';
-export type { AnimationProps } from './gsap-animations';
-
-// PDF export (lazy-loaded)
-export { PDFViewer, PDFDownloadLink } from './pdf-export';
 export type { PDFViewerProps } from './pdf-export';
+// PDF export (lazy-loaded)
 export {
   Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
   Image,
   Link,
+  Page,
+  PDFDownloadLink,
+  PDFViewer,
+  StyleSheet,
+  Text,
+  View,
 } from './pdf-export';

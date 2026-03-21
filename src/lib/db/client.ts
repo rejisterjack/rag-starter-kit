@@ -13,9 +13,9 @@
  *   connection), otherwise falls back to DATABASE_URL.
  */
 
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@prisma/client";
-import { Pool } from "pg";
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,13 +32,12 @@ type GlobalWithPrisma = typeof globalThis & {
 
 function createPool(): Pool {
   const connectionString =
-    process.env.DATABASE_URL ??
-    "postgresql://postgres:postgres@localhost:5432/ragdb";
+    process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ragdb';
 
   return new Pool({
     connectionString,
     // Keep pool small in development; scale up in production
-    max: process.env.NODE_ENV === "production" ? 10 : 3,
+    max: process.env.NODE_ENV === 'production' ? 10 : 3,
     // Idle connections are released after 30 s
     idleTimeoutMillis: 30_000,
     // Fail fast if the DB is unreachable
@@ -62,10 +61,7 @@ function createPrismaClient(): PrismaClient {
 
   return new PrismaClient({
     adapter,
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["query", "warn", "error"]
-        : ["warn", "error"],
+    log: process.env.NODE_ENV === 'development' ? ['query', 'warn', 'error'] : ['warn', 'error'],
   });
 }
 
@@ -82,10 +78,9 @@ const g = globalThis as GlobalWithPrisma;
  *   a new client (and new pool) on every module reload.
  * - Production: module-level singleton (one per process).
  */
-export const prisma: PrismaClient =
-  g._prismaClient ?? createPrismaClient();
+export const prisma: PrismaClient = g._prismaClient ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== 'production') {
   g._prismaClient = prisma;
 }
 

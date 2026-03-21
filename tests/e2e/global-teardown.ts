@@ -9,10 +9,10 @@
  * - Archive test artifacts
  */
 
+import { execSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { FullConfig } from '@playwright/test';
-import { execSync } from 'child_process';
-import fs from 'fs';
-import path from 'path';
 
 async function globalTeardown(config: FullConfig) {
   console.log('\n🧹 Starting global teardown...');

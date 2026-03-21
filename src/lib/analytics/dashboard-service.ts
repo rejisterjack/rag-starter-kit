@@ -8,17 +8,17 @@
 import { prisma } from '@/lib/db';
 import type { DateRange } from './rag-metrics';
 import {
-  getUserTokenUsages,
-  getModelUsage,
-  projectMonthlyCost,
-  type UserTokenUsage,
-} from './token-tracking';
-import {
   getRAGMetrics,
   getRetrievalQuality,
   type RAGMetrics,
   type RetrievalQualityMetrics,
 } from './rag-metrics';
+import {
+  getModelUsage,
+  getUserTokenUsages,
+  projectMonthlyCost,
+  type UserTokenUsage,
+} from './token-tracking';
 
 // =============================================================================
 // Types
@@ -156,7 +156,7 @@ export class DashboardService {
     granularity: Granularity = 'day'
   ): Promise<TimeSeriesData> {
     const cacheKey = `timeseries:${workspaceId ?? 'all'}:${from.toISOString()}:${to.toISOString()}:${granularity}`;
-    
+
     // Check cache
     const cached = this.getFromCache<TimeSeriesData>(cacheKey);
     if (cached) return cached;
@@ -168,7 +168,7 @@ export class DashboardService {
     } = {
       createdAt: { gte: from, lte: to },
     };
-    
+
     if (workspaceId) {
       where.workspaceId = workspaceId;
     }
@@ -202,10 +202,14 @@ export class DashboardService {
       );
 
       const chatCount = bucketEvents.length;
-      const tokenUsage = bucketEvents.reduce((sum: number, e: { totalTokens: number }) => sum + e.totalTokens, 0);
+      const tokenUsage = bucketEvents.reduce(
+        (sum: number, e: { totalTokens: number }) => sum + e.totalTokens,
+        0
+      );
       const avgLatency =
         chatCount > 0
-          ? bucketEvents.reduce((sum: number, e: { latencyMs: number }) => sum + e.latencyMs, 0) / chatCount
+          ? bucketEvents.reduce((sum: number, e: { latencyMs: number }) => sum + e.latencyMs, 0) /
+            chatCount
           : 0;
       const errorRate = chatCount > 0 ? (bucketErrors.length / chatCount) * 100 : 0;
 
@@ -244,7 +248,7 @@ export class DashboardService {
     to?: Date
   ): Promise<UsageStats> {
     const cacheKey = `usage:${workspaceId ?? 'all'}:${from?.toISOString() ?? 'all'}:${to?.toISOString() ?? 'all'}`;
-    
+
     const cached = this.getFromCache<UsageStats>(cacheKey);
     if (cached) return cached;
 
@@ -285,10 +289,14 @@ export class DashboardService {
       }),
     ]);
 
-    const totalTokens = ragEvents.reduce((sum: number, e: { totalTokens: number }) => sum + e.totalTokens, 0);
+    const totalTokens = ragEvents.reduce(
+      (sum: number, e: { totalTokens: number }) => sum + e.totalTokens,
+      0
+    );
     const avgLatency =
       ragEvents.length > 0
-        ? ragEvents.reduce((sum: number, e: { latencyMs: number }) => sum + e.latencyMs, 0) / ragEvents.length
+        ? ragEvents.reduce((sum: number, e: { latencyMs: number }) => sum + e.latencyMs, 0) /
+          ragEvents.length
         : 0;
 
     // Get top users
@@ -324,7 +332,7 @@ export class DashboardService {
     to?: Date
   ): Promise<QualityMetrics> {
     const cacheKey = `quality:${workspaceId ?? 'all'}:${from?.toISOString() ?? 'all'}:${to?.toISOString() ?? 'all'}`;
-    
+
     const cached = this.getFromCache<QualityMetrics>(cacheKey);
     if (cached) return cached;
 
@@ -338,7 +346,7 @@ export class DashboardService {
       createdAt?: { gte: Date; lte: Date };
       workspaceId?: string;
     } = {};
-    
+
     if (from || to) {
       where.createdAt = {
         gte: dateRange.start,
@@ -356,12 +364,16 @@ export class DashboardService {
       _count: { queryType: true },
     });
 
-    const totalQueries = queryTypes.reduce((sum: number, qt: { _count: { queryType: number } }) => sum + qt._count.queryType, 0);
+    const totalQueries = queryTypes.reduce(
+      (sum: number, qt: { _count: { queryType: number } }) => sum + qt._count.queryType,
+      0
+    );
 
     const queryClassification = queryTypes.map((qt) => ({
       type: qt.queryType ?? 'unknown',
       count: qt._count.queryType,
-      percentage: totalQueries > 0 ? Math.round((qt._count.queryType / totalQueries) * 1000) / 10 : 0,
+      percentage:
+        totalQueries > 0 ? Math.round((qt._count.queryType / totalQueries) * 1000) / 10 : 0,
     }));
 
     // Get tool usage from audit logs
@@ -463,7 +475,7 @@ export class DashboardService {
     to?: Date
   ): Promise<CostBreakdown> {
     const cacheKey = `cost:${workspaceId ?? 'all'}:${from?.toISOString() ?? 'all'}:${to?.toISOString() ?? 'all'}`;
-    
+
     const cached = this.getFromCache<CostBreakdown>(cacheKey);
     if (cached) return cached;
 
@@ -572,7 +584,7 @@ export class DashboardService {
     let byWorkspace: CostBreakdown['byWorkspace'] = [];
     if (!workspaceId) {
       // Note: tokenUsage model not in schema - using apiUsage instead
-    const workspaceUsage = await prisma.apiUsage.groupBy({
+      const workspaceUsage = await prisma.apiUsage.groupBy({
         by: ['workspaceId'],
         where: {
           ...(from && { createdAt: { gte: from } }),
@@ -581,7 +593,9 @@ export class DashboardService {
         _sum: { tokensTotal: true },
       });
 
-      const workspaceIds = workspaceUsage.map((w) => w.workspaceId).filter((id): id is string => id !== null);
+      const workspaceIds = workspaceUsage
+        .map((w) => w.workspaceId)
+        .filter((id): id is string => id !== null);
       const workspaces = await prisma.workspace.findMany({
         where: { id: { in: workspaceIds } },
         select: { id: true, name: true },
@@ -595,7 +609,7 @@ export class DashboardService {
             workspaceId: w.workspaceId,
             name: workspace?.name ?? 'Unknown',
             tokens: w._sum.tokensTotal ?? 0,
-            cost: Math.round(((w._sum.tokensTotal ?? 0) * 0.000001) * 100) / 100,
+            cost: Math.round((w._sum.tokensTotal ?? 0) * 0.000001 * 100) / 100,
           };
         });
     }
@@ -612,8 +626,14 @@ export class DashboardService {
     });
 
     const tokenBreakdown = {
-      prompt: tokenUsage.reduce((sum: number, t: { tokensPrompt: number }) => sum + t.tokensPrompt, 0),
-      completion: tokenUsage.reduce((sum: number, t: { tokensCompletion: number }) => sum + t.tokensCompletion, 0),
+      prompt: tokenUsage.reduce(
+        (sum: number, t: { tokensPrompt: number }) => sum + t.tokensPrompt,
+        0
+      ),
+      completion: tokenUsage.reduce(
+        (sum: number, t: { tokensCompletion: number }) => sum + t.tokensCompletion,
+        0
+      ),
       total: tokenUsage.reduce((sum: number, t: { tokensTotal: number }) => sum + t.tokensTotal, 0),
     };
 
@@ -651,7 +671,7 @@ export class DashboardService {
    */
   async getRealtimeMetrics(workspaceId: string | undefined): Promise<RealtimeMetrics> {
     const cacheKey = `realtime:${workspaceId ?? 'all'}`;
-    
+
     const cached = this.getFromCache<RealtimeMetrics>(cacheKey);
     if (cached) return cached;
 

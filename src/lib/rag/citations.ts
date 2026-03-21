@@ -162,7 +162,7 @@ export class CitationHandler {
     let highlightedContent = chunk.content;
     const citationIds: string[] = [citationId];
 
-    if (searchTerm && searchTerm.trim()) {
+    if (searchTerm?.trim()) {
       // Try to find and highlight the specific portion that was cited
       const term = searchTerm.trim();
       const termIndex = chunk.content.toLowerCase().indexOf(term.toLowerCase());
@@ -215,7 +215,7 @@ export class CitationHandler {
       return `[^${c.id.replace(/[[\]]/g, '')}]: ${c.documentName}${pageInfo}`;
     });
 
-    return '\n\n' + footnotes.join('\n');
+    return `\n\n${footnotes.join('\n')}`;
   }
 
   /**

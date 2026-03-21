@@ -43,9 +43,7 @@ function PlausiblePageView(): null {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const plausible = (window as any).plausible;
     if (plausible) {
-      const url = searchParams?.toString()
-        ? `${pathname}?${searchParams.toString()}`
-        : pathname;
+      const url = searchParams?.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
       plausible('pageview', { u: url });
     }
   }, [pathname, searchParams]);

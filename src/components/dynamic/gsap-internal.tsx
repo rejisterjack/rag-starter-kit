@@ -1,14 +1,14 @@
 /**
  * Internal GSAP Animation Components
- * 
+ *
  * Actual GSAP implementations that are lazy-loaded.
  * Do not import directly - use the dynamic exports instead.
  */
 
 'use client';
 
-import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface AnimationProps {
   children: ReactNode;
@@ -17,20 +17,15 @@ interface AnimationProps {
   className?: string;
 }
 
-export function FadeInInternal({ 
-  children, 
-  delay = 0, 
-  duration = 0.5,
-  className 
-}: AnimationProps) {
+export function FadeInInternal({ children, delay = 0, duration = 0.5, className }: AnimationProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let ctx: { revert: () => void } | undefined;
-    
+
     import('gsap').then((gsapModule) => {
       const gsapInstance = gsapModule.gsap;
-      
+
       if (ref.current) {
         ctx = gsapInstance.context(() => {
           gsapInstance.fromTo(
@@ -52,20 +47,20 @@ export function FadeInInternal({
   );
 }
 
-export function SlideUpInternal({ 
-  children, 
-  delay = 0, 
+export function SlideUpInternal({
+  children,
+  delay = 0,
   duration = 0.5,
-  className 
+  className,
 }: AnimationProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let ctx: { revert: () => void } | undefined;
-    
+
     import('gsap').then((gsapModule) => {
       const gsap = gsapModule.gsap;
-      
+
       if (ref.current) {
         ctx = gsap.context(() => {
           gsap.fromTo(
@@ -91,33 +86,33 @@ interface StaggerProps extends AnimationProps {
   staggerDelay?: number;
 }
 
-export function StaggerContainerInternal({ 
-  children, 
+export function StaggerContainerInternal({
+  children,
   delay = 0,
   staggerDelay = 0.1,
-  className 
+  className,
 }: StaggerProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let ctx: { revert: () => void } | undefined;
-    
+
     import('gsap').then((gsapModule) => {
       const gsap = gsapModule.gsap;
-      
+
       if (ref.current) {
         const children = ref.current.children;
         ctx = gsap.context(() => {
           gsap.fromTo(
             children,
             { opacity: 0, y: 20 },
-            { 
-              opacity: 1, 
-              y: 0, 
-              duration: 0.4, 
+            {
+              opacity: 1,
+              y: 0,
+              duration: 0.4,
               delay,
               stagger: staggerDelay,
-              ease: 'power2.out' 
+              ease: 'power2.out',
             }
           );
         });

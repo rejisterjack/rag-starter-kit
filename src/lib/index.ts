@@ -17,22 +17,22 @@ export {
 } from './ai';
 // AI Embeddings - re-export with explicit naming to avoid ambiguity
 export {
-  createEmbeddingProvider,
-  createEmbeddingProviderFromEnv,
-  getDefaultProvider,
-  createProviderWithFallback,
-  createCachedProvider,
-  getModelDimensions,
-  OpenAIEmbeddingProvider,
-  OllamaEmbeddingProvider,
-  createOpenAIProvider,
-  createOllamaProvider,
-  type EmbeddingProvider,
-  type EmbeddingConfig,
   type BatchEmbeddingResult,
   type CachedEmbedding,
-  OPENAI_MODELS,
+  createCachedProvider,
+  createEmbeddingProvider,
+  createEmbeddingProviderFromEnv,
+  createOllamaProvider,
+  createOpenAIProvider,
+  createProviderWithFallback,
+  type EmbeddingConfig,
+  type EmbeddingProvider,
+  getDefaultProvider,
+  getModelDimensions,
   OLLAMA_MODELS,
+  OllamaEmbeddingProvider,
+  OPENAI_MODELS,
+  OpenAIEmbeddingProvider,
 } from './ai/embeddings';
 // Analytics & Observability - re-export with explicit naming
 export * from './analytics';

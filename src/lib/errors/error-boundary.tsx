@@ -1,16 +1,16 @@
 /**
  * React Error Boundary
- * 
+ *
  * Catches JavaScript errors anywhere in the child component tree
  * and displays a fallback UI instead of crashing the app.
  */
 
 'use client';
 
-import { Component, type ReactNode, type ErrorInfo } from 'react';
-import { AlertCircle, RefreshCw, Home, Bug } from 'lucide-react';
+import { AlertCircle, Bug, Home, RefreshCw } from 'lucide-react';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { logger } from '@/lib/logger';
 
 // ============================================================================
@@ -153,27 +153,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-2 pt-4">
-              <Button
-                onClick={this.handleReset}
-                className="flex-1"
-                variant="default"
-              >
+              <Button onClick={this.handleReset} className="flex-1" variant="default">
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Try Again
               </Button>
-              <Button
-                onClick={this.handleReload}
-                className="flex-1"
-                variant="outline"
-              >
+              <Button onClick={this.handleReload} className="flex-1" variant="outline">
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Reload Page
               </Button>
-              <Button
-                onClick={this.handleGoHome}
-                className="flex-1"
-                variant="outline"
-              >
+              <Button onClick={this.handleGoHome} className="flex-1" variant="outline">
                 <Home className="mr-2 h-4 w-4" />
                 Go Home
               </Button>
@@ -211,7 +199,7 @@ export class APIErrorBoundary extends Component<APIErrorBoundaryProps, APIErrorB
 
   componentDidCatch(error: unknown): void {
     const { onAPIError } = this.props;
-    
+
     logger.error('API Error Boundary caught an error', { error });
     onAPIError?.(error);
   }
@@ -224,7 +212,7 @@ export class APIErrorBoundary extends Component<APIErrorBoundaryProps, APIErrorB
       return (
         <div className="p-4 text-center">
           <p className="text-destructive">Unable to load data. Please try again.</p>
-          <Button 
+          <Button
             onClick={() => this.setState({ hasError: false, error: null })}
             variant="outline"
             className="mt-2"
@@ -243,7 +231,7 @@ export class APIErrorBoundary extends Component<APIErrorBoundaryProps, APIErrorB
 // Hook for functional components
 // ============================================================================
 
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 interface UseErrorHandlerReturn {
   error: Error | null;
@@ -256,19 +244,22 @@ export function useErrorHandler(componentName?: string): UseErrorHandlerReturn {
   const [error, setError] = useState<Error | null>(null);
   const [errorInfo, setErrorInfo] = useState<string>('');
 
-  const handleError = useCallback((err: Error) => {
-    const errorId = generateErrorId();
-    
-    logger.error('Error caught by useErrorHandler', {
-      errorId,
-      component: componentName || 'Unknown',
-      error: err.message,
-      stack: err.stack,
-    });
+  const handleError = useCallback(
+    (err: Error) => {
+      const errorId = generateErrorId();
 
-    setError(err);
-    setErrorInfo(errorId);
-  }, [componentName]);
+      logger.error('Error caught by useErrorHandler', {
+        errorId,
+        component: componentName || 'Unknown',
+        error: err.message,
+        stack: err.stack,
+      });
+
+      setError(err);
+      setErrorInfo(errorId);
+    },
+    [componentName]
+  );
 
   const clearError = useCallback(() => {
     setError(null);
@@ -287,5 +278,5 @@ export function useErrorHandler(componentName?: string): UseErrorHandlerReturn {
 // Re-exports
 // ============================================================================
 
+export { ERROR_CODES, getErrorCategory, isRetryableError } from './error-codes';
 export { createErrorResponse, getErrorMessage, getErrorStatusCode } from './error-messages';
-export { ERROR_CODES, isRetryableError, getErrorCategory } from './error-codes';

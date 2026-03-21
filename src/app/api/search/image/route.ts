@@ -1,11 +1,11 @@
 /**
  * Image Search API
- * 
+ *
  * Supports:
  * - POST /api/search/image - Search by uploaded image
  * - GET /api/search/image?text=query - Search images by text
  * - POST /api/search/image/multimodal - Search with both text and image
- * 
+ *
  * Features:
  * - Image-based similarity search using CLIP embeddings
  * - Text-to-image semantic search
@@ -14,15 +14,15 @@
  */
 
 import { NextResponse } from 'next/server';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { searchByImage, searchImagesByText, searchMultiModal } from '@/lib/rag/retrieval';
-import { checkPermission, Permission } from '@/lib/workspace/permissions';
 import {
+  addRateLimitHeaders,
   checkApiRateLimit,
   getRateLimitIdentifier,
-  addRateLimitHeaders,
 } from '@/lib/security/rate-limiter';
-import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // Max image size: 10MB
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
     let formData: FormData;
     try {
       formData = await req.formData();
-    } catch (error) {
+    } catch (_error) {
       return NextResponse.json(
         { error: 'Invalid form data', code: 'INVALID_BODY' },
         { status: 400 }
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
     const imageFile = formData.get('image') as File | null;
     const textQuery = formData.get('text') as string | null;
     const imageUrl = formData.get('imageUrl') as string | null;
-    const topK = parseInt(formData.get('topK') as string) || 5;
+    const topK = parseInt(formData.get('topK') as string, 10) || 5;
     const includeChunks = formData.get('includeChunks') === 'true';
     const imageWeight = parseFloat(formData.get('imageWeight') as string) || 0.5;
 
@@ -219,7 +219,10 @@ export async function POST(req: Request) {
       });
     } else {
       return NextResponse.json(
-        { error: 'No search query provided. Provide either image or text query.', code: 'MISSING_QUERY' },
+        {
+          error: 'No search query provided. Provide either image or text query.',
+          code: 'MISSING_QUERY',
+        },
         { status: 400 }
       );
     }
@@ -256,8 +259,6 @@ export async function POST(req: Request) {
 
     return response;
   } catch (error) {
-    console.error('[ImageSearchAPI] Search failed:', error);
-
     return NextResponse.json(
       {
         error: 'Search failed',
@@ -394,8 +395,6 @@ export async function GET(req: Request) {
 
     return response;
   } catch (error) {
-    console.error('[ImageSearchAPI] Search failed:', error);
-
     return NextResponse.json(
       {
         error: 'Search failed',

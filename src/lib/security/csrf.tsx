@@ -1,25 +1,23 @@
 /**
  * CSRF Protection Module
- * 
+ *
  * Implements double-submit cookie pattern for CSRF protection.
  * Uses csrf-csrf package for token generation and validation.
  */
 
 import { doubleCsrf } from 'csrf-csrf';
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 // =============================================================================
 // Configuration
 // =============================================================================
 
-const CSRF_SECRET = process.env.CSRF_SECRET || process.env.NEXTAUTH_SECRET || 'default-csrf-secret-change-in-production';
+const CSRF_SECRET =
+  process.env.CSRF_SECRET ||
+  process.env.NEXTAUTH_SECRET ||
+  'default-csrf-secret-change-in-production';
 
-const {
-  invalidCsrfTokenError,
-  generateToken,
-  validateRequest,
-  doubleCsrfProtection,
-} = doubleCsrf({
+const { invalidCsrfTokenError, generateToken, validateRequest, doubleCsrfProtection } = doubleCsrf({
   getSecret: () => CSRF_SECRET,
   cookieName: 'csrf_token',
   cookieOptions: {
@@ -54,7 +52,10 @@ const {
  * @returns The generated CSRF token
  */
 export function generateCsrfToken(req: Request, res: Response): string {
-  const token = generateToken(req as unknown as Parameters<typeof generateToken>[0], res as unknown as Parameters<typeof generateToken>[1]);
+  const token = generateToken(
+    req as unknown as Parameters<typeof generateToken>[0],
+    res as unknown as Parameters<typeof generateToken>[1]
+  );
   return token;
 }
 
@@ -66,11 +67,11 @@ export function generateCsrfTokenForAppRouter(): { token: string; cookieHeader: 
   // For App Router, we need a different approach
   // Generate a random token
   const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex');
-  
+
   // Create cookie header
   const cookieValue = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex');
   const cookieHeader = `csrf_token=${cookieValue}; HttpOnly; SameSite=Strict; Path=/; ${process.env.NODE_ENV === 'production' ? 'Secure;' : ''}`;
-  
+
   return { token, cookieHeader };
 }
 
@@ -92,29 +93,26 @@ export async function validateCsrfToken(req: NextRequest): Promise<boolean> {
 
     // Get token from header or body
     const token = req.headers.get('x-csrf-token');
-    
+
     if (!token) {
-      console.warn('[CSRF] Missing CSRF token in request');
       return false;
     }
 
     // Get cookie value
     const cookie = req.cookies.get('csrf_token');
     if (!cookie?.value) {
-      console.warn('[CSRF] Missing CSRF cookie');
       return false;
     }
 
     // Validate token against cookie using double-submit pattern
     // The token should be derived from or match the cookie value
     const expectedToken = cookie.value;
-    
+
     // Simple comparison - in production, use HMAC or similar
     const isValid = await verifyCsrfToken(token, expectedToken);
-    
+
     return isValid;
-  } catch (error) {
-    console.error('[CSRF] Validation error:', error);
+  } catch (_error) {
     return false;
   }
 }
@@ -127,18 +125,18 @@ async function verifyCsrfToken(token: string, expected: string): Promise<boolean
     const encoder = new TextEncoder();
     const tokenData = encoder.encode(token);
     const expectedData = encoder.encode(expected);
-    
+
     // Use SubtleCrypto for timing-safe comparison
     if (tokenData.length !== expectedData.length) {
       return false;
     }
-    
+
     // Simple constant-time comparison
     let result = 0;
     for (let i = 0; i < tokenData.length; i++) {
       result |= tokenData[i] ^ expectedData[i];
     }
-    
+
     return result === 0;
   } catch {
     return false;
@@ -164,13 +162,14 @@ export function withCsrfProtection<T extends (req: NextRequest) => Promise<NextR
     }
 
     const isValid = await validateCsrfToken(req);
-    
+
     if (!isValid) {
       return NextResponse.json(
         {
           error: 'Invalid CSRF token',
           code: 'CSRF_INVALID',
-          message: 'The request did not include a valid CSRF token. Please refresh the page and try again.',
+          message:
+            'The request did not include a valid CSRF token. Please refresh the page and try again.',
         },
         { status: 403 }
       );
@@ -186,7 +185,7 @@ export function withCsrfProtection<T extends (req: NextRequest) => Promise<NextR
 
 /**
  * CSRF Token Input Component
- * 
+ *
  * Usage:
  * ```tsx
  * <form action="/api/something" method="POST">
@@ -197,14 +196,7 @@ export function withCsrfProtection<T extends (req: NextRequest) => Promise<NextR
  */
 export function CsrfTokenInput(): React.ReactElement {
   // This will be populated by the server or client-side JavaScript
-  return (
-    <input
-      type="hidden"
-      name="_csrf"
-      id="csrf-token-input"
-      data-csrf-token=""
-    />
-  );
+  return <input type="hidden" name="_csrf" id="csrf-token-input" data-csrf-token="" />;
 }
 
 /**
@@ -263,7 +255,7 @@ export function CsrfTokenScript(): React.ReactElement {
  */
 export function getCsrfToken(): string | null {
   if (typeof document === 'undefined') return null;
-  
+
   const meta = document.querySelector('meta[name="csrf-token"]');
   return meta?.getAttribute('content') || null;
 }
@@ -274,18 +266,15 @@ export function getCsrfToken(): string | null {
  * @param options - Fetch options
  * @returns Fetch response
  */
-export async function fetchWithCsrf(
-  url: string,
-  options: RequestInit = {}
-): Promise<Response> {
+export async function fetchWithCsrf(url: string, options: RequestInit = {}): Promise<Response> {
   const token = getCsrfToken();
-  
+
   const headers = new Headers(options.headers);
-  
+
   if (token && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method || 'GET')) {
     headers.set('x-csrf-token', token);
   }
-  
+
   return fetch(url, {
     ...options,
     headers,

@@ -88,7 +88,7 @@ export class ContextualCompressor {
       return chunks;
     }
 
-    const startTime = Date.now();
+    const _startTime = Date.now();
     const compressedChunks: RetrievedChunk[] = [];
 
     // Process chunks in parallel with concurrency limit
@@ -100,10 +100,6 @@ export class ContextualCompressor {
       );
       compressedChunks.push(...compressedBatch);
     }
-
-    console.log(
-      `[ContextualCompressor] Compressed ${chunks.length} chunks in ${Date.now() - startTime}ms`
-    );
 
     return compressedChunks;
   }
@@ -133,9 +129,7 @@ export class ContextualCompressor {
           retrievalMethod: `${chunk.retrievalMethod}-llm-compressed`,
         };
       }
-    } catch (error) {
-      console.warn('[ContextualCompressor] LLM compression failed:', error);
-    }
+    } catch (_error) {}
 
     // Fallback to heuristic compression
     const heuristicResult = this.heuristicCompression(query, chunk.content);
@@ -342,7 +336,7 @@ export class ContextualCompressor {
 
       return {
         ...chunk,
-        content: finalContent + '...',
+        content: `${finalContent}...`,
         retrievalMethod: `${chunk.retrievalMethod}-truncated`,
       };
     });
@@ -415,7 +409,7 @@ export function truncateChunks(
 
     return {
       ...chunk,
-      content: lastPeriod > 0 ? truncated.slice(0, lastPeriod + 1) + '...' : truncated + '...',
+      content: lastPeriod > 0 ? `${truncated.slice(0, lastPeriod + 1)}...` : `${truncated}...`,
       retrievalMethod: `${chunk.retrievalMethod}-truncated`,
     };
   });

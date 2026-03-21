@@ -63,9 +63,7 @@ class Logger {
     // In production, use structured logging
     // Could integrate with services like Datadog, LogDNA, etc.
     if (level === 'error') {
-      console.error(JSON.stringify(formatted));
     } else {
-      console.log(JSON.stringify(formatted));
     }
   }
 

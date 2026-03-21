@@ -314,7 +314,7 @@ export function useOfflineStatus(): {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [offlineSince]);
 
   const formattedOfflineDuration = useMemo(() => {
     if (!offlineSince) return null;
@@ -463,7 +463,10 @@ export function useBackgroundSync(): {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [
+    // Process queued actions
+    processQueue,
+  ]);
 
   const processQueue = useCallback(async () => {
     while (actionQueue.current.length > 0 && navigator.onLine) {

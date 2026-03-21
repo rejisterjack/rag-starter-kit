@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { DocumentCard } from './document-card';
 import type { Document } from './document-card';
+import { DocumentCard } from './document-card';
 
 const meta: Meta<typeof DocumentCard> = {
   title: 'Documents/DocumentCard',
@@ -32,8 +32,8 @@ const baseDocument: Document = {
 export const Completed: Story = {
   args: {
     document: baseDocument,
-    onPreview: () => console.log('Preview clicked'),
-    onDelete: () => console.log('Delete clicked'),
+    onPreview: () => {},
+    onDelete: () => {},
   },
 };
 
@@ -47,8 +47,8 @@ export const Processing: Story = {
       status: 'processing',
       pages: 0,
     },
-    onPreview: () => console.log('Preview clicked'),
-    onDelete: () => console.log('Delete clicked'),
+    onPreview: () => {},
+    onDelete: () => {},
   },
 };
 
@@ -63,8 +63,8 @@ export const Pending: Story = {
       size: 1024 * 5, // 5 KB
       pages: 0,
     },
-    onPreview: () => console.log('Preview clicked'),
-    onDelete: () => console.log('Delete clicked'),
+    onPreview: () => {},
+    onDelete: () => {},
   },
 };
 
@@ -78,8 +78,8 @@ export const Failed: Story = {
       status: 'failed',
       pages: 0,
     },
-    onPreview: () => console.log('Preview clicked'),
-    onDelete: () => console.log('Delete clicked'),
+    onPreview: () => {},
+    onDelete: () => {},
   },
 };
 
@@ -93,8 +93,8 @@ export const LargeFile: Story = {
       size: 1024 * 1024 * 45, // 45 MB
       pages: 150,
     },
-    onPreview: () => console.log('Preview clicked'),
-    onDelete: () => console.log('Delete clicked'),
+    onPreview: () => {},
+    onDelete: () => {},
   },
 };
 
@@ -109,8 +109,8 @@ export const Markdown: Story = {
       status: 'completed',
       pages: 0,
     },
-    onPreview: () => console.log('Preview clicked'),
-    onDelete: () => console.log('Delete clicked'),
+    onPreview: () => {},
+    onDelete: () => {},
   },
 };
 
@@ -118,16 +118,16 @@ export const Selected: Story = {
   args: {
     document: baseDocument,
     isSelected: true,
-    onPreview: () => console.log('Preview clicked'),
-    onDelete: () => console.log('Delete clicked'),
+    onPreview: () => {},
+    onDelete: () => {},
   },
 };
 
 export const DarkMode: Story = {
   args: {
     document: baseDocument,
-    onPreview: () => console.log('Preview clicked'),
-    onDelete: () => console.log('Delete clicked'),
+    onPreview: () => {},
+    onDelete: () => {},
   },
   parameters: {
     themes: {
@@ -139,11 +139,7 @@ export const DarkMode: Story = {
 export const GridView: Story = {
   render: () => (
     <div className="grid grid-cols-2 gap-4 w-[600px]">
-      <DocumentCard
-        document={baseDocument}
-        onPreview={() => console.log('Preview 1')}
-        onDelete={() => console.log('Delete 1')}
-      />
+      <DocumentCard document={baseDocument} onPreview={() => {}} onDelete={() => {}} />
       <DocumentCard
         document={{
           ...baseDocument,
@@ -152,8 +148,8 @@ export const GridView: Story = {
           type: 'pdf',
           status: 'completed',
         }}
-        onPreview={() => console.log('Preview 2')}
-        onDelete={() => console.log('Delete 2')}
+        onPreview={() => {}}
+        onDelete={() => {}}
       />
       <DocumentCard
         document={{
@@ -163,8 +159,8 @@ export const GridView: Story = {
           type: 'md',
           status: 'processing',
         }}
-        onPreview={() => console.log('Preview 3')}
-        onDelete={() => console.log('Delete 3')}
+        onPreview={() => {}}
+        onDelete={() => {}}
       />
       <DocumentCard
         document={{
@@ -174,8 +170,8 @@ export const GridView: Story = {
           type: 'docx',
           status: 'completed',
         }}
-        onPreview={() => console.log('Preview 4')}
-        onDelete={() => console.log('Delete 4')}
+        onPreview={() => {}}
+        onDelete={() => {}}
       />
     </div>
   ),

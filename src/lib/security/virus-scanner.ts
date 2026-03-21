@@ -193,7 +193,7 @@ export class VirusScanner {
    * Scan using ClamAV via TCP (for remote ClamAV servers)
    */
   private async scanWithClamAVTCP(buffer: Buffer): Promise<ScanResult> {
-    const net = await import('net');
+    const net = await import('node:net');
 
     return new Promise((resolve, reject) => {
       const host = this.config.host || 'localhost';
@@ -258,7 +258,7 @@ export class VirusScanner {
    * Scan using local ClamAV daemon via Unix socket
    */
   private async scanWithClamAVLocal(buffer: Buffer): Promise<ScanResult> {
-    const net = await import('net');
+    const net = await import('node:net');
 
     return new Promise((resolve, reject) => {
       const socketPath = this.config.socketPath || '/var/run/clamav/clamd.ctl';

@@ -119,8 +119,6 @@ export class ChunkingEngine {
       case 'late':
         chunker = new LateChunker();
         break;
-
-      case 'fixed':
       default:
         chunker = new FixedChunker();
         break;

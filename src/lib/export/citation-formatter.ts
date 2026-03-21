@@ -196,7 +196,7 @@ export class VancouverCitationFormatter implements CitationFormatter {
     return num
       .toString()
       .split('')
-      .map((digit) => superscripts[parseInt(digit)])
+      .map((digit) => superscripts[parseInt(digit, 10)])
       .join('');
   }
 }
@@ -245,9 +245,6 @@ export function getCitationFormatter(
       return new HarvardCitationFormatter();
     case 'vancouver':
       return new VancouverCitationFormatter();
-    case 'inline-numbered':
-    case 'footnotes':
-    case 'endnotes':
     default:
       return new InlineNumberedFormatter();
   }
@@ -350,7 +347,6 @@ export function getBibliographyTitle(style: CitationStyle | AcademicCitationStyl
     case 'footnotes':
     case 'endnotes':
       return 'Notes';
-    case 'inline-numbered':
     default:
       return 'References';
   }

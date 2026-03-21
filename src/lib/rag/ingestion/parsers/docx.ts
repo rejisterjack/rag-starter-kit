@@ -84,7 +84,6 @@ export async function parseDOCX(buffer: Buffer): Promise<ParsedDOCX> {
       characterCount,
     };
   } catch (error) {
-    console.error('DOCX parsing error:', error);
     throw new DOCXParserError(
       `Failed to parse DOCX file: ${error instanceof Error ? error.message : 'Unknown error'}`
     );

@@ -1,24 +1,24 @@
 /**
  * Vision Chat API
- * 
+ *
  * Handles multi-modal chat with vision-language models.
  * Supports text + image inputs for comprehensive document understanding.
  */
 
-import { streamText, generateText } from 'ai';
 import { google } from '@ai-sdk/google';
+import { generateText, streamText } from 'ai';
 import { NextResponse } from 'next/server';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { searchByImage, searchImagesByText } from '@/lib/rag/retrieval';
 import { ConversationMemory } from '@/lib/rag/memory';
-import { checkPermission, Permission } from '@/lib/workspace/permissions';
+import { searchByImage, searchImagesByText } from '@/lib/rag/retrieval';
 import {
+  addRateLimitHeaders,
   checkApiRateLimit,
   getRateLimitIdentifier,
-  addRateLimitHeaders,
 } from '@/lib/security/rate-limiter';
-import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 /**
  * Request body validation
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
     // Step 3: Parse request body
     const body = (await req.json()) as VisionChatRequest;
     const { messages, chatId, image, imageUrl, stream: shouldStream, config } = body;
-    
+
     if (!messages || messages.length === 0) {
       return NextResponse.json(
         { error: 'Messages are required', code: 'VALIDATION_ERROR' },
@@ -133,7 +133,7 @@ export async function POST(req: Request) {
             topK: config?.topK || 3,
             includeChunks: true,
           });
-          
+
           if (searchResults.images.length > 0) {
             retrievedImages = searchResults.images.map((img) => ({
               id: img.id,
@@ -150,7 +150,7 @@ export async function POST(req: Request) {
             topK: config?.topK || 3,
             includeChunks: true,
           });
-          
+
           if (searchResults.images.length > 0) {
             retrievedImages = searchResults.images.map((img) => ({
               id: img.id,
@@ -162,9 +162,7 @@ export async function POST(req: Request) {
             imageContext = buildImageContext(searchResults.images, searchResults.chunks);
           }
         }
-      } catch (error) {
-        console.warn('[VisionChat] Image retrieval failed:', error);
-      }
+      } catch (_error) {}
     }
 
     // Step 5: Build system prompt and prepare messages
@@ -256,8 +254,6 @@ export async function POST(req: Request) {
       return jsonResponse;
     }
   } catch (error) {
-    console.error('[VisionChat] Request failed:', error);
-
     return NextResponse.json(
       {
         error: 'Failed to process request',
@@ -365,7 +361,9 @@ function buildImageContext(
   if (images.length > 0) {
     sections.push('Retrieved Images:');
     images.forEach((img, idx) => {
-      sections.push(`[Image ${idx + 1}] ${img.documentName}${img.pageNumber ? ` (Page ${img.pageNumber})` : ''}`);
+      sections.push(
+        `[Image ${idx + 1}] ${img.documentName}${img.pageNumber ? ` (Page ${img.pageNumber})` : ''}`
+      );
       if (img.caption) {
         sections.push(`Description: ${img.caption}`);
       }
@@ -378,7 +376,9 @@ function buildImageContext(
   if (chunks.length > 0) {
     sections.push('\nRelated Document Content:');
     chunks.forEach((chunk, idx) => {
-      sections.push(`[Source ${idx + 1}] ${chunk.metadata.documentName}${chunk.metadata.page ? `, Page ${chunk.metadata.page}` : ''}`);
+      sections.push(
+        `[Source ${idx + 1}] ${chunk.metadata.documentName}${chunk.metadata.page ? `, Page ${chunk.metadata.page}` : ''}`
+      );
       sections.push(chunk.content);
     });
   }

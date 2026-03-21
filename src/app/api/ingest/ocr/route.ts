@@ -17,11 +17,11 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import {
-  parseImageWithOCR,
-  OCRParserError,
-  OCRConfigBuilder,
   isValidImage,
+  OCRConfigBuilder,
   type OCRConfiguration,
+  OCRParserError,
+  parseImageWithOCR,
 } from '@/lib/rag/ingestion/parsers/ocr';
 import {
   addRateLimitHeaders,
@@ -246,9 +246,7 @@ export async function POST(req: NextRequest) {
         maxDimension: 3000,
         minDpi: 150,
       })
-      .withLogger((message) => {
-        console.log(`OCR Progress: ${message.status} - ${Math.round(message.progress * 100)}%`);
-      })
+      .withLogger((_message) => {})
       .build();
 
     // Step 8: Perform OCR
@@ -305,8 +303,6 @@ export async function POST(req: NextRequest) {
     addRateLimitHeaders(response.headers, rateLimitResult);
     return response;
   } catch (error) {
-    console.error('OCR API error:', error);
-
     // Handle specific OCR errors
     if (error instanceof OCRParserError) {
       return NextResponse.json(

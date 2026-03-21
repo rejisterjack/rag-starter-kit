@@ -1,34 +1,34 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  buildWebhookPayload,
+  deliverToMultiple,
+  deliverWebhook,
   generateWebhookSecret,
   generateWebhookSignature,
-  verifyWebhookSignature,
-  buildWebhookPayload,
-  deliverWebhook,
-  testWebhook,
-  deliverToMultiple,
-  WebhookEvents,
   getAvailableWebhookEvents,
+  testWebhook,
+  verifyWebhookSignature,
+  WebhookEvents,
 } from '@/lib/webhooks/delivery';
 import {
-  rotateWebhookSecret,
+  checkIdempotencyKey,
+  cleanupIdempotencyKeys,
+  deleteIdempotencyKey,
+  generateIdempotencyKey,
+  IdempotencyError,
+  isDuplicateEvent,
+  markIdempotencyKeyProcessed,
+  parseIdempotencyKey,
+  processWithIdempotency,
+  storeIdempotencyKey,
+} from '@/lib/webhooks/idempotency';
+import {
+  cleanupExpiredRotations,
   completeWebhookRotation,
   getWebhookSecrets,
+  rotateWebhookSecret,
   verifyWebhookSignatureWithRotation,
-  cleanupExpiredRotations,
 } from '@/lib/webhooks/rotation';
-import {
-  generateIdempotencyKey,
-  checkIdempotencyKey,
-  storeIdempotencyKey,
-  markIdempotencyKeyProcessed,
-  deleteIdempotencyKey,
-  isDuplicateEvent,
-  processWithIdempotency,
-  IdempotencyError,
-  cleanupIdempotencyKeys,
-  parseIdempotencyKey,
-} from '@/lib/webhooks/idempotency';
 
 // Mock modules - factories defined inline to avoid hoisting issues
 vi.mock('@/lib/security/rate-limiter', () => ({
@@ -60,9 +60,9 @@ vi.mock('@/lib/logger', () => ({
   },
 }));
 
+import { prisma as mockPrisma } from '@/lib/db';
 // Get reference to mocked modules after they're defined
 import { redis as mockRedis } from '@/lib/security/rate-limiter';
-import { prisma as mockPrisma } from '@/lib/db';
 
 describe('Webhooks', () => {
   beforeEach(() => {
@@ -144,7 +144,7 @@ describe('Webhooks', () => {
       const secret = 'whsec_testsecret';
 
       const signature = generateWebhookSignature(payload, secret);
-      
+
       // Should not throw
       const isValid = verifyWebhookSignature(payload, signature, secret);
       expect(isValid).toBe(true);
@@ -201,11 +201,7 @@ describe('Webhooks', () => {
       vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse as Response);
 
       const payload = buildWebhookPayload('test', { message: 'Hello' });
-      const result = await deliverWebhook(
-        'https://example.com/webhook',
-        'whsec_secret',
-        payload
-      );
+      const result = await deliverWebhook('https://example.com/webhook', 'whsec_secret', payload);
 
       expect(result.success).toBe(true);
       expect(result.statusCode).toBe(200);
@@ -257,12 +253,9 @@ describe('Webhooks', () => {
         .mockResolvedValueOnce(successResponse as Response);
 
       const payload = buildWebhookPayload('test', {});
-      const result = await deliverWebhook(
-        'https://example.com/webhook',
-        'whsec_secret',
-        payload,
-        { maxRetries: 3 }
-      );
+      const result = await deliverWebhook('https://example.com/webhook', 'whsec_secret', payload, {
+        maxRetries: 3,
+      });
 
       expect(result.success).toBe(true);
       expect(result.attemptCount).toBe(2);
@@ -285,12 +278,9 @@ describe('Webhooks', () => {
         .mockResolvedValueOnce(successResponse as Response);
 
       const payload = buildWebhookPayload('test', {});
-      const result = await deliverWebhook(
-        'https://example.com/webhook',
-        'whsec_secret',
-        payload,
-        { maxRetries: 3 }
-      );
+      const result = await deliverWebhook('https://example.com/webhook', 'whsec_secret', payload, {
+        maxRetries: 3,
+      });
 
       expect(result.success).toBe(true);
     });
@@ -305,12 +295,9 @@ describe('Webhooks', () => {
       vi.mocked(global.fetch).mockResolvedValue(serverError as Response);
 
       const payload = buildWebhookPayload('test', {});
-      const result = await deliverWebhook(
-        'https://example.com/webhook',
-        'whsec_secret',
-        payload,
-        { maxRetries: 2 }
-      );
+      const result = await deliverWebhook('https://example.com/webhook', 'whsec_secret', payload, {
+        maxRetries: 2,
+      });
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
@@ -321,12 +308,9 @@ describe('Webhooks', () => {
       vi.mocked(global.fetch).mockRejectedValue(new Error('Network error'));
 
       const payload = buildWebhookPayload('test', {});
-      const result = await deliverWebhook(
-        'https://example.com/webhook',
-        'whsec_secret',
-        payload,
-        { maxRetries: 1 }
-      );
+      const result = await deliverWebhook('https://example.com/webhook', 'whsec_secret', payload, {
+        maxRetries: 1,
+      });
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Network error');
@@ -338,12 +322,10 @@ describe('Webhooks', () => {
       );
 
       const payload = buildWebhookPayload('test', {});
-      const result = await deliverWebhook(
-        'https://example.com/webhook',
-        'whsec_secret',
-        payload,
-        { timeoutMs: 50, maxRetries: 0 }
-      );
+      const result = await deliverWebhook('https://example.com/webhook', 'whsec_secret', payload, {
+        timeoutMs: 50,
+        maxRetries: 0,
+      });
 
       expect(result.success).toBe(false);
     }, 10000);
@@ -534,11 +516,7 @@ describe('Webhooks', () => {
         metadata: {},
       });
 
-      const isValid = await verifyWebhookSignatureWithRotation(
-        'webhook-123',
-        payload,
-        signature
-      );
+      const isValid = await verifyWebhookSignatureWithRotation('webhook-123', payload, signature);
 
       expect(isValid).toBe(true);
     });
@@ -744,9 +722,7 @@ describe('Webhooks', () => {
     });
 
     it('should check for duplicate events', async () => {
-      mockRedis.get.mockResolvedValueOnce(
-        JSON.stringify({ processed: true })
-      );
+      mockRedis.get.mockResolvedValueOnce(JSON.stringify({ processed: true }));
 
       const isDuplicate = await isDuplicateEvent('webhook-123', 'document.created', 'event-1');
 
@@ -839,7 +815,10 @@ describe('Webhooks', () => {
       ]);
       mockRedis.pipeline.mockReturnThis();
       mockRedis.del.mockReturnThis();
-      mockRedis.exec.mockResolvedValueOnce([[null, 1], [null, 1]]);
+      mockRedis.exec.mockResolvedValueOnce([
+        [null, 1],
+        [null, 1],
+      ]);
 
       const deleted = await cleanupIdempotencyKeys();
 

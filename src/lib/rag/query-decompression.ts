@@ -108,8 +108,7 @@ Rules:
         requiresContext: true,
         confidence,
       };
-    } catch (error) {
-      console.error('Query decompression failed:', error);
+    } catch (_error) {
       // Return original on failure
       return {
         originalQuery: query,

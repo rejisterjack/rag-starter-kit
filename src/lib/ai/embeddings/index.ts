@@ -1,38 +1,38 @@
 /**
  * Embedding Provider Factory
- * 
+ *
  * Central export point for all embedding providers.
  * Provides factory function to create appropriate provider based on config.
- * 
+ *
  * DEFAULT: Google Gemini (free tier via AI Studio)
  * - text-embedding-004: 768 dimensions, high quality
  * - Get API key: https://aistudio.google.com/app/apikey
  */
 
+import { createGoogleProvider, GOOGLE_MODELS, GoogleEmbeddingProvider } from './google';
+import { createOllamaProvider, OllamaEmbeddingProvider } from './ollama';
+import { createOpenAIProvider, OpenAIEmbeddingProvider } from './openai';
 import {
-  type EmbeddingProvider,
   type EmbeddingConfig,
-  OPENAI_MODELS,
+  type EmbeddingProvider,
   OLLAMA_MODELS,
+  OPENAI_MODELS,
 } from './types';
-import { OpenAIEmbeddingProvider, createOpenAIProvider } from './openai';
-import { OllamaEmbeddingProvider, createOllamaProvider } from './ollama';
-import { GoogleEmbeddingProvider, createGoogleProvider, GOOGLE_MODELS } from './google';
 
-// Re-export all types and providers
-export * from './types';
-export { OpenAIEmbeddingProvider, createOpenAIProvider } from './openai';
-export { OllamaEmbeddingProvider, createOllamaProvider } from './ollama';
-export { GoogleEmbeddingProvider, createGoogleProvider, GOOGLE_MODELS } from './google';
+export { createGoogleProvider, GOOGLE_MODELS, GoogleEmbeddingProvider } from './google';
 export {
+  clearImageEmbeddingCache,
+  cosineSimilarity as imageCosineSimilarity,
   generateImageEmbedding,
   generateImageEmbeddings,
   generateTextEmbeddingForImageSearch,
-  cosineSimilarity as imageCosineSimilarity,
   getImageEmbeddingDimensions,
-  clearImageEmbeddingCache,
   healthCheck as imageEmbeddingHealthCheck,
 } from './image';
+export { createOllamaProvider, OllamaEmbeddingProvider } from './ollama';
+export { createOpenAIProvider, OpenAIEmbeddingProvider } from './openai';
+// Re-export all types and providers
+export * from './types';
 
 /**
  * Provider factory configuration with environment fallbacks
@@ -57,30 +57,24 @@ export interface ProviderFactoryConfig {
 /**
  * Create an embedding provider based on configuration
  */
-export function createEmbeddingProvider(
-  config: EmbeddingConfig
-): EmbeddingProvider {
+export function createEmbeddingProvider(config: EmbeddingConfig): EmbeddingProvider {
   switch (config.provider) {
     case 'google':
-      return new GoogleEmbeddingProvider(
-        config.model as keyof typeof GOOGLE_MODELS,
-        config.apiKey
-      );
+      return new GoogleEmbeddingProvider(config.model as keyof typeof GOOGLE_MODELS, config.apiKey);
     case 'openai':
       return new OpenAIEmbeddingProvider(config);
     case 'ollama':
       return new OllamaEmbeddingProvider(config);
     default:
       throw new Error(
-        `Unknown provider: ${config.provider}. ` +
-        `Supported providers: google, openai, ollama`
+        `Unknown provider: ${config.provider}. Supported providers: google, openai, ollama`
       );
   }
 }
 
 /**
  * Create embedding provider from environment variables
- * 
+ *
  * Environment variables:
  * - EMBEDDING_PROVIDER: 'google', 'openai', or 'ollama' (default: 'google')
  * - EMBEDDING_MODEL: Model name (default: text-embedding-004 for Google)
@@ -91,71 +85,52 @@ export function createEmbeddingProvider(
 export function createEmbeddingProviderFromEnv(
   overrides?: ProviderFactoryConfig
 ): EmbeddingProvider {
-  const provider = overrides?.provider ?? 
-    (process.env.EMBEDDING_PROVIDER as 'google' | 'openai' | 'ollama') ?? 
+  const provider =
+    overrides?.provider ??
+    (process.env.EMBEDDING_PROVIDER as 'google' | 'openai' | 'ollama') ??
     'google';
 
   switch (provider) {
     case 'google': {
-      const model = overrides?.model ?? 
-        process.env.EMBEDDING_MODEL ?? 
-        'text-embedding-004';
+      const model = overrides?.model ?? process.env.EMBEDDING_MODEL ?? 'text-embedding-004';
 
       if (!isValidGoogleModel(model)) {
         throw new Error(
-          `Invalid Google model: ${model}. ` +
-          `Supported: ${Object.keys(GOOGLE_MODELS).join(', ')}`
+          `Invalid Google model: ${model}. ` + `Supported: ${Object.keys(GOOGLE_MODELS).join(', ')}`
         );
       }
 
-      const apiKey = overrides?.apiKey ?? 
-        process.env.GOOGLE_API_KEY ?? 
-        process.env.GEMINI_API_KEY;
+      const apiKey = overrides?.apiKey ?? process.env.GOOGLE_API_KEY ?? process.env.GEMINI_API_KEY;
 
       return createGoogleProvider(model, apiKey);
     }
 
     case 'ollama': {
-      const model = overrides?.model ?? 
-        process.env.EMBEDDING_MODEL ?? 
-        'nomic-embed-text';
+      const model = overrides?.model ?? process.env.EMBEDDING_MODEL ?? 'nomic-embed-text';
 
       if (!isValidOllamaModel(model)) {
         throw new Error(
-          `Invalid Ollama model: ${model}. ` +
-          `Supported: ${Object.keys(OLLAMA_MODELS).join(', ')}`
+          `Invalid Ollama model: ${model}. ` + `Supported: ${Object.keys(OLLAMA_MODELS).join(', ')}`
         );
       }
 
-      return createOllamaProvider(
-        model,
-        overrides?.baseUrl ?? process.env.OLLAMA_BASE_URL
-      );
+      return createOllamaProvider(model, overrides?.baseUrl ?? process.env.OLLAMA_BASE_URL);
     }
 
     case 'openai': {
-      const model = overrides?.model ?? 
-        process.env.EMBEDDING_MODEL ?? 
-        'text-embedding-3-small';
+      const model = overrides?.model ?? process.env.EMBEDDING_MODEL ?? 'text-embedding-3-small';
 
       if (!isValidOpenAIModel(model)) {
         throw new Error(
-          `Invalid OpenAI model: ${model}. ` +
-          `Supported: ${Object.keys(OPENAI_MODELS).join(', ')}`
+          `Invalid OpenAI model: ${model}. ` + `Supported: ${Object.keys(OPENAI_MODELS).join(', ')}`
         );
       }
 
-      return createOpenAIProvider(
-        model,
-        overrides?.apiKey ?? process.env.OPENAI_API_KEY
-      );
+      return createOpenAIProvider(model, overrides?.apiKey ?? process.env.OPENAI_API_KEY);
     }
 
     default:
-      throw new Error(
-        `Unknown provider: ${provider}. ` +
-        `Supported: google, openai, ollama`
-      );
+      throw new Error(`Unknown provider: ${provider}. Supported: google, openai, ollama`);
   }
 }
 
@@ -175,16 +150,12 @@ export async function createProviderWithFallback(
 ): Promise<EmbeddingProvider> {
   try {
     const primaryProvider = createEmbeddingProvider(primary);
-    
+
     // Test if primary is available
     if (await primaryProvider.healthCheck?.()) {
       return primaryProvider;
     }
-    
-    console.warn(`Primary provider ${primary.provider} unavailable, using fallback`);
-  } catch (error) {
-    console.warn(`Failed to initialize primary provider: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
+  } catch (_error) {}
 
   return createEmbeddingProvider(fallback);
 }
@@ -215,7 +186,7 @@ export function createCachedProvider(
 
     async embedQuery(text: string): Promise<number[]> {
       const cacheKey = `embed:query:${hashFn(text)}:${provider.modelName}`;
-      
+
       // Try cache first
       const cached = await cache.get(cacheKey);
       if (cached) {
@@ -224,10 +195,10 @@ export function createCachedProvider(
 
       // Generate embedding
       const embedding = await provider.embedQuery(text);
-      
+
       // Cache result
       await cache.set(cacheKey, embedding, ttl);
-      
+
       return embedding;
     },
 
@@ -240,7 +211,7 @@ export function createCachedProvider(
       for (let i = 0; i < texts.length; i++) {
         const cacheKey = `embed:doc:${hashFn(texts[i] ?? '')}:${provider.modelName}`;
         const cached = await cache.get(cacheKey);
-        
+
         if (cached) {
           results[i] = cached;
         } else {

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { AlertCircle, Check, X } from 'lucide-react';
 import { Badge } from './badge';
-import { Check, X, AlertCircle, Info } from 'lucide-react';
 
 const meta: Meta<typeof Badge> = {
   title: 'UI/Badge',

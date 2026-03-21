@@ -1,9 +1,9 @@
 /**
  * Local Embedding Provider (Xenova/Transformers)
- * 
+ *
  * Completely free embedding provider that runs locally using Transformers.js.
  * Uses ONNX models for efficient CPU inference - no GPU required.
- * 
+ *
  * Models available:
  * - Xenova/all-MiniLM-L6-v2 (default): 384 dimensions, fast, good quality
  * - Xenova/all-MiniLM-L12-v2: 384 dimensions, slightly better quality
@@ -11,7 +11,7 @@
  * - Xenova/gte-base: 768 dimensions, excellent for semantic search
  */
 
-import { pipeline, type FeatureExtractionPipeline } from '@xenova/transformers';
+import { type FeatureExtractionPipeline, pipeline } from '@xenova/transformers';
 import type { EmbeddingProvider } from './types';
 
 /**
@@ -53,7 +53,7 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
   readonly name = 'local';
   readonly modelName: string;
   readonly dimensions: number;
-  
+
   private pipeline: FeatureExtractionPipeline | null = null;
   private readonly maxTokens: number;
   private readonly quantized: boolean;
@@ -63,11 +63,10 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
     const modelInfo = LOCAL_MODELS[model];
     if (!modelInfo) {
       throw new Error(
-        `Invalid local model: ${model}. ` +
-        `Supported: ${Object.keys(LOCAL_MODELS).join(', ')}`
+        `Invalid local model: ${model}. ` + `Supported: ${Object.keys(LOCAL_MODELS).join(', ')}`
       );
     }
-    
+
     this.modelName = model;
     this.dimensions = modelInfo.dimensions;
     this.maxTokens = modelInfo.maxTokens;
@@ -79,7 +78,7 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
    */
   private async initialize(): Promise<void> {
     if (this.pipeline) return;
-    
+
     if (this.initializing) {
       await this.initializing;
       return;
@@ -91,18 +90,14 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
 
   private async doInitialize(): Promise<void> {
     try {
-      this.pipeline = await pipeline(
-        'feature-extraction',
-        this.modelName,
-        {
-          quantized: this.quantized,
-          revision: 'main',
-        }
-      );
+      this.pipeline = await pipeline('feature-extraction', this.modelName, {
+        quantized: this.quantized,
+        revision: 'main',
+      });
     } catch (error) {
       throw new Error(
         `Failed to initialize local embedding model ${this.modelName}: ` +
-        `${error instanceof Error ? error.message : 'Unknown error'}`
+          `${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
@@ -112,19 +107,19 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
    */
   async embedQuery(text: string): Promise<number[]> {
     await this.initialize();
-    
+
     if (!this.pipeline) {
       throw new Error('Embedding pipeline not initialized');
     }
 
     // Truncate text if too long
     const truncatedText = this.truncateText(text);
-    
+
     const output = await this.pipeline(truncatedText, {
       pooling: 'mean',
       normalize: true,
     });
-    
+
     return Array.from(output.data as Float32Array);
   }
 
@@ -133,13 +128,13 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
    */
   async embedDocuments(texts: string[]): Promise<number[][]> {
     await this.initialize();
-    
+
     if (!this.pipeline) {
       throw new Error('Embedding pipeline not initialized');
     }
 
     const embeddings: number[][] = [];
-    
+
     // Process in small batches to avoid memory issues
     const batchSize = 4;
     for (let i = 0; i < texts.length; i += batchSize) {
@@ -147,7 +142,7 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
       const batchResults = await Promise.all(
         batch.map(async (text) => {
           const truncatedText = this.truncateText(text);
-          const output = await this.pipeline!(truncatedText, {
+          const output = await this.pipeline?.(truncatedText, {
             pooling: 'mean',
             normalize: true,
           });
@@ -156,7 +151,7 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
       );
       embeddings.push(...batchResults);
     }
-    
+
     return embeddings;
   }
 

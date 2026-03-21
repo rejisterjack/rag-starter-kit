@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle2, Loader2, Mail } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,23 +46,26 @@ export default function ForgotPasswordPage(): React.ReactElement {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 1.05 }}
-          transition={{ duration: 0.4, type: "spring", damping: 25 }}
+          transition={{ duration: 0.4, type: 'spring', damping: 25 }}
           className="space-y-6 text-center"
         >
           <div className="flex justify-center mb-6">
-            <motion.div 
-               initial={{ scale: 0 }}
-               animate={{ scale: 1 }}
-               transition={{ delay: 0.2, type: 'spring' }}
-               className="rounded-full bg-emerald-500/20 p-4 border border-emerald-500/30 shadow-[0_0_30px_-5px_rgba(16,185,129,0.3)]"
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: 'spring' }}
+              className="rounded-full bg-emerald-500/20 p-4 border border-emerald-500/30 shadow-[0_0_30px_-5px_rgba(16,185,129,0.3)]"
             >
               <CheckCircle2 className="h-10 w-10 text-emerald-400" />
             </motion.div>
           </div>
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent pb-1">Check your email</h1>
+            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent pb-1">
+              Check your email
+            </h1>
             <p className="text-sm text-muted-foreground/80 leading-relaxed max-w-[90%] mx-auto">
-              We&apos;ve sent a password reset link to <span className="font-medium text-primary">{email}</span>
+              We&apos;ve sent a password reset link to{' '}
+              <span className="font-medium text-primary">{email}</span>
             </p>
           </div>
           <div className="space-y-5 pt-4">
@@ -76,7 +79,11 @@ export default function ForgotPasswordPage(): React.ReactElement {
                 try again
               </button>
             </p>
-            <Button asChild variant="outline" className="w-full bg-background/50 border-white/10 backdrop-blur-sm">
+            <Button
+              asChild
+              variant="outline"
+              className="w-full bg-background/50 border-white/10 backdrop-blur-sm"
+            >
               <Link href="/login">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to sign in
@@ -93,7 +100,9 @@ export default function ForgotPasswordPage(): React.ReactElement {
           className="space-y-6"
         >
           <div className="text-center">
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent pb-1">Recovery</h1>
+            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent pb-1">
+              Recovery
+            </h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Enter your email and we&apos;ll send a link
             </p>
@@ -107,7 +116,9 @@ export default function ForgotPasswordPage(): React.ReactElement {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-muted-foreground">Email</Label>
+              <Label htmlFor="email" className="text-muted-foreground">
+                Email
+              </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -123,7 +134,14 @@ export default function ForgotPasswordPage(): React.ReactElement {
               </div>
             </div>
             <Button type="submit" className="w-full font-medium" disabled={isLoading}>
-              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</> : 'Send reset link'}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                'Send reset link'
+              )}
             </Button>
           </form>
 

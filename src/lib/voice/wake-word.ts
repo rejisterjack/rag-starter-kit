@@ -4,13 +4,13 @@
  * Supports low-power listening mode
  */
 
-import { getNavigator, isClient, isSpeechRecognitionSupported } from './browser-support';
-import type { 
-  SupportedLanguage,
-  SpeechRecognitionInstance,
+import type {
+  SpeechRecognitionErrorEvent,
   SpeechRecognitionEvent,
-  SpeechRecognitionErrorEvent 
+  SpeechRecognitionInstance,
+  SupportedLanguage,
 } from '@/types';
+import { getNavigator, isClient, isSpeechRecognitionSupported } from './browser-support';
 
 // =============================================================================
 // Types
@@ -77,7 +77,9 @@ export type WakeWordStateChangeHandler = (state: WakeWordState) => void;
 
 const DEFAULT_WAKE_WORDS = ['Hey RAG', 'OK Assistant'];
 
-const DEFAULT_OPTIONS: Required<Omit<WakeWordOptions, 'language'>> & { language: SupportedLanguage } = {
+const DEFAULT_OPTIONS: Required<Omit<WakeWordOptions, 'language'>> & {
+  language: SupportedLanguage;
+} = {
   wakeWords: DEFAULT_WAKE_WORDS,
   language: 'en-US',
   lowPowerMode: true,
@@ -108,7 +110,7 @@ export class WakeWordDetector {
   private recognition: SpeechRecognitionInstance | null = null;
   private eventListeners: Map<WakeWordEventType, Set<WakeWordEventHandler>> = new Map();
   private stateChangeListeners: Set<WakeWordStateChangeHandler> = new Set();
-  
+
   private state: WakeWordState = {
     isListening: false,
     isLowPowerMode: false,
@@ -146,7 +148,7 @@ export class WakeWordDetector {
     if (!isClient()) return false;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return false;
-    
+
     // Check for properties that indicate low-power support
     const recognition = new SpeechRecognition();
     return 'audioStartThreshold' in recognition || 'speechStartThreshold' in recognition;
@@ -161,7 +163,7 @@ export class WakeWordDetector {
     }
 
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
+
     if (!SpeechRecognitionAPI) {
       this.emitError('Speech recognition not supported in this browser');
       return false;
@@ -176,7 +178,7 @@ export class WakeWordDetector {
       }
 
       this.initializeRecognition();
-      
+
       if (!this.recognition) {
         this.emitError('Failed to initialize speech recognition');
         return false;
@@ -185,7 +187,11 @@ export class WakeWordDetector {
       this.state.isListening = true;
       this.state.isLowPowerMode = this.options.lowPowerMode;
       this.emitStateChange();
-      this.emit('start', { type: 'start', timestamp: Date.now(), isLowPower: this.state.isLowPowerMode });
+      this.emit('start', {
+        type: 'start',
+        timestamp: Date.now(),
+        isLowPower: this.state.isLowPowerMode,
+      });
 
       this.recognition.start();
 
@@ -198,7 +204,9 @@ export class WakeWordDetector {
 
       return true;
     } catch (error) {
-      this.emitError(`Failed to start wake word detection: ${error instanceof Error ? error.message : String(error)}`);
+      this.emitError(
+        `Failed to start wake word detection: ${error instanceof Error ? error.message : String(error)}`
+      );
       this.cleanup();
       return false;
     }
@@ -213,7 +221,7 @@ export class WakeWordDetector {
     }
 
     this.cleanup();
-    
+
     this.state.isListening = false;
     this.state.isLowPowerMode = false;
     this.emitStateChange();
@@ -244,9 +252,15 @@ export class WakeWordDetector {
         this.recognition.start();
         this.state.isListening = true;
         this.emitStateChange();
-        this.emit('start', { type: 'start', timestamp: Date.now(), isLowPower: this.state.isLowPowerMode });
+        this.emit('start', {
+          type: 'start',
+          timestamp: Date.now(),
+          isLowPower: this.state.isLowPowerMode,
+        });
       } catch (error) {
-        this.emitError(`Failed to resume: ${error instanceof Error ? error.message : String(error)}`);
+        this.emitError(
+          `Failed to resume: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     }
   }
@@ -256,7 +270,7 @@ export class WakeWordDetector {
    */
   updateOptions(options: Partial<WakeWordOptions>): void {
     const wasListening = this.state.isListening;
-    
+
     if (wasListening) {
       this.stop();
     }
@@ -320,7 +334,7 @@ export class WakeWordDetector {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, new Set());
     }
-    this.eventListeners.get(event)!.add(handler);
+    this.eventListeners.get(event)?.add(handler);
 
     return () => {
       this.eventListeners.get(event)?.delete(handler);
@@ -371,18 +385,17 @@ export class WakeWordDetector {
 
     try {
       this.abortController = new AbortController();
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-        }
+        },
       });
       // Stop tracks immediately, we just need permission
       stream.getTracks().forEach((track) => track.stop());
       return true;
-    } catch (error) {
-      console.error('[WakeWord] Microphone permission denied:', error);
+    } catch (_error) {
       return false;
     }
   }
@@ -406,7 +419,11 @@ export class WakeWordDetector {
     this.recognition.onstart = () => {
       this.state.isListening = true;
       this.emitStateChange();
-      this.emit('listening', { type: 'listening', timestamp: Date.now(), isLowPower: this.state.isLowPowerMode });
+      this.emit('listening', {
+        type: 'listening',
+        timestamp: Date.now(),
+        isLowPower: this.state.isLowPowerMode,
+      });
     };
 
     this.recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -450,30 +467,40 @@ export class WakeWordDetector {
   private setupGrammar(): void {
     if (!this.recognition) return;
 
-    const GrammarList = (window as unknown as { 
-      SpeechGrammarList?: new () => { addFromString: (grammar: string, weight: number) => void };
-      webkitSpeechGrammarList?: new () => { addFromString: (grammar: string, weight: number) => void };
-    }).SpeechGrammarList || (window as unknown as { 
-      webkitSpeechGrammarList?: new () => { addFromString: (grammar: string, weight: number) => void };
-    }).webkitSpeechGrammarList;
+    const GrammarList =
+      (
+        window as unknown as {
+          SpeechGrammarList?: new () => {
+            addFromString: (grammar: string, weight: number) => void;
+          };
+          webkitSpeechGrammarList?: new () => {
+            addFromString: (grammar: string, weight: number) => void;
+          };
+        }
+      ).SpeechGrammarList ||
+      (
+        window as unknown as {
+          webkitSpeechGrammarList?: new () => {
+            addFromString: (grammar: string, weight: number) => void;
+          };
+        }
+      ).webkitSpeechGrammarList;
     if (!GrammarList) return;
 
     try {
       const grammar = new GrammarList();
-      
+
       // Add wake words to grammar with weights
-      const wakeWordsLower = this.options.wakeWords.map(w => w.toLowerCase());
+      const wakeWordsLower = this.options.wakeWords.map((w) => w.toLowerCase());
       const allPhrases = [...new Set([...wakeWordsLower, ...WAKE_WORD_GRAMMAR_HINTS])];
-      
+
       // Create weighted grammar string - use simple grammar format
       const grammarString = `#JSGF V1.0; grammar wake; public <wake> = ${allPhrases.join(' | ')};`;
-      
+
       grammar.addFromString(grammarString, 1.0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (this.recognition as unknown as { grammars: unknown }).grammars = grammar;
-    } catch (error) {
-      console.warn('[WakeWord] Failed to set grammar:', error);
-    }
+    } catch (_error) {}
   }
 
   private handleRecognitionResult(event: globalThis.SpeechRecognitionEvent): void {
@@ -498,7 +525,7 @@ export class WakeWordDetector {
         // Check if any wake word is in the transcript
         for (const wakeWord of this.options.wakeWords) {
           const wakeWordLower = wakeWord.toLowerCase();
-          
+
           // Direct match or fuzzy match
           if (this.matchesWakeWord(transcript, wakeWordLower, confidence)) {
             this.handleWakeWordDetected(wakeWord, confidence, alternative.transcript || '', now);
@@ -526,10 +553,10 @@ export class WakeWordDetector {
     // Word-by-word matching for partial matches
     const wakeWords = normalizedWakeWord.split(/\s+/);
     const transcriptWords = normalizedTranscript.split(/\s+/);
-    
+
     // Check if all wake word parts are in transcript
-    const allPartsFound = wakeWords.every(word => 
-      transcriptWords.some(tw => tw.includes(word) || word.includes(tw))
+    const allPartsFound = wakeWords.every((word) =>
+      transcriptWords.some((tw) => tw.includes(word) || word.includes(tw))
     );
 
     if (allPartsFound) {
@@ -582,9 +609,7 @@ export class WakeWordDetector {
       handlers.forEach((handler) => {
         try {
           handler(data);
-        } catch (error) {
-          console.error(`[WakeWord] Error in event handler for ${event}:`, error);
-        }
+        } catch (_error) {}
       });
     }
   }
@@ -593,9 +618,7 @@ export class WakeWordDetector {
     this.stateChangeListeners.forEach((handler) => {
       try {
         handler({ ...this.state });
-      } catch (error) {
-        console.error('[WakeWord] Error in state change handler:', error);
-      }
+      } catch (_error) {}
     });
   }
 
@@ -684,15 +707,21 @@ export function checkWakeWordSupport(): {
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const hasRecognition = !!SpeechRecognition;
-  
+
   let grammarSupport = false;
   if (hasRecognition) {
-    const GrammarList = (window as unknown as { 
-      SpeechGrammarList?: unknown;
-      webkitSpeechGrammarList?: unknown;
-    }).SpeechGrammarList || (window as unknown as { 
-      webkitSpeechGrammarList?: unknown;
-    }).webkitSpeechGrammarList;
+    const GrammarList =
+      (
+        window as unknown as {
+          SpeechGrammarList?: unknown;
+          webkitSpeechGrammarList?: unknown;
+        }
+      ).SpeechGrammarList ||
+      (
+        window as unknown as {
+          webkitSpeechGrammarList?: unknown;
+        }
+      ).webkitSpeechGrammarList;
     grammarSupport = !!GrammarList;
   }
 

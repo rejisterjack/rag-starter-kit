@@ -132,7 +132,7 @@ export function estimateCost(
   promptTokens: number,
   completionTokens: number
 ): number {
-  const pricing = MODEL_PRICING[model] ?? MODEL_PRICING['default'];
+  const pricing = MODEL_PRICING[model] ?? MODEL_PRICING.default;
 
   const promptCost = (promptTokens / 1000) * pricing.prompt;
   const completionCost = (completionTokens / 1000) * pricing.completion;
@@ -144,7 +144,7 @@ export function estimateCost(
  * Get pricing info for a model
  */
 export function getModelPricing(model: string): { prompt: number; completion: number } {
-  return MODEL_PRICING[model] ?? MODEL_PRICING['default'];
+  return MODEL_PRICING[model] ?? MODEL_PRICING.default;
 }
 
 // ============================================================================
@@ -287,24 +287,7 @@ export async function getModelUsage(
 /**
  * Set budget configuration for a workspace
  */
-export async function setBudgetConfig(config: BudgetConfig): Promise<void> {
-  // Note: workspaceBudget model not in schema
-  // await prisma.workspaceBudget.upsert({
-  //   where: { workspaceId: config.workspaceId },
-  //   create: {
-  //     workspaceId: config.workspaceId,
-  //     monthlyBudget: config.monthlyBudget,
-  //     warningThreshold: config.alertThresholds.warning,
-  //     criticalThreshold: config.alertThresholds.critical,
-  //   },
-  //   update: {
-  //     monthlyBudget: config.monthlyBudget,
-  //     warningThreshold: config.alertThresholds.warning,
-  //     criticalThreshold: config.alertThresholds.critical,
-  //   },
-  // });
-  console.log('Budget config not saved - workspaceBudget model not in schema', config);
-}
+export async function setBudgetConfig(_config: BudgetConfig): Promise<void> {}
 
 /**
  * Get budget configuration

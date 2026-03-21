@@ -1,6 +1,6 @@
 /**
  * Test Data Generators
- * 
+ *
  * Utilities for generating test data.
  */
 
@@ -23,19 +23,42 @@ export const Faker = {
     },
   },
   lorem: {
-    word: () => Faker.random.arrayElement([
-      'lorem', 'ipsum', 'dolor', 'sit', 'amet', 'consectetur', 'adipiscing', 'elit',
-      'sed', 'do', 'eiusmod', 'tempor', 'incididunt', 'ut', 'labore', 'et', 'dolore',
-      'magna', 'aliqua', 'enim', 'ad', 'minim', 'veniam', 'quis', 'nostrud',
-    ]),
+    word: () =>
+      Faker.random.arrayElement([
+        'lorem',
+        'ipsum',
+        'dolor',
+        'sit',
+        'amet',
+        'consectetur',
+        'adipiscing',
+        'elit',
+        'sed',
+        'do',
+        'eiusmod',
+        'tempor',
+        'incididunt',
+        'ut',
+        'labore',
+        'et',
+        'dolore',
+        'magna',
+        'aliqua',
+        'enim',
+        'ad',
+        'minim',
+        'veniam',
+        'quis',
+        'nostrud',
+      ]),
     words: (count: number) => Array.from({ length: count }, () => Faker.lorem.word()).join(' '),
     sentence: (wordCount: number = 10) => {
       const words = Faker.lorem.words(wordCount);
-      return words.charAt(0).toUpperCase() + words.slice(1) + '.';
+      return `${words.charAt(0).toUpperCase() + words.slice(1)}.`;
     },
-    sentences: (count: number, wordCount: number = 10) => 
+    sentences: (count: number, wordCount: number = 10) =>
       Array.from({ length: count }, () => Faker.lorem.sentence(wordCount)).join(' '),
-    paragraph: (sentenceCount: number = 5) => 
+    paragraph: (sentenceCount: number = 5) =>
       Array.from({ length: sentenceCount }, () => Faker.lorem.sentence()).join(' '),
     paragraphs: (count: number, sentenceCount: number = 5) =>
       Array.from({ length: count }, () => Faker.lorem.paragraph(sentenceCount)).join('\n\n'),
@@ -76,7 +99,10 @@ export function generateRandomId(prefix: string = ''): string {
 /**
  * Generate test documents
  */
-export function generateTestDocuments(count: number = 5, overrides: Partial<Document> = {}): Document[] {
+export function generateTestDocuments(
+  count: number = 5,
+  overrides: Partial<Document> = {}
+): Document[] {
   const documentTypes = ['pdf', 'docx', 'txt', 'md', 'html'];
   const statuses = ['uploaded', 'processing', 'processed', 'error'];
 
@@ -102,7 +128,7 @@ export function generateTestDocuments(count: number = 5, overrides: Partial<Docu
  * Generate test chunks
  */
 export function generateTestChunks(
-  documentId: string,
+  _documentId: string,
   count: number = 10,
   overrides: Partial<Chunk> = {}
 ): Chunk[] {
@@ -160,10 +186,7 @@ export function generateTestVector(dimensions: number = 1536): string {
 /**
  * Generate test batch embeddings
  */
-export function generateTestBatchEmbeddings(
-  count: number,
-  dimensions: number = 1536
-): number[][] {
+export function generateTestBatchEmbeddings(count: number, dimensions: number = 1536): number[][] {
   return Array.from({ length: count }, () => generateTestEmbedding(dimensions));
 }
 

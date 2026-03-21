@@ -23,18 +23,18 @@ import {
 } from '@/lib/voice';
 import {
   createVAD,
-  type VADOptions,
   type VADEvent,
+  type VADOptions,
   type VADState,
   VoiceActivityDetector,
 } from '@/lib/voice/vad';
 import {
   createWakeWordDetector,
-  type WakeWordOptions,
-  type WakeWordEvent,
-  type WakeWordState,
-  WakeWordDetector,
   WAKE_WORD_SETS,
+  WakeWordDetector,
+  type WakeWordEvent,
+  type WakeWordOptions,
+  type WakeWordState,
 } from '@/lib/voice/wake-word';
 
 // =============================================================================
@@ -142,14 +142,28 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
       unsubscribeRef.current.forEach((unsub) => unsub());
       service.stopListening();
     };
-  }, []);
+  }, [
+    autoStart,
+    isSupported,
+    onError,
+    onFinalResult,
+    onListeningStart,
+    onListeningStop,
+    onTranscriptChange,
+    speechOptions,
+  ]);
 
   // Update configuration when options change
   useEffect(() => {
     if (serviceRef.current) {
       serviceRef.current.configure(speechOptions);
     }
-  }, [speechOptions.language, speechOptions.continuous, speechOptions.interimResults]);
+  }, [
+    speechOptions.language,
+    speechOptions.continuous,
+    speechOptions.interimResults,
+    speechOptions,
+  ]);
 
   const startListening = useCallback(() => {
     if (serviceRef.current) {
@@ -183,7 +197,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
   }, []);
 
   const fullTranscript = useMemo(() => {
-    return transcript + (interimTranscript ? ' ' + interimTranscript : '');
+    return transcript + (interimTranscript ? ` ${interimTranscript}` : '');
   }, [transcript, interimTranscript]);
 
   return {
@@ -457,7 +471,7 @@ export function useVoiceCommands(options: UseVoiceCommandsOptions = {}): UseVoic
       unsub();
       service.clearCommands();
     };
-  }, []);
+  }, [initialCommands, onCommandDetected]);
 
   const registerCommand = useCallback(
     (command: Omit<VoiceCommand, 'handler'> & { handler: (args?: string) => void }) => {
@@ -677,7 +691,7 @@ export function useVoiceActivity(options: UseVoiceActivityOptions = {}): UseVoic
       vad.destroy();
       vadRef.current = null;
     };
-  }, [isSupported, autoStart]);
+  }, [isSupported, autoStart, onNoise, onVoiceEnd, onVoiceStart, onVolumeChange, vadOptions]);
 
   // Update options when they change
   useEffect(() => {
@@ -769,13 +783,7 @@ export interface UseWakeWordReturn {
 }
 
 export function useWakeWord(options: UseWakeWordOptions = {}): UseWakeWordReturn {
-  const {
-    autoStart = false,
-    onWake,
-    onListening,
-    onError,
-    ...wakeWordOptions
-  } = options;
+  const { autoStart = false, onWake, onListening, onError, ...wakeWordOptions } = options;
 
   const [state, setState] = useState<WakeWordState>({
     isListening: false,
@@ -806,9 +814,7 @@ export function useWakeWord(options: UseWakeWordOptions = {}): UseWakeWordReturn
     // Subscribe to events
     const unsubWake = onWake ? detector.onWake(onWake) : () => {};
 
-    const unsubListening = onListening
-      ? detector.on('listening', onListening)
-      : () => {};
+    const unsubListening = onListening ? detector.on('listening', onListening) : () => {};
 
     const unsubError = onError
       ? detector.on('error', (event) => {
@@ -828,7 +834,7 @@ export function useWakeWord(options: UseWakeWordOptions = {}): UseWakeWordReturn
       detector.destroy();
       detectorRef.current = null;
     };
-  }, [isSupported, autoStart]);
+  }, [isSupported, autoStart, onError, onListening, onWake, wakeWordOptions]);
 
   // Update options when they change (excluding callback-related options)
   useEffect(() => {

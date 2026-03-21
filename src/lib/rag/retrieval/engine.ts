@@ -14,6 +14,15 @@ import { generateEmbedding } from '@/lib/ai';
 import { ContextualCompressor } from './compression';
 import { HybridRetriever, reciprocalRankFusion } from './hybrid';
 import { KeywordRetriever } from './keyword';
+import {
+  getDocumentImages,
+  getPageImages,
+  type ImageSearchResult,
+  type MultiModalSearchResult,
+  searchByImage,
+  searchImagesByText,
+  searchMultiModal,
+} from './multimodal';
 import { QueryExpander } from './query-expansion';
 import { createReranker, diversifyWithMMR } from './reranking';
 import { hasMetadataFilters, SelfQueryTransformer } from './self-query';
@@ -26,15 +35,6 @@ import type {
   RetrievedChunk,
 } from './types';
 import { VectorRetriever } from './vector';
-import {
-  searchByImage,
-  searchImagesByText,
-  searchMultiModal,
-  getDocumentImages,
-  getPageImages,
-  type ImageSearchResult,
-  type MultiModalSearchResult,
-} from './multimodal';
 
 /**
  * Configuration presets for different retrieval modes
@@ -282,7 +282,6 @@ export class RetrievalEngine {
       }
 
       default:
-        console.warn(`[RetrievalEngine] Unknown strategy: ${strategy.type}`);
         return [];
     }
   }

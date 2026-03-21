@@ -4,6 +4,12 @@
  * Provides utilities for webhook management and delivery.
  */
 
+export type {
+  DeliveryResult,
+  WebhookDeliveryOptions,
+  WebhookEventType,
+  WebhookPayload,
+} from './delivery';
 // Delivery
 export {
   buildWebhookPayload,
@@ -16,26 +22,6 @@ export {
   verifyWebhookSignature,
   WebhookEvents,
 } from './delivery';
-
-export type {
-  DeliveryResult,
-  WebhookDeliveryOptions,
-  WebhookEventType,
-  WebhookPayload,
-} from './delivery';
-
-// Secret Rotation
-export {
-  cleanupExpiredRotations,
-  completeWebhookRotation,
-  generateWebhookSecret as generateSecureWebhookSecret,
-  getWebhookSecrets,
-  rotateWebhookSecret,
-  verifyWebhookSignatureWithRotation,
-} from './rotation';
-
-export type { RotationResult, WebhookSecrets } from './rotation';
-
 // Idempotency
 export {
   checkIdempotencyKey,
@@ -49,3 +35,14 @@ export {
   processWithIdempotency,
   storeIdempotencyKey,
 } from './idempotency';
+
+export type { RotationResult, WebhookSecrets } from './rotation';
+// Secret Rotation
+export {
+  cleanupExpiredRotations,
+  completeWebhookRotation,
+  generateWebhookSecret as generateSecureWebhookSecret,
+  getWebhookSecrets,
+  rotateWebhookSecret,
+  verifyWebhookSignatureWithRotation,
+} from './rotation';

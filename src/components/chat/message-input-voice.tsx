@@ -364,7 +364,10 @@ export function MessageInputVoice({
           <DialogHeader>
             <DialogTitle>Voice Settings</DialogTitle>
           </DialogHeader>
-          <VoiceSettingsPanel settings={voiceSettings} onSettingsChange={handleVoiceSettingsChange} />
+          <VoiceSettingsPanel
+            settings={voiceSettings}
+            onSettingsChange={handleVoiceSettingsChange}
+          />
         </DialogContent>
       </Dialog>
     </>

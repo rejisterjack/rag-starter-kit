@@ -1,11 +1,11 @@
 /**
  * CSRF Token API Route
- * 
+ *
  * Generates and returns a new CSRF token for the client.
  * Sets the CSRF cookie and returns the token in the response.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 /**
  * Generate a cryptographically secure random token
@@ -24,16 +24,16 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
   try {
     // Generate token
     const token = generateToken();
-    
+
     // Generate cookie value (double-submit pattern)
     const cookieValue = generateToken();
-    
+
     // Create response
     const response = NextResponse.json({
       token,
       success: true,
     });
-    
+
     // Set CSRF cookie
     response.cookies.set('csrf_token', cookieValue, {
       httpOnly: true,
@@ -42,11 +42,9 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
       path: '/',
       maxAge: 60 * 60 * 24, // 24 hours
     });
-    
+
     return response;
-  } catch (error) {
-    console.error('[CSRF] Failed to generate token:', error);
-    
+  } catch (_error) {
     return NextResponse.json(
       {
         error: 'Failed to generate CSRF token',
@@ -65,7 +63,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await req.json();
     const { token } = body;
-    
+
     if (!token) {
       return NextResponse.json(
         {
@@ -75,10 +73,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         { status: 400 }
       );
     }
-    
+
     // Get cookie
     const cookie = req.cookies.get('csrf_token');
-    
+
     if (!cookie?.value) {
       return NextResponse.json(
         {
@@ -88,18 +86,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         { status: 400 }
       );
     }
-    
+
     // In the double-submit pattern, the token should match the cookie
     // For this implementation, we use a simple comparison
     // In production, you might use HMAC or signed tokens
     const isValid = token === cookie.value;
-    
+
     return NextResponse.json({
       valid: isValid,
     });
-  } catch (error) {
-    console.error('[CSRF] Validation error:', error);
-    
+  } catch (_error) {
     return NextResponse.json(
       {
         valid: false,

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { ChatContainer } from './chat-container';
 import type { Message } from '@/types';
+import { ChatContainer } from './chat-container';
 
 const meta: Meta<typeof ChatContainer> = {
   title: 'Chat/ChatContainer',
@@ -29,7 +29,8 @@ const mockMessages: Message[] = [
   {
     id: '2',
     role: 'assistant',
-    content: 'The RAG Starter Kit includes:\n\n• **100% Free AI** - Uses OpenRouter + Google Gemini\n• **Document Upload** - PDF, DOCX, TXT support\n• **Real-time Streaming** - Token-by-token responses\n• **Multi-model Fallback** - Automatic backup models\n• **Voice Features** - Speech-to-text and text-to-speech\n• **PWA Support** - Install as native app',
+    content:
+      'The RAG Starter Kit includes:\n\n• **100% Free AI** - Uses OpenRouter + Google Gemini\n• **Document Upload** - PDF, DOCX, TXT support\n• **Real-time Streaming** - Token-by-token responses\n• **Multi-model Fallback** - Automatic backup models\n• **Voice Features** - Speech-to-text and text-to-speech\n• **PWA Support** - Install as native app',
     createdAt: new Date(Date.now() - 1000 * 60 * 4),
     sources: [
       {
@@ -96,7 +97,8 @@ export const Streaming: Story = {
     messages: mockMessages,
     isLoading: false,
     isStreaming: true,
-    streamingContent: 'You can deploy using Docker Compose for self-hosting or use one-click deploy buttons for Vercel, Railway, or Render...',
+    streamingContent:
+      'You can deploy using Docker Compose for self-hosting or use one-click deploy buttons for Vercel, Railway, or Render...',
     onSendMessage: async () => {},
     onStop: () => {},
     sources: [],

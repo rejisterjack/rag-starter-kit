@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { WifiOff, RefreshCw, Home, MessageSquare } from "lucide-react";
-import Link from "next/link";
-
-import { Button } from "@/components/ui/button";
+import { Home, MessageSquare, RefreshCw, WifiOff } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { NetworkStatusBadge, OfflineIndicator } from '@/components/pwa';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -12,14 +12,13 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { OfflineIndicator, NetworkStatusBadge } from "@/components/pwa";
-import { useOfflineStatus } from "@/hooks/use-pwa";
+} from '@/components/ui/card';
+import { useOfflineStatus } from '@/hooks/use-pwa';
 
 /**
  * Offline fallback page
  * Displayed when the app is offline and content cannot be loaded from cache
- * 
+ *
  * @route /offline
  */
 export default function OfflinePage() {
@@ -30,7 +29,7 @@ export default function OfflinePage() {
   const handleRetry = () => {
     setIsRetrying(true);
     setLastRetry(new Date());
-    
+
     // Try to reload the page
     window.location.reload();
   };
@@ -39,7 +38,7 @@ export default function OfflinePage() {
   useEffect(() => {
     if (!isOffline) {
       const timer = setTimeout(() => {
-        window.location.href = "/";
+        window.location.href = '/';
       }, 1500);
       return () => clearTimeout(timer);
     }
@@ -62,13 +61,11 @@ export default function OfflinePage() {
               <>
                 Unable to connect to the internet
                 {formattedOfflineDuration && (
-                  <span className="block mt-1">
-                    Offline for {formattedOfflineDuration}
-                  </span>
+                  <span className="block mt-1">Offline for {formattedOfflineDuration}</span>
                 )}
               </>
             ) : (
-              "Connection restored! Taking you back..."
+              'Connection restored! Taking you back...'
             )}
           </CardDescription>
         </CardHeader>
@@ -108,13 +105,9 @@ export default function OfflinePage() {
         </CardContent>
 
         <CardFooter className="flex flex-col gap-2">
-          <Button
-            className="w-full gap-2"
-            onClick={handleRetry}
-            disabled={isRetrying}
-          >
-            <RefreshCw className={isRetrying ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-            {isRetrying ? "Retrying..." : "Try again"}
+          <Button className="w-full gap-2" onClick={handleRetry} disabled={isRetrying}>
+            <RefreshCw className={isRetrying ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+            {isRetrying ? 'Retrying...' : 'Try again'}
           </Button>
 
           <div className="flex w-full gap-2">
@@ -137,7 +130,7 @@ export default function OfflinePage() {
       {/* Helpful tips */}
       <div className="mt-8 text-center">
         <p className="text-sm text-muted-foreground">
-          Need help?{" "}
+          Need help?{' '}
           <Link href="/help" className="text-primary hover:underline">
             Visit our help center
           </Link>

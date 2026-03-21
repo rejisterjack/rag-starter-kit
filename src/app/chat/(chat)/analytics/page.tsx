@@ -1,81 +1,106 @@
-"use client";
-
-import * as React from "react";
-import { cn } from "@/lib/utils";
-// UI Components
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+'use client';
 
 // Icons
 import {
-  BarChart3,
   Activity,
-  Users,
-  FileText,
-  MessageSquare,
+  BarChart3,
   Clock,
   DollarSign,
-  Zap,
-  Star,
-  RefreshCw,
   Download,
-} from "lucide-react";
-
+  FileText,
+  MessageSquare,
+  RefreshCw,
+  Star,
+  Users,
+  Zap,
+} from 'lucide-react';
+import * as React from 'react';
+import {
+  type DateRange,
+  DateRangePicker,
+  useDateRange,
+} from '@/components/analytics/date-range-picker';
+import { DistributionChart } from '@/components/analytics/distribution-chart';
 // Analytics Components
-import { MetricsCard, MetricsCardGroup } from "@/components/analytics/metrics-card";
-import { TimeSeriesChart } from "@/components/analytics/time-series-chart";
-import { DistributionChart } from "@/components/analytics/distribution-chart";
-import { TopList } from "@/components/analytics/top-list";
-import { RealtimeMonitor, useRealtimeData } from "@/components/analytics/realtime-monitor";
-import { DateRangePicker, useDateRange, type DateRange } from "@/components/analytics/date-range-picker";
-
+import { MetricsCard, MetricsCardGroup } from '@/components/analytics/metrics-card';
+import { RealtimeMonitor, useRealtimeData } from '@/components/analytics/realtime-monitor';
+import { TimeSeriesChart } from '@/components/analytics/time-series-chart';
+import { TopList } from '@/components/analytics/top-list';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+// UI Components
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 // Hooks
 import {
+  generateMockDistribution,
   generateMockMetrics,
   generateMockTimeSeries,
-  generateMockDistribution,
-  type TopUser,
+  type RealtimeEvent,
   type TopDocument,
   type TopQuery,
-  type RealtimeEvent,
-} from "@/hooks/use-analytics";
+  type TopUser,
+} from '@/hooks/use-analytics';
+import { cn } from '@/lib/utils';
 
 // Mock data for development
 const MOCK_TOP_USERS: TopUser[] = [
-  { id: "1", name: "Alice Johnson", email: "alice@example.com", queryCount: 342, totalTokens: 125000 },
-  { id: "2", name: "Bob Smith", email: "bob@example.com", queryCount: 289, totalTokens: 98000 },
-  { id: "3", name: "Carol White", email: "carol@example.com", queryCount: 256, totalTokens: 87000 },
-  { id: "4", name: "David Brown", email: "david@example.com", queryCount: 198, totalTokens: 65000 },
-  { id: "5", name: "Emma Davis", email: "emma@example.com", queryCount: 176, totalTokens: 54000 },
+  {
+    id: '1',
+    name: 'Alice Johnson',
+    email: 'alice@example.com',
+    queryCount: 342,
+    totalTokens: 125000,
+  },
+  { id: '2', name: 'Bob Smith', email: 'bob@example.com', queryCount: 289, totalTokens: 98000 },
+  { id: '3', name: 'Carol White', email: 'carol@example.com', queryCount: 256, totalTokens: 87000 },
+  { id: '4', name: 'David Brown', email: 'david@example.com', queryCount: 198, totalTokens: 65000 },
+  { id: '5', name: 'Emma Davis', email: 'emma@example.com', queryCount: 176, totalTokens: 54000 },
 ];
 
 const MOCK_TOP_DOCUMENTS: TopDocument[] = [
-  { id: "1", name: "Product Requirements.pdf", type: "application/pdf", queryCount: 156, chunkCount: 42 },
-  { id: "2", name: "API Documentation.md", type: "text/markdown", queryCount: 134, chunkCount: 28 },
-  { id: "3", name: "User Guide.docx", type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", queryCount: 98, chunkCount: 35 },
-  { id: "4", name: "Architecture Overview.pdf", type: "application/pdf", queryCount: 87, chunkCount: 24 },
-  { id: "5", name: "Meeting Notes.txt", type: "text/plain", queryCount: 65, chunkCount: 12 },
+  {
+    id: '1',
+    name: 'Product Requirements.pdf',
+    type: 'application/pdf',
+    queryCount: 156,
+    chunkCount: 42,
+  },
+  { id: '2', name: 'API Documentation.md', type: 'text/markdown', queryCount: 134, chunkCount: 28 },
+  {
+    id: '3',
+    name: 'User Guide.docx',
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    queryCount: 98,
+    chunkCount: 35,
+  },
+  {
+    id: '4',
+    name: 'Architecture Overview.pdf',
+    type: 'application/pdf',
+    queryCount: 87,
+    chunkCount: 24,
+  },
+  { id: '5', name: 'Meeting Notes.txt', type: 'text/plain', queryCount: 65, chunkCount: 12 },
 ];
 
 const MOCK_TOP_QUERIES: TopQuery[] = [
-  { id: "1", query: "How do I implement authentication?", count: 45, avgResponseTime: 1.2 },
-  { id: "2", query: "What are the API rate limits?", count: 38, avgResponseTime: 0.8 },
-  { id: "3", query: "Explain the database schema", count: 32, avgResponseTime: 1.5 },
-  { id: "4", query: "How to deploy to production?", count: 28, avgResponseTime: 1.1 },
-  { id: "5", query: "Best practices for error handling", count: 24, avgResponseTime: 1.3 },
+  { id: '1', query: 'How do I implement authentication?', count: 45, avgResponseTime: 1.2 },
+  { id: '2', query: 'What are the API rate limits?', count: 38, avgResponseTime: 0.8 },
+  { id: '3', query: 'Explain the database schema', count: 32, avgResponseTime: 1.5 },
+  { id: '4', query: 'How to deploy to production?', count: 28, avgResponseTime: 1.1 },
+  { id: '5', query: 'Best practices for error handling', count: 24, avgResponseTime: 1.3 },
 ];
 
 // Generate mock realtime events
 function generateMockEvents(count: number = 10): RealtimeEvent[] {
-  const types: RealtimeEvent["type"][] = ["query", "response", "error", "user", "system"];
-  const messages: Record<RealtimeEvent["type"], string[]> = {
-    query: ["New query received", "Document search initiated", "RAG query processed"],
-    response: ["Response generated", "Sources cited", "Answer delivered"],
-    error: ["Rate limit exceeded", "Document not found", "Processing timeout"],
-    user: ["User logged in", "New session started", "User preference updated"],
-    system: ["Cache cleared", "Model warmed up", "Index updated"],
+  const types: RealtimeEvent['type'][] = ['query', 'response', 'error', 'user', 'system'];
+  const messages: Record<RealtimeEvent['type'], string[]> = {
+    query: ['New query received', 'Document search initiated', 'RAG query processed'],
+    response: ['Response generated', 'Sources cited', 'Answer delivered'],
+    error: ['Rate limit exceeded', 'Document not found', 'Processing timeout'],
+    user: ['User logged in', 'New session started', 'User preference updated'],
+    system: ['Cache cleared', 'Model warmed up', 'Index updated'],
   };
 
   return Array.from({ length: count }, (_, i) => {
@@ -85,7 +110,10 @@ function generateMockEvents(count: number = 10): RealtimeEvent[] {
       type,
       message: messages[type][Math.floor(Math.random() * messages[type].length)],
       timestamp: new Date(Date.now() - i * 60000),
-      metadata: { userId: `user-${Math.floor(Math.random() * 100)}`, latency: `${(Math.random() * 2).toFixed(2)}s` },
+      metadata: {
+        userId: `user-${Math.floor(Math.random() * 100)}`,
+        latency: `${(Math.random() * 2).toFixed(2)}s`,
+      },
     };
   }).reverse();
 }
@@ -98,7 +126,7 @@ function formatTopUsers(users: TopUser[]) {
     title: user.name,
     subtitle: user.email,
     value: user.queryCount.toLocaleString(),
-    valueLabel: "queries",
+    valueLabel: 'queries',
     avatarUrl: user.avatarUrl,
     trend: Math.random() > 0.5 ? Math.random() * 20 : -Math.random() * 10,
   }));
@@ -111,7 +139,7 @@ function formatTopDocuments(docs: TopDocument[]) {
     title: doc.name,
     subtitle: `${doc.chunkCount} chunks`,
     value: doc.queryCount.toLocaleString(),
-    valueLabel: "queries",
+    valueLabel: 'queries',
     trend: Math.random() > 0.5 ? Math.random() * 15 : -Math.random() * 8,
   }));
 }
@@ -123,7 +151,7 @@ function formatTopQueries(queries: TopQuery[]) {
     title: q.query,
     subtitle: `Avg: ${q.avgResponseTime.toFixed(2)}s`,
     value: q.count.toLocaleString(),
-    valueLabel: "times",
+    valueLabel: 'times',
     trend: Math.random() > 0.5 ? Math.random() * 25 : -Math.random() * 12,
   }));
 }
@@ -134,24 +162,48 @@ function generateSparklineData(length: number = 7): number[] {
 }
 
 export default function AnalyticsPage(): React.ReactElement {
-  const [activeTab, setActiveTab] = React.useState("overview");
-  const { range, preset, setRange } = useDateRange("last7days");
+  const [activeTab, setActiveTab] = React.useState('overview');
+  const { range, preset, setRange } = useDateRange('last7days');
   const { tick } = useRealtimeData({ refreshInterval: 5000 });
 
   // In a real app, these would fetch from the API
   // For now, using mock data
-  const metrics = React.useMemo(() => generateMockMetrics(), [range]);
-  const timeSeriesData = React.useMemo(() => generateMockTimeSeries(30), [range]);
+  const metrics = React.useMemo(() => generateMockMetrics(), []);
+  const timeSeriesData = React.useMemo(() => generateMockTimeSeries(30), []);
   const queryTypes = React.useMemo(() => generateMockDistribution(), []);
 
-  const events = React.useMemo(() => generateMockEvents(20), [tick]);
+  const events = React.useMemo(() => generateMockEvents(20), []);
 
   // Realtime metrics
-  const realtimeMetrics: import("@/components/analytics/realtime-monitor").RealtimeMetric[] = [
-    { id: "active-users", label: "Active Users", value: Math.floor(Math.random() * 50) + 10, icon: Users, color: "#3b82f6" },
-    { id: "queries-min", label: "Queries/min", value: Math.floor(Math.random() * 20) + 5, icon: MessageSquare, color: "#10b981" },
-    { id: "avg-latency", label: "Avg Latency", value: `${(Math.random() * 2 + 0.5).toFixed(2)}s`, icon: Clock, color: "#f59e0b" },
-    { id: "error-rate", label: "Error Rate", value: `${(Math.random() * 2).toFixed(1)}%`, icon: Activity, color: "#ef4444" },
+  const realtimeMetrics: import('@/components/analytics/realtime-monitor').RealtimeMetric[] = [
+    {
+      id: 'active-users',
+      label: 'Active Users',
+      value: Math.floor(Math.random() * 50) + 10,
+      icon: Users,
+      color: '#3b82f6',
+    },
+    {
+      id: 'queries-min',
+      label: 'Queries/min',
+      value: Math.floor(Math.random() * 20) + 5,
+      icon: MessageSquare,
+      color: '#10b981',
+    },
+    {
+      id: 'avg-latency',
+      label: 'Avg Latency',
+      value: `${(Math.random() * 2 + 0.5).toFixed(2)}s`,
+      icon: Clock,
+      color: '#f59e0b',
+    },
+    {
+      id: 'error-rate',
+      label: 'Error Rate',
+      value: `${(Math.random() * 2).toFixed(1)}%`,
+      icon: Activity,
+      color: '#ef4444',
+    },
   ];
 
   const handleDateRangeChange = (newRange: DateRange, newPreset: string) => {
@@ -170,11 +222,7 @@ export default function AnalyticsPage(): React.ReactElement {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <DateRangePicker
-              value={range}
-              onChange={handleDateRangeChange}
-              className="w-[280px]"
-            />
+            <DateRangePicker value={range} onChange={handleDateRangeChange} className="w-[280px]" />
             <Button variant="outline" size="icon">
               <Download className="h-4 w-4" />
             </Button>
@@ -275,8 +323,8 @@ export default function AnalyticsPage(): React.ReactElement {
                   description="Daily queries and active users over time"
                   data={timeSeriesData}
                   series={[
-                    { key: "queries", name: "Queries", color: "hsl(var(--primary))" },
-                    { key: "users", name: "Active Users", color: "hsl(var(--secondary))" },
+                    { key: 'queries', name: 'Queries', color: 'hsl(var(--primary))' },
+                    { key: 'users', name: 'Active Users', color: 'hsl(var(--secondary))' },
                   ]}
                   type="area"
                   height={300}
@@ -349,9 +397,7 @@ export default function AnalyticsPage(): React.ReactElement {
                   title="User Activity"
                   description="Daily active users and new signups"
                   data={timeSeriesData}
-                  series={[
-                    { key: "users", name: "Active Users", color: "hsl(var(--primary))" },
-                  ]}
+                  series={[{ key: 'users', name: 'Active Users', color: 'hsl(var(--primary))' }]}
                   type="bar"
                   height={300}
                 />
@@ -368,13 +414,13 @@ export default function AnalyticsPage(): React.ReactElement {
               <TimeSeriesChart
                 title="Hourly Usage Pattern"
                 description="Query volume by hour of day"
-                data={timeSeriesData.slice(-24).map((d: Record<string, number | string>, i: number) => ({
-                  ...d,
-                  date: `${i}:00`,
-                }))}
-                series={[
-                  { key: "queries", name: "Queries", color: "hsl(var(--primary))" },
-                ]}
+                data={timeSeriesData
+                  .slice(-24)
+                  .map((d: Record<string, number | string>, i: number) => ({
+                    ...d,
+                    date: `${i}:00`,
+                  }))}
+                series={[{ key: 'queries', name: 'Queries', color: 'hsl(var(--primary))' }]}
                 type="bar"
                 height={250}
               />
@@ -422,7 +468,11 @@ export default function AnalyticsPage(): React.ReactElement {
                   description="Average response time over time"
                   data={timeSeriesData}
                   series={[
-                    { key: "responseTime", name: "Response Time (s)", color: "hsl(var(--primary))" },
+                    {
+                      key: 'responseTime',
+                      name: 'Response Time (s)',
+                      color: 'hsl(var(--primary))',
+                    },
                   ]}
                   type="line"
                   height={300}
@@ -431,10 +481,10 @@ export default function AnalyticsPage(): React.ReactElement {
                   title="Response Time Distribution"
                   description="Query response time buckets"
                   data={[
-                    { name: "< 1s", value: 450, color: "#22c55e" },
-                    { name: "1-2s", value: 320, color: "#3b82f6" },
-                    { name: "2-3s", value: 150, color: "#f59e0b" },
-                    { name: "> 3s", value: 80, color: "#ef4444" },
+                    { name: '< 1s', value: 450, color: '#22c55e' },
+                    { name: '1-2s', value: 320, color: '#3b82f6' },
+                    { name: '2-3s', value: 150, color: '#f59e0b' },
+                    { name: '> 3s', value: 80, color: '#ef4444' },
                   ]}
                   type="donut"
                   height={300}
@@ -505,9 +555,7 @@ export default function AnalyticsPage(): React.ReactElement {
                   title="Daily Costs"
                   description="Cost breakdown by day"
                   data={timeSeriesData}
-                  series={[
-                    { key: "cost", name: "Cost ($)", color: "hsl(var(--primary))" },
-                  ]}
+                  series={[{ key: 'cost', name: 'Cost ($)', color: 'hsl(var(--primary))' }]}
                   type="area"
                   height={300}
                 />
@@ -515,9 +563,7 @@ export default function AnalyticsPage(): React.ReactElement {
                   title="Token Usage"
                   description="Daily token consumption"
                   data={timeSeriesData}
-                  series={[
-                    { key: "tokens", name: "Tokens", color: "hsl(var(--secondary))" },
-                  ]}
+                  series={[{ key: 'tokens', name: 'Tokens', color: 'hsl(var(--secondary))' }]}
                   type="bar"
                   height={300}
                 />
@@ -527,10 +573,10 @@ export default function AnalyticsPage(): React.ReactElement {
                 title="Cost by Model"
                 description="Cost distribution across AI models"
                 data={[
-                  { name: "GPT-4", value: 65, color: "#10b981" },
-                  { name: "GPT-3.5", value: 25, color: "#3b82f6" },
-                  { name: "Claude", value: 8, color: "#f59e0b" },
-                  { name: "Other", value: 2, color: "#6b7280" },
+                  { name: 'GPT-4', value: 65, color: '#10b981' },
+                  { name: 'GPT-3.5', value: 25, color: '#3b82f6' },
+                  { name: 'Claude', value: 8, color: '#f59e0b' },
+                  { name: 'Other', value: 2, color: '#6b7280' },
                 ]}
                 type="pie"
                 height={280}
@@ -559,11 +605,16 @@ export default function AnalyticsPage(): React.ReactElement {
                     <div className="h-48 flex items-end gap-1">
                       {Array.from({ length: 60 }, (_, i) => {
                         const height = Math.random() * 80 + 20;
-                        const color = height > 80 ? "bg-red-500" : height > 50 ? "bg-yellow-500" : "bg-green-500";
+                        const color =
+                          height > 80
+                            ? 'bg-red-500'
+                            : height > 50
+                              ? 'bg-yellow-500'
+                              : 'bg-green-500';
                         return (
                           <div
                             key={i}
-                            className={cn("flex-1 rounded-t", color)}
+                            className={cn('flex-1 rounded-t', color)}
                             style={{ height: `${height}%` }}
                             title={`${height.toFixed(0)}0ms`}
                           />
@@ -585,20 +636,23 @@ export default function AnalyticsPage(): React.ReactElement {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {[
-                      { name: "API Gateway", status: "healthy", latency: "12ms" },
-                      { name: "Vector DB", status: "healthy", latency: "45ms" },
-                      { name: "LLM Service", status: "healthy", latency: "1.2s" },
-                      { name: "Document Store", status: "warning", latency: "120ms" },
-                      { name: "Cache Layer", status: "healthy", latency: "2ms" },
+                      { name: 'API Gateway', status: 'healthy', latency: '12ms' },
+                      { name: 'Vector DB', status: 'healthy', latency: '45ms' },
+                      { name: 'LLM Service', status: 'healthy', latency: '1.2s' },
+                      { name: 'Document Store', status: 'warning', latency: '120ms' },
+                      { name: 'Cache Layer', status: 'healthy', latency: '2ms' },
                     ].map((component) => (
-                      <div key={component.name} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                      <div
+                        key={component.name}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                      >
                         <div className="flex items-center gap-3">
                           <div
                             className={cn(
-                              "h-2 w-2 rounded-full",
-                              component.status === "healthy" && "bg-green-500",
-                              component.status === "warning" && "bg-yellow-500",
-                              component.status === "error" && "bg-red-500"
+                              'h-2 w-2 rounded-full',
+                              component.status === 'healthy' && 'bg-green-500',
+                              component.status === 'warning' && 'bg-yellow-500',
+                              component.status === 'error' && 'bg-red-500'
                             )}
                           />
                           <span className="font-medium">{component.name}</span>
@@ -606,10 +660,12 @@ export default function AnalyticsPage(): React.ReactElement {
                         <div className="flex items-center gap-4">
                           <span className="text-sm text-muted-foreground">{component.latency}</span>
                           <Badge
-                            variant={component.status === "healthy" ? "default" : "secondary"}
+                            variant={component.status === 'healthy' ? 'default' : 'secondary'}
                             className={cn(
-                              component.status === "healthy" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
-                              component.status === "warning" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
+                              component.status === 'healthy' &&
+                                'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
+                              component.status === 'warning' &&
+                                'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
                             )}
                           >
                             {component.status}

@@ -2,12 +2,12 @@ import { Suspense } from 'react';
 
 export const dynamic = 'force-dynamic';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { prisma } from '@/lib/db';
-import { getAuditLogs } from '@/lib/audit/audit-logger';
 import { AdminDashboardStats } from '@/components/admin/admin-dashboard-stats';
-import { RecentAuditLogs } from '@/components/admin/recent-audit-logs';
 import { DashboardSkeleton } from '@/components/admin/dashboard-skeleton';
+import { RecentAuditLogs } from '@/components/admin/recent-audit-logs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getAuditLogs } from '@/lib/audit/audit-logger';
+import { prisma } from '@/lib/db';
 
 // =============================================================================
 // Server Functions
@@ -78,8 +78,12 @@ async function DashboardContent() {
       <div className="grid gap-8 lg:grid-cols-2 mt-8">
         <Card className="glass backdrop-blur-xl border-white/5 shadow-2xl">
           <CardHeader className="border-b border-border/40 pb-4 mb-4">
-            <CardTitle className="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">Recent Audit Logs</CardTitle>
-            <CardDescription className="font-medium text-muted-foreground">Latest system events and activities</CardDescription>
+            <CardTitle className="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+              Recent Audit Logs
+            </CardTitle>
+            <CardDescription className="font-medium text-muted-foreground">
+              Latest system events and activities
+            </CardDescription>
           </CardHeader>
           <CardContent className="pt-2">
             <RecentAuditLogs logs={stats.recentAuditLogs} />
@@ -88,18 +92,27 @@ async function DashboardContent() {
 
         <Card className="glass backdrop-blur-xl border-white/5 shadow-2xl h-fit">
           <CardHeader className="border-b border-border/40 pb-4 mb-4">
-            <CardTitle className="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">System Health</CardTitle>
-            <CardDescription className="font-medium text-muted-foreground">Overview of system components</CardDescription>
+            <CardTitle className="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+              System Health
+            </CardTitle>
+            <CardDescription className="font-medium text-muted-foreground">
+              Overview of system components
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5 pt-2">
             {[
               { name: 'Database', status: 'Operational' },
               { name: 'Authentication', status: 'Operational' },
               { name: 'AI Services', status: 'Operational' },
-              { name: 'Background Jobs', status: 'Operational' }
+              { name: 'Background Jobs', status: 'Operational' },
             ].map((system) => (
-              <div key={system.name} className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/5 transition-all">
-                <span className="text-sm font-semibold tracking-tight text-foreground/90">{system.name}</span>
+              <div
+                key={system.name}
+                className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/5 transition-all"
+              >
+                <span className="text-sm font-semibold tracking-tight text-foreground/90">
+                  {system.name}
+                </span>
                 <span className="inline-flex items-center rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-emerald-400 shadow-sm">
                   {system.status}
                 </span>
@@ -112,8 +125,12 @@ async function DashboardContent() {
       {/* Quick Actions */}
       <Card className="glass backdrop-blur-xl border-white/5 shadow-2xl mt-8">
         <CardHeader className="border-b border-border/40 pb-4 mb-4">
-          <CardTitle className="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">Quick Actions</CardTitle>
-          <CardDescription className="font-medium text-muted-foreground">Common administrative tasks</CardDescription>
+          <CardTitle className="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+            Quick Actions
+          </CardTitle>
+          <CardDescription className="font-medium text-muted-foreground">
+            Common administrative tasks
+          </CardDescription>
         </CardHeader>
         <CardContent className="pt-2">
           <div className="flex flex-wrap gap-4">

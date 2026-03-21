@@ -4,6 +4,22 @@
  * Central export point for all document parsers
  */
 
+// OCR Config re-exports
+export {
+  createConfigFromEnv,
+  DEFAULT_OCR_CONFIG,
+  getLanguageOptions,
+  isValidLanguage,
+  OCRConfigBuilder,
+  type OCRConfiguration,
+  OCREngineMode,
+  type OCROptions,
+  type OCRPageResult,
+  type OCRProgress,
+  type OCRProgressCallback,
+  type OCRResult,
+  PageSegmentationMode,
+} from '../ocr-config';
 // DOCX Parser
 export {
   convertToMarkdown,
@@ -17,7 +33,6 @@ export {
   type ParsedDOCX,
   parseDOCX,
 } from './docx';
-
 // HTML Parser
 export {
   type HTMLMetadata,
@@ -26,27 +41,25 @@ export {
   parseHTML,
   scrapeURL as scrapeHTML, // Alias for consistency
 } from './html';
-
 // OCR Parser
 export {
   batchOCR,
-  type OCRMetadata,
-  OCRParserError,
-  type OCRPage,
-  type OCRTextBlock,
-  type ImagePreprocessOptions,
-  type ParsedOCRDocument,
   detectImageFormat,
   getImageDimensions,
+  getOCRVersion,
+  type ImagePreprocessOptions,
   isOCRAvailable,
   isPDF2PicAvailable,
   isValidImage,
+  type OCRMetadata,
+  type OCRPage,
+  OCRParserError,
+  type OCRTextBlock,
+  type ParsedOCRDocument,
   parseImageWithOCR,
   parsePDFWithOCRFallback,
   preprocessImage,
-  getOCRVersion,
 } from './ocr';
-
 // PDF Parser
 export {
   extractPageRange,
@@ -59,7 +72,6 @@ export {
   performOCR,
   searchInPDF,
 } from './pdf';
-
 // TXT Parser
 export {
   extractByLineRange,
@@ -74,7 +86,6 @@ export {
   type TextParseOptions,
   TextParserError,
 } from './txt';
-
 // URL Scraper
 export {
   batchScrapeURLs,
@@ -88,20 +99,3 @@ export {
   type URLScrapeOptions,
   URLScraperError,
 } from './url';
-
-// OCR Config re-exports
-export {
-  DEFAULT_OCR_CONFIG,
-  OCREngineMode,
-  PageSegmentationMode,
-  OCRConfigBuilder,
-  getLanguageOptions,
-  isValidLanguage,
-  createConfigFromEnv,
-  type OCRConfiguration,
-  type OCRResult,
-  type OCRPageResult,
-  type OCRProgress,
-  type OCRProgressCallback,
-  type OCROptions,
-} from '../ocr-config';

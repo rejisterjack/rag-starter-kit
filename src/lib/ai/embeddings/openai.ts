@@ -1,6 +1,6 @@
 /**
  * OpenAI Embedding Provider
- * 
+ *
  * Supports text-embedding-3-small (1536 dims, fast)
  * and text-embedding-3-large (3072 dims, best quality).
  * Includes batch processing, rate limiting, and retry logic.
@@ -9,9 +9,9 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { RetryableError, withRetry } from '@/lib/utils/retry';
 import {
-  type EmbeddingProvider,
-  type EmbeddingConfig,
   type BatchEmbeddingResult,
+  type EmbeddingConfig,
+  type EmbeddingProvider,
   OPENAI_MODELS,
   type OpenAIModel,
 } from './types';
@@ -40,7 +40,7 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
     if (!this.isValidModel(this.config.model)) {
       throw new Error(
         `Invalid OpenAI model: ${this.config.model}. ` +
-        `Supported models: ${Object.keys(OPENAI_MODELS).join(', ')}`
+          `Supported models: ${Object.keys(OPENAI_MODELS).join(', ')}`
       );
     }
 
@@ -54,9 +54,7 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
       apiKey: this.config.apiKey,
       batchSize: this.config.batchSize,
       timeout: this.config.timeoutMs,
-      configuration: this.config.baseUrl
-        ? { baseURL: this.config.baseUrl }
-        : undefined,
+      configuration: this.config.baseUrl ? { baseURL: this.config.baseUrl } : undefined,
     });
   }
 
@@ -85,12 +83,12 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
   private async throttle(): Promise<void> {
     const now = Date.now();
     const timeSinceLastRequest = now - this.lastRequestTime;
-    
+
     if (timeSinceLastRequest < this.minRequestInterval) {
       const delay = this.minRequestInterval - timeSinceLastRequest;
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
-    
+
     this.lastRequestTime = Date.now();
   }
 
@@ -103,12 +101,15 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
     }
 
     // Truncate if needed (OpenAI has token limits)
-    const truncatedText = this.truncateText(text, OPENAI_MODELS[this.config.model as OpenAIModel].maxTokens);
+    const truncatedText = this.truncateText(
+      text,
+      OPENAI_MODELS[this.config.model as OpenAIModel].maxTokens
+    );
 
     return withRetry(
       async () => {
         await this.throttle();
-        
+
         try {
           const result = await this.embeddings.embedQuery(truncatedText);
           return result;
@@ -119,7 +120,10 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
           }
           // Check if it's a retryable error
           if (this.isRetryableError(error)) {
-            throw new RetryableError(error instanceof Error ? error.message : 'Unknown error', true);
+            throw new RetryableError(
+              error instanceof Error ? error.message : 'Unknown error',
+              true
+            );
           }
           throw error;
         }
@@ -145,7 +149,9 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
     const validTexts = texts
       .map((text) => text.trim())
       .filter((text) => text.length > 0)
-      .map((text) => this.truncateText(text, OPENAI_MODELS[this.config.model as OpenAIModel].maxTokens));
+      .map((text) =>
+        this.truncateText(text, OPENAI_MODELS[this.config.model as OpenAIModel].maxTokens)
+      );
 
     if (validTexts.length === 0) {
       throw new Error('No valid texts to embed');
@@ -154,14 +160,14 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
     // Process in batches
     const results: number[][] = [];
     const batchSize = this.config.batchSize;
-    
+
     for (let i = 0; i < validTexts.length; i += batchSize) {
       const batch = validTexts.slice(i, i + batchSize);
-      
+
       const batchResult = await withRetry(
         async () => {
           await this.throttle();
-          
+
           try {
             return await this.embeddings.embedDocuments(batch);
           } catch (error) {
@@ -169,7 +175,10 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
               throw new RetryableError('Rate limit exceeded', true);
             }
             if (this.isRetryableError(error)) {
-              throw new RetryableError(error instanceof Error ? error.message : 'Unknown error', true);
+              throw new RetryableError(
+                error instanceof Error ? error.message : 'Unknown error',
+                true
+              );
             }
             throw error;
           }
@@ -181,7 +190,7 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
           maxDelayMs: 30000,
         }
       );
-      
+
       results.push(...batchResult);
     }
 

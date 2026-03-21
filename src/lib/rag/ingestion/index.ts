@@ -96,7 +96,6 @@ export function detectDocumentType(filename: string): DocumentType {
       return 'HTML';
     case 'md':
       return 'MD';
-    case 'txt':
     default:
       return 'TXT';
   }
@@ -113,8 +112,6 @@ export async function parseDocument(buffer: Buffer, type: DocumentType): Promise
       return parseDOCX(buffer);
     case 'HTML':
       return parseHTML(buffer);
-    case 'MD':
-    case 'TXT':
     default:
       return parseText(buffer);
   }
@@ -469,58 +466,55 @@ export async function checkIngestionHealth(): Promise<{
   };
 }
 
-// Export image pipeline functions
-export {
-  extractImagesFromPDF,
-  uploadImageToStorage,
-  generateImageCaption,
-  processImage,
-  processDocumentImages,
-  processPDFImages,
-  searchSimilarImages,
-  searchImagesByText,
-  getDocumentImages,
-  deleteDocumentImages,
-} from './image-pipeline';
-
 export type {
   ExtractedImage,
   ImageProcessingResult,
   ProcessedImage,
 } from './image-pipeline';
-
+// Export image pipeline functions
+export {
+  deleteDocumentImages,
+  extractImagesFromPDF,
+  generateImageCaption,
+  getDocumentImages,
+  processDocumentImages,
+  processImage,
+  processPDFImages,
+  searchImagesByText,
+  searchSimilarImages,
+  uploadImageToStorage,
+} from './image-pipeline';
+export type {
+  ImagePreprocessOptions,
+  OCRConfiguration,
+  OCRMetadata,
+  OCROptions,
+  OCRPage,
+  OCRPageResult,
+  OCRProgress,
+  OCRProgressCallback,
+  OCRResult,
+  OCRTextBlock,
+  ParsedOCRDocument,
+} from './parsers/ocr';
 // Export OCR functions
 export {
+  batchOCR,
+  createConfigFromEnv,
+  DEFAULT_OCR_CONFIG,
+  detectImageFormat,
+  getImageDimensions,
+  getLanguageOptions,
+  getOCRVersion,
+  isOCRAvailable,
+  isPDF2PicAvailable,
+  isValidImage,
+  isValidLanguage,
+  OCRConfigBuilder,
+  OCREngineMode,
+  OCRParserError,
+  PageSegmentationMode,
   parseImageWithOCR,
   parsePDFWithOCRFallback,
   preprocessImage,
-  isValidImage,
-  detectImageFormat,
-  getImageDimensions,
-  isOCRAvailable,
-  isPDF2PicAvailable,
-  getOCRVersion,
-  OCRParserError,
-  batchOCR,
-  OCRConfigBuilder,
-  DEFAULT_OCR_CONFIG,
-  OCREngineMode,
-  PageSegmentationMode,
-  getLanguageOptions,
-  isValidLanguage,
-  createConfigFromEnv,
-} from './parsers/ocr';
-
-export type {
-  OCRConfiguration,
-  OCRResult,
-  OCRPageResult,
-  OCRMetadata,
-  OCRPage,
-  OCRTextBlock,
-  ImagePreprocessOptions,
-  OCRProgress,
-  OCRProgressCallback,
-  ParsedOCRDocument,
-  OCROptions,
 } from './parsers/ocr';

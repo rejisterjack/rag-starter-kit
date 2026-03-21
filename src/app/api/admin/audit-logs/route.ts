@@ -1,8 +1,7 @@
-import { NextResponse } from 'next/server';
-
-import { requireAdmin } from '@/lib/auth';
-import { getAuditLogs } from '@/lib/audit/audit-logger';
 import { AuditEvent, AuditSeverity } from '@prisma/client';
+import { NextResponse } from 'next/server';
+import { getAuditLogs } from '@/lib/audit/audit-logger';
+import { requireAdmin } from '@/lib/auth';
 
 // =============================================================================
 // GET /api/admin/audit-logs
@@ -50,8 +49,6 @@ export async function GET(req: Request): Promise<Response> {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Failed to fetch audit logs:', error);
-
     if (error instanceof Error && error.message === 'Forbidden') {
       return NextResponse.json(
         { error: 'Forbidden', message: 'Admin access required' },

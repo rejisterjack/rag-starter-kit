@@ -13,8 +13,8 @@ describe('cn (className utility)', () => {
 
   it('should handle conditional classes', () => {
     const result = cn('base', {
-      'active': true,
-      'disabled': false,
+      active: true,
+      disabled: false,
     });
     expect(result).toBe('base active');
   });

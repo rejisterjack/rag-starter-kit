@@ -1,6 +1,6 @@
 /**
  * API Test Helpers
- * 
+ *
  * Utilities for testing API routes.
  */
 
@@ -156,9 +156,9 @@ export async function expectErrorResponse(
   expectedError?: string | RegExp
 ): Promise<void> {
   expect(response.status).toBe(expectedStatus);
-  
+
   const data = await response.json().catch(() => ({}));
-  
+
   if (expectedError) {
     if (typeof expectedError === 'string') {
       expect(data.error || data.message || '').toContain(expectedError);
@@ -190,7 +190,7 @@ export async function expectSuccessResponse(
 export function createMockHeaders(overrides: Record<string, string> = {}): Headers {
   return new Headers({
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    Accept: 'application/json',
     ...overrides,
   });
 }
@@ -246,7 +246,7 @@ export function createMultipartFormData(
     formData.append(fieldName, file);
   });
 
-  return { formData, boundary: '----WebKitFormBoundary' + Math.random().toString(36).substring(2) };
+  return { formData, boundary: `----WebKitFormBoundary${Math.random().toString(36).substring(2)}` };
 }
 
 /**
@@ -281,7 +281,9 @@ export function createMockNextRequest(
 /**
  * Parse SSE (Server-Sent Events) stream
  */
-export async function parseSSEStream(response: Response): Promise<Array<{ event?: string; data: string }>> {
+export async function parseSSEStream(
+  response: Response
+): Promise<Array<{ event?: string; data: string }>> {
   const text = await response.text();
   const events: Array<{ event?: string; data: string }> = [];
 
@@ -327,10 +329,7 @@ export function createCSRFHeader(token: string): Record<string, string> {
 /**
  * Verify CORS headers
  */
-export function expectCORSHeaders(
-  response: Response,
-  expectedOrigin: string = '*'
-): void {
+export function expectCORSHeaders(response: Response, expectedOrigin: string = '*'): void {
   expect(response.headers.get('Access-Control-Allow-Origin')).toBe(expectedOrigin);
 }
 

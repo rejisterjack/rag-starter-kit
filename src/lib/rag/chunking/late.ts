@@ -151,8 +151,7 @@ export class LateChunker implements Chunker {
         }
 
         allChunks.push(...sectionChunks);
-      } catch (error) {
-        console.warn(`Failed to process section ${i}, falling back to fixed chunking:`, error);
+      } catch (_error) {
         // Fallback: create chunks without embeddings
         const fallbackChunks = this.createFallbackChunks(
           section.content,
@@ -181,7 +180,7 @@ export class LateChunker implements Chunker {
     let currentPosition = 0;
 
     for (const paragraph of paragraphs) {
-      const paragraphWithNewlines = paragraph + '\n\n';
+      const paragraphWithNewlines = `${paragraph}\n\n`;
       const estimatedTokens = estimateTokenCount(currentSection + paragraphWithNewlines);
 
       if (estimatedTokens > maxTokens && currentSection.length > 0) {

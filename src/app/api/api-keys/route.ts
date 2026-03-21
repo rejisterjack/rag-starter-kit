@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
-import { createApiKey, getWorkspaceApiKeys, type CreateApiKeyInput } from '@/lib/security/api-keys';
-import { Permission, checkPermission } from '@/lib/workspace/permissions';
+import { type CreateApiKeyInput, createApiKey, getWorkspaceApiKeys } from '@/lib/security/api-keys';
+import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 /**
  * GET /api/api-keys?workspaceId=xxx

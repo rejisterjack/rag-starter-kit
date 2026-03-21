@@ -64,7 +64,6 @@ export function getPostHogClient(): PostHog | null {
 
   if (!posthogApiKey) {
     if (process.env.NODE_ENV === 'production') {
-      console.warn('[PostHog] API key not configured');
     }
     return null;
   }
@@ -267,8 +266,11 @@ export const trackFeature = {
     trackEvent('export_used', properties, userId),
   searchUsed: (userId: string, properties?: Record<string, unknown>) =>
     trackEvent('search_used', properties, userId),
-  integrationConnected: (userId: string, integration: string, properties?: Record<string, unknown>) =>
-    trackEvent('integration_connected', { integration, ...properties }, userId),
+  integrationConnected: (
+    userId: string,
+    integration: string,
+    properties?: Record<string, unknown>
+  ) => trackEvent('integration_connected', { integration, ...properties }, userId),
   apiKeyCreated: (userId: string, properties?: Record<string, unknown>) =>
     trackEvent('api_key_created', properties, userId),
 };

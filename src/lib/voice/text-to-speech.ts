@@ -43,7 +43,6 @@ export class TextToSpeechService {
     this.synthesis = window.speechSynthesis;
 
     if (!this.synthesis) {
-      console.warn('Text-to-Speech API not supported in this browser');
       return;
     }
 
@@ -248,7 +247,7 @@ export class TextToSpeechService {
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, new Set());
     }
-    this.eventHandlers.get(event)!.add(handler);
+    this.eventHandlers.get(event)?.add(handler);
 
     return () => {
       this.eventHandlers.get(event)?.delete(handler);

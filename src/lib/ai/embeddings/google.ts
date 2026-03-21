@@ -1,13 +1,13 @@
 /**
  * Google Gemini Embedding Provider
- * 
+ *
  * Uses Google's Gemini API via Vercel AI SDK.
  * Free tier available through Google AI Studio.
- * 
+ *
  * Models:
  * - text-embedding-004 (latest, 768 dimensions)
  * - embedding-001 (legacy, 768 dimensions)
- * 
+ *
  * Get API key: https://aistudio.google.com/app/apikey
  */
 
@@ -40,20 +40,15 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
   readonly name = 'google';
   readonly modelName: string;
   readonly dimensions: number;
-  
-  constructor(
-    model: GoogleModel = 'text-embedding-004',
-    _apiKey?: string,
-    _baseUrl?: string
-  ) {
+
+  constructor(model: GoogleModel = 'text-embedding-004', _apiKey?: string, _baseUrl?: string) {
     const modelInfo = GOOGLE_MODELS[model];
     if (!modelInfo) {
       throw new Error(
-        `Invalid Google model: ${model}. ` +
-        `Supported: ${Object.keys(GOOGLE_MODELS).join(', ')}`
+        `Invalid Google model: ${model}. ` + `Supported: ${Object.keys(GOOGLE_MODELS).join(', ')}`
       );
     }
-    
+
     this.modelName = model;
     this.dimensions = modelInfo.dimensions;
   }
@@ -66,7 +61,7 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
       model: google.textEmbeddingModel(this.modelName),
       value: text,
     });
-    
+
     return Array.from(result.embedding);
   }
 
@@ -77,18 +72,18 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
     // Process in batches of 100 (Google's limit)
     const batchSize = 100;
     const embeddings: number[][] = [];
-    
+
     for (let i = 0; i < texts.length; i += batchSize) {
       const batch = texts.slice(i, i + batchSize);
-      
+
       const result = await embedMany({
         model: google.textEmbeddingModel(this.modelName),
         values: batch,
       });
-      
-      embeddings.push(...result.embeddings.map(e => Array.from(e)));
+
+      embeddings.push(...result.embeddings.map((e) => Array.from(e)));
     }
-    
+
     return embeddings;
   }
 

@@ -1,6 +1,6 @@
 /**
  * Error Codes
- * 
+ *
  * Standardized error codes for the application.
  * These are used for consistent error identification across
  * frontend, backend, and logging systems.

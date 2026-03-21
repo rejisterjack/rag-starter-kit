@@ -169,7 +169,7 @@ export class DuckDuckGoProvider implements WebSearchProvider {
       const results = this.parseDuckDuckGoResults(html);
 
       return results.slice(0, maxResults);
-    } catch (error) {
+    } catch (_error) {
       // Fallback to instant answers API if HTML parsing fails
       return this.fetchInstantAnswers(query, maxResults);
     }
@@ -200,7 +200,7 @@ export class DuckDuckGoProvider implements WebSearchProvider {
 
         // Handle DuckDuckGo redirect URLs
         if (url.startsWith('//')) {
-          url = 'https:' + url;
+          url = `https:${url}`;
         } else if (url.startsWith('/l/?')) {
           // Extract actual URL from redirect
           const uddgMatch = url.match(/uddg=([^&]+)/);

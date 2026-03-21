@@ -4,18 +4,18 @@
  * Supports free models from various providers (Mistral, Meta, Google, etc.)
  */
 
-import { streamText, generateText } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { generateText, streamText } from 'ai';
 import {
+  LLMError,
   type LLMMessage,
   type LLMOptions,
-  type LLMResponse,
-  type StreamingLLMResponse,
   type LLMProvider,
-  type OpenRouterConfig,
-  LLMError,
-  RateLimitError,
+  type LLMResponse,
   ModelUnavailableError,
+  type OpenRouterConfig,
+  RateLimitError,
+  type StreamingLLMResponse,
 } from './types';
 
 /**
@@ -25,25 +25,25 @@ import {
 export const OPENROUTER_FREE_MODELS = {
   // Mistral - Good balance of quality and speed
   MISTRAL_7B: 'mistralai/mistral-7b-instruct:free',
-  
+
   // Google - Strong performance
   GEMMA_2_9B: 'google/gemma-2-9b-it:free',
-  
+
   // Meta - Open source, good quality
   LLAMA_3_1_8B: 'meta-llama/llama-3.1-8b-instruct:free',
   LLAMA_3_2_1B: 'meta-llama/llama-3.2-1b-instruct:free',
   LLAMA_3_2_3B: 'meta-llama/llama-3.2-3b-instruct:free',
-  
+
   // DeepSeek - Strong reasoning
   DEEPSEEK_CHAT: 'deepseek/deepseek-chat:free',
-  
+
   // Nous Research - Very capable but slower
   HERMES_405B: 'nousresearch/hermes-3-llama-3.1-405b:free',
-  
+
   // Microsoft - Solid performance
   PHI_3_MINI: 'microsoft/phi-3-mini:free',
   PHI_3_MEDIUM: 'microsoft/phi-3-medium:free',
-  
+
   // Qwen - Alibaba's model
   QWEN_2_5_7B: 'qwen/qwen-2.5-7b-instruct:free',
 } as const;
@@ -65,8 +65,9 @@ export class OpenRouterProvider implements LLMProvider {
 
   constructor(config: OpenRouterConfig = { provider: 'openrouter' }) {
     this.apiKey = config.apiKey ?? process.env.OPENROUTER_API_KEY ?? '';
-    this.defaultModel = config.defaultModel ?? process.env.DEFAULT_MODEL ?? OPENROUTER_FREE_MODELS.MISTRAL_7B;
-    this.fallbackModels = DEFAULT_FALLBACK_MODELS.filter(m => m !== this.defaultModel);
+    this.defaultModel =
+      config.defaultModel ?? process.env.DEFAULT_MODEL ?? OPENROUTER_FREE_MODELS.MISTRAL_7B;
+    this.fallbackModels = DEFAULT_FALLBACK_MODELS.filter((m) => m !== this.defaultModel);
     this.referer = config.referer ?? process.env.OPENROUTER_REFERER;
     this.title = config.title ?? process.env.OPENROUTER_TITLE;
 
@@ -91,7 +92,7 @@ export class OpenRouterProvider implements LLMProvider {
 
   async generate(messages: LLMMessage[], options: LLMOptions = {}): Promise<LLMResponse> {
     const modelName = options.model ?? this.defaultModel;
-    
+
     try {
       const result = await generateText({
         model: this.createModel(modelName),
@@ -123,7 +124,7 @@ export class OpenRouterProvider implements LLMProvider {
 
   async stream(messages: LLMMessage[], options: LLMOptions = {}): Promise<StreamingLLMResponse> {
     const modelName = options.model ?? this.defaultModel;
-    
+
     try {
       const result = streamText({
         model: this.createModel(modelName),
@@ -139,11 +140,13 @@ export class OpenRouterProvider implements LLMProvider {
       });
 
       // Create a promise that resolves with usage when streaming completes
-      const usagePromise = result.usage.then((usage: { promptTokens?: number; completionTokens?: number; totalTokens?: number }) => ({
-        promptTokens: usage?.promptTokens ?? 0,
-        completionTokens: usage?.completionTokens ?? 0,
-        totalTokens: usage?.totalTokens ?? 0,
-      })) as Promise<{ promptTokens: number; completionTokens: number; totalTokens: number }>;
+      const usagePromise = result.usage.then(
+        (usage: { promptTokens?: number; completionTokens?: number; totalTokens?: number }) => ({
+          promptTokens: usage?.promptTokens ?? 0,
+          completionTokens: usage?.completionTokens ?? 0,
+          totalTokens: usage?.totalTokens ?? 0,
+        })
+      ) as Promise<{ promptTokens: number; completionTokens: number; totalTokens: number }>;
 
       return {
         content: result.textStream,
@@ -163,7 +166,7 @@ export class OpenRouterProvider implements LLMProvider {
     options: LLMOptions = {}
   ): Promise<LLMResponse> {
     const primaryModel = options.model ?? this.defaultModel;
-    const modelsToTry = [primaryModel, ...this.fallbackModels.filter(m => m !== primaryModel)];
+    const modelsToTry = [primaryModel, ...this.fallbackModels.filter((m) => m !== primaryModel)];
 
     let lastError: Error | undefined;
 
@@ -207,7 +210,7 @@ export class OpenRouterProvider implements LLMProvider {
     options: LLMOptions = {}
   ): Promise<StreamingLLMResponse> {
     const primaryModel = options.model ?? this.defaultModel;
-    const modelsToTry = [primaryModel, ...this.fallbackModels.filter(m => m !== primaryModel)];
+    const modelsToTry = [primaryModel, ...this.fallbackModels.filter((m) => m !== primaryModel)];
 
     let lastError: Error | undefined;
 
@@ -239,7 +242,7 @@ export class OpenRouterProvider implements LLMProvider {
   private createModel(modelName: string) {
     // Ensure the model name uses the :free suffix for free models
     const finalModelName = modelName.includes(':') ? modelName : `${modelName}:free`;
-    
+
     // Use chat() method which returns a proper LanguageModel
     return this.provider.chat(finalModelName);
   }
@@ -258,7 +261,7 @@ export class OpenRouterProvider implements LLMProvider {
       // Try to extract retry-after from error
       const retryMatch = message.match(/retry after (\d+)/i);
       const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) : undefined;
-      
+
       return new RateLimitError(
         `Rate limit exceeded for model ${model}. OpenRouter free models have rate limits.`,
         retryAfter,
@@ -268,14 +271,14 @@ export class OpenRouterProvider implements LLMProvider {
 
     // Handle model unavailability (503)
     if (statusCode === 503 || message.toLowerCase().includes('unavailable')) {
-      return new ModelUnavailableError(
-        `Model ${model} is currently unavailable`,
-        error
-      );
+      return new ModelUnavailableError(`Model ${model} is currently unavailable`, error);
     }
 
     // Handle context length exceeded
-    if (message.toLowerCase().includes('context length') || message.toLowerCase().includes('too many tokens')) {
+    if (
+      message.toLowerCase().includes('context length') ||
+      message.toLowerCase().includes('too many tokens')
+    ) {
       return new LLMError(
         `Context length exceeded for model ${model}`,
         'CONTEXT_LENGTH_EXCEEDED',
@@ -285,7 +288,11 @@ export class OpenRouterProvider implements LLMProvider {
     }
 
     // Handle authentication errors
-    if (statusCode === 401 || message.toLowerCase().includes('unauthorized') || message.toLowerCase().includes('invalid api key')) {
+    if (
+      statusCode === 401 ||
+      message.toLowerCase().includes('unauthorized') ||
+      message.toLowerCase().includes('invalid api key')
+    ) {
       return new LLMError(
         'OpenRouter API key is invalid. Please check your OPENROUTER_API_KEY.',
         'AUTH_ERROR',

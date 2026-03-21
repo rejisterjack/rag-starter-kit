@@ -1,7 +1,7 @@
 /**
  * Agentic Chat API Route with Streaming Support
  * Uses Query Router + ReAct Agent + Multi-Step Reasoning for intelligent query handling
- * 
+ *
  * Enhanced with:
  * - Agent memory persistence
  * - Streaming ReAct reasoning steps
@@ -16,17 +16,14 @@ import { type LanguageModel, streamText } from 'ai';
 import { NextResponse } from 'next/server';
 import { createOllama } from 'ollama-ai-provider';
 import { createProviderFromEnv, type LLMMessage } from '@/lib/ai/llm';
-import {
-  AgentAnalytics,
-  createAgentAnalytics,
-} from '@/lib/analytics/agent-analytics';
+import { type AgentAnalytics, createAgentAnalytics } from '@/lib/analytics/agent-analytics';
 import { MetricType, recordMetric } from '@/lib/analytics/rag-metrics';
 import { trackTokenUsage } from '@/lib/analytics/token-tracking';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import {
-  AgentMemory,
+  type AgentMemory,
   createAgentMemory,
   createQueryRouter,
   createReActAgent,
@@ -40,9 +37,9 @@ import {
   calculatorTool,
   codeExecutorTool,
   createWebSearchTool,
-  getDefaultWebSearchProvider,
   currentTimeTool,
   documentSummaryTool,
+  getDefaultWebSearchProvider,
   searchDocumentsTool,
 } from '@/lib/rag/tools';
 import { validateChatInput } from '@/lib/security/input-validator';
@@ -203,21 +200,28 @@ export async function POST(req: Request) {
       config: userConfig,
       stream: shouldStream,
     } = validatedInput;
-    
+
     // Parse agent configuration from request
     const agentConfig: AgentConfig = {
-      maxIterations: (body as { agentConfig?: { maxIterations?: number } })?.agentConfig?.maxIterations ?? 5,
-      enabledTools: (body as { agentConfig?: { enabledTools?: string[] } })?.agentConfig?.enabledTools ?? [
-        'calculator', 'document_search', 'current_time'
-      ],
-      enablePlanning: (body as { agentConfig?: { enablePlanning?: boolean } })?.agentConfig?.enablePlanning ?? true,
-      showReasoning: (body as { agentConfig?: { showReasoning?: boolean } })?.agentConfig?.showReasoning ?? true,
-      enableReflection: (body as { agentConfig?: { enableReflection?: boolean } })?.agentConfig?.enableReflection ?? true,
-      earlyTermination: (body as { agentConfig?: { earlyTermination?: boolean } })?.agentConfig?.earlyTermination ?? true,
+      maxIterations:
+        (body as { agentConfig?: { maxIterations?: number } })?.agentConfig?.maxIterations ?? 5,
+      enabledTools: (body as { agentConfig?: { enabledTools?: string[] } })?.agentConfig
+        ?.enabledTools ?? ['calculator', 'document_search', 'current_time'],
+      enablePlanning:
+        (body as { agentConfig?: { enablePlanning?: boolean } })?.agentConfig?.enablePlanning ??
+        true,
+      showReasoning:
+        (body as { agentConfig?: { showReasoning?: boolean } })?.agentConfig?.showReasoning ?? true,
+      enableReflection:
+        (body as { agentConfig?: { enableReflection?: boolean } })?.agentConfig?.enableReflection ??
+        true,
+      earlyTermination:
+        (body as { agentConfig?: { earlyTermination?: boolean } })?.agentConfig?.earlyTermination ??
+        true,
     };
 
     const shouldStreamReasoning = (body as { streamReasoning?: boolean })?.streamReasoning ?? false;
-    
+
     const config = { ...defaultConfig, ...userConfig };
     const effectiveConversationId = conversationId ?? chatId;
     const userMessage = messages[messages.length - 1].content;
@@ -467,12 +471,12 @@ async function handleDirectAnswer(params: HandlerParams): Promise<Response> {
 
   // Get memory context
   const memoryContext = await agentMemory.buildMemoryContext();
-  
+
   const llmMessages: LLMMessage[] = [
-    { 
-      role: 'system', 
+    {
+      role: 'system',
       content: `You are a helpful assistant. Answer directly and concisely.
-${memoryContext ? `\nContext:\n${memoryContext}` : ''}` 
+${memoryContext ? `\nContext:\n${memoryContext}` : ''}`,
     },
     ...history,
     { role: 'user', content: userMessage },
@@ -591,20 +595,20 @@ ${memoryContext ? `\nContext:\n${memoryContext}` : ''}`
 async function handleCalculation(
   params: HandlerParams & { classification: QueryClassification }
 ): Promise<Response> {
-  const { 
-    userMessage, 
-    history, 
-    userId, 
-    workspaceId, 
-    effectiveConversationId, 
-    config, 
-    agentConfig, 
+  const {
+    userMessage,
+    history,
+    userId,
+    workspaceId,
+    effectiveConversationId,
+    config,
+    agentConfig,
     agentMemory,
     analytics,
   } = params;
 
   const tools: import('@/lib/rag/tools').Tool[] = [calculatorTool, currentTimeTool];
-  
+
   if (agentConfig.enabledTools.includes('code_executor')) {
     tools.push(codeExecutorTool);
   }
@@ -679,13 +683,13 @@ async function handleCalculation(
 async function handleWebSearch(
   params: HandlerParams & { classification: QueryClassification }
 ): Promise<Response> {
-  const { 
-    userMessage, 
-    history, 
-    userId, 
-    workspaceId, 
-    effectiveConversationId, 
-    config, 
+  const {
+    userMessage,
+    history,
+    userId,
+    workspaceId,
+    effectiveConversationId,
+    config,
     agentConfig,
     agentMemory,
     analytics,
@@ -693,7 +697,7 @@ async function handleWebSearch(
 
   const webSearch = createWebSearchTool(getDefaultWebSearchProvider());
   const tools: import('@/lib/rag/tools').Tool[] = [webSearch, currentTimeTool];
-  
+
   if (agentConfig.enabledTools.includes('calculator')) {
     tools.push(calculatorTool);
   }
@@ -791,10 +795,10 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
   const { context, citationMap } = citationHandler.formatContextWithCitations(chunks);
 
   const { buildSystemPromptWithContext } = await import('@/lib/ai/prompts/templates');
-  
+
   // Get memory context
   const memoryContext = await agentMemory.buildMemoryContext();
-  
+
   const systemPrompt = buildSystemPromptWithContext(
     `${context}${memoryContext ? `\n\nUser Context:\n${memoryContext}` : ''}`,
     {
@@ -1003,7 +1007,7 @@ async function handleReAct(
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        Connection: 'keep-alive',
       },
     });
   }
@@ -1084,13 +1088,8 @@ async function handleClarification(
     classification: QueryClassification;
   }
 ): Promise<Response> {
-  const { 
-    userMessage, 
-    classification, 
-    effectiveConversationId, 
-    rateLimitResult,
-    analytics,
-  } = params;
+  const { userMessage, classification, effectiveConversationId, rateLimitResult, analytics } =
+    params;
 
   const memory = new ConversationMemory(prisma);
 
@@ -1178,11 +1177,7 @@ export async function GET(req: Request) {
       { error: 'Invalid action', validActions: ['stats', 'quality', 'realtime'] },
       { status: 400 }
     );
-  } catch (error) {
-    console.error('Agent analytics error:', error);
-    return NextResponse.json(
-      { error: 'Failed to retrieve analytics' },
-      { status: 500 }
-    );
+  } catch (_error) {
+    return NextResponse.json({ error: 'Failed to retrieve analytics' }, { status: 500 });
   }
 }

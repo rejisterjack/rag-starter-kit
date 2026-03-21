@@ -246,7 +246,13 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     ) {
       connect();
     }
-  }, [autoConnect, session?.user?.id, connectionState.isConnected, connectionState.isConnecting]);
+  }, [
+    autoConnect,
+    session?.user?.id,
+    connectionState.isConnected,
+    connectionState.isConnecting,
+    connect,
+  ]);
 
   // Auto-join room
   useEffect(() => {
@@ -432,7 +438,7 @@ export function useTypingIndicator(
     typingTimeoutRef.current = setTimeout(() => {
       stopTyping();
     }, delay);
-  }, [service, roomId, isTyping, delay]);
+  }, [service, roomId, isTyping, delay, stopTyping]);
 
   const stopTyping = useCallback(() => {
     if (!service || !isTyping) return;

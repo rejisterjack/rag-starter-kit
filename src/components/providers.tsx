@@ -1,12 +1,11 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from 'next-themes';
 import { SessionProvider } from 'next-auth/react';
+import { ThemeProvider } from 'next-themes';
 import { type ReactNode, useState } from 'react';
-
-import { PostHogProvider } from './providers/posthog-provider';
 import { PlausibleProvider } from './providers/plausible-provider';
+import { PostHogProvider } from './providers/posthog-provider';
 
 /**
  * Props for the Providers component

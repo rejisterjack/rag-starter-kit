@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 
 export default function Error({
   error,
@@ -15,7 +15,7 @@ export default function Error({
   useEffect(() => {
     // Log to error tracking service
     // logger.error('Chat page error', { error: error.message, digest: error.digest });
-  }, [error]);
+  }, []);
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
@@ -49,9 +49,7 @@ export default function Error({
           </Button>
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          Error ID: {error.digest || 'unknown'}
-        </p>
+        <p className="text-xs text-muted-foreground">Error ID: {error.digest || 'unknown'}</p>
       </div>
     </div>
   );

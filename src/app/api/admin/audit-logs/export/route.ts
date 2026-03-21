@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-
-import { requireAdmin } from '@/lib/auth';
 import { exportAuditLogs } from '@/lib/audit/audit-logger';
+import { requireAdmin } from '@/lib/auth';
 
 // =============================================================================
 // GET /api/admin/audit-logs/export
@@ -29,8 +28,6 @@ export async function GET(): Promise<Response> {
       },
     });
   } catch (error) {
-    console.error('Failed to export audit logs:', error);
-
     if (error instanceof Error && error.message === 'Forbidden') {
       return NextResponse.json(
         { error: 'Forbidden', message: 'Admin access required' },

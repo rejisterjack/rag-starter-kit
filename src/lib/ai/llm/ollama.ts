@@ -3,18 +3,18 @@
  * Implementation of the LLMProvider interface using Ollama for local inference
  */
 
+import { generateText, streamText } from 'ai';
 import { ollama } from 'ollama-ai-provider';
-import { streamText, generateText } from 'ai';
 import {
+  LLMError,
   type LLMMessage,
   type LLMOptions,
-  type LLMResponse,
-  type StreamingLLMResponse,
   type LLMProvider,
-  type OllamaConfig,
+  type LLMResponse,
   type LLMTokenUsage,
-  LLMError,
   ModelUnavailableError,
+  type OllamaConfig,
+  type StreamingLLMResponse,
 } from './types';
 
 // Supported Ollama models
@@ -150,16 +150,11 @@ export class OllamaProvider implements LLMProvider {
       if (!response.ok) {
         throw new Error('Failed to fetch models');
       }
-      
-      const data = await response.json() as OllamaTagsResponse;
+
+      const data = (await response.json()) as OllamaTagsResponse;
       return data.models.map((m) => m.name);
     } catch (error) {
-      throw new LLMError(
-        'Failed to list Ollama models',
-        'LIST_MODELS_ERROR',
-        false,
-        error
-      );
+      throw new LLMError('Failed to list Ollama models', 'LIST_MODELS_ERROR', false, error);
     }
   }
 
@@ -188,12 +183,7 @@ export class OllamaProvider implements LLMProvider {
         }
       }
     } catch (error) {
-      throw new LLMError(
-        `Failed to pull model ${modelName}`,
-        'PULL_MODEL_ERROR',
-        false,
-        error
-      );
+      throw new LLMError(`Failed to pull model ${modelName}`, 'PULL_MODEL_ERROR', false, error);
     }
   }
 
@@ -202,7 +192,7 @@ export class OllamaProvider implements LLMProvider {
    */
   async isModelAvailable(modelName: string): Promise<boolean> {
     const models = await this.listModels();
-    return models.some(m => m === modelName || m.startsWith(`${modelName}:`));
+    return models.some((m) => m === modelName || m.startsWith(`${modelName}:`));
   }
 
   private handleError(error: unknown, model: string): LLMError {
@@ -225,17 +215,9 @@ export class OllamaProvider implements LLMProvider {
 
     // Handle connection errors
     if (message.includes('ECONNREFUSED') || message.includes('fetch failed')) {
-      return new ModelUnavailableError(
-        `Cannot connect to Ollama at ${this.baseUrl}`,
-        error
-      );
+      return new ModelUnavailableError(`Cannot connect to Ollama at ${this.baseUrl}`, error);
     }
 
-    return new LLMError(
-      `Ollama error: ${message}`,
-      'OLLAMA_ERROR',
-      false,
-      error
-    );
+    return new LLMError(`Ollama error: ${message}`, 'OLLAMA_ERROR', false, error);
   }
 }

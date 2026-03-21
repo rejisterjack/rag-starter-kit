@@ -5,7 +5,7 @@
  * Coordinates embedding generation, retrieval, and response generation.
  */
 
-import type { UIMessage, LanguageModelUsage } from 'ai';
+import type { LanguageModelUsage, UIMessage } from 'ai';
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
 import { logger } from '@/lib/logger';
 import type { RAGConfig, RAGQuery, RAGResponse, Source } from '@/types';

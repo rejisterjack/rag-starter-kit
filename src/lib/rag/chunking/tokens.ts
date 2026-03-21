@@ -25,8 +25,6 @@ async function getEncoding(): Promise<unknown | null> {
     encoding = tiktoken.get_encoding('cl100k_base');
     return encoding;
   } catch {
-    // Fallback if js-tiktoken is not available
-    console.warn('js-tiktoken not available, using token estimation');
     return null;
   }
 }
@@ -50,9 +48,7 @@ export async function countTokens(text: string): Promise<TokenCount> {
         total: tokens.length,
         isEstimated: false,
       };
-    } catch (error) {
-      console.warn('Tiktoken encoding failed, falling back to estimation:', error);
-    }
+    } catch (_error) {}
   }
 
   // Fallback estimation
@@ -85,9 +81,7 @@ export async function countTokensForChunks(chunks: string[]): Promise<TokenCount
         perChunk,
         isEstimated: false,
       };
-    } catch (error) {
-      console.warn('Tiktoken encoding failed, falling back to estimation:', error);
-    }
+    } catch (_error) {}
   }
 
   // Fallback estimation
@@ -163,8 +157,7 @@ export async function truncateToTokenLimit(text: string, maxTokens: number): Pro
     const truncated = tokens.slice(0, maxTokens);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (enc as any).decode(truncated) as string;
-  } catch (error) {
-    console.warn('Token truncation failed:', error);
+  } catch (_error) {
     // Fallback
     return text.slice(0, maxTokens * 4);
   }

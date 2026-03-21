@@ -7,12 +7,12 @@
  * and redirecting the user to Notion's consent page.
  */
 
+import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getAuthorizationUrl, type NotionOAuthConfig } from '@/lib/integrations/notion-oauth';
 import { logger } from '@/lib/logger';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
-import { cookies } from 'next/headers';
 
 // =============================================================================
 // Configuration

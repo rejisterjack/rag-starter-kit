@@ -5,16 +5,16 @@
  * Supports image preprocessing with sharp for improved accuracy.
  */
 
-import { createWorker, OEM, PSM } from 'tesseract.js';
 import sharp from 'sharp';
+import { createWorker, type OEM, PSM } from 'tesseract.js';
 import type {
   OCRConfiguration,
-  OCRResult,
-  OCRPageResult,
   OCROptions,
+  OCRPageResult,
   OCRProgressCallback,
+  OCRResult,
 } from '../ocr-config';
-import { DEFAULT_OCR_CONFIG, OCREngineMode, PageSegmentationMode } from '../ocr-config';
+import { DEFAULT_OCR_CONFIG, type OCREngineMode, type PageSegmentationMode } from '../ocr-config';
 import type { ParsedDocument } from '../pipeline';
 
 // =============================================================================
@@ -191,7 +191,9 @@ export async function detectImageFormat(buffer: Buffer): Promise<string | null> 
 /**
  * Get image dimensions
  */
-export async function getImageDimensions(buffer: Buffer): Promise<{ width: number; height: number }> {
+export async function getImageDimensions(
+  buffer: Buffer
+): Promise<{ width: number; height: number }> {
   const metadata = await sharp(buffer).metadata();
   return {
     width: metadata.width || 0,
@@ -275,8 +277,16 @@ export async function parseImageWithOCR(
     // Extract text blocks with bounding boxes
     const blocks: OCRTextBlock[] = [];
     // Access paragraphs from the result data
-    const paragraphs = (result.data as unknown as { paragraphs?: Array<{ lines: Array<{ words: Array<{ text: string; confidence: number; bbox: OCRTextBlock['bbox'] }> }> }> }).paragraphs;
-    
+    const paragraphs = (
+      result.data as unknown as {
+        paragraphs?: Array<{
+          lines: Array<{
+            words: Array<{ text: string; confidence: number; bbox: OCRTextBlock['bbox'] }>;
+          }>;
+        }>;
+      }
+    ).paragraphs;
+
     if (paragraphs) {
       for (let pIdx = 0; pIdx < paragraphs.length; pIdx++) {
         const paragraph = paragraphs[pIdx];
@@ -316,7 +326,6 @@ export async function parseImageWithOCR(
 
     // Check confidence threshold
     if (confidence < fullConfig.confidenceThreshold) {
-      console.warn(`OCR confidence (${confidence}) below threshold (${fullConfig.confidenceThreshold})`);
     }
 
     await onProgress?.({
@@ -364,7 +373,12 @@ export async function parsePDFWithOCRFallback(
   try {
     // Convert PDF to images (requires pdf2pic)
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { fromBuffer } = await import('pdf2pic') as unknown as { fromBuffer: (buffer: Buffer, options: Record<string, unknown>) => { bulk: (pages: number) => Promise<Array<{ base64: string }>> } };
+    const { fromBuffer } = (await import('pdf2pic')) as unknown as {
+      fromBuffer: (
+        buffer: Buffer,
+        options: Record<string, unknown>
+      ) => { bulk: (pages: number) => Promise<Array<{ base64: string }>> };
+    };
 
     const convert = fromBuffer(buffer, {
       density: 200, // DPI
@@ -523,21 +537,20 @@ export class OCRParserError extends Error {
 // Re-exports from config
 // =============================================================================
 
-export {
-  DEFAULT_OCR_CONFIG,
-  OCREngineMode,
-  PageSegmentationMode,
-  OCRConfigBuilder,
-  getLanguageOptions,
-  isValidLanguage,
-  createConfigFromEnv,
-} from '../ocr-config';
-
 export type {
   OCRConfiguration,
-  OCRResult,
+  OCROptions,
   OCRPageResult,
   OCRProgress,
   OCRProgressCallback,
-  OCROptions,
+  OCRResult,
+} from '../ocr-config';
+export {
+  createConfigFromEnv,
+  DEFAULT_OCR_CONFIG,
+  getLanguageOptions,
+  isValidLanguage,
+  OCRConfigBuilder,
+  OCREngineMode,
+  PageSegmentationMode,
 } from '../ocr-config';

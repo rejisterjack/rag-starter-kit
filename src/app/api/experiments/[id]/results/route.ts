@@ -157,14 +157,14 @@ function calculateExperimentResults(experiment: {
       if (!uniqueUsersPerVariant.has(event.variantId)) {
         uniqueUsersPerVariant.set(event.variantId, new Set());
       }
-      uniqueUsersPerVariant.get(event.variantId)!.add(event.userId);
+      uniqueUsersPerVariant.get(event.variantId)?.add(event.userId);
     }
 
     // Track unique sessions
     if (!uniqueSessionsPerVariant.has(event.variantId)) {
       uniqueSessionsPerVariant.set(event.variantId, new Set());
     }
-    uniqueSessionsPerVariant.get(event.variantId)!.add(event.sessionId);
+    uniqueSessionsPerVariant.get(event.variantId)?.add(event.sessionId);
 
     // Count event types
     switch (event.eventType) {

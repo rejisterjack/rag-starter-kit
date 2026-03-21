@@ -118,7 +118,7 @@ function evaluateMath(expression: string): number {
   // eslint-disable-next-line no-new-func
   const result = new Function(`return (${cleanExpr})`)();
 
-  if (typeof result !== 'number' || !isFinite(result)) {
+  if (typeof result !== 'number' || !Number.isFinite(result)) {
     throw new Error('Invalid calculation result');
   }
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { AuditEvent, AuditSeverity } from '@prisma/client';
 import { Download, Filter, RefreshCw } from 'lucide-react';
-
+import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +22,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { AuditLogResult } from '@/lib/audit/audit-logger';
-import { AuditEvent, AuditSeverity } from '@prisma/client';
 
 // =============================================================================
 // Types
@@ -54,7 +53,6 @@ function getSeverityColor(
       return 'destructive';
     case 'WARNING':
       return 'warning';
-    case 'INFO':
     default:
       return 'secondary';
   }
@@ -143,9 +141,7 @@ export default function AuditLogsPage(): React.ReactElement {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (err) {
-      console.error('Export failed:', err);
-    }
+    } catch (_err) {}
   };
 
   const totalPages = Math.ceil(total / limit);

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
-import { getApiKeyById, updateApiKey, revokeApiKey } from '@/lib/security/api-keys';
-import { Permission, checkPermission } from '@/lib/workspace/permissions';
+import { getApiKeyById, revokeApiKey, updateApiKey } from '@/lib/security/api-keys';
+import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 interface RouteParams {
   params: Promise<{ id: string }>;

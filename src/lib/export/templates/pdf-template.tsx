@@ -346,7 +346,6 @@ export function PDFTemplate({ conversation, options, citations }: PDFTemplatePro
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         return days === 0 ? 'Today' : `${days} days ago`;
       }
-      case 'locale':
       default:
         return date.toLocaleString();
     }

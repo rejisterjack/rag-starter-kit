@@ -35,8 +35,6 @@ export async function GET(req: Request): Promise<Response> {
 
     return NextResponse.json({ workspaces });
   } catch (error) {
-    console.error('Failed to fetch workspaces:', error);
-
     if (error instanceof Error && error.message === 'Forbidden') {
       return NextResponse.json(
         { error: 'Forbidden', message: 'Admin access required' },

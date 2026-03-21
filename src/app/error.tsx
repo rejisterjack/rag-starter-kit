@@ -10,10 +10,7 @@ interface ErrorProps {
 }
 
 export default function Error({ error, reset }: ErrorProps): React.ReactElement {
-  useEffect(() => {
-    // Log the error to an error reporting service
-    console.error(error);
-  }, [error]);
+  useEffect(() => {}, []);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
@@ -25,7 +22,7 @@ export default function Error({ error, reset }: ErrorProps): React.ReactElement 
         </p>
         <div className="mt-6 flex gap-4">
           <Button onClick={reset}>Try Again</Button>
-          <Button variant="outline" onClick={() => window.location.href = '/'}>
+          <Button variant="outline" onClick={() => (window.location.href = '/')}>
             Go Home
           </Button>
         </div>

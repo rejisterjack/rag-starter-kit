@@ -1,6 +1,6 @@
 /**
  * Ollama Embedding Provider
- * 
+ *
  * Support for local self-hosted embeddings using Ollama.
  * Models: nomic-embed-text, mxbai-embed-large
  * Good for cost-sensitive deployments and privacy.
@@ -8,9 +8,9 @@
 
 import { RetryableError, withRetry } from '@/lib/utils/retry';
 import {
-  type EmbeddingProvider,
-  type EmbeddingConfig,
   type BatchEmbeddingResult,
+  type EmbeddingConfig,
+  type EmbeddingProvider,
   OLLAMA_MODELS,
   type OllamaModel,
 } from './types';
@@ -39,12 +39,12 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
     if (!this.isValidModel(this.config.model)) {
       throw new Error(
         `Invalid Ollama model: ${this.config.model}. ` +
-        `Supported models: ${Object.keys(OLLAMA_MODELS).join(', ')}`
+          `Supported models: ${Object.keys(OLLAMA_MODELS).join(', ')}`
       );
     }
 
     this.baseUrl = this.config.baseUrl ?? 'http://localhost:11434';
-    
+
     // Rate limiting for local inference (conservative)
     const requestsPerMinute = 60;
     this.minRequestInterval = 60000 / requestsPerMinute;
@@ -75,12 +75,12 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
   private async throttle(): Promise<void> {
     const now = Date.now();
     const timeSinceLastRequest = now - this.lastRequestTime;
-    
+
     if (timeSinceLastRequest < this.minRequestInterval) {
       const delay = this.minRequestInterval - timeSinceLastRequest;
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
-    
+
     this.lastRequestTime = Date.now();
   }
 
@@ -119,14 +119,14 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
 
     // Truncate if needed
     const truncatedText = this.truncateText(
-      text, 
+      text,
       OLLAMA_MODELS[this.config.model as OllamaModel].maxTokens
     );
 
     return withRetry(
       async () => {
         await this.throttle();
-        
+
         try {
           const response = await this.makeRequest('/api/embeddings', {
             model: this.config.model,
@@ -135,24 +135,23 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
 
           if (!response.ok) {
             const errorText = await response.text();
-            
+
             // Check for specific errors
             if (response.status === 404) {
               throw new Error(
-                `Model "${this.config.model}" not found. ` +
-                `Run: ollama pull ${this.config.model}`
+                `Model "${this.config.model}" not found. ` + `Run: ollama pull ${this.config.model}`
               );
             }
-            
+
             if (response.status === 503 || response.status === 504) {
               throw new RetryableError('Ollama is busy, retrying...', true);
             }
-            
+
             throw new Error(`Ollama API error: ${response.status} - ${errorText}`);
           }
 
-          const data = await response.json() as { embedding: number[] };
-          
+          const data = (await response.json()) as { embedding: number[] };
+
           if (!data.embedding || !Array.isArray(data.embedding)) {
             throw new Error('Invalid response from Ollama: missing embedding');
           }
@@ -198,7 +197,9 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
     const validTexts = texts
       .map((text) => text.trim())
       .filter((text) => text.length > 0)
-      .map((text) => this.truncateText(text, OLLAMA_MODELS[this.config.model as OllamaModel].maxTokens));
+      .map((text) =>
+        this.truncateText(text, OLLAMA_MODELS[this.config.model as OllamaModel].maxTokens)
+      );
 
     if (validTexts.length === 0) {
       throw new Error('No valid texts to embed');
@@ -206,7 +207,7 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
 
     // Ollama processes one at a time
     const results: number[][] = [];
-    
+
     for (const text of validTexts) {
       const embedding = await this.embedQuery(text);
       results.push(embedding);
@@ -245,14 +246,14 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
       const response = await fetch(`${this.baseUrl}/api/tags`, {
         signal: AbortSignal.timeout(5000),
       });
-      
+
       if (!response.ok) {
         return false;
       }
 
-      const data = await response.json() as { models?: Array<{ name: string }> };
+      const data = (await response.json()) as { models?: Array<{ name: string }> };
       const models = data.models ?? [];
-      
+
       // Check if our model is available
       return models.some((m) => m.name.includes(this.config.model));
     } catch {
@@ -268,15 +269,17 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
       const response = await fetch(`${this.baseUrl}/api/tags`, {
         signal: AbortSignal.timeout(5000),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to list models: ${response.status}`);
       }
 
-      const data = await response.json() as { models?: Array<{ name: string }> };
+      const data = (await response.json()) as { models?: Array<{ name: string }> };
       return (data.models ?? []).map((m) => m.name);
     } catch (error) {
-      throw new Error(`Failed to list Ollama models: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to list Ollama models: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -285,7 +288,7 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
    */
   async pullModel(modelName?: string): Promise<void> {
     const model = modelName ?? this.config.model;
-    
+
     try {
       const response = await this.makeRequest('/api/pull', {
         name: model,
@@ -296,7 +299,9 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
         throw new Error(`Failed to pull model: ${response.status}`);
       }
     } catch (error) {
-      throw new Error(`Failed to pull model "${model}": ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to pull model "${model}": ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 

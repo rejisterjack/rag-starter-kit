@@ -1,8 +1,8 @@
 'use client';
 
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { ArrowDown, ArrowUp, FileText } from 'lucide-react';
 
 interface TopListItem {
   label: string;
@@ -27,15 +27,10 @@ export function TopList({ title, items, description, className }: TopListProps) 
       <CardContent>
         <div className="space-y-4">
           {items.map((item, index) => (
-            <div
-              key={index}
-              className="flex items-center justify-between space-x-4"
-            >
+            <div key={index} className="flex items-center justify-between space-x-4">
               <div className="flex items-center space-x-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
-                  <span className="text-sm font-semibold text-primary">
-                    {index + 1}
-                  </span>
+                  <span className="text-sm font-semibold text-primary">{index + 1}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate" title={item.label}>
@@ -44,9 +39,7 @@ export function TopList({ title, items, description, className }: TopListProps) 
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-muted-foreground">
-                  {item.value}
-                </span>
+                <span className="text-sm text-muted-foreground">{item.value}</span>
                 {item.trend !== undefined && (
                   <div
                     className={cn(

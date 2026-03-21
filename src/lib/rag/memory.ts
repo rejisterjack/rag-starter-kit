@@ -186,8 +186,7 @@ export class ConversationMemory {
       );
 
       return response.content.trim();
-    } catch (error) {
-      console.error('Failed to summarize conversation:', error);
+    } catch (_error) {
       // Fallback: return a simple concatenation of key messages
       return this.fallbackSummarize(messages);
     }
@@ -211,7 +210,7 @@ export class ConversationMemory {
 
     // Calculate how many messages to summarize
     const messagesToSummarize = allMessages.slice(0, allMessages.length - 10);
-    const messagesToKeep = allMessages.slice(-10);
+    const _messagesToKeep = allMessages.slice(-10);
 
     // Create summary
     const messagesToSummarizeMapped = messagesToSummarize.map((m) => this.mapPrismaMessage(m));
@@ -237,10 +236,6 @@ export class ConversationMemory {
         tokensUsed: undefined,
       },
     });
-
-    console.log(
-      `Compressed conversation ${conversationId}: ${allMessages.length} messages -> ${messagesToKeep.length + 1} messages (with summary)`
-    );
   }
 
   /**

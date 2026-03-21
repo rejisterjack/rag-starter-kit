@@ -128,7 +128,7 @@ export class KeywordRetriever {
    * Perform keyword/full-text search
    */
   async retrieve(query: string, options: RetrievalOptions): Promise<RetrievedChunk[]> {
-    const startTime = Date.now();
+    const _startTime = Date.now();
     const topK = options.topK ?? 5;
     const minScore = options.minScore ?? 0.01; // BM25 scores are typically small
     const language = validateLanguage(this.config.language ?? 'english');
@@ -208,13 +208,8 @@ export class KeywordRetriever {
       // Post-filtering by score
       const filteredChunks = chunks.filter((chunk) => chunk.score >= minScore).slice(0, topK);
 
-      console.log(
-        `[KeywordRetriever] Found ${filteredChunks.length} chunks in ${Date.now() - startTime}ms`
-      );
-
       return filteredChunks;
     } catch (error) {
-      console.error('[KeywordRetriever] Search error:', error);
       throw new Error(
         `Keyword search failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -234,7 +229,7 @@ export class KeywordRetriever {
         `JOIN documents d ON dc.document_id = d.id ` +
         `WHERE d.user_id = '${workspaceId}' AND d.status = 'COMPLETED'`
       })
-      WHERE word LIKE ${partialQuery.toLowerCase() + '%'}
+      WHERE word LIKE ${`${partialQuery.toLowerCase()}%`}
       ORDER BY nentry DESC, word ASC
       LIMIT ${limit}
     `;

@@ -82,7 +82,6 @@ export class ResilientRAGChain extends RAGChain {
           fallbackUsed: model !== this.fallbackConfig.primaryModel,
         };
       } catch (error) {
-        console.warn(`Model ${model} failed:`, error);
         lastError = error as Error;
 
         // Check if this is a retryable error
@@ -160,8 +159,6 @@ export class ResilientRAGChain extends RAGChain {
 
         return;
       } catch (error) {
-        console.warn(`Stream with model ${model} failed:`, error);
-
         if (!this.isRetryableError(error) || attempts >= modelsToTry.length) {
           yield {
             type: 'error',
@@ -238,9 +235,7 @@ export class ResilientRAGChain extends RAGChain {
         if (!shouldRetry) {
           return false;
         }
-      } catch (handlerError) {
-        console.error('Error handler failed:', handlerError);
-      }
+      } catch (_handlerError) {}
     }
     return true;
   }
@@ -372,7 +367,6 @@ export class FallbackLLMProvider implements LLMProvider {
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
         errors.push(err);
-        console.warn(`Provider ${providerIndex} failed:`, err.message);
       }
     }
 
@@ -453,7 +447,6 @@ export class CircuitBreaker {
 
     if (state.failures >= this._config.failureThreshold) {
       state.open = true;
-      console.warn(`Circuit breaker opened for ${key}`);
     }
 
     this.state.set(key, state);

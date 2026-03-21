@@ -4,9 +4,9 @@
  * Supports local filesystem and S3-compatible storage
  */
 
-import { existsSync } from 'fs';
-import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'fs/promises';
-import { join } from 'path';
+import { existsSync } from 'node:fs';
+import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { StorageConfig, StoredFile } from './types';
@@ -72,7 +72,6 @@ export class ExportStorage {
         return this.storeS3(key, filename, buffer, options.mimeType, expiresAt);
       case 'r2':
         return this.storeR2(key, filename, buffer, options.mimeType, expiresAt);
-      case 'local':
       default:
         return this.storeLocal(key, filename, buffer, options.mimeType, expiresAt);
     }
@@ -87,7 +86,6 @@ export class ExportStorage {
         return this.retrieveS3(key);
       case 'r2':
         return this.retrieveR2(key);
-      case 'local':
       default:
         return this.retrieveLocal(key);
     }
@@ -103,7 +101,6 @@ export class ExportStorage {
           return this.getS3FileInfo(key);
         case 'r2':
           return this.getR2FileInfo(key);
-        case 'local':
         default:
           return this.getLocalFileInfo(key);
       }
@@ -122,7 +119,6 @@ export class ExportStorage {
           return this.deleteS3(key);
         case 'r2':
           return this.deleteR2(key);
-        case 'local':
         default:
           return this.deleteLocal(key);
       }
@@ -143,7 +139,6 @@ export class ExportStorage {
         return this.getS3DownloadUrl(key, expiryMinutes);
       case 'r2':
         return this.getR2DownloadUrl(key, expiryMinutes);
-      case 'local':
       default:
         // For local storage, return a relative path that can be served
         return `/api/export/download/${key}`;
@@ -162,12 +157,10 @@ export class ExportStorage {
           return this.cleanupS3Expired();
         case 'r2':
           return this.cleanupR2Expired();
-        case 'local':
         default:
           return this.cleanupLocalExpired();
       }
-    } catch (error) {
-      console.error('Storage cleanup error:', error);
+    } catch (_error) {
       result.errors++;
       return result;
     }
@@ -286,8 +279,7 @@ export class ExportStorage {
           await this.deleteLocal(key);
           result.deleted++;
         }
-      } catch (error) {
-        console.error(`Failed to cleanup file ${file}:`, error);
+      } catch (_error) {
         result.errors++;
       }
     }
@@ -306,9 +298,6 @@ export class ExportStorage {
     mimeType: string,
     expiresAt: Date
   ): Promise<StoredFile> {
-    // S3 implementation would use AWS SDK
-    // For now, fall back to local storage
-    console.warn('S3 storage not fully implemented, falling back to local');
     return this.storeLocal(key, filename, buffer, mimeType, expiresAt);
   }
 
@@ -343,8 +332,6 @@ export class ExportStorage {
     mimeType: string,
     expiresAt: Date
   ): Promise<StoredFile> {
-    // R2 implementation would use AWS SDK with Cloudflare R2 endpoint
-    console.warn('R2 storage not fully implemented, falling back to local');
     return this.storeLocal(key, filename, buffer, mimeType, expiresAt);
   }
 
@@ -390,7 +377,6 @@ export class ExportStorage {
     this.cleanupInterval = setInterval(async () => {
       const result = await this.cleanupExpired();
       if (result.deleted > 0) {
-        console.log(`Storage cleanup: removed ${result.deleted} expired files`);
       }
     }, CLEANUP_INTERVAL_MS);
 

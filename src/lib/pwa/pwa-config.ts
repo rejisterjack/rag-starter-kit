@@ -287,8 +287,7 @@ export async function getStorageEstimate(): Promise<{
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       usageDetails: (estimate as any).usageDetails as Record<string, number> | undefined,
     };
-  } catch (error) {
-    console.error('Failed to get storage estimate:', error);
+  } catch (_error) {
     return null;
   }
 }

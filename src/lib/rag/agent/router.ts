@@ -200,8 +200,6 @@ export class QueryRouter {
         confidence: Math.max(0, Math.min(1, parsed.confidence)),
       };
     } catch (error) {
-      console.error('Query classification error:', error);
-
       // Fallback to RETRIEVE if classification fails
       return {
         type: this.config.fallbackType,
@@ -309,9 +307,7 @@ Respond with a JSON object containing:
       }
 
       throw new Error('No JSON found in response');
-    } catch (error) {
-      console.error('Failed to parse classification:', error);
-
+    } catch (_error) {
       // Attempt heuristic classification as fallback
       return this.heuristicClassification(content);
     }

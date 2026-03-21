@@ -90,10 +90,10 @@ export class VoiceActivityDetector {
   private microphoneStream: MediaStream | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   private processorNode: ScriptProcessorNode | null = null;
-  
+
   private eventListeners: Map<VADEventType, Set<VADEventHandler>> = new Map();
   private stateChangeListeners: Set<VADStateChangeHandler> = new Set();
-  
+
   private state: VADState = {
     isVoiceDetected: false,
     isListening: false,
@@ -101,12 +101,12 @@ export class VoiceActivityDetector {
     voiceDuration: 0,
     silenceDuration: 0,
   };
-  
+
   private lastVoiceStartTime = 0;
   private lastVoiceEndTime = 0;
   private animationFrameId: number | null = null;
   private frequencyData: Uint8Array | null = null;
-  
+
   // Volume history for smoothing
   private volumeHistory: number[] = [];
   private readonly VOLUME_HISTORY_SIZE = 5;
@@ -126,7 +126,8 @@ export class VoiceActivityDetector {
     if (!isClient()) return false;
     return !!(
       getNavigator()?.mediaDevices?.getUserMedia &&
-      (window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)
+      (window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)
     );
   }
 
@@ -139,7 +140,6 @@ export class VoiceActivityDetector {
     }
 
     if (!VoiceActivityDetector.isSupported()) {
-      console.error('[VAD] Web Audio API not supported');
       return false;
     }
 
@@ -158,7 +158,7 @@ export class VoiceActivityDetector {
       const AudioContextClass =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      
+
       this.audioContext = new AudioContextClass({
         sampleRate: this.options.sampleRate,
       });
@@ -184,8 +184,7 @@ export class VoiceActivityDetector {
       this.startProcessingLoop();
 
       return true;
-    } catch (error) {
-      console.error('[VAD] Failed to start:', error);
+    } catch (_error) {
       this.cleanup();
       return false;
     }
@@ -201,7 +200,7 @@ export class VoiceActivityDetector {
     this.state.voiceDuration = 0;
     this.state.silenceDuration = 0;
     this.volumeHistory = [];
-    
+
     this.emitStateChange();
     this.cleanup();
   }
@@ -227,7 +226,7 @@ export class VoiceActivityDetector {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, new Set());
     }
-    this.eventListeners.get(event)!.add(handler);
+    this.eventListeners.get(event)?.add(handler);
 
     return () => {
       this.eventListeners.get(event)?.delete(handler);
@@ -300,7 +299,7 @@ export class VoiceActivityDetector {
       this.updateVoiceState(smoothedVolume);
       this.state.volume = smoothedVolume;
 
-          // Emit volume event (clone frequency data to avoid reference issues)
+      // Emit volume event (clone frequency data to avoid reference issues)
       const freqDataCopy = new Uint8Array(this.frequencyData.length);
       freqDataCopy.set(this.frequencyData);
       this.emit('volume', {
@@ -443,9 +442,7 @@ export class VoiceActivityDetector {
       handlers.forEach((handler) => {
         try {
           handler(data);
-        } catch (error) {
-          console.error(`[VAD] Error in event handler for ${event}:`, error);
-        }
+        } catch (_error) {}
       });
     }
   }
@@ -454,9 +451,7 @@ export class VoiceActivityDetector {
     this.stateChangeListeners.forEach((handler) => {
       try {
         handler({ ...this.state });
-      } catch (error) {
-        console.error('[VAD] Error in state change handler:', error);
-      }
+      } catch (_error) {}
     });
   }
 
@@ -538,11 +533,11 @@ export function detectAudioActivity(
   options?: Partial<VADOptions>
 ): { isActive: boolean; volume: number; stop: () => void } {
   const opts = { ...DEFAULT_OPTIONS, ...options };
-  
+
   const AudioContextClass =
     window.AudioContext ||
     (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  
+
   const audioContext = new AudioContextClass();
   const analyser = audioContext.createAnalyser();
   analyser.fftSize = opts.fftSize;

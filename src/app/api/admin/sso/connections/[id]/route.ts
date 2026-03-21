@@ -47,8 +47,6 @@ export async function PATCH(req: Request, { params }: RouteParams): Promise<Resp
 
     return NextResponse.json({ connection });
   } catch (error) {
-    console.error('Failed to update SSO connection:', error);
-
     if (error instanceof Error && error.message === 'Forbidden') {
       return NextResponse.json(
         { error: 'Forbidden', message: 'Admin access required' },
@@ -102,8 +100,6 @@ export async function DELETE(_req: Request, { params }: RouteParams): Promise<Re
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete SSO connection:', error);
-
     if (error instanceof Error && error.message === 'Forbidden') {
       return NextResponse.json(
         { error: 'Forbidden', message: 'Admin access required' },

@@ -36,9 +36,9 @@ export {
 export {
   AgentPlanner,
   createAgentPlanner,
+  type ExecutionPlan,
   estimateComplexity,
   needsPlanning,
-  type ExecutionPlan,
   type PlanExecutionResult,
   type PlannerConfig,
   type PlanStatus,

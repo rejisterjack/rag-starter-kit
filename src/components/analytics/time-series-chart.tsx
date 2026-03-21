@@ -1,15 +1,7 @@
 'use client';
 
+import { Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  Legend,
-} from 'recharts';
 import { cn } from '@/lib/utils';
 
 interface TimeSeriesChartProps {
@@ -24,12 +16,7 @@ interface TimeSeriesChartProps {
   className?: string;
 }
 
-export function TimeSeriesChart({
-  data,
-  title,
-  description,
-  className,
-}: TimeSeriesChartProps) {
+export function TimeSeriesChart({ data, title, description, className }: TimeSeriesChartProps) {
   return (
     <Card className={cn('col-span-2', className)}>
       <CardHeader>

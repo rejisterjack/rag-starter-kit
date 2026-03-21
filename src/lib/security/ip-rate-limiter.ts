@@ -1,6 +1,6 @@
 /**
  * IP-Based Rate Limiter for Anonymous Users
- * 
+ *
  * Provides stricter rate limiting for unauthenticated users with:
  * - IP reputation tracking
  * - Progressive delays
@@ -23,28 +23,28 @@ interface IPRateLimitConfig {
   // Base limits
   maxRequests: number;
   windowMs: number;
-  
+
   // Progressive penalty
   penaltyMultiplier: number;
   maxPenaltyMultiplier: number;
-  
+
   // CAPTCHA threshold
   captchaThreshold: number;
   captchaWindowMs: number;
-  
+
   // Block threshold
   blockThreshold: number;
   blockDurationMs: number;
 }
 
 const DEFAULT_CONFIG: IPRateLimitConfig = {
-  maxRequests: 30,           // 30 requests per window
-  windowMs: 60 * 1000,       // 1 minute
-  penaltyMultiplier: 2,      // Double the limit after violation
-  maxPenaltyMultiplier: 8,   // Max 8x stricter
-  captchaThreshold: 3,       // Show CAPTCHA after 3 violations
+  maxRequests: 30, // 30 requests per window
+  windowMs: 60 * 1000, // 1 minute
+  penaltyMultiplier: 2, // Double the limit after violation
+  maxPenaltyMultiplier: 8, // Max 8x stricter
+  captchaThreshold: 3, // Show CAPTCHA after 3 violations
   captchaWindowMs: 5 * 60 * 1000, // 5 minutes
-  blockThreshold: 5,         // Block after 5 violations
+  blockThreshold: 5, // Block after 5 violations
   blockDurationMs: 15 * 60 * 1000, // 15 minutes
 };
 
@@ -63,7 +63,7 @@ export interface IPRateLimitResult {
 }
 
 export interface IPReputation {
-  score: number;           // 0-100, higher is worse
+  score: number; // 0-100, higher is worse
   violationCount: number;
   lastViolation: number;
   captchaSolved: number;
@@ -85,17 +85,17 @@ export function extractClientIP(req: Request): string {
     // Take the first IP in the chain (client IP)
     return forwarded.split(',')[0].trim();
   }
-  
+
   // Other common headers
   const realIP = req.headers.get('x-real-ip');
   if (realIP) return realIP;
-  
+
   const cfIP = req.headers.get('cf-connecting-ip');
   if (cfIP) return cfIP;
-  
+
   const trueIP = req.headers.get('true-client-ip');
   if (trueIP) return trueIP;
-  
+
   // Fallback
   return 'unknown';
 }
@@ -105,17 +105,17 @@ export function extractClientIP(req: Request): string {
  */
 export function isPrivateIP(ip: string): boolean {
   const privateRanges = [
-    /^127\./,                              // Loopback
-    /^10\./,                               // Private Class A
-    /^172\.(1[6-9]|2[0-9]|3[0-1])\./,     // Private Class B
-    /^192\.168\./,                        // Private Class C
-    /^169\.254\./,                        // Link-local
-    /^::1$/,                               // IPv6 loopback
-    /^fc00:/i,                             // IPv6 private
-    /^fe80:/i,                             // IPv6 link-local
+    /^127\./, // Loopback
+    /^10\./, // Private Class A
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./, // Private Class B
+    /^192\.168\./, // Private Class C
+    /^169\.254\./, // Link-local
+    /^::1$/, // IPv6 loopback
+    /^fc00:/i, // IPv6 private
+    /^fe80:/i, // IPv6 link-local
   ];
-  
-  return privateRanges.some(range => range.test(ip));
+
+  return privateRanges.some((range) => range.test(ip));
 }
 
 // =============================================================================
@@ -132,7 +132,7 @@ export async function checkIPRateLimit(
   const cfg = { ...DEFAULT_CONFIG, ...config };
   const ip = extractClientIP(req);
   const now = Date.now();
-  
+
   // Skip rate limiting for private IPs in development
   if (process.env.NODE_ENV === 'development' && isPrivateIP(ip)) {
     return {
@@ -144,12 +144,12 @@ export async function checkIPRateLimit(
       isBlocked: false,
     };
   }
-  
+
   try {
     // Check if IP is blocked
     const blockKey = `${IP_RATE_LIMIT_PREFIX}block:${ip}`;
     const blockExpiry = await redis.get(blockKey);
-    
+
     if (blockExpiry) {
       const expiryTime = parseInt(blockExpiry, 10);
       if (now < expiryTime) {
@@ -166,49 +166,49 @@ export async function checkIPRateLimit(
       // Block expired, remove it
       await redis.del(blockKey);
     }
-    
+
     // Get current penalty level
     const reputation = await getIPReputation(ip);
     const penaltyMultiplier = Math.min(
       cfg.penaltyMultiplier ** Math.min(reputation.violationCount, 3),
       cfg.maxPenaltyMultiplier
     );
-    
+
     const adjustedLimit = Math.floor(cfg.maxRequests / penaltyMultiplier);
-    
+
     // Check rate limit using Redis
     const rateKey = `${IP_RATE_LIMIT_PREFIX}${ip}`;
     const windowStart = now - cfg.windowMs;
-    
+
     // Use Redis sorted set for sliding window
     const pipeline = redis.pipeline();
-    
+
     // Remove old entries
     pipeline.zremrangebyscore(rateKey, 0, windowStart);
-    
+
     // Count current entries
     pipeline.zcard(rateKey);
-    
+
     // Add current request
     pipeline.zadd(rateKey, now, `${now}-${Math.random().toString(36).substring(2)}`);
-    
+
     // Set expiry
     pipeline.pexpire(rateKey, cfg.windowMs);
-    
+
     const results = await pipeline.exec();
     const currentCount = (results?.[1]?.[1] as number) || 0;
-    
+
     const allowed = currentCount < adjustedLimit;
     const remaining = Math.max(0, adjustedLimit - currentCount - 1);
-    
+
     // Check if CAPTCHA is required
     const requiresCaptcha = reputation.violationCount >= cfg.captchaThreshold;
-    
+
     // If not allowed, record violation
     if (!allowed) {
       await recordIPViolation(ip, req);
     }
-    
+
     return {
       allowed,
       remaining,
@@ -222,7 +222,7 @@ export async function checkIPRateLimit(
       ip,
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    
+
     // Fail open on error (allow request)
     return {
       allowed: true,
@@ -241,13 +241,13 @@ export async function checkIPRateLimit(
 async function recordIPViolation(ip: string, req: Request): Promise<void> {
   try {
     const reputation = await getIPReputation(ip);
-    
+
     reputation.violationCount++;
     reputation.lastViolation = Date.now();
     reputation.score = Math.min(100, reputation.score + 10);
-    
+
     await saveIPReputation(ip, reputation);
-    
+
     // Log the violation
     await logAuditEvent({
       event: AuditEvent.RATE_LIMIT_EXCEEDED,
@@ -258,13 +258,18 @@ async function recordIPViolation(ip: string, req: Request): Promise<void> {
       },
       severity: 'WARNING',
     });
-    
+
     // Check if IP should be blocked
     const cfg = DEFAULT_CONFIG;
     if (reputation.violationCount >= cfg.blockThreshold) {
       const blockKey = `${IP_RATE_LIMIT_PREFIX}block:${ip}`;
-      await redis.set(blockKey, (Date.now() + cfg.blockDurationMs).toString(), 'PX', cfg.blockDurationMs);
-      
+      await redis.set(
+        blockKey,
+        (Date.now() + cfg.blockDurationMs).toString(),
+        'PX',
+        cfg.blockDurationMs
+      );
+
       logger.warn('IP blocked due to rate limit violations', {
         ip,
         violationCount: reputation.violationCount,
@@ -289,14 +294,14 @@ async function recordIPViolation(ip: string, req: Request): Promise<void> {
 async function getIPReputation(ip: string): Promise<IPReputation> {
   try {
     const data = await redis.get(`${IP_REPUTATION_PREFIX}${ip}`);
-    
+
     if (data) {
       return JSON.parse(data);
     }
   } catch {
     // Ignore parse errors
   }
-  
+
   return {
     score: 0,
     violationCount: 0,
@@ -347,26 +352,21 @@ export async function generateCaptchaChallenge(ip: string): Promise<{
   question: string;
 }> {
   const challengeId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-  
+
   // Simple math CAPTCHA (can be replaced with reCAPTCHA/hCaptcha integration)
   const num1 = Math.floor(Math.random() * 10) + 1;
   const num2 = Math.floor(Math.random() * 10) + 1;
   const answer = num1 + num2;
-  
+
   const challenge = {
     ip,
     answer,
     createdAt: Date.now(),
   };
-  
+
   // Store challenge with 5 minute expiry
-  await redis.set(
-    `${IP_CHALLENGE_PREFIX}${challengeId}`,
-    JSON.stringify(challenge),
-    'EX',
-    300
-  );
-  
+  await redis.set(`${IP_CHALLENGE_PREFIX}${challengeId}`, JSON.stringify(challenge), 'EX', 300);
+
   return {
     challengeId,
     question: `What is ${num1} + ${num2}?`,
@@ -383,30 +383,30 @@ export async function verifyCaptchaChallenge(
 ): Promise<boolean> {
   try {
     const data = await redis.get(`${IP_CHALLENGE_PREFIX}${challengeId}`);
-    
+
     if (!data) {
       return false;
     }
-    
+
     const challenge = JSON.parse(data);
-    
+
     // Verify IP matches
     if (challenge.ip !== ip) {
       return false;
     }
-    
+
     // Verify answer
     const isCorrect = parseInt(response, 10) === challenge.answer;
-    
+
     // Delete challenge (one-time use)
     await redis.del(`${IP_CHALLENGE_PREFIX}${challengeId}`);
-    
+
     if (isCorrect) {
       await recordCaptchaSuccess(ip);
     } else {
       await recordCaptchaFailure(ip);
     }
-    
+
     return isCorrect;
   } catch {
     return false;
@@ -429,10 +429,10 @@ export async function cleanupIPRateLimits(): Promise<{
     // Find and delete old rate limit keys
     const rateLimitKeys = await redis.keys(`${IP_RATE_LIMIT_PREFIX}*`);
     const reputationKeys = await redis.keys(`${IP_REPUTATION_PREFIX}*`);
-    
+
     let rateLimitsRemoved = 0;
     let reputationsRemoved = 0;
-    
+
     // Check each rate limit key for expiration
     for (const key of rateLimitKeys) {
       const ttl = await redis.ttl(key);
@@ -441,7 +441,7 @@ export async function cleanupIPRateLimits(): Promise<{
         rateLimitsRemoved++;
       }
     }
-    
+
     // Clean up old reputation entries
     const now = Date.now();
     for (const key of reputationKeys) {
@@ -455,12 +455,12 @@ export async function cleanupIPRateLimits(): Promise<{
         }
       }
     }
-    
+
     logger.info('IP rate limit cleanup completed', {
       rateLimitsRemoved,
       reputationsRemoved,
     });
-    
+
     return { rateLimitsRemoved, reputationsRemoved };
   } catch (error) {
     logger.error('IP rate limit cleanup failed', {

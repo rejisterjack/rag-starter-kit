@@ -1,9 +1,9 @@
 'use client';
 
-import type { AuditLogResult } from '@/lib/audit/audit-logger';
-import { Badge } from '@/components/ui/badge';
 import type { AuditEvent, AuditSeverity } from '@prisma/client';
 import { motion, type Variants } from 'framer-motion';
+import { Badge } from '@/components/ui/badge';
+import type { AuditLogResult } from '@/lib/audit/audit-logger';
 
 interface RecentAuditLogsProps {
   logs: AuditLogResult[];
@@ -18,7 +18,6 @@ function getSeverityColor(
       return 'destructive';
     case 'WARNING':
       return 'warning';
-    case 'INFO':
     default:
       return 'secondary';
   }
@@ -86,11 +85,18 @@ export function RecentAuditLogs({ logs }: RecentAuditLogsProps): React.ReactElem
           key={log.id}
           className="flex items-start gap-4 p-4 rounded-xl glass border border-white/5 hover:bg-white/5 transition-all duration-300"
         >
-          <div className="text-2xl shrink-0 h-10 w-10 flex items-center justify-center bg-background/50 rounded-full shadow-inner">{getEventIcon(log.event)}</div>
+          <div className="text-2xl shrink-0 h-10 w-10 flex items-center justify-center bg-background/50 rounded-full shadow-inner">
+            {getEventIcon(log.event)}
+          </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="font-semibold text-sm tracking-tight text-foreground/90">{log.event}</span>
-              <Badge variant={getSeverityColor(log.severity)} className="text-[10px] uppercase font-bold tracking-wider px-2 py-0 border-none shadow-sm">
+              <span className="font-semibold text-sm tracking-tight text-foreground/90">
+                {log.event}
+              </span>
+              <Badge
+                variant={getSeverityColor(log.severity)}
+                className="text-[10px] uppercase font-bold tracking-wider px-2 py-0 border-none shadow-sm"
+              >
                 {log.severity}
               </Badge>
             </div>

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { MessageList } from './message-list';
 import type { Message } from '@/types';
+import { MessageList } from './message-list';
 
 const meta: Meta<typeof MessageList> = {
   title: 'Chat/MessageList',
@@ -29,7 +29,8 @@ const mockMessages: Message[] = [
   {
     id: '2',
     role: 'assistant',
-    content: 'Retrieval-Augmented Generation (RAG) is an AI framework that enhances large language models by retrieving relevant information from external knowledge bases before generating responses. This approach helps reduce hallucinations and provides more accurate, up-to-date answers.',
+    content:
+      'Retrieval-Augmented Generation (RAG) is an AI framework that enhances large language models by retrieving relevant information from external knowledge bases before generating responses. This approach helps reduce hallucinations and provides more accurate, up-to-date answers.',
     createdAt: new Date(Date.now() - 1000 * 60 * 9),
   },
   {
@@ -41,7 +42,8 @@ const mockMessages: Message[] = [
   {
     id: '4',
     role: 'assistant',
-    content: 'This RAG Starter Kit implements a complete pipeline:\n\n1. **Document Processing**: Upload PDFs, DOCX, TXT files\n2. **Text Chunking**: Recursive splitting with overlap\n3. **Embeddings**: Google Gemini (free tier)\n4. **Vector Search**: PostgreSQL with pgvector\n5. **LLM Generation**: OpenRouter free models\n6. **Streaming**: Real-time token generation\n\nThe best part? It\'s completely free to use!',
+    content:
+      "This RAG Starter Kit implements a complete pipeline:\n\n1. **Document Processing**: Upload PDFs, DOCX, TXT files\n2. **Text Chunking**: Recursive splitting with overlap\n3. **Embeddings**: Google Gemini (free tier)\n4. **Vector Search**: PostgreSQL with pgvector\n5. **LLM Generation**: OpenRouter free models\n6. **Streaming**: Real-time token generation\n\nThe best part? It's completely free to use!",
     createdAt: new Date(Date.now() - 1000 * 60 * 4),
     sources: [
       {
@@ -88,7 +90,8 @@ export const Streaming: Story = {
   args: {
     messages: mockMessages,
     isLoading: false,
-    streamingContent: 'The vector search uses PostgreSQL with the pgvector extension for efficient similarity search...',
+    streamingContent:
+      'The vector search uses PostgreSQL with the pgvector extension for efficient similarity search...',
   },
 };
 
@@ -113,7 +116,8 @@ export const LongConversation: Story = {
       {
         id: '6',
         role: 'assistant',
-        content: 'Yes! You can deploy to Vercel, Railway, or Render with one-click deploy buttons. The project includes complete Docker support for self-hosting as well.',
+        content:
+          'Yes! You can deploy to Vercel, Railway, or Render with one-click deploy buttons. The project includes complete Docker support for self-hosting as well.',
         createdAt: new Date(Date.now() - 1000 * 60 * 1),
       },
     ],

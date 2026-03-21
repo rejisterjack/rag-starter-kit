@@ -397,10 +397,10 @@ export function truncateToTokens(text: string, maxTokens: number): string {
   // Try to end at a word boundary
   const lastSpace = truncated.lastIndexOf(' ');
   if (lastSpace > maxChars * 0.8) {
-    return truncated.slice(0, lastSpace) + '...';
+    return `${truncated.slice(0, lastSpace)}...`;
   }
 
-  return truncated + '...';
+  return `${truncated}...`;
 }
 
 /**

@@ -1,11 +1,11 @@
 /**
  * Test Setup Utilities
- * 
+ *
  * Shared setup helpers for integration and unit tests.
  */
 
-import { beforeAll, afterAll, afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import { afterAll, afterEach, beforeAll } from 'vitest';
 
 // Clean up after each test
 afterEach(() => {
@@ -28,14 +28,11 @@ afterAll(() => {
 /**
  * Create a mock request object for API testing
  */
-export function createMockRequest(options: {
-  method?: string;
-  url?: string;
-  body?: unknown;
-  headers?: Record<string, string>;
-} = {}): Request {
+export function createMockRequest(
+  options: { method?: string; url?: string; body?: unknown; headers?: Record<string, string> } = {}
+): Request {
   const { method = 'GET', url = 'http://localhost:3000/api/test', body, headers = {} } = options;
-  
+
   return new Request(url, {
     method,
     headers: new Headers(headers),
@@ -53,12 +50,9 @@ export function wait(ms: number): Promise<void> {
 /**
  * Create a mock file for upload testing
  */
-export function createMockFile(options: {
-  name?: string;
-  type?: string;
-  size?: number;
-  content?: string;
-} = {}): File {
+export function createMockFile(
+  options: { name?: string; type?: string; size?: number; content?: string } = {}
+): File {
   const { name = 'test.txt', type = 'text/plain', content = 'test content' } = options;
   return new File([content], name, { type });
 }

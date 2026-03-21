@@ -65,7 +65,6 @@ export function useTrackEvent() {
     (eventName: string, properties?: Record<string, unknown>) => {
       if (!posthog?.__loaded) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('[Analytics:Track]', eventName, properties);
         }
         return;
       }
@@ -135,7 +134,6 @@ export function useIdentify() {
     (distinctId: string, properties?: UserProperties) => {
       if (!posthog?.__loaded) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('[Analytics:Identify]', distinctId, properties);
         }
         return;
       }
@@ -205,7 +203,6 @@ export function usePageView() {
     (pageName: string, properties?: PageViewProperties) => {
       if (!posthog?.__loaded) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('[Analytics:PageView]', pageName, properties);
         }
         return;
       }
@@ -410,7 +407,6 @@ export function useAnalyticsGroups() {
     (groupType: string, groupKey: string, properties?: Record<string, unknown>) => {
       if (!posthog?.__loaded) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('[Analytics:Group]', groupType, groupKey, properties);
         }
         return;
       }

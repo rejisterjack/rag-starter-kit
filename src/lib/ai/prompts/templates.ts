@@ -82,21 +82,21 @@ export function buildRAGPrompt(
   // Add style-specific instructions
   switch (style) {
     case 'concise':
-      systemPrompt += '\n\n' + CONCISE_PROMPT;
+      systemPrompt += `\n\n${CONCISE_PROMPT}`;
       break;
     case 'detailed':
-      systemPrompt += '\n\n' + DETAILED_PROMPT;
+      systemPrompt += `\n\n${DETAILED_PROMPT}`;
       break;
   }
 
   // Add citation instructions
   if (includeCitations) {
-    systemPrompt += '\n\n' + CITATION_PROMPT;
+    systemPrompt += `\n\n${CITATION_PROMPT}`;
   }
 
   // Add custom instructions if provided
   if (customInstructions) {
-    systemPrompt += '\n\nAdditional instructions:\n' + customInstructions;
+    systemPrompt += `\n\nAdditional instructions:\n${customInstructions}`;
   }
 
   // Build context section
@@ -123,15 +123,15 @@ export function buildSystemPromptWithContext(
 
   switch (style) {
     case 'concise':
-      systemPrompt += '\n\n' + CONCISE_PROMPT;
+      systemPrompt += `\n\n${CONCISE_PROMPT}`;
       break;
     case 'detailed':
-      systemPrompt += '\n\n' + DETAILED_PROMPT;
+      systemPrompt += `\n\n${DETAILED_PROMPT}`;
       break;
   }
 
   if (includeCitations) {
-    systemPrompt += '\n\n' + CITATION_PROMPT;
+    systemPrompt += `\n\n${CITATION_PROMPT}`;
   }
 
   if (context) {
@@ -219,10 +219,7 @@ Reformulated Query (standalone):`;
 /**
  * Build a prompt for source validation
  */
-export function buildSourceValidationPrompt(
-  answer: string,
-  sources: string
-): string {
+export function buildSourceValidationPrompt(answer: string, sources: string): string {
   return `Review the following answer and verify that all claims are supported by the provided sources.
 Identify any unsupported claims or hallucinations.
 
@@ -240,11 +237,11 @@ Validation (list any unsupported claims or respond "All claims verified"):`;
  */
 export const RESPONSE_STYLE_TEMPLATES = {
   academic: `Respond in an academic tone. Use formal language, cite thoroughly, and acknowledge limitations or uncertainties.`,
-  
+
   casual: `Respond in a friendly, conversational tone. Use simple language and analogies where helpful.`,
-  
+
   technical: `Respond with technical precision. Use appropriate terminology, include specific details, and explain implementation considerations.`,
-  
+
   executive: `Respond with executive summary style. Focus on key insights, implications, and actionable recommendations.`,
 } as const;
 

@@ -7,9 +7,9 @@
 
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 import { resetOpenAIMocks } from '@tests/utils/mocks/openai';
 import { resetPrismaMocks } from '@tests/utils/mocks/prisma';
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
 // ============================================================================
 // Global Mocks

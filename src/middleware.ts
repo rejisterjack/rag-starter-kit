@@ -127,7 +127,7 @@ export async function middleware(req: NextRequest) {
   if (!isLoggedIn && pathname.startsWith('/api/')) {
     const { checkIPRateLimit } = await import('@/lib/security/ip-rate-limiter');
     const ipResult = await checkIPRateLimit(req);
-    
+
     if (!ipResult.allowed) {
       const response = NextResponse.json(
         {
@@ -145,7 +145,7 @@ export async function middleware(req: NextRequest) {
           },
         }
       );
-      
+
       return response;
     }
   }
@@ -221,16 +221,14 @@ async function validateCsrfToken(req: NextRequest): Promise<boolean> {
   try {
     // Get token from header
     const token = req.headers.get('x-csrf-token');
-    
+
     if (!token) {
-      console.warn('[CSRF] Missing CSRF token in request to', req.nextUrl.pathname);
       return false;
     }
 
     // Get cookie value
     const cookie = req.cookies.get('csrf_token');
     if (!cookie?.value) {
-      console.warn('[CSRF] Missing CSRF cookie');
       return false;
     }
 
@@ -238,19 +236,18 @@ async function validateCsrfToken(req: NextRequest): Promise<boolean> {
     const encoder = new TextEncoder();
     const tokenData = encoder.encode(token);
     const cookieData = encoder.encode(cookie.value);
-    
+
     if (tokenData.length !== cookieData.length) {
       return false;
     }
-    
+
     let result = 0;
     for (let i = 0; i < tokenData.length; i++) {
       result |= tokenData[i] ^ cookieData[i];
     }
-    
+
     return result === 0;
-  } catch (error) {
-    console.error('[CSRF] Validation error:', error);
+  } catch (_error) {
     return false;
   }
 }

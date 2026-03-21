@@ -29,7 +29,7 @@ export function formatDate(
   }
 ): string {
   const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
-  if (isNaN(d.getTime())) return '';
+  if (Number.isNaN(d.getTime())) return '';
   return new Intl.DateTimeFormat('en-US', options).format(d);
 }
 

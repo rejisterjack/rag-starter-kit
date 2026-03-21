@@ -110,8 +110,6 @@ export class PluginManager {
     if (plugin.onInstall !== undefined) {
       await plugin.onInstall();
     }
-
-    console.log(`Plugin registered: ${plugin.name} v${plugin.version}`);
   }
 
   /**
@@ -216,7 +214,7 @@ export class PluginManager {
   /**
    * Execute hooks (generic implementation)
    */
-  async executeHook<T>(name: string, data: T): Promise<T | void | ComponentType> {
+  async executeHook<T>(name: string, data: T): Promise<T | undefined | ComponentType> {
     const handlers = this.hooks.get(name) ?? [];
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -238,9 +236,7 @@ export class PluginManager {
         } else {
           result = await (handler as (arg: unknown) => unknown)(result);
         }
-      } catch (error) {
-        console.error(`Hook ${name} failed:`, error);
-      }
+      } catch (_error) {}
     }
 
     return result as T;

@@ -307,7 +307,7 @@ export async function* scrapePaginated(
         const text = link.text.toLowerCase();
         const hasNextText = text.includes('next') || text.includes('»') || text.includes('→');
         const pageMatch = link.href.match(/page=(\d+)/);
-        const hasHigherPage = pageMatch && parseInt(pageMatch[1] || '0') > pageCount;
+        const hasHigherPage = pageMatch && parseInt(pageMatch[1] || '0', 10) > pageCount;
         return hasNextText || hasHigherPage;
       });
 

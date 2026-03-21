@@ -1,54 +1,53 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  hashPassword,
-  verifyPassword,
-  generateSecureToken,
-  sanitizeHtml,
-  validatePasswordStrength,
-} from '@/lib/security/password';
-import { encrypt, decrypt } from '@/lib/security/encryption';
-import {
-  encryptField,
-  decryptField,
-  encryptJSON,
-  decryptJSON,
-  encryptFields,
-  decryptFields,
-  createEncryptionMiddleware,
-  rotateEncryptionKey,
-  isEncrypted,
-  hashForSearch,
-} from '@/lib/security/field-encryption';
-import {
-  generateCsrfToken,
-  generateCsrfTokenForAppRouter,
-  validateCsrfToken,
-  withCsrfProtection,
-  getCsrfToken,
-  fetchWithCsrf,
   CsrfTokenInput,
   CsrfTokenScript,
+  fetchWithCsrf,
+  generateCsrfToken,
+  generateCsrfTokenForAppRouter,
+  getCsrfToken,
+  validateCsrfToken,
+  withCsrfProtection,
 } from '@/lib/security/csrf';
+import { decrypt, encrypt } from '@/lib/security/encryption';
 import {
-  RateLimiter,
-  checkRateLimit,
-  checkApiRateLimit,
-  getRateLimitIdentifier,
-  addRateLimitHeaders,
-  rateLimits,
-  getRateLimiter,
-} from '@/lib/security/rate-limiter';
+  createEncryptionMiddleware,
+  decryptField,
+  decryptFields,
+  decryptJSON,
+  encryptField,
+  encryptFields,
+  encryptJSON,
+  hashForSearch,
+  isEncrypted,
+  rotateEncryptionKey,
+} from '@/lib/security/field-encryption';
 import {
   checkIPRateLimit,
-  extractClientIP,
-  isPrivateIP,
-  generateCaptchaChallenge,
-  verifyCaptchaChallenge,
-  recordCaptchaSuccess,
-  recordCaptchaFailure,
   cleanupIPRateLimits,
-  IPReputation,
+  extractClientIP,
+  generateCaptchaChallenge,
+  type IPReputation,
+  isPrivateIP,
+  recordCaptchaFailure,
+  recordCaptchaSuccess,
+  verifyCaptchaChallenge,
 } from '@/lib/security/ip-rate-limiter';
+import {
+  generateSecureToken,
+  hashPassword,
+  sanitizeHtml,
+  validatePasswordStrength,
+  verifyPassword,
+} from '@/lib/security/password';
+import {
+  addRateLimitHeaders,
+  checkApiRateLimit,
+  checkRateLimit,
+  getRateLimiter,
+  getRateLimitIdentifier,
+  rateLimits,
+} from '@/lib/security/rate-limiter';
 
 // Mock Redis
 const mockRedis = {
@@ -615,7 +614,12 @@ describe('Security Utilities', () => {
     });
 
     it('should check rate limit', async () => {
-      mockRedis.exec.mockResolvedValueOnce([[null, 0], [null, 0], [null, 1], [null, 1]]);
+      mockRedis.exec.mockResolvedValueOnce([
+        [null, 0],
+        [null, 0],
+        [null, 1],
+        [null, 1],
+      ]);
 
       const result = await checkRateLimit('user-123', 'chat');
 
@@ -684,7 +688,12 @@ describe('Security Utilities', () => {
     });
 
     it('should check API rate limit with metadata', async () => {
-      mockRedis.exec.mockResolvedValueOnce([[null, 0], [null, 0], [null, 1], [null, 1]]);
+      mockRedis.exec.mockResolvedValueOnce([
+        [null, 0],
+        [null, 0],
+        [null, 1],
+        [null, 1],
+      ]);
 
       const result = await checkApiRateLimit('user-123', 'chat', {
         userId: 'user-123',
@@ -768,7 +777,12 @@ describe('Security Utilities', () => {
 
       mockRedis.get.mockResolvedValueOnce(null); // Not blocked
       mockRedis.get.mockResolvedValueOnce(null); // No reputation
-      mockRedis.exec.mockResolvedValueOnce([[null, 0], [null, 0], [null, 1], [null, 1]]);
+      mockRedis.exec.mockResolvedValueOnce([
+        [null, 0],
+        [null, 0],
+        [null, 1],
+        [null, 1],
+      ]);
 
       const mockReq = new Request('http://localhost', {
         headers: { 'x-forwarded-for': '203.0.113.1' },
@@ -815,7 +829,12 @@ describe('Security Utilities', () => {
           captchaFailed: 0,
         } as IPReputation)
       );
-      mockRedis.exec.mockResolvedValueOnce([[null, 0], [null, 0], [null, 1], [null, 1]]);
+      mockRedis.exec.mockResolvedValueOnce([
+        [null, 0],
+        [null, 0],
+        [null, 1],
+        [null, 1],
+      ]);
 
       const mockReq = new Request('http://localhost', {
         headers: { 'x-forwarded-for': '203.0.113.1' },

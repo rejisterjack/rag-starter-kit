@@ -7,15 +7,15 @@
  * and stores the integration in the database.
  */
 
+import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import {
   exchangeCodeForToken,
-  saveNotionIntegration,
   type NotionOAuthConfig,
+  saveNotionIntegration,
 } from '@/lib/integrations/notion-oauth';
 import { logger } from '@/lib/logger';
-import { cookies } from 'next/headers';
 
 // =============================================================================
 // Configuration

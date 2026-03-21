@@ -45,7 +45,6 @@ export async function registerServiceWorker(
   const { scope = SW_CONFIG.scope, onUpdate, onSuccess, onError } = options;
 
   if (!('serviceWorker' in navigator)) {
-    console.log('[SW] Service workers not supported');
     return null;
   }
 
@@ -54,8 +53,6 @@ export async function registerServiceWorker(
       scope,
       updateViaCache: 'imports',
     });
-
-    console.log('[SW] Service Worker registered with scope:', registration.scope);
 
     // Store registration globally for access
     if (typeof window !== 'undefined') {
@@ -69,7 +66,6 @@ export async function registerServiceWorker(
 
     // Wait for service worker to be ready
     navigator.serviceWorker.ready.then(() => {
-      console.log('[SW] Service Worker is active');
       onSuccess?.(registration);
     });
 
@@ -79,7 +75,6 @@ export async function registerServiceWorker(
     return registration;
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    console.error('[SW] Registration failed:', err);
     onError?.(err);
     return null;
   }
@@ -101,7 +96,6 @@ function handleServiceWorkerUpdates(
     newWorker.addEventListener('statechange', () => {
       // A new service worker has been installed and is waiting
       if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-        console.log('[SW] New version available');
         onUpdate?.(registration);
 
         // Dispatch custom event for components to listen to
@@ -116,7 +110,6 @@ function handleServiceWorkerUpdates(
 
   // Listen for controller changes (new SW activated)
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    console.log('[SW] Service Worker controller changed');
     window.dispatchEvent(new CustomEvent('sw-controller-changed'));
   });
 
@@ -143,7 +136,6 @@ function handleServiceWorkerMessage(data: { type: string; payload?: unknown }): 
       window.dispatchEvent(new CustomEvent('sw-cache-updated', { detail: data }));
       break;
     default:
-      console.log('[SW] Message from service worker:', data);
   }
 }
 
@@ -152,13 +144,11 @@ function handleServiceWorkerMessage(data: { type: string; payload?: unknown }): 
  */
 function setupNetworkHandlers(onOffline?: () => void, onOnline?: () => void): void {
   const handleOnline = () => {
-    console.log('[SW] App is online');
     document.body.classList.remove('offline');
     onOnline?.();
   };
 
   const handleOffline = () => {
-    console.log('[SW] App is offline');
     document.body.classList.add('offline');
     onOffline?.();
   };
@@ -191,7 +181,6 @@ export async function checkForUpdates(): Promise<UpdateCheckResult> {
     return { updateAvailable: !!registration.waiting };
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    console.error('[SW] Update check failed:', err);
     return { updateAvailable: false, error: err };
   }
 }
@@ -252,10 +241,8 @@ export async function unregisterServiceWorker(): Promise<boolean> {
   try {
     const registration = await navigator.serviceWorker.ready;
     const result = await registration.unregister();
-    console.log('[SW] Unregistered:', result);
     return result;
-  } catch (error) {
-    console.error('[SW] Unregister failed:', error);
+  } catch (_error) {
     return false;
   }
 }
@@ -291,8 +278,7 @@ export async function requestBackgroundSync(tag: string = 'sync-messages'): Prom
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (registration as any).sync.register(tag);
     return true;
-  } catch (error) {
-    console.error('[SW] Background sync registration failed:', error);
+  } catch (_error) {
     return false;
   }
 }
@@ -314,11 +300,8 @@ export async function clearAllCaches(): Promise<boolean> {
     await Promise.all(
       cacheNames.filter((name) => name.startsWith('rag-')).map((name) => caches.delete(name))
     );
-
-    console.log('[SW] All caches cleared');
     return true;
-  } catch (error) {
-    console.error('[SW] Failed to clear caches:', error);
+  } catch (_error) {
     return false;
   }
 }
@@ -349,8 +332,7 @@ export async function getCacheStats(): Promise<{
       cacheNames: ragCaches,
       estimatedSize,
     };
-  } catch (error) {
-    console.error('[SW] Failed to get cache stats:', error);
+  } catch (_error) {
     return {
       totalCaches: 0,
       cacheNames: [],

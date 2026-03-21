@@ -64,8 +64,6 @@ export class RealtimeService {
       // Try WebSocket first
       await this.connectWebSocket(options);
     } catch (error) {
-      console.warn('WebSocket connection failed, trying SSE fallback:', error);
-
       // Fall back to SSE if enabled
       if (this.config.fallbackToSSE) {
         await this.connectSSE(options);
@@ -408,9 +406,7 @@ export class RealtimeService {
       handlers.forEach((handler) => {
         try {
           handler(data);
-        } catch (error) {
-          console.error(`Error in event handler for ${event}:`, error);
-        }
+        } catch (_error) {}
       });
     }
   }
@@ -423,7 +419,6 @@ export class RealtimeService {
     if (!this.socket) return;
 
     this.socket.on(SocketEvent.DISCONNECT, (reason: string) => {
-      console.log('Socket disconnected:', reason);
       this.emit('disconnected', { reason, timestamp: Date.now() });
 
       // Attempt reconnection if not manually disconnected

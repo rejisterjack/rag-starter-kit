@@ -115,15 +115,8 @@ export class SelfQueryTransformer {
       // Parse the JSON response
       const result = this.parseResponse(text);
 
-      console.log('[SelfQueryTransformer] Transformed query:', {
-        original: query,
-        extracted: result.query,
-        filters: result.filters,
-      });
-
       return result;
-    } catch (error) {
-      console.error('[SelfQueryTransformer] Transformation failed:', error);
+    } catch (_error) {
       // Return original query on failure
       return { query, filters: {} };
     }
@@ -133,26 +126,21 @@ export class SelfQueryTransformer {
    * Parse the LLM response into structured format
    */
   private parseResponse(response: string): SelfQueryResult {
-    try {
-      // Try to find JSON in the response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
-
-      // Validate and transform
-      const result: SelfQueryResult = {
-        query: String(parsed.query ?? '').trim(),
-        filters: this.parseFilters(parsed.filters ?? {}),
-      };
-
-      return result;
-    } catch (error) {
-      console.error('[SelfQueryTransformer] Parse error:', error);
-      throw error;
+    // Try to find JSON in the response
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('No JSON found in response');
     }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    // Validate and transform
+    const result: SelfQueryResult = {
+      query: String(parsed.query ?? '').trim(),
+      filters: this.parseFilters(parsed.filters ?? {}),
+    };
+
+    return result;
   }
 
   /**

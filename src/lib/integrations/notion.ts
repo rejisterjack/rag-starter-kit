@@ -207,38 +207,38 @@ export class NotionIntegration {
 
     switch (blockType) {
       case 'paragraph':
-        return this.richTextToMarkdown(block.paragraph.rich_text) + '\n\n';
+        return `${this.richTextToMarkdown(block.paragraph.rich_text)}\n\n`;
 
       case 'heading_1':
-        return '# ' + this.richTextToMarkdown(block.heading_1.rich_text) + '\n\n';
+        return `# ${this.richTextToMarkdown(block.heading_1.rich_text)}\n\n`;
 
       case 'heading_2':
-        return '## ' + this.richTextToMarkdown(block.heading_2.rich_text) + '\n\n';
+        return `## ${this.richTextToMarkdown(block.heading_2.rich_text)}\n\n`;
 
       case 'heading_3':
-        return '### ' + this.richTextToMarkdown(block.heading_3.rich_text) + '\n\n';
+        return `### ${this.richTextToMarkdown(block.heading_3.rich_text)}\n\n`;
 
       case 'bulleted_list_item':
-        return '- ' + this.richTextToMarkdown(block.bulleted_list_item.rich_text) + '\n';
+        return `- ${this.richTextToMarkdown(block.bulleted_list_item.rich_text)}\n`;
 
       case 'numbered_list_item':
-        return '1. ' + this.richTextToMarkdown(block.numbered_list_item.rich_text) + '\n';
+        return `1. ${this.richTextToMarkdown(block.numbered_list_item.rich_text)}\n`;
 
       case 'code': {
         const code = this.richTextToMarkdown(block.code.rich_text);
         const language = block.code.language ?? '';
-        return '```' + language + '\n' + code + '\n```\n\n';
+        return `\`\`\`${language}\n${code}\n\`\`\`\n\n`;
       }
 
       case 'quote':
-        return '> ' + this.richTextToMarkdown(block.quote.rich_text) + '\n\n';
+        return `> ${this.richTextToMarkdown(block.quote.rich_text)}\n\n`;
 
       case 'divider':
         return '---\n\n';
 
       case 'callout': {
         const calloutText = this.richTextToMarkdown(block.callout.rich_text);
-        return '> 💡 ' + calloutText + '\n\n';
+        return `> 💡 ${calloutText}\n\n`;
       }
 
       default:

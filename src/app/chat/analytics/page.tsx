@@ -1,4 +1,4 @@
-import { Metadata } from 'next';
+import type { Metadata } from 'next';
 import { AnalyticsDashboard } from '@/components/analytics';
 
 export const metadata: Metadata = {

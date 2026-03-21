@@ -14,7 +14,7 @@ import { createProviderFromEnv } from '@/lib/ai/llm';
 import type { Message, Source } from '@/types';
 import type { Tool } from '../tools/types';
 import type { AgentMemory } from './memory';
-import { AgentPlanner, createAgentPlanner, needsPlanning } from './planner';
+import { type AgentPlanner, createAgentPlanner, needsPlanning } from './planner';
 
 // ============================================================================
 // Types
@@ -130,11 +130,14 @@ If you're confident, provide the Final Answer. If not, continue with another Tho
 // ============================================================================
 
 const TOOL_TIPS: Record<string, string> = {
-  calculator: 'Use for mathematical calculations. Supports: +, -, *, /, ^, sqrt, log, sin, cos, etc.',
-  web_search: 'Use for current information, news, or facts not in documents. Returns top results with snippets.',
+  calculator:
+    'Use for mathematical calculations. Supports: +, -, *, /, ^, sqrt, log, sin, cos, etc.',
+  web_search:
+    'Use for current information, news, or facts not in documents. Returns top results with snippets.',
   document_search: 'Use to search through uploaded documents for specific information.',
   document_summary: 'Use to get a summary of a specific document.',
-  code_executor: 'Use for data processing, transformations, or complex calculations that need code.',
+  code_executor:
+    'Use for data processing, transformations, or complex calculations that need code.',
   current_time: 'Use to get the current date and time.',
 };
 
@@ -264,7 +267,7 @@ export class ReActAgent {
       // Check for early termination
       if (this.config.earlyTermination && this.shouldTerminateEarly(parsed.thought, step)) {
         const finalAnswer = await this.generateFinalAnswer(messages, llm);
-        
+
         steps.push({
           step,
           thought: `Early termination: ${parsed.thought}`,
@@ -324,7 +327,7 @@ export class ReActAgent {
 
     // Max steps reached without final answer - generate one last attempt
     const finalAttempt = await this.generateFinalAnswer(messages, llm);
-    
+
     return {
       answer: finalAttempt,
       steps,
@@ -344,10 +347,7 @@ export class ReActAgent {
   /**
    * Stream the ReAct execution
    */
-  async *stream(
-    query: string,
-    context: AgentContext
-  ): AsyncGenerator<StreamEvent> {
+  async *stream(query: string, context: AgentContext): AsyncGenerator<StreamEvent> {
     try {
       const maxSteps = context.maxSteps ?? this.config.maxSteps;
       const messages = this.buildMessages(query, context);
@@ -449,7 +449,7 @@ export class ReActAgent {
       .join('\n');
 
     const toolTips = Array.from(this.tools.keys())
-      .map((name) => TOOL_TIPS[name] ? `- ${name}: ${TOOL_TIPS[name]}` : '')
+      .map((name) => (TOOL_TIPS[name] ? `- ${name}: ${TOOL_TIPS[name]}` : ''))
       .filter(Boolean)
       .join('\n');
 
@@ -622,7 +622,8 @@ export class ReActAgent {
       ...messages,
       {
         role: 'user' as const,
-        content: 'Based on all the information gathered, provide a comprehensive final answer to the original question. Be thorough and cite any sources used.',
+        content:
+          'Based on all the information gathered, provide a comprehensive final answer to the original question. Be thorough and cite any sources used.',
       },
     ];
 
@@ -651,9 +652,7 @@ export function createReActAgent(tools: Tool[] = [], config?: ReActConfig): ReAc
 /**
  * Create a ReAct agent with default tools
  */
-export async function createReActAgentWithDefaults(
-  config?: ReActConfig
-): Promise<ReActAgent> {
+export async function createReActAgentWithDefaults(config?: ReActConfig): Promise<ReActAgent> {
   const { getAllTools } = await import('../tools');
   const tools = getAllTools();
   return new ReActAgent(tools, config);

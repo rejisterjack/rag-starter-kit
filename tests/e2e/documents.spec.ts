@@ -197,7 +197,7 @@ test.describe('Documents', () => {
 
       // Should show total document count
       const countText = await page.locator('[data-testid="document-count"]').textContent();
-      const count = parseInt(countText?.match(/\d+/)?.[0] || '0');
+      const count = parseInt(countText?.match(/\d+/)?.[0] || '0', 10);
 
       const actualCount = await page.locator('[data-testid="document-item"]').count();
       expect(count).toBe(actualCount);
@@ -238,7 +238,9 @@ test.describe('Documents', () => {
       await page.goto('/documents');
 
       // Click on a processed document
-      await page.click('[data-testid="document-item"]:has([data-testid="status-processed"]).first()');
+      await page.click(
+        '[data-testid="document-item"]:has([data-testid="status-processed"]).first()'
+      );
 
       // Click chunks tab
       await page.click('[data-testid="chunks-tab"]');
@@ -329,7 +331,9 @@ test.describe('Documents', () => {
       await page.click('[data-testid="save-rename"]');
 
       // Should show new name
-      await expect(page.locator('[data-testid="document-item"]').first()).toContainText('new-name.pdf');
+      await expect(page.locator('[data-testid="document-item"]').first()).toContainText(
+        'new-name.pdf'
+      );
     });
 
     test('user can chat with documents', async ({ page }) => {

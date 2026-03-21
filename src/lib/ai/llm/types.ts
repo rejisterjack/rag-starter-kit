@@ -99,10 +99,7 @@ export class RateLimitError extends LLMError {
 }
 
 export class ModelUnavailableError extends LLMError {
-  constructor(
-    message: string = 'Model unavailable',
-    originalError?: unknown
-  ) {
+  constructor(message: string = 'Model unavailable', originalError?: unknown) {
     super(message, 'MODEL_UNAVAILABLE', true, originalError);
     this.name = 'ModelUnavailableError';
   }

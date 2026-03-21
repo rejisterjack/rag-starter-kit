@@ -105,8 +105,6 @@ export async function createHNSWIndex(
   `;
 
   await prisma.$executeRawUnsafe(createIndexSQL);
-
-  console.log(`Created HNSW index: ${indexName} (m=${m}, ef_construction=${efConstruction})`);
 }
 
 /**
@@ -162,8 +160,6 @@ export async function createIVFFlatIndex(
   `;
 
   await prisma.$executeRawUnsafe(createIndexSQL);
-
-  console.log(`Created IVFFlat index: ${indexName} (lists=${lists})`);
 }
 
 /**

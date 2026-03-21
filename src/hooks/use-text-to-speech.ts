@@ -132,7 +132,15 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}): UseTextTo
     return () => {
       service.destroy();
     };
-  }, [isSupported]);
+  }, [
+    isSupported,
+    options.lang,
+    options.onEnd,
+    options.onError,
+    options.onStart,
+    options.preferPremium,
+    selectedVoice,
+  ]);
 
   // Update queue length periodically
   useEffect(() => {

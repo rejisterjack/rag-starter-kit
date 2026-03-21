@@ -8,10 +8,7 @@ interface GlobalErrorProps {
 }
 
 export default function GlobalError({ error, reset }: GlobalErrorProps): React.ReactElement {
-  useEffect(() => {
-    // Log to error reporting service
-    console.error(error);
-  }, [error]);
+  useEffect(() => {}, []);
 
   return (
     <html lang="en">
@@ -20,9 +17,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps): React.R
           <div className="text-center">
             <h1 className="text-6xl font-bold text-red-600">Error</h1>
             <h2 className="mt-4 text-2xl font-semibold">Something went wrong!</h2>
-            <p className="mt-2 text-gray-600">
-              {error.message || 'A critical error occurred.'}
-            </p>
+            <p className="mt-2 text-gray-600">{error.message || 'A critical error occurred.'}</p>
             <button
               onClick={reset}
               className="mt-6 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"

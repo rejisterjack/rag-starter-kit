@@ -29,8 +29,6 @@ export async function GET(): Promise<Response> {
 
     return NextResponse.json({ connections });
   } catch (error) {
-    console.error('Failed to fetch SSO connections:', error);
-
     if (error instanceof Error && error.message === 'Forbidden') {
       return NextResponse.json(
         { error: 'Forbidden', message: 'Admin access required' },
@@ -135,8 +133,6 @@ export async function POST(req: Request): Promise<Response> {
 
     return NextResponse.json({ connection }, { status: 201 });
   } catch (error) {
-    console.error('Failed to create SSO connection:', error);
-
     if (error instanceof Error && error.message === 'Forbidden') {
       return NextResponse.json(
         { error: 'Forbidden', message: 'Admin access required' },

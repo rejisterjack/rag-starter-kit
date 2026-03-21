@@ -1,6 +1,6 @@
 /**
  * Prisma Mock for Testing
- * 
+ *
  * Mock implementation of Prisma client for unit and integration tests.
  * This avoids the need for a real database connection in tests.
  */

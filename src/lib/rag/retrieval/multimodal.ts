@@ -1,18 +1,18 @@
 /**
  * Multi-modal Retrieval Engine
- * 
+ *
  * Extends the retrieval engine with image search capabilities:
  * - Search by image (reverse image search)
  * - Search with vision (text + image queries)
  * - Multi-modal result fusion
  */
 
-import { prisma } from '@/lib/db';
 import {
   generateImageEmbedding,
   generateTextEmbeddingForImageSearch,
 } from '@/lib/ai/embeddings/image';
-import type { RetrievedChunk, RetrievalOptions } from './types';
+import { prisma } from '@/lib/db';
+import type { RetrievalOptions, RetrievedChunk } from './types';
 
 /**
  * Image search result
@@ -62,7 +62,7 @@ export interface MultiModalSearchResult {
 
 /**
  * Search for similar images
- * 
+ *
  * @param queryImage - Query image buffer or URL
  * @param workspaceId - Workspace to search in
  * @param options - Search options
@@ -77,25 +77,27 @@ export async function searchByImage(
   const topK = options.topK ?? 5;
   const minScore = options.minImageScore ?? 0.7;
   const includeChunks = options.includeChunks ?? false;
-  
+
   try {
     // Generate query embedding
     const queryEmbedding = await generateImageEmbedding(queryImage);
-    
+
     // Search for similar images using pgvector
-    const results = await prisma.$queryRaw<Array<{
-      id: string;
-      document_id: string;
-      document_name: string;
-      storage_url: string;
-      caption: string | null;
-      ocr_text: string | null;
-      page_number: number | null;
-      width: number | null;
-      height: number | null;
-      mime_type: string;
-      similarity: number;
-    }>>`
+    const results = await prisma.$queryRaw<
+      Array<{
+        id: string;
+        document_id: string;
+        document_name: string;
+        storage_url: string;
+        caption: string | null;
+        ocr_text: string | null;
+        page_number: number | null;
+        width: number | null;
+        height: number | null;
+        mime_type: string;
+        similarity: number;
+      }>
+    >`
       SELECT 
         di.id,
         di.document_id,
@@ -118,7 +120,7 @@ export async function searchByImage(
       ORDER BY ie.embedding <=> ${queryEmbedding}::vector
       LIMIT ${topK}
     `;
-    
+
     const images: ImageSearchResult[] = results.map((r) => ({
       id: r.id,
       documentId: r.document_id,
@@ -134,22 +136,24 @@ export async function searchByImage(
         mimeType: r.mime_type,
       },
     }));
-    
+
     // Optionally fetch related chunks
     let chunks: RetrievedChunk[] = [];
     if (includeChunks && images.length > 0) {
       const documentIds = [...new Set(images.map((img) => img.documentId))];
-      
+
       // Get chunks from related documents
-      const chunkResults = await prisma.$queryRaw<Array<{
-        id: string;
-        document_id: string;
-        content: string;
-        index: number;
-        page: number | null;
-        section: string | null;
-        document_name: string;
-      }>>`
+      const chunkResults = await prisma.$queryRaw<
+        Array<{
+          id: string;
+          document_id: string;
+          content: string;
+          index: number;
+          page: number | null;
+          section: string | null;
+          document_name: string;
+        }>
+      >`
         SELECT 
           dc.id,
           dc.document_id,
@@ -165,7 +169,7 @@ export async function searchByImage(
         ORDER BY dc.index
         LIMIT ${topK * 2}
       `;
-      
+
       chunks = chunkResults.map((c) => ({
         id: c.id,
         content: c.content,
@@ -181,7 +185,7 @@ export async function searchByImage(
         retrievalMethod: 'image-associated',
       }));
     }
-    
+
     return {
       images,
       chunks,
@@ -190,14 +194,15 @@ export async function searchByImage(
       queryType: 'image-only',
     };
   } catch (error) {
-    console.error('[MultiModalRetrieval] Image search failed:', error);
-    throw new Error(`Image search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Image search failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
 /**
  * Search images by text query using CLIP text embeddings
- * 
+ *
  * @param query - Text query
  * @param workspaceId - Workspace to search in
  * @param options - Search options
@@ -212,25 +217,27 @@ export async function searchImagesByText(
   const topK = options.topK ?? 5;
   const minScore = options.minImageScore ?? 0.6;
   const includeChunks = options.includeChunks ?? false;
-  
+
   try {
     // Generate text embedding for image search
     const textEmbedding = await generateTextEmbeddingForImageSearch(query);
-    
+
     // Search for matching images
-    const results = await prisma.$queryRaw<Array<{
-      id: string;
-      document_id: string;
-      document_name: string;
-      storage_url: string;
-      caption: string | null;
-      ocr_text: string | null;
-      page_number: number | null;
-      width: number | null;
-      height: number | null;
-      mime_type: string;
-      similarity: number;
-    }>>`
+    const results = await prisma.$queryRaw<
+      Array<{
+        id: string;
+        document_id: string;
+        document_name: string;
+        storage_url: string;
+        caption: string | null;
+        ocr_text: string | null;
+        page_number: number | null;
+        width: number | null;
+        height: number | null;
+        mime_type: string;
+        similarity: number;
+      }>
+    >`
       SELECT 
         di.id,
         di.document_id,
@@ -253,7 +260,7 @@ export async function searchImagesByText(
       ORDER BY ie.embedding <=> ${textEmbedding}::vector
       LIMIT ${topK}
     `;
-    
+
     const images: ImageSearchResult[] = results.map((r) => ({
       id: r.id,
       documentId: r.document_id,
@@ -269,21 +276,23 @@ export async function searchImagesByText(
         mimeType: r.mime_type,
       },
     }));
-    
+
     // Optionally fetch related chunks
     let chunks: RetrievedChunk[] = [];
     if (includeChunks && images.length > 0) {
       const documentIds = [...new Set(images.map((img) => img.documentId))];
-      
-      const chunkResults = await prisma.$queryRaw<Array<{
-        id: string;
-        document_id: string;
-        content: string;
-        index: number;
-        page: number | null;
-        section: string | null;
-        document_name: string;
-      }>>`
+
+      const chunkResults = await prisma.$queryRaw<
+        Array<{
+          id: string;
+          document_id: string;
+          content: string;
+          index: number;
+          page: number | null;
+          section: string | null;
+          document_name: string;
+        }>
+      >`
         SELECT 
           dc.id,
           dc.document_id,
@@ -299,7 +308,7 @@ export async function searchImagesByText(
         ORDER BY dc.index
         LIMIT ${topK * 2}
       `;
-      
+
       chunks = chunkResults.map((c) => ({
         id: c.id,
         content: c.content,
@@ -315,7 +324,7 @@ export async function searchImagesByText(
         retrievalMethod: 'text-image-associated',
       }));
     }
-    
+
     return {
       images,
       chunks,
@@ -324,14 +333,15 @@ export async function searchImagesByText(
       queryType: 'text-only',
     };
   } catch (error) {
-    console.error('[MultiModalRetrieval] Text-based image search failed:', error);
-    throw new Error(`Text-based image search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Text-based image search failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
 /**
  * Multi-modal search combining text and image queries
- * 
+ *
  * @param query - Text query
  * @param imageQuery - Optional image query
  * @param workspaceId - Workspace to search in
@@ -346,45 +356,43 @@ export async function searchMultiModal(
 ): Promise<MultiModalSearchResult> {
   const startTime = Date.now();
   const imageWeight = options.imageWeight ?? 0.5;
-  
+
   // If only image provided, do image search
   if (!query && imageQuery) {
     return searchByImage(imageQuery, workspaceId, options);
   }
-  
+
   // If only text provided, do text-based image search
   if (query && !imageQuery) {
     return searchImagesByText(query, workspaceId, options);
   }
-  
+
   // Both text and image provided - combine results
   if (query && imageQuery) {
     const [imageResults, textResults] = await Promise.all([
       searchByImage(imageQuery, workspaceId, { ...options, includeChunks: false }),
       searchImagesByText(query, workspaceId, { ...options, includeChunks: false }),
     ]);
-    
+
     // Merge and re-rank results
-    const mergedImages = mergeImageResults(
-      imageResults.images,
-      textResults.images,
-      imageWeight
-    );
-    
+    const mergedImages = mergeImageResults(imageResults.images, textResults.images, imageWeight);
+
     // Get chunks if requested
     let chunks: RetrievedChunk[] = [];
     if (options.includeChunks && mergedImages.length > 0) {
       const documentIds = [...new Set(mergedImages.map((img) => img.documentId))];
-      
-      const chunkResults = await prisma.$queryRaw<Array<{
-        id: string;
-        document_id: string;
-        content: string;
-        index: number;
-        page: number | null;
-        section: string | null;
-        document_name: string;
-      }>>`
+
+      const chunkResults = await prisma.$queryRaw<
+        Array<{
+          id: string;
+          document_id: string;
+          content: string;
+          index: number;
+          page: number | null;
+          section: string | null;
+          document_name: string;
+        }>
+      >`
         SELECT 
           dc.id,
           dc.document_id,
@@ -400,7 +408,7 @@ export async function searchMultiModal(
         ORDER BY dc.index
         LIMIT ${(options.topK ?? 5) * 2}
       `;
-      
+
       chunks = chunkResults.map((c) => ({
         id: c.id,
         content: c.content,
@@ -416,7 +424,7 @@ export async function searchMultiModal(
         retrievalMethod: 'multimodal-associated',
       }));
     }
-    
+
     return {
       images: mergedImages,
       chunks,
@@ -425,7 +433,7 @@ export async function searchMultiModal(
       queryType: 'multimodal',
     };
   }
-  
+
   // Fallback - no query provided
   return {
     images: [],
@@ -447,31 +455,31 @@ function mergeImageResults(
 ): ImageSearchResult[] {
   const scores = new Map<string, { image: ImageSearchResult; score: number }>();
   const rrfK = 60;
-  
+
   // Add image query results
   imageResults.forEach((img, rank) => {
     const existing = scores.get(img.id);
     const rrfScore = imageWeight * (1 / (rrfK + rank + 1));
-    
+
     if (existing) {
       existing.score += rrfScore;
     } else {
       scores.set(img.id, { image: img, score: rrfScore });
     }
   });
-  
+
   // Add text query results
   textResults.forEach((img, rank) => {
     const existing = scores.get(img.id);
     const rrfScore = (1 - imageWeight) * (1 / (rrfK + rank + 1));
-    
+
     if (existing) {
       existing.score += rrfScore;
     } else {
       scores.set(img.id, { image: img, score: rrfScore });
     }
   });
-  
+
   // Sort by combined score
   const merged = Array.from(scores.values())
     .sort((a, b) => b.score - a.score)
@@ -479,13 +487,13 @@ function mergeImageResults(
       ...item.image,
       similarity: item.score, // Use RRF score as similarity
     }));
-  
+
   return merged;
 }
 
 /**
  * Get images for a specific page in a document
- * 
+ *
  * @param documentId - Document ID
  * @param pageNumber - Page number
  * @returns Images on that page
@@ -507,7 +515,7 @@ export async function getPageImages(
       },
     },
   });
-  
+
   return images.map((img) => ({
     id: img.id,
     documentId: img.documentId,
@@ -522,13 +530,11 @@ export async function getPageImages(
 
 /**
  * Get all images for a document
- * 
+ *
  * @param documentId - Document ID
  * @returns All document images
  */
-export async function getDocumentImages(
-  documentId: string
-): Promise<ImageSearchResult[]> {
+export async function getDocumentImages(documentId: string): Promise<ImageSearchResult[]> {
   const images = await prisma.documentImage.findMany({
     where: {
       documentId,
@@ -544,7 +550,7 @@ export async function getDocumentImages(
       },
     },
   });
-  
+
   return images.map((img) => ({
     id: img.id,
     documentId: img.documentId,

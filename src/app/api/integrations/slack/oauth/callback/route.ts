@@ -6,9 +6,8 @@
  */
 
 import { type NextRequest, NextResponse } from 'next/server';
-
-import { logger } from '@/lib/logger';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 

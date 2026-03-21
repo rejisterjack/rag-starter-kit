@@ -76,7 +76,7 @@ export function createMockRateLimitWithConfig(config: {
   initialRemaining?: number;
 }) {
   let remaining = config.initialRemaining ?? config.limit ?? 100;
-  
+
   return {
     check: vi.fn().mockImplementation(() => {
       const success = remaining > 0;
@@ -90,20 +90,24 @@ export function createMockRateLimitWithConfig(config: {
     }),
     isLimited: vi.fn().mockImplementation(() => Promise.resolve(remaining <= 0)),
     record: vi.fn().mockResolvedValue(undefined),
-    reset: () => { remaining = config.initialRemaining ?? config.limit ?? 100; },
+    reset: () => {
+      remaining = config.initialRemaining ?? config.limit ?? 100;
+    },
   };
 }
 
 /**
  * Mock IP reputation data
  */
-export function createMockIPReputation(overrides: Partial<{
-  score: number;
-  violationCount: number;
-  lastViolation: number;
-  captchaSolved: number;
-  captchaFailed: number;
-}> = {}) {
+export function createMockIPReputation(
+  overrides: Partial<{
+    score: number;
+    violationCount: number;
+    lastViolation: number;
+    captchaSolved: number;
+    captchaFailed: number;
+  }> = {}
+) {
   return {
     score: 0,
     violationCount: 0,
@@ -120,7 +124,7 @@ export function createMockIPReputation(overrides: Partial<{
 export function createMockCaptchaChallenge() {
   const num1 = Math.floor(Math.random() * 10) + 1;
   const num2 = Math.floor(Math.random() * 10) + 1;
-  
+
   return {
     challengeId: `challenge-${Date.now()}`,
     question: `What is ${num1} + ${num2}?`,

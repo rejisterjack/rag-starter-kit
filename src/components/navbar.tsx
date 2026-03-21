@@ -1,26 +1,18 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useSession, signOut } from "next-auth/react";
-import { Button } from "@/components/ui/button";
-import {
-  MessageSquare,
-  Menu,
-  X,
-  Github,
-  User,
-  LogOut,
-  Loader2,
-} from "lucide-react";
+import { AnimatePresence, motion } from 'framer-motion';
+import { Github, Loader2, LogOut, Menu, MessageSquare, User, X } from 'lucide-react';
+import Link from 'next/link';
+import { signOut, useSession } from 'next-auth/react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 
-const navLinks = [{ href: "/chat", label: "Chat" }];
+const navLinks = [{ href: '/chat', label: 'Chat' }];
 
 export function Navbar(): React.ReactElement {
   const [isOpen, setIsOpen] = useState(false);
   const { data: session, status } = useSession();
-  const isLoading = status === "loading";
+  const isLoading = status === 'loading';
   const isLoggedIn = !!session?.user;
 
   return (
@@ -55,13 +47,13 @@ export function Navbar(): React.ReactElement {
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">
-                    {session.user?.email?.split("@")[0] || "User"}
+                    {session.user?.email?.split('@')[0] || 'User'}
                   </span>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => signOut({ callbackUrl: "/" })}
+                  onClick={() => signOut({ callbackUrl: '/' })}
                   className="text-muted-foreground hover:text-foreground"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
@@ -70,12 +62,7 @@ export function Navbar(): React.ReactElement {
               </div>
             ) : (
               <>
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground"
-                >
+                <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
                   <Link href="https://github.com/ragstarterkit/rag-starter-kit">
                     <Github className="mr-2 h-4 w-4" />
                     GitHub
@@ -93,11 +80,7 @@ export function Navbar(): React.ReactElement {
             onClick={() => setIsOpen(!isOpen)}
             className="md:hidden p-2 text-muted-foreground hover:text-foreground"
           >
-            {isOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
+            {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
       </div>
@@ -107,7 +90,7 @@ export function Navbar(): React.ReactElement {
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
+            animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden border-t border-border bg-background"
           >
@@ -132,13 +115,13 @@ export function Navbar(): React.ReactElement {
                   <div className="flex items-center gap-2 py-2 px-3 rounded-lg bg-muted">
                     <User className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">
-                      {session.user?.email || "User"}
+                      {session.user?.email || 'User'}
                     </span>
                   </div>
                   <button
                     onClick={() => {
                       setIsOpen(false);
-                      signOut({ callbackUrl: "/" });
+                      signOut({ callbackUrl: '/' });
                     }}
                     className="w-full flex items-center gap-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
                   >
@@ -148,11 +131,7 @@ export function Navbar(): React.ReactElement {
                 </>
               ) : (
                 <div className="pt-3 border-t border-border space-y-2">
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
+                  <Button asChild variant="outline" className="w-full justify-start">
                     <Link href="https://github.com/ragstarterkit/rag-starter-kit">
                       <Github className="mr-2 h-4 w-4" />
                       GitHub

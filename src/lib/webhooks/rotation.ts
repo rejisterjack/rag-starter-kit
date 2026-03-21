@@ -1,11 +1,11 @@
 /**
  * Webhook Secret Rotation
- * 
+ *
  * Implements secure secret rotation for webhooks without breaking existing deliveries.
  * Supports graceful rotation with primary and secondary secrets.
  */
 
-import { randomBytes } from 'crypto';
+import { randomBytes } from 'node:crypto';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
@@ -43,7 +43,7 @@ export function generateWebhookSecret(): string {
 
 /**
  * Rotate webhook secret for a workspace
- * 
+ *
  * The rotation process:
  * 1. Current primary secret becomes secondary (grace period)
  * 2. New secret is generated as primary
@@ -222,7 +222,7 @@ export async function verifyWebhookSignatureWithRotation(
   // Try secondary secret if in grace period
   if (secrets.secondary) {
     const gracePeriodDays = 7;
-    const gracePeriodEnd = secrets.rotatedAt 
+    const gracePeriodEnd = secrets.rotatedAt
       ? new Date(secrets.rotatedAt.getTime() + gracePeriodDays * 24 * 60 * 60 * 1000)
       : null;
 
@@ -240,9 +240,9 @@ export async function verifyWebhookSignatureWithRotation(
  * Simple signature verification (extracted for reuse)
  */
 function verifySignature(payload: string, signature: string, secret: string): boolean {
-  const { createHmac } = require('crypto');
+  const { createHmac } = require('node:crypto');
   const expected = `sha256=${createHmac('sha256', secret).update(payload).digest('hex')}`;
-  
+
   try {
     const sigBuf = Buffer.from(signature);
     const expectedBuf = Buffer.from(expected);

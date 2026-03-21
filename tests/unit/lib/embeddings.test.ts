@@ -1,24 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  createCachedProvider,
+  createEmbeddingProvider,
+  createEmbeddingProviderFromEnv,
+  createGoogleProvider,
+  createOllamaProvider,
+  createOpenAIProvider,
+  createProviderWithFallback,
+  GoogleEmbeddingProvider,
+  getDefaultProvider,
+  getModelDimensions,
+  OllamaEmbeddingProvider,
+  OpenAIEmbeddingProvider,
+} from '@/lib/ai/embeddings';
+import {
   generateEmbedding,
   generateEmbeddingsBatch,
   getCachedEmbedding,
   setCachedEmbedding,
 } from '@/lib/rag/embeddings';
-import {
-  createEmbeddingProvider,
-  createEmbeddingProviderFromEnv,
-  createCachedProvider,
-  createProviderWithFallback,
-  getDefaultProvider,
-  getModelDimensions,
-  GoogleEmbeddingProvider,
-  OpenAIEmbeddingProvider,
-  OllamaEmbeddingProvider,
-  createGoogleProvider,
-  createOpenAIProvider,
-  createOllamaProvider,
-} from '@/lib/ai/embeddings';
 import { createMockOpenAIClient } from '@/tests/utils/mocks/openai';
 
 // Mock OpenAI

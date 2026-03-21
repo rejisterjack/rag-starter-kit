@@ -4,7 +4,7 @@
  * authentication, and rate limiting
  */
 
-import type { Server as NetServer } from 'http';
+import type { Server as NetServer } from 'node:http';
 import { type Socket, Server as SocketIOServer } from 'socket.io';
 // Rate limiter imported dynamically when needed
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
@@ -127,7 +127,7 @@ export class WebSocketServer {
         } as UserInfo;
 
         next();
-      } catch (error) {
+      } catch (_error) {
         next(new Error('Authentication failed'));
       }
     });
@@ -159,8 +159,6 @@ export class WebSocketServer {
 
   private setupEventHandlers(): void {
     this.io.on(SocketEvent.CONNECT, (socket: Socket) => {
-      console.log(`Socket connected: ${socket.id}, User: ${socket.data.user?.id}`);
-
       this.handleJoinRoom(socket);
       this.handleLeaveRoom(socket);
       this.handleTyping(socket);
@@ -271,8 +269,7 @@ export class WebSocketServer {
               conversationId,
             },
           });
-        } catch (error) {
-          console.error('Error joining room:', error);
+        } catch (_error) {
           socket.emit(SocketEvent.ERROR, {
             code: 'JOIN_FAILED',
             message: 'Failed to join room',
@@ -524,9 +521,7 @@ export class WebSocketServer {
   // ===========================================================================
 
   private handleDisconnect(socket: Socket): void {
-    socket.on(SocketEvent.DISCONNECT, async (reason: string) => {
-      console.log(`Socket disconnected: ${socket.id}, Reason: ${reason}`);
-
+    socket.on(SocketEvent.DISCONNECT, async (_reason: string) => {
       const user = socket.data.user as UserInfo;
 
       // Leave all rooms

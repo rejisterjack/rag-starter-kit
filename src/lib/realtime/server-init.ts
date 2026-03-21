@@ -14,7 +14,7 @@
  * ```
  */
 
-import type { Server as NetServer } from 'http';
+import type { Server as NetServer } from 'node:http';
 
 // WebSocketServer type is used implicitly via dynamic imports
 
@@ -38,30 +38,21 @@ export function initRealtimeServer(
   config?: Parameters<typeof import('./websocket-server').initWebSocketServer>[1]
 ): void {
   if (isInitialized) {
-    console.warn('Realtime server already initialized');
     return;
   }
+  const { initWebSocketServer } = require('./websocket-server');
 
-  try {
-    const { initWebSocketServer } = require('./websocket-server');
+  const serverConfig = {
+    corsOrigin: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    enablePresence: true,
+    enableCursors: true,
+    enableTyping: true,
+    ...config,
+  };
 
-    const serverConfig = {
-      corsOrigin: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-      enablePresence: true,
-      enableCursors: true,
-      enableTyping: true,
-      ...config,
-    };
-
-    const server = initWebSocketServer(httpServer, serverConfig);
-    ioInstance = server.getIO();
-    isInitialized = true;
-
-    console.log('✓ Real-time server initialized');
-  } catch (error) {
-    console.error('Failed to initialize real-time server:', error);
-    throw error;
-  }
+  const server = initWebSocketServer(httpServer, serverConfig);
+  ioInstance = server.getIO();
+  isInitialized = true;
 }
 
 /**
@@ -98,7 +89,6 @@ export async function registerRealtimeInstrumentation(): Promise<void> {
   // Currently, WebSocket requires a custom server setup
 
   if (process.env.NODE_ENV === 'development') {
-    console.log('ℹ WebSocket server requires custom server in development');
   }
 }
 
@@ -135,7 +125,6 @@ export function setupRealtimeServer(
 ): void {
   // Only initialize in Node.js runtime
   if (typeof window !== 'undefined') {
-    console.warn('Cannot initialize WebSocket server in browser');
     return;
   }
 
@@ -175,12 +164,9 @@ export function shutdownRealtimeServer(maxWaitMs = 30000): Promise<void> {
     }
 
     shutdownInProgress = true;
-    console.log('Shutting down real-time server...');
-    console.log(`Waiting for ${activeRequests} active requests to complete...`);
 
     // Set a maximum wait time
     const forceShutdownTimeout = setTimeout(() => {
-      console.warn(`Force shutting down after ${maxWaitMs}ms`);
       forceShutdown();
     }, maxWaitMs);
 
@@ -192,7 +178,6 @@ export function shutdownRealtimeServer(maxWaitMs = 30000): Promise<void> {
 
       // Close the server
       ioInstance?.close(() => {
-        console.log('✓ Real-time server shut down');
         isInitialized = false;
         ioInstance = undefined;
         shutdownInProgress = false;

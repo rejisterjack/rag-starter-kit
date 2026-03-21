@@ -1,13 +1,13 @@
 /**
  * Dynamic PDF Export Components
- * 
+ *
  * @react-pdf/renderer is a heavy library (~500KB+).
  * These components are lazy-loaded and only downloaded
  * when PDF generation is needed.
- * 
+ *
  * Usage:
  *   import { PDFViewer, PDFDownloadLink } from '@/components/dynamic/pdf-export';
- *   
+ *
  *   <PDFViewer>
  *     <MyDocument />
  *   </PDFViewer>
@@ -35,10 +35,13 @@ export interface PDFViewerProps {
 
 // Dynamic PDF Viewer component
 export const PDFViewer = dynamic<PDFViewerProps>(
-  () => import('@react-pdf/renderer').then((mod) => mod.PDFViewer) as Promise<React.ComponentType<PDFViewerProps>>,
-  { 
+  () =>
+    import('@react-pdf/renderer').then((mod) => mod.PDFViewer) as Promise<
+      React.ComponentType<PDFViewerProps>
+    >,
+  {
     loading: PDFSkeleton,
-    ssr: false
+    ssr: false,
   }
 );
 
@@ -51,10 +54,10 @@ export const PDFDownloadLink = dynamic(
 // Re-export PDF components for document creation (lightweight)
 export {
   Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
   Image,
   Link,
+  Page,
+  StyleSheet,
+  Text,
+  View,
 } from '@react-pdf/renderer';

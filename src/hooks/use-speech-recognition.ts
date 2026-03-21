@@ -125,7 +125,7 @@ export function useSpeechRecognition(
     return () => {
       service.destroy();
     };
-  }, [isSupported]);
+  }, [isSupported, language, options]);
 
   // Update language when prop changes
   useEffect(() => {

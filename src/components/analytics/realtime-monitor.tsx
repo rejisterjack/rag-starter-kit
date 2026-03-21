@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Activity, MessageSquare, Users, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, Users, MessageSquare, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface RealtimeMetrics {
@@ -83,19 +83,14 @@ export function RealtimeMonitor() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
             </span>
-            <span className="text-xs text-muted-foreground">
-              Live
-            </span>
+            <span className="text-xs text-muted-foreground">Live</span>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-4">
           {items.map((item) => (
-            <div
-              key={item.label}
-              className="flex items-center space-x-3 p-3 rounded-lg border"
-            >
+            <div key={item.label} className="flex items-center space-x-3 p-3 rounded-lg border">
               <div className={cn('p-2 rounded-md', item.bgColor)}>
                 <item.icon className={cn('h-4 w-4', item.color)} />
               </div>

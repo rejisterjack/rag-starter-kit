@@ -1,6 +1,6 @@
 /**
  * Rate Limiter
- * 
+ *
  * Supports multiple Redis backends:
  * - Upstash Redis (for serverless/production)
  * - ioredis (for Docker/self-hosted)
@@ -63,7 +63,7 @@ export const rateLimits = {
 
   // Export endpoints
   export: { limit: 10, windowMs: 60 * 60 * 1000, prefix: 'export' },
-  
+
   // Search endpoints
   search: { limit: 100, windowMs: 60 * 1000, prefix: 'search' }, // 100/min
 } as const;
@@ -88,10 +88,10 @@ class InMemoryRateLimiter implements RateLimiterBackend {
   async checkLimit(identifier: string, config: RateLimitConfig): Promise<RateLimitResult> {
     const key = `${config.prefix}:${identifier}`;
     const now = Date.now();
-    const windowStart = now - config.windowMs;
+    const _windowStart = now - config.windowMs;
 
     const record = this.storage.get(key);
-    
+
     if (!record || record.resetTime < now) {
       // New window
       const resetTime = now + config.windowMs;
@@ -165,22 +165,22 @@ class RedisRateLimiter implements RateLimiterBackend {
     try {
       // Use Redis sorted set for sliding window
       const multi = this.redis.multi();
-      
+
       // Remove old entries outside the window
       multi.zremrangebyscore(key, 0, windowStart);
-      
+
       // Count current entries
       multi.zcard(key);
-      
+
       // Add current request
       multi.zadd(key, now, `${now}-${Math.random()}`);
-      
+
       // Set expiry on the key
       multi.pexpire(key, windowMs);
-      
+
       const results = await multi.exec();
       const count = (results?.[1]?.[1] as number) || 0;
-      
+
       const remaining = Math.max(0, config.limit - count - 1);
       const reset = now + windowMs;
 
@@ -231,14 +231,11 @@ class UpstashRateLimiter implements RateLimiterBackend {
     }
 
     const key = `${config.prefix}:${config.limit}:${config.windowMs}`;
-    
+
     if (!this.limits.has(key)) {
       const limiter = new this.ratelimit({
         redis: this.redis,
-        limiter: this.ratelimit.slidingWindow(
-          config.limit,
-          this.msToWindowString(config.windowMs)
-        ),
+        limiter: this.ratelimit.slidingWindow(config.limit, this.msToWindowString(config.windowMs)),
         analytics: true,
         prefix: `ratelimit:${config.prefix}`,
       });
@@ -344,14 +341,11 @@ export function getRateLimitIdentifier(
   // Get IP from request headers
   const forwarded = req.headers.get('x-forwarded-for');
   const ip = forwarded ? forwarded.split(',')[0] : req.headers.get('x-real-ip') || 'unknown';
-  
+
   return `ip:${ip}`;
 }
 
-export function addRateLimitHeaders(
-  headers: Headers,
-  result: RateLimitResult
-): void {
+export function addRateLimitHeaders(headers: Headers, result: RateLimitResult): void {
   headers.set('X-RateLimit-Limit', result.limit.toString());
   headers.set('X-RateLimit-Remaining', result.remaining.toString());
   headers.set('X-RateLimit-Reset', new Date(result.reset).toISOString());
@@ -397,7 +391,7 @@ export const redis = (() => {
       // Fall through to ioredis
     }
   }
-  
+
   // Try ioredis
   if (process.env.REDIS_URL) {
     try {
@@ -410,7 +404,7 @@ export const redis = (() => {
       // Fall through to mock
     }
   }
-  
+
   // Mock Redis for development without Redis
   return {
     get: async () => null,
@@ -418,7 +412,9 @@ export const redis = (() => {
     del: async () => 0,
     keys: async () => [],
     pipeline: () => ({
-      zremrangebyscore: () => ({ zcard: () => ({ zadd: () => ({ pexpire: () => ({ exec: async () => [] }) }) }) }),
+      zremrangebyscore: () => ({
+        zcard: () => ({ zadd: () => ({ pexpire: () => ({ exec: async () => [] }) }) }),
+      }),
       zcard: () => ({ zadd: () => ({ pexpire: () => ({ exec: async () => [] }) }) }),
       zadd: () => ({ pexpire: () => ({ exec: async () => [] }) }),
       exec: async () => [],

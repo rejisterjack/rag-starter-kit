@@ -103,10 +103,7 @@ export async function trackRAGMetrics(event: RAGEvent): Promise<void> {
         },
       },
     });
-  } catch (error) {
-    // Log but don't fail the request
-    console.error('Failed to track RAG metrics:', error);
-  }
+  } catch (_error) {}
 }
 
 /**
@@ -377,10 +374,7 @@ export async function recordMetric({
         timestamp: new Date(),
       },
     });
-  } catch (error) {
-    // Silently fail - metrics should not break the app
-    console.warn('Failed to record metric:', error);
-  }
+  } catch (_error) {}
 }
 
 // ============================================================================

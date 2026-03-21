@@ -56,7 +56,7 @@ export function parseText(buffer: Buffer, options: TextParseOptions = {}): Parse
   let text: string;
   try {
     text = buffer.toString(encoding as BufferEncoding);
-  } catch (error) {
+  } catch (_error) {
     // Fallback to utf-8 with replacement characters
     text = buffer.toString('utf-8');
   }

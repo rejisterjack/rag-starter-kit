@@ -1,9 +1,9 @@
 /**
  * OpenRouter AI Provider Configuration
- * 
+ *
  * Uses OpenRouter's free tier models for chat completions.
  * OpenRouter provides access to multiple LLMs through a single API.
- * 
+ *
  * Free models available:
  * - mistralai/mistral-7b-instruct:free
  * - google/gemma-2-9b-it:free
@@ -14,7 +14,7 @@
  */
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { streamText, generateText, type UIMessage } from 'ai';
+import { generateText, streamText, type UIMessage } from 'ai';
 import type { RAGConfig } from '@/types';
 
 // Create OpenRouter client
@@ -32,19 +32,19 @@ const openrouter = createOpenRouter({
 export const FREE_MODELS = {
   // Mistral 7B - Good balance of quality and speed
   MISTRAL_7B: 'mistralai/mistral-7b-instruct:free',
-  
+
   // Google's Gemma 2 - Great for general tasks
   GEMMA_2_9B: 'google/gemma-2-9b-it:free',
-  
+
   // Meta's Llama 3.1 - State-of-the-art open model
   LLAMA_3_1_8B: 'meta-llama/llama-3.1-8b-instruct:free',
-  
+
   // Microsoft's Phi-3 - Fast and efficient
   PHI_3_MINI: 'microsoft/phi-3-mini-128k-instruct:free',
-  
+
   // Nous Hermes 3 - Large context window
   HERMES_3_405B: 'nousresearch/hermes-3-llama-3.1-405b:free',
-  
+
   // HuggingFace Zephyr - Good for chat
   ZEPHYR_7B: 'huggingface/zephyr-7b-beta:free',
 } as const;
@@ -90,17 +90,17 @@ export async function streamOpenRouterCompletion(
   config: Partial<RAGConfig> = {}
 ) {
   const modelConfig = { ...defaultOpenRouterConfig, ...config };
-  
+
   // Get model-specific max tokens
   const modelLimits = MODEL_CONFIG[modelConfig.model] || { maxTokens: 8192 };
-  
+
   const result = streamText({
     model: openrouter(modelConfig.model),
     messages: messages as UIMessage[],
     temperature: modelConfig.temperature,
     maxOutputTokens: Math.min(modelConfig.maxTokens, modelLimits.maxTokens),
   } as unknown as Parameters<typeof streamText>[0]);
-  
+
   return result;
 }
 
@@ -112,17 +112,17 @@ export async function generateOpenRouterCompletion(
   config: Partial<RAGConfig> = {}
 ) {
   const modelConfig = { ...defaultOpenRouterConfig, ...config };
-  
+
   // Get model-specific max tokens
   const modelLimits = MODEL_CONFIG[modelConfig.model] || { maxTokens: 8192 };
-  
+
   const result = generateText({
     model: openrouter(modelConfig.model),
     messages: messages as UIMessage[],
     temperature: modelConfig.temperature,
     maxOutputTokens: Math.min(modelConfig.maxTokens, modelLimits.maxTokens),
   } as unknown as Parameters<typeof generateText>[0]);
-  
+
   return result;
 }
 

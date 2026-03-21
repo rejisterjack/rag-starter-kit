@@ -295,11 +295,11 @@ export class SemanticChunker implements Chunker {
         currentChunk = {
           ...currentChunk,
           id: generateId(),
-          content: currentChunk.content + ' ' + nextChunk.content,
+          content: `${currentChunk.content} ${nextChunk.content}`,
           metadata: {
             ...currentChunk.metadata,
             end: nextChunk.metadata.end,
-            tokenCount: estimateTokenCount(currentChunk.content + ' ' + nextChunk.content),
+            tokenCount: estimateTokenCount(`${currentChunk.content} ${nextChunk.content}`),
           },
         };
       } else {
@@ -321,11 +321,11 @@ export class SemanticChunker implements Chunker {
       if (combinedLength <= maxChunkSize) {
         result[result.length - 2] = {
           ...prevChunk,
-          content: prevChunk.content + ' ' + lastChunk.content,
+          content: `${prevChunk.content} ${lastChunk.content}`,
           metadata: {
             ...prevChunk.metadata,
             end: lastChunk.metadata.end,
-            tokenCount: estimateTokenCount(prevChunk.content + ' ' + lastChunk.content),
+            tokenCount: estimateTokenCount(`${prevChunk.content} ${lastChunk.content}`),
           },
         };
         result.pop();

@@ -322,9 +322,7 @@ Rules:
           completionTokens: response.usage.completionTokens,
         },
       };
-    } catch (error) {
-      console.error('Failed to parse query breakdown:', error);
-
+    } catch (_error) {
       // Fallback: single step
       return {
         subQueries: [
@@ -362,7 +360,7 @@ Rules:
       switch (subQuery.type) {
         case 'retrieve':
           if (subQuery.tool && this.tools.has(subQuery.tool)) {
-            const toolResult = await this.tools.get(subQuery.tool)!.execute({
+            const toolResult = await this.tools.get(subQuery.tool)?.execute({
               ...subQuery.toolInput,
               query: resolvedQuery,
               workspaceId: context.workspaceId,
@@ -383,7 +381,7 @@ Rules:
 
         case 'calculate':
           if (this.tools.has('calculator')) {
-            const toolResult = await this.tools.get('calculator')!.execute({
+            const toolResult = await this.tools.get('calculator')?.execute({
               expression: resolvedQuery,
               ...subQuery.toolInput,
             });

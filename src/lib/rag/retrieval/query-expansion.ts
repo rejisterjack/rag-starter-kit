@@ -119,8 +119,7 @@ export class QueryExpander {
       }
 
       return variations;
-    } catch (error) {
-      console.error('[QueryExpander] Multi-query expansion failed:', error);
+    } catch (_error) {
       // Fallback to original query
       return [query];
     }
@@ -190,15 +189,9 @@ export class QueryExpander {
         { temperature: this.hydeConfig.temperature, maxTokens: 500 }
       );
 
-      console.log(
-        '[QueryExpander] HyDE generated document:',
-        hypotheticalDoc.slice(0, 100) + '...'
-      );
-
       // Generate embedding for the hypothetical document
       return generateEmbedding(hypotheticalDoc);
-    } catch (error) {
-      console.error('[QueryExpander] HyDE expansion failed:', error);
+    } catch (_error) {
       // Fallback to regular query embedding
       return generateEmbedding(query);
     }
@@ -233,8 +226,7 @@ export class QueryExpander {
       );
 
       return text;
-    } catch (error) {
-      console.error('[QueryExpander] HyDE document generation failed:', error);
+    } catch (_error) {
       return query;
     }
   }
@@ -273,8 +265,7 @@ export class QueryExpander {
 
       // Always include original query
       return [query, ...subQueries];
-    } catch (error) {
-      console.error('[QueryExpander] Sub-query decomposition failed:', error);
+    } catch (_error) {
       return [query];
     }
   }
@@ -290,8 +281,7 @@ export class QueryExpander {
   }> {
     const [multiQueries, hydeEmbedding, subQueries] = await Promise.all([
       this.expandMultiQuery(query),
-      this.expandHyDE(query).catch((err: Error) => {
-        console.error('HyDE expansion failed:', err);
+      this.expandHyDE(query).catch((_err: Error) => {
         return undefined;
       }),
       this.expandSubQueries(query),

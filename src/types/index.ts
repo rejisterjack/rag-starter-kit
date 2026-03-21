@@ -470,17 +470,17 @@ declare global {
     SpeechGrammarList?: new () => SpeechGrammarListInstance;
     webkitSpeechGrammarList?: new () => SpeechGrammarListInstance;
   }
-  
+
   interface SpeechGrammarListInstance {
     addFromString(grammar: string, weight: number): void;
     length: number;
   }
-  
+
   interface SpeechRecognitionEvent {
     resultIndex: number;
     results: SpeechRecognitionResultList;
   }
-  
+
   interface SpeechRecognitionErrorEvent {
     error: string;
     message: string;

@@ -18,6 +18,7 @@ import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
 import { CreateKeyDialog } from '@/components/api-keys/create-key-dialog';
+import { PermissionsSelector } from '@/components/api-keys/permissions-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,7 +39,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -48,8 +48,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-import { PermissionsSelector } from '@/components/api-keys/permissions-selector';
 import { useApiKeys } from '@/hooks/use-api-keys';
 
 // Permission options for the edit modal

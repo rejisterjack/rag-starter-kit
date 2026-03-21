@@ -5,9 +5,9 @@
  * retry logic, and logging delivery attempts.
  */
 
-import { createHmac, randomBytes } from 'crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { logger } from '@/lib/logger';
-import { withRetry, RetryableError } from '@/lib/utils/retry';
+import { RetryableError, withRetry } from '@/lib/utils/retry';
 
 // ============================================================================
 // Types

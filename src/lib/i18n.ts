@@ -1,6 +1,6 @@
 /**
  * Internationalization Utilities
- * 
+ *
  * Helper functions for working with translations and locale detection.
  */
 
@@ -38,7 +38,7 @@ export function getLocaleFromPathname(pathname: string): string {
 export function removeLocaleFromPathname(pathname: string): string {
   const segments = pathname.split('/');
   if (isSupportedLocale(segments[1])) {
-    return '/' + segments.slice(2).join('/');
+    return `/${segments.slice(2).join('/')}`;
   }
   return pathname;
 }

@@ -1,39 +1,39 @@
-"use client";
+'use client';
 
-import { useState, useCallback } from "react";
-import { ChatContainer } from "@/components/chat/chat-container";
-import { DocumentList } from "@/components/documents/document-list";
-import { DocumentPreview } from "@/components/documents/document-preview";
-import { useChat } from "@/hooks/use-chat";
-import type { Source } from "@/components/chat/citations";
-import type { Document } from "@/components/documents/document-card";
+import { useCallback, useState } from 'react';
+import { ChatContainer } from '@/components/chat/chat-container';
+import type { Source } from '@/components/chat/citations';
+import type { Document } from '@/components/documents/document-card';
+import { DocumentList } from '@/components/documents/document-list';
+import { DocumentPreview } from '@/components/documents/document-preview';
+import { useChat } from '@/hooks/use-chat';
 
 // Demo documents for initial state
 const DEMO_DOCUMENTS: Document[] = [
   {
-    id: "1",
-    name: "Getting Started Guide.pdf",
-    type: "application/pdf",
+    id: '1',
+    name: 'Getting Started Guide.pdf',
+    type: 'application/pdf',
     size: 1024 * 1024 * 2.5,
-    status: "completed",
+    status: 'completed',
     chunkCount: 42,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24),
   },
   {
-    id: "2",
-    name: "API Documentation.md",
-    type: "text/markdown",
+    id: '2',
+    name: 'API Documentation.md',
+    type: 'text/markdown',
     size: 1024 * 45,
-    status: "completed",
+    status: 'completed',
     chunkCount: 12,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
   },
   {
-    id: "3",
-    name: "Project Requirements.docx",
-    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    id: '3',
+    name: 'Project Requirements.docx',
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     size: 1024 * 512,
-    status: "processing",
+    status: 'processing',
     progress: 65,
     createdAt: new Date(),
   },
@@ -42,31 +42,31 @@ const DEMO_DOCUMENTS: Document[] = [
 // Demo sources for initial state
 const DEMO_SOURCES: Source[] = [
   {
-    id: "s1",
+    id: 's1',
     index: 1,
-    documentName: "Getting Started Guide.pdf",
-    documentType: "application/pdf",
+    documentName: 'Getting Started Guide.pdf',
+    documentType: 'application/pdf',
     chunkText:
-      "To get started with the RAG chatbot, you need to upload documents that will be indexed and used for answering your questions...",
+      'To get started with the RAG chatbot, you need to upload documents that will be indexed and used for answering your questions...',
     pageNumber: 5,
     relevanceScore: 0.95,
   },
   {
-    id: "s2",
+    id: 's2',
     index: 2,
-    documentName: "API Documentation.md",
-    documentType: "text/markdown",
+    documentName: 'API Documentation.md',
+    documentType: 'text/markdown',
     chunkText:
-      "The API supports streaming responses for real-time chat experiences. Use the /api/chat endpoint with a POST request...",
+      'The API supports streaming responses for real-time chat experiences. Use the /api/chat endpoint with a POST request...',
     relevanceScore: 0.87,
   },
   {
-    id: "s3",
+    id: 's3',
     index: 3,
-    documentName: "Getting Started Guide.pdf",
-    documentType: "application/pdf",
+    documentName: 'Getting Started Guide.pdf',
+    documentType: 'application/pdf',
     chunkText:
-      "Supported file formats include PDF, Word documents (.docx), Markdown files (.md), and plain text files (.txt)...",
+      'Supported file formats include PDF, Word documents (.docx), Markdown files (.md), and plain text files (.txt)...',
     pageNumber: 3,
     relevanceScore: 0.82,
   },
@@ -90,9 +90,7 @@ export default function ChatPage(): React.ReactElement {
     hasMore,
     loadMore,
   } = useChat({
-    onError: (error) => {
-      console.error("Chat error:", error);
-    },
+    onError: (_error) => {},
     onFinish: (message) => {
       // Update sources when message finishes
       if (message.sources) {
@@ -101,11 +99,7 @@ export default function ChatPage(): React.ReactElement {
     },
   });
 
-  const handleUpload = useCallback(() => {
-    // In a real implementation, this would open a file picker
-    // and handle file upload via API
-    console.log("Upload clicked");
-  }, []);
+  const handleUpload = useCallback(() => {}, []);
 
   const handleDeleteDocument = useCallback((id: string) => {
     setDocuments((prev) => prev.filter((doc) => doc.id !== id));
@@ -114,9 +108,7 @@ export default function ChatPage(): React.ReactElement {
   const handleReingest = useCallback((id: string) => {
     setDocuments((prev) =>
       prev.map((doc) =>
-        doc.id === id
-          ? { ...doc, status: "processing" as const, progress: 0 }
-          : doc
+        doc.id === id ? { ...doc, status: 'processing' as const, progress: 0 } : doc
       )
     );
   }, []);
@@ -139,9 +131,9 @@ export default function ChatPage(): React.ReactElement {
         const newDocs: Document[] = files.map((file, index) => ({
           id: `new-${Date.now()}-${index}`,
           name: file.name,
-          type: file.type || "application/octet-stream",
+          type: file.type || 'application/octet-stream',
           size: file.size,
-          status: "pending",
+          status: 'pending',
           createdAt: new Date(),
         }));
         setDocuments((prev) => [...newDocs, ...prev]);
@@ -190,14 +182,14 @@ export default function ChatPage(): React.ReactElement {
         }}
         chunks={[
           {
-            id: "c1",
+            id: 'c1',
             index: 0,
-            text: "This is a preview of how document chunks will appear. Each chunk represents a segment of the document that has been indexed for retrieval.",
+            text: 'This is a preview of how document chunks will appear. Each chunk represents a segment of the document that has been indexed for retrieval.',
           },
           {
-            id: "c2",
+            id: 'c2',
             index: 1,
-            text: "The RAG system breaks down documents into smaller chunks to enable more precise retrieval of relevant information when answering questions.",
+            text: 'The RAG system breaks down documents into smaller chunks to enable more precise retrieval of relevant information when answering questions.',
           },
         ]}
       />

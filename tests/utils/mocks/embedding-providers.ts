@@ -12,10 +12,7 @@ export function createMockGoogleProvider(
     modelName: 'text-embedding-004',
     dimensions: 768,
     embedQuery: vi.fn().mockResolvedValue(Array(768).fill(0.1)),
-    embedDocuments: vi.fn().mockResolvedValue([
-      Array(768).fill(0.1),
-      Array(768).fill(0.2),
-    ]),
+    embedDocuments: vi.fn().mockResolvedValue([Array(768).fill(0.1), Array(768).fill(0.2)]),
     healthCheck: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
@@ -32,10 +29,7 @@ export function createMockOpenAIProvider(
     modelName: 'text-embedding-3-small',
     dimensions: 1536,
     embedQuery: vi.fn().mockResolvedValue(Array(1536).fill(0.1)),
-    embedDocuments: vi.fn().mockResolvedValue([
-      Array(1536).fill(0.1),
-      Array(1536).fill(0.2),
-    ]),
+    embedDocuments: vi.fn().mockResolvedValue([Array(1536).fill(0.1), Array(1536).fill(0.2)]),
     healthCheck: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
@@ -52,10 +46,7 @@ export function createMockOllamaProvider(
     modelName: 'nomic-embed-text',
     dimensions: 768,
     embedQuery: vi.fn().mockResolvedValue(Array(768).fill(0.1)),
-    embedDocuments: vi.fn().mockResolvedValue([
-      Array(768).fill(0.1),
-      Array(768).fill(0.2),
-    ]),
+    embedDocuments: vi.fn().mockResolvedValue([Array(768).fill(0.1), Array(768).fill(0.2)]),
     healthCheck: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
@@ -84,7 +75,7 @@ export function createMockFailingProvider(
 export function createMockRateLimitedProvider(): EmbeddingProvider {
   const rateLimitError = new Error('Rate limit exceeded');
   (rateLimitError as any).status = 429;
-  
+
   return {
     name: 'rate-limited',
     modelName: 'rate-limited-model',

@@ -1,6 +1,6 @@
 /**
  * SEO Component
- * 
+ *
  * Shared SEO component for consistent meta tags across pages.
  * Use this in page components to override default metadata.
  */

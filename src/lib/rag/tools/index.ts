@@ -5,12 +5,6 @@
  */
 
 import { z } from 'zod';
-// Code executor tool
-export {
-  codeExecutorTool,
-  executeCode,
-  executeCodeBatch,
-} from './code-executor';
 
 // Calculator tool
 export {
@@ -19,6 +13,12 @@ export {
   calculatorTool,
   convert,
 } from './calculator';
+// Code executor tool
+export {
+  codeExecutorTool,
+  executeCode,
+  executeCodeBatch,
+} from './code-executor';
 // Document tools
 export {
   compareDocumentsTool,

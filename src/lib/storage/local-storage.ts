@@ -4,8 +4,8 @@
  * Used for development when S3 is not configured.
  */
 
-import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { Readable } from 'node:stream';
 import { logger } from '@/lib/logger';
@@ -133,10 +133,7 @@ export async function deleteFile(key: string): Promise<void> {
   const metadataPath = `${filePath}.meta.json`;
 
   try {
-    await Promise.all([
-      rm(filePath, { force: true }),
-      rm(metadataPath, { force: true }),
-    ]);
+    await Promise.all([rm(filePath, { force: true }), rm(metadataPath, { force: true })]);
     logger.debug('Local file deleted', { key });
   } catch (error) {
     logger.error('Failed to delete local file', { key, error });

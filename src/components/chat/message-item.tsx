@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
+import { AnimatePresence, motion } from 'framer-motion';
 import { Bot, Check, Copy, Pencil, Trash2, User, X } from 'lucide-react';
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -77,8 +77,8 @@ export function MessageItem({
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
         'group relative py-6 px-4 mb-4 rounded-3xl transition-all duration-300',
-        isUser 
-          ? 'ml-auto max-w-3xl bg-primary/10 border border-primary/20 shadow-[0_0_20px_-5px_rgba(124,58,237,0.15)] mr-4' 
+        isUser
+          ? 'ml-auto max-w-3xl bg-primary/10 border border-primary/20 shadow-[0_0_20px_-5px_rgba(124,58,237,0.15)] mr-4'
           : 'glass max-w-3xl mr-auto ml-4'
       )}
     >
@@ -88,7 +88,9 @@ export function MessageItem({
           <Avatar
             className={cn(
               'h-9 w-9 ring-2 ring-offset-2 ring-offset-background shadow-md',
-              isUser ? 'bg-primary text-primary-foreground ring-primary/30' : 'bg-emerald-500 text-white ring-emerald-500/30'
+              isUser
+                ? 'bg-primary text-primary-foreground ring-primary/30'
+                : 'bg-emerald-500 text-white ring-emerald-500/30'
             )}
           >
             <AvatarFallback>
@@ -101,7 +103,12 @@ export function MessageItem({
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="mb-2 flex items-center gap-2">
-            <span className={cn("text-sm font-semibold tracking-tight", isUser ? "text-primary" : "text-emerald-500")}>
+            <span
+              className={cn(
+                'text-sm font-semibold tracking-tight',
+                isUser ? 'text-primary' : 'text-emerald-500'
+              )}
+            >
               {isUser ? 'You' : 'Assistant'}
             </span>
             <span className="text-xs text-muted-foreground font-medium">
@@ -125,7 +132,12 @@ export function MessageItem({
                 <Button size="sm" onClick={handleSaveEdit} className="rounded-full shadow-md">
                   <Check className="mr-1.5 h-4 w-4" /> Save
                 </Button>
-                <Button size="sm" variant="ghost" onClick={handleCancelEdit} className="rounded-full">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCancelEdit}
+                  className="rounded-full"
+                >
                   <X className="mr-1.5 h-4 w-4" /> Cancel
                 </Button>
               </div>
@@ -139,9 +151,9 @@ export function MessageItem({
               {/* Sources for assistant messages */}
               <AnimatePresence>
                 {isAssistant && showSources && message.sources && message.sources.length > 0 && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }} 
-                    animate={{ opacity: 1, height: "auto" }} 
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
                     className="mt-5 pt-4 border-t border-border/40"
                   >
                     <CitationList
@@ -162,8 +174,17 @@ export function MessageItem({
               <div className="flex items-center gap-0.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-foreground/5" onClick={handleCopy}>
-                      {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full hover:bg-foreground/5"
+                      onClick={handleCopy}
+                    >
+                      {copied ? (
+                        <Check className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <Copy className="h-4 w-4 text-muted-foreground" />
+                      )}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="rounded-lg text-xs border-none shadow-xl bg-popover/90 backdrop-blur-md">
@@ -174,21 +195,44 @@ export function MessageItem({
                 {(isUser || isAssistant) && (onEdit || onDelete) && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-foreground/5 text-muted-foreground">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full hover:bg-foreground/5 text-muted-foreground"
+                      >
                         <span className="sr-only">More options</span>
-                        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
-                          <path d="M3.625 7.5C3.625 7.15482 3.905 6.875 4.25 6.875C4.595 6.875 4.875 7.15482 4.875 7.5C4.875 7.84518 4.595 8.125 4.25 8.125C3.905 8.125 3.625 7.84518 3.625 7.5ZM7.125 7.5C7.125 7.15482 7.405 6.875 7.75 6.875C8.095 6.875 8.375 7.15482 8.375 7.5C8.375 7.84518 8.095 8.125 7.75 8.125C7.405 8.125 7.125 7.84518 7.125 7.5ZM10.625 7.5C10.625 7.15482 10.905 6.875 11.25 6.875C11.595 6.875 11.875 7.15482 11.875 7.5C11.875 7.84518 11.595 8.125 11.25 8.125C10.905 8.125 10.625 7.84518 10.625 7.5Z" fill="currentColor" />
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 15 15"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                        >
+                          <path
+                            d="M3.625 7.5C3.625 7.15482 3.905 6.875 4.25 6.875C4.595 6.875 4.875 7.15482 4.875 7.5C4.875 7.84518 4.595 8.125 4.25 8.125C3.905 8.125 3.625 7.84518 3.625 7.5ZM7.125 7.5C7.125 7.15482 7.405 6.875 7.75 6.875C8.095 6.875 8.375 7.15482 8.375 7.5C8.375 7.84518 8.095 8.125 7.75 8.125C7.405 8.125 7.125 7.84518 7.125 7.5ZM10.625 7.5C10.625 7.15482 10.905 6.875 11.25 6.875C11.595 6.875 11.875 7.15482 11.875 7.5C11.875 7.84518 11.595 8.125 11.25 8.125C10.905 8.125 10.625 7.84518 10.625 7.5Z"
+                            fill="currentColor"
+                          />
                         </svg>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="rounded-xl glass shadow-2xl border-white/10 min-w-32">
+                    <DropdownMenuContent
+                      align="end"
+                      className="rounded-xl glass shadow-2xl border-white/10 min-w-32"
+                    >
                       {isUser && onEdit && (
-                        <DropdownMenuItem onClick={() => setIsEditing(true)} className="rounded-md focus:bg-primary/10 focus:text-primary transition-colors cursor-pointer">
+                        <DropdownMenuItem
+                          onClick={() => setIsEditing(true)}
+                          className="rounded-md focus:bg-primary/10 focus:text-primary transition-colors cursor-pointer"
+                        >
                           <Pencil className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
                       )}
                       {onDelete && (
-                        <DropdownMenuItem onClick={() => onDelete(message.id)} className="rounded-md text-destructive focus:bg-destructive/10 focus:text-destructive transition-colors cursor-pointer">
+                        <DropdownMenuItem
+                          onClick={() => onDelete(message.id)}
+                          className="rounded-md text-destructive focus:bg-destructive/10 focus:text-destructive transition-colors cursor-pointer"
+                        >
                           <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       )}
