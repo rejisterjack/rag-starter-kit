@@ -88,7 +88,6 @@ class InMemoryRateLimiter implements RateLimiterBackend {
   async checkLimit(identifier: string, config: RateLimitConfig): Promise<RateLimitResult> {
     const key = `${config.prefix}:${identifier}`;
     const now = Date.now();
-    const _windowStart = now - config.windowMs;
 
     const record = this.storage.get(key);
 
@@ -127,8 +126,10 @@ class InMemoryRateLimiter implements RateLimiterBackend {
 // Redis Rate Limiter (ioredis)
 // =============================================================================
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 class RedisRateLimiter implements RateLimiterBackend {
-  private redis: typeof import('ioredis').prototype | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private redis: any = null;
   private connected = false;
 
   constructor(redisUrl: string) {
@@ -146,7 +147,7 @@ class RedisRateLimiter implements RateLimiterBackend {
 
     this.redis.on('error', (err: Error) => {
       this.connected = false;
-      logger.warn('Redis connection error:', err.message);
+      logger.warn('Redis connection error', { error: err.message });
     });
   }
 
@@ -191,7 +192,7 @@ class RedisRateLimiter implements RateLimiterBackend {
         reset,
       };
     } catch (error) {
-      logger.error('Redis rate limit error:', error);
+      logger.error('Redis rate limit error', { error: String(error) });
       // Fallback to in-memory on error
       return inMemoryLimiter.checkLimit(identifier, config);
     }
@@ -202,9 +203,12 @@ class RedisRateLimiter implements RateLimiterBackend {
 // Upstash Rate Limiter (for serverless)
 // =============================================================================
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 class UpstashRateLimiter implements RateLimiterBackend {
-  private ratelimit: ReturnType<typeof import('@upstash/ratelimit').Ratelimit> | null = null;
-  private limits = new Map<string, typeof this.ratelimit>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private ratelimit: any = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private limits = new Map<string, any>();
 
   constructor() {
     try {
@@ -271,7 +275,7 @@ class UpstashRateLimiter implements RateLimiterBackend {
 const inMemoryLimiter = new InMemoryRateLimiter();
 let rateLimiterBackend: RateLimiterBackend | null = null;
 
-function getRateLimiter(): RateLimiterBackend {
+export function getRateLimiter(): RateLimiterBackend {
   if (rateLimiterBackend) {
     return rateLimiterBackend;
   }
@@ -314,7 +318,7 @@ export async function checkApiRateLimit(
   // Log rate limit violations
   if (!result.success && metadata?.userId) {
     await logAuditEvent({
-      event: AuditEvent.RATE_LIMIT_EXCEEDED,
+      event: AuditEvent.RATE_LIMIT_HIT,
       userId: metadata.userId,
       workspaceId: metadata.workspaceId,
       metadata: {
@@ -359,7 +363,8 @@ export function addRateLimitHeaders(headers: Headers, result: RateLimitResult): 
  * Get Redis client for other security modules
  * Returns null if Redis is not configured
  */
-export function getRedisClient(): typeof import('ioredis').prototype | null {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getRedisClient(): any | null {
   try {
     if (process.env.REDIS_URL) {
       const { Redis } = require('ioredis');
@@ -428,5 +433,5 @@ export const redis = (() => {
       del: () => ({ exec: async () => [] }),
       exec: async () => [],
     }),
-  } as unknown as typeof import('ioredis').prototype;
+  } as unknown as any;
 })();

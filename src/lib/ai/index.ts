@@ -130,9 +130,12 @@ export async function streamChatCompletion(messages: UIMessage[], config: Partia
 
   for (const model of modelsToTry) {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = streamText({
-        model: openrouter.chat(model) as unknown as Parameters<typeof streamText>[0]['model'],
-        messages: messages as unknown as Parameters<typeof streamText>[0]['messages'],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        model: openrouter.chat(model) as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        messages: messages as any,
         temperature: modelConfig.temperature,
         maxOutputTokens: modelConfig.maxTokens,
       });
@@ -165,9 +168,12 @@ export async function generateChatCompletion(
 
   for (const model of modelsToTry) {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await generateText({
-        model: openrouter.chat(model) as unknown as Parameters<typeof generateText>[0]['model'],
-        messages: messages as unknown as Parameters<typeof generateText>[0]['messages'],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        model: openrouter.chat(model) as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        messages: messages as any,
         temperature: modelConfig.temperature,
         maxOutputTokens: modelConfig.maxTokens,
       });

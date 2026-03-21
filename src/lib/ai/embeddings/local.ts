@@ -146,6 +146,9 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
             pooling: 'mean',
             normalize: true,
           });
+          if (!output) {
+            throw new Error('Pipeline output is undefined');
+          }
           return Array.from(output.data as Float32Array);
         })
       );

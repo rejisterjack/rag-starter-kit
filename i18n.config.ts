@@ -1,9 +1,15 @@
-/** @type {import('next-i18n-router').Config} */
-const i18nConfig = {
+interface I18nConfig {
+  locales: string[];
+  defaultLocale: string;
+  localeDetector?: boolean;
+  prefixDefault?: boolean;
+}
+
+export const i18nConfig: I18nConfig = {
   locales: ['en', 'es', 'fr', 'de', 'ja', 'zh'],
   defaultLocale: 'en',
   localeDetector: false,
   prefixDefault: false,
 };
 
-module.exports = i18nConfig;
+export default i18nConfig;

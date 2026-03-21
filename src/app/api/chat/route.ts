@@ -47,14 +47,15 @@ const defaultConfig: RAGConfig = {
 
 /**
  * Best OpenRouter free models - tried in order if primary fails
+ * TODO: Implement fallback logic in createProviderFromEnv
  */
-const _MODEL_FALLBACK_CHAIN = [
-  'deepseek/deepseek-chat:free',
-  'mistralai/mistral-7b-instruct:free',
-  'meta-llama/llama-3.1-8b-instruct:free',
-  'google/gemma-2-9b-it:free',
-  'qwen/qwen-2.5-7b-instruct:free',
-];
+// const MODEL_FALLBACK_CHAIN = [
+//   'deepseek/deepseek-chat:free',
+//   'mistralai/mistral-7b-instruct:free',
+//   'meta-llama/llama-3.1-8b-instruct:free',
+//   'google/gemma-2-9b-it:free',
+//   'qwen/qwen-2.5-7b-instruct:free',
+// ];
 
 // =============================================================================
 // POST Handler

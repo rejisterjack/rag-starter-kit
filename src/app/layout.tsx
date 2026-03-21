@@ -5,7 +5,7 @@ import { Providers } from '@/components/providers';
 import { PWAScripts } from '@/components/pwa/pwa-scripts';
 import { StructuredData } from '@/components/seo';
 import { Toaster } from '@/components/ui/toaster';
-import { CsrfTokenScript } from '@/lib/security/csrf.tsx';
+import { CsrfTokenScript } from '@/lib/security/csrf';
 import '@/styles/globals.css';
 
 const geistSans = Geist({

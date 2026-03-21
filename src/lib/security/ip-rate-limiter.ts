@@ -250,7 +250,7 @@ async function recordIPViolation(ip: string, req: Request): Promise<void> {
 
     // Log the violation
     await logAuditEvent({
-      event: AuditEvent.RATE_LIMIT_EXCEEDED,
+      event: AuditEvent.RATE_LIMIT_HIT,
       metadata: {
         ip,
         userAgent: req.headers.get('user-agent'),

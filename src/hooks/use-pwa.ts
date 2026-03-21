@@ -438,36 +438,7 @@ export function useBackgroundSync(): {
   const [isSupported, setIsSupported] = useState(false);
   const actionQueue = useRef<(() => Promise<void>)[]>([]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    // Check if Background Sync is supported
-    setIsSupported('serviceWorker' in navigator && 'SyncManager' in window);
-
-    setIsOnline(navigator.onLine);
-
-    const handleOnline = () => {
-      setIsOnline(true);
-      // Process queued actions
-      processQueue();
-    };
-
-    const handleOffline = () => {
-      setIsOnline(false);
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [
-    // Process queued actions
-    processQueue,
-  ]);
-
+  // Define processQueue before useEffect to avoid TDZ
   const processQueue = useCallback(async () => {
     while (actionQueue.current.length > 0 && navigator.onLine) {
       const action = actionQueue.current.shift();
@@ -481,6 +452,33 @@ export function useBackgroundSync(): {
       setPendingCount(actionQueue.current.length);
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Check if Background Sync is supported
+    setIsSupported('serviceWorker' in navigator && 'SyncManager' in window);
+
+    setIsOnline(navigator.onLine);
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      // Process queued actions
+      void processQueue();
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [processQueue]);
 
   const queueAction = useCallback(async (action: () => Promise<void>): Promise<void> => {
     if (navigator.onLine) {

@@ -202,7 +202,6 @@ export class HybridRetriever {
    * Perform hybrid retrieval
    */
   async retrieve(query: string, options: RetrievalOptions): Promise<RetrievedChunk[]> {
-    const _startTime = Date.now();
     const topK = options.topK ?? 5;
 
     // Generate embedding for vector search
@@ -247,7 +246,6 @@ export class HybridRetriever {
    * Retrieve with weighted score fusion (alternative to RRF)
    */
   async retrieveWeighted(query: string, options: RetrievalOptions): Promise<RetrievedChunk[]> {
-    const _startTime = Date.now();
     const topK = options.topK ?? 5;
 
     // Generate embedding for vector search

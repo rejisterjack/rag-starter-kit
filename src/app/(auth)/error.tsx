@@ -6,13 +6,16 @@ import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 
 export default function AuthError({
-  error,
+  error: _error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {}, []);
+  useEffect(() => {
+    // Error logging can be added here
+    // console.error('Auth error:', error);
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">

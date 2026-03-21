@@ -129,7 +129,8 @@ async function checkRedis(): Promise<HealthCheck> {
     } else {
       // Local Redis via ioredis
       const Redis = await import('ioredis');
-      const redis = new Redis.default(process.env.REDIS_URL);
+      const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+      const redis = new Redis.default(redisUrl);
       await redis.ping();
       await redis.quit();
     }

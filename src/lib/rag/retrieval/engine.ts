@@ -505,7 +505,6 @@ export class RetrievalEngine {
     topK = 5
   ): Promise<MultiModalSearchResult> {
     return searchByImage(imageBuffer, workspaceId, {
-      workspaceId,
       query: '',
       topK,
       includeChunks: true,
@@ -525,8 +524,6 @@ export class RetrievalEngine {
     topK = 5
   ): Promise<MultiModalSearchResult> {
     return searchImagesByText(query, workspaceId, {
-      workspaceId,
-      query,
       topK,
       includeChunks: true,
     });
@@ -547,8 +544,6 @@ export class RetrievalEngine {
     options: { topK?: number; imageWeight?: number } = {}
   ): Promise<MultiModalSearchResult> {
     return searchMultiModal(query, imageBuffer, workspaceId, {
-      workspaceId,
-      query,
       topK: options.topK ?? 5,
       imageWeight: options.imageWeight ?? 0.5,
       includeChunks: true,

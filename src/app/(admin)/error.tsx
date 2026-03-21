@@ -5,13 +5,16 @@ import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 
 export default function AdminError({
-  error,
+  error: _error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {}, []);
+  useEffect(() => {
+    // Error logging can be added here
+    // console.error('Admin error:', error);
+  }, []);
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">

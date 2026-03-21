@@ -128,7 +128,6 @@ export class KeywordRetriever {
    * Perform keyword/full-text search
    */
   async retrieve(query: string, options: RetrievalOptions): Promise<RetrievedChunk[]> {
-    const _startTime = Date.now();
     const topK = options.topK ?? 5;
     const minScore = options.minScore ?? 0.01; // BM25 scores are typically small
     const language = validateLanguage(this.config.language ?? 'english');

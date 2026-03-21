@@ -17,8 +17,10 @@ const CSRF_SECRET =
   process.env.NEXTAUTH_SECRET ||
   'default-csrf-secret-change-in-production';
 
-const { invalidCsrfTokenError, generateToken, validateRequest, doubleCsrfProtection } = doubleCsrf({
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _csrfUtilities = doubleCsrf({
   getSecret: () => CSRF_SECRET,
+  getSessionIdentifier: () => 'session',
   cookieName: 'csrf_token',
   cookieOptions: {
     httpOnly: true,
@@ -28,7 +30,7 @@ const { invalidCsrfTokenError, generateToken, validateRequest, doubleCsrfProtect
   },
   size: 64,
   ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
-  getTokenFromRequest: (req) => {
+  getCsrfTokenFromRequest: (req) => {
     // Extract token from request body or headers
     if (req.body && typeof req.body === 'object' && '_csrf' in req.body) {
       return req.body._csrf as string;
@@ -40,6 +42,10 @@ const { invalidCsrfTokenError, generateToken, validateRequest, doubleCsrfProtect
     return undefined;
   },
 });
+
+// Destructure after to avoid type issues
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { generateToken } = _csrfUtilities as any;
 
 // =============================================================================
 // Token Generation

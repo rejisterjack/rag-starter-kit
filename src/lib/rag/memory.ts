@@ -210,7 +210,6 @@ export class ConversationMemory {
 
     // Calculate how many messages to summarize
     const messagesToSummarize = allMessages.slice(0, allMessages.length - 10);
-    const _messagesToKeep = allMessages.slice(-10);
 
     // Create summary
     const messagesToSummarizeMapped = messagesToSummarize.map((m) => this.mapPrismaMessage(m));

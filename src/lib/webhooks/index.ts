@@ -36,13 +36,9 @@ export {
   storeIdempotencyKey,
 } from './idempotency';
 
-export type { RotationResult, WebhookSecrets } from './rotation';
+export type { RotationResult } from './rotation';
 // Secret Rotation
 export {
-  cleanupExpiredRotations,
-  completeWebhookRotation,
   generateWebhookSecret as generateSecureWebhookSecret,
-  getWebhookSecrets,
   rotateWebhookSecret,
-  verifyWebhookSignatureWithRotation,
 } from './rotation';

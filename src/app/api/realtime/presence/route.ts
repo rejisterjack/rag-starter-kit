@@ -58,11 +58,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // Check rate limit
     const rateLimiter = getRateLimiter();
-    const rateLimitResult = await rateLimiter.checkLimitWithFallback(
-      `presence:${session.user.id}`,
-      { limit: 30, window: '1 m', prefix: 'presence_updates' },
-      { userId: session.user.id }
-    );
+    const rateLimitResult = await rateLimiter.checkLimit(`presence:${session.user.id}`, {
+      limit: 30,
+      windowMs: 60 * 1000, // 1 minute
+      prefix: 'presence_updates',
+    });
 
     if (!rateLimitResult.success) {
       await logAuditEvent({

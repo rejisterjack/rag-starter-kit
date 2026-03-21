@@ -291,11 +291,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     // Check rate limit
     const rateLimiter = getRateLimiter();
-    const rateLimitResult = await rateLimiter.checkLimitWithFallback(
-      `sse:${session.user.id}`,
-      { limit: 5, window: '1 m', prefix: 'sse_connections' },
-      { userId: session.user.id }
-    );
+    const rateLimitResult = await rateLimiter.checkLimit(`sse:${session.user.id}`, {
+      limit: 5,
+      windowMs: 60 * 1000, // 1 minute
+      prefix: 'sse_connections',
+    });
 
     if (!rateLimitResult.success) {
       await logAuditEvent({

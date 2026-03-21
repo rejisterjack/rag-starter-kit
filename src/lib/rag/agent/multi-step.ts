@@ -360,12 +360,21 @@ Rules:
       switch (subQuery.type) {
         case 'retrieve':
           if (subQuery.tool && this.tools.has(subQuery.tool)) {
-            const toolResult = await this.tools.get(subQuery.tool)?.execute({
+            const tool = this.tools.get(subQuery.tool);
+            if (!tool) {
+              result = `Error: Tool ${subQuery.tool} not found`;
+              break;
+            }
+            const toolResult = await tool.execute({
               ...subQuery.toolInput,
               query: resolvedQuery,
               workspaceId: context.workspaceId,
               userId: context.userId,
             });
+            if (!toolResult) {
+              result = 'Error: Tool execution returned no result';
+              break;
+            }
             result = toolResult.success
               ? this.formatResult(toolResult.data)
               : `Error: ${toolResult.error}`;
@@ -381,10 +390,19 @@ Rules:
 
         case 'calculate':
           if (this.tools.has('calculator')) {
-            const toolResult = await this.tools.get('calculator')?.execute({
+            const calculator = this.tools.get('calculator');
+            if (!calculator) {
+              result = 'Error: Calculator tool not found';
+              break;
+            }
+            const toolResult = await calculator.execute({
               expression: resolvedQuery,
               ...subQuery.toolInput,
             });
+            if (!toolResult) {
+              result = 'Error: Calculator execution returned no result';
+              break;
+            }
             result = toolResult.success ? String(toolResult.data) : `Error: ${toolResult.error}`;
           } else {
             // Fallback to LLM for simple calculations

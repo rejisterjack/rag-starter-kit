@@ -236,32 +236,7 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     };
   }, [service, onMessage, onTyping, onPresence, onCursor, onNotification, onError]);
 
-  // Auto-connect
-  useEffect(() => {
-    if (
-      autoConnect &&
-      session?.user?.id &&
-      !connectionState.isConnected &&
-      !connectionState.isConnecting
-    ) {
-      connect();
-    }
-  }, [
-    autoConnect,
-    session?.user?.id,
-    connectionState.isConnected,
-    connectionState.isConnecting,
-    connect,
-  ]);
-
-  // Auto-join room
-  useEffect(() => {
-    if (connectionState.isConnected && currentRoomId && service) {
-      service.joinRoom(currentRoomId, roomType);
-    }
-  }, [connectionState.isConnected, currentRoomId, roomType, service]);
-
-  // Actions
+  // Actions - defined before useEffect to avoid TDZ
   const connect = useCallback(async (): Promise<void> => {
     if (!service || !session?.user?.id) return;
 
@@ -356,6 +331,31 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     [service, currentRoomId]
   );
 
+  // Auto-connect effect
+  useEffect(() => {
+    if (
+      autoConnect &&
+      session?.user?.id &&
+      !connectionState.isConnected &&
+      !connectionState.isConnecting
+    ) {
+      void connect();
+    }
+  }, [
+    autoConnect,
+    session?.user?.id,
+    connectionState.isConnected,
+    connectionState.isConnecting,
+    connect,
+  ]);
+
+  // Auto-join room effect
+  useEffect(() => {
+    if (connectionState.isConnected && currentRoomId && service) {
+      void service.joinRoom(currentRoomId, roomType);
+    }
+  }, [connectionState.isConnected, currentRoomId, roomType, service]);
+
   return {
     isConnected: connectionState.isConnected,
     isConnecting: connectionState.isConnecting,
@@ -424,6 +424,19 @@ export function useTypingIndicator(
     return unsubscribe;
   }, [service, delay]);
 
+  // Define stopTyping before startTyping to avoid TDZ
+  const stopTyping = useCallback(() => {
+    if (!service || !isTyping) return;
+
+    setIsTyping(false);
+    service.stopTyping(roomId);
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+  }, [service, roomId, isTyping]);
+
   const startTyping = useCallback(() => {
     if (!service || isTyping) return;
 
@@ -439,18 +452,6 @@ export function useTypingIndicator(
       stopTyping();
     }, delay);
   }, [service, roomId, isTyping, delay, stopTyping]);
-
-  const stopTyping = useCallback(() => {
-    if (!service || !isTyping) return;
-
-    setIsTyping(false);
-    service.stopTyping(roomId);
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
-    }
-  }, [service, roomId, isTyping]);
 
   // Cleanup on unmount
   useEffect(() => {

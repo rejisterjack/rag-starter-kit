@@ -88,7 +88,6 @@ export class ContextualCompressor {
       return chunks;
     }
 
-    const _startTime = Date.now();
     const compressedChunks: RetrievedChunk[] = [];
 
     // Process chunks in parallel with concurrency limit

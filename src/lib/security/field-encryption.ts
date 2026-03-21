@@ -15,7 +15,6 @@ import { logger } from '@/lib/logger';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
-const _AUTH_TAG_LENGTH = 16;
 const KEY_LENGTH = 32;
 
 // Master key from environment (should be 32 bytes for AES-256)

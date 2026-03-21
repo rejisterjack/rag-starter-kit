@@ -133,7 +133,6 @@ export class VectorRetriever {
    * Perform vector similarity search
    */
   async retrieve(queryEmbedding: number[], options: RetrievalOptions): Promise<RetrievedChunk[]> {
-    const _startTime = Date.now();
     const topK = options.topK ?? 5;
     const minScore = options.minScore ?? 0.7;
 

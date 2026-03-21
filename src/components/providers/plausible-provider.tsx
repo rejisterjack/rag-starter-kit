@@ -15,7 +15,7 @@
 
 import { usePathname, useSearchParams } from 'next/navigation';
 import Script from 'next/script';
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, Suspense, useEffect } from 'react';
 
 // Plausible configuration
 const PLAUSIBLE_HOST = process.env.NEXT_PUBLIC_ANALYTICS_HOST;
@@ -72,7 +72,9 @@ export function PlausibleProvider({ children }: PlausibleProviderProps): React.R
         data-api={`${PLAUSIBLE_HOST}/api/event`}
         src={PLAUSIBLE_SCRIPT_URL}
       />
-      <PlausiblePageView />
+      <Suspense fallback={null}>
+        <PlausiblePageView />
+      </Suspense>
       {children}
     </>
   );

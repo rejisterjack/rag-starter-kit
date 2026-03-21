@@ -59,12 +59,6 @@ const nextConfig: NextConfig = {
 		],
 		formats: ["image/avif", "image/webp"],
 	},
-	typescript: {
-		ignoreBuildErrors: true,
-	},
-	eslint: {
-		ignoreDuringBuilds: true,
-	},
 	poweredByHeader: false,
 
 	async headers(): Promise<Header[]> {

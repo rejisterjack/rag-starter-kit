@@ -43,6 +43,56 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Helper function for uploading files
+  const uploadFiles = useCallback(async (files: File[]): Promise<string[]> => {
+    const urls: string[] = [];
+
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error(`Failed to upload ${file.name}`);
+
+      const data = await response.json();
+      urls.push(data.url);
+    }
+
+    return urls;
+  }, []);
+
+  // Helper function for loading messages
+  const loadMessages = useCallback(
+    async (pageNum = 1) => {
+      if (!conversationId) return;
+
+      try {
+        const response = await fetch(`/api/chat/${conversationId}/messages?page=${pageNum}`);
+        if (!response.ok) throw new Error('Failed to load messages');
+
+        const data = await response.json();
+
+        if (pageNum === 1) {
+          setMessages(data.messages);
+        } else {
+          setMessages((prev) => [...data.messages, ...prev]);
+        }
+
+        setHasMore(data.hasMore);
+        setPage(pageNum);
+      } catch (err) {
+        const fetchError = err instanceof Error ? err : new Error(String(err));
+        setError(fetchError);
+        onError?.(fetchError);
+      }
+    },
+    [conversationId, onError]
+  );
+
   // Load initial messages
   useEffect(() => {
     if (conversationId) {
@@ -50,34 +100,10 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     }
   }, [conversationId, loadMessages]);
 
-  const loadMessages = async (pageNum = 1) => {
-    if (!conversationId) return;
-
-    try {
-      const response = await fetch(`/api/chat/${conversationId}/messages?page=${pageNum}`);
-      if (!response.ok) throw new Error('Failed to load messages');
-
-      const data = await response.json();
-
-      if (pageNum === 1) {
-        setMessages(data.messages);
-      } else {
-        setMessages((prev) => [...data.messages, ...prev]);
-      }
-
-      setHasMore(data.hasMore);
-      setPage(pageNum);
-    } catch (err) {
-      const fetchError = err instanceof Error ? err : new Error(String(err));
-      setError(fetchError);
-      onError?.(fetchError);
-    }
-  };
-
-  const loadMore = async () => {
+  const loadMore = useCallback(async () => {
     if (!hasMore || isLoading) return;
     await loadMessages(page + 1);
-  };
+  }, [hasMore, isLoading, page, loadMessages]);
 
   const sendMessage = useCallback(
     async (content: string, files?: File[]) => {
@@ -197,27 +223,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     },
     [conversationId, onError, onFinish, uploadFiles]
   );
-
-  const uploadFiles = async (files: File[]): Promise<string[]> => {
-    const urls: string[] = [];
-
-    for (const file of files) {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error(`Failed to upload ${file.name}`);
-
-      const data = await response.json();
-      urls.push(data.url);
-    }
-
-    return urls;
-  };
 
   const stop = useCallback(() => {
     abortControllerRef.current?.abort();
