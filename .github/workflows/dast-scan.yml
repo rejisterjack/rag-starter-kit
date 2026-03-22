@@ -1,9 +1,7 @@
-/**
- * DAST (Dynamic Application Security Testing) with OWASP ZAP
- * 
- * Performs active security scanning against running application
- * to find vulnerabilities like XSS, SQL injection, CSRF, etc.
- */
+# DAST (Dynamic Application Security Testing) with OWASP ZAP
+# 
+# Performs active security scanning against running application
+# to find vulnerabilities like XSS, SQL injection, CSRF, etc.
 
 name: DAST Security Scan
 

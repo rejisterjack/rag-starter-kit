@@ -1,15 +1,13 @@
-/**
- * Container Image Signing with Cosign and Sigstore
- * 
- * Signs container images using keyless signing with Sigstore/Cosign
- * Provides non-repudiation and provenance for container images
- * 
- * Features:
- * - Keyless signing using OIDC (no long-lived keys)
- * - SLSA provenance attestation
- * - SBOM attestation
- * - Signature verification
- */
+# Container Image Signing with Cosign and Sigstore
+# 
+# Signs container images using keyless signing with Sigstore/Cosign
+# Provides non-repudiation and provenance for container images
+# 
+# Features:
+# - Keyless signing using OIDC (no long-lived keys)
+# - SLSA provenance attestation
+# - SBOM attestation
+# - Signature verification
 
 name: Container Sign and Attest
 
