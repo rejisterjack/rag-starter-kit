@@ -148,7 +148,7 @@ updates:
 
 # ==========================================
 # Security Alerts
-# =========================================-
+# ==========================================
 # Enable Dependabot security alerts in repository settings
 # Settings > Security > Code security and analysis > Dependabot alerts
 
