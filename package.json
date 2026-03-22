@@ -192,11 +192,17 @@
     "pnpm": ">=9.0.0"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
+    "src/**/*.{js,jsx,ts,tsx}": [
       "biome check --write"
     ],
-    "*.{json,md,yml,yaml}": [
-      "biome format --write"
+    "tests/**/*.{js,jsx,ts,tsx}": [
+      "biome check --write"
+    ],
+    "prisma/**/*.ts": [
+      "biome check --write"
+    ],
+    "server.ts": [
+      "biome check --write"
     ]
   },
   "pnpm": {
