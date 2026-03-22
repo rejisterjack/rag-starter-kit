@@ -82,8 +82,8 @@ export default defineConfig({
     env: {
       NODE_ENV: 'test',
       NEXT_PUBLIC_API_URL: 'http://localhost:3000',
-      NEXTAUTH_SECRET: 'test-secret-32chars-long!!!!',
-      ENCRYPTION_MASTER_KEY: 'test-master-key-32chars-long!!',
+      NEXTAUTH_SECRET: 'test-secret-for-vitest-exactly-32c',
+      ENCRYPTION_MASTER_KEY: 'test-encryption-key-for-vitest-32c',
     },
     
     // Snapshot format

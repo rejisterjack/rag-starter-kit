@@ -22,21 +22,19 @@ function generateToken(): string {
  */
 export async function GET(_req: NextRequest): Promise<NextResponse> {
   try {
-    // Generate token
+    // Generate ONE token used for both the cookie and the response body.
+    // The double-submit pattern requires the header value the client sends
+    // to match the cookie value the middleware reads — they must be identical.
     const token = generateToken();
 
-    // Generate cookie value (double-submit pattern)
-    const cookieValue = generateToken();
-
-    // Create response
     const response = NextResponse.json({
       token,
       success: true,
     });
 
-    // Set CSRF cookie
-    response.cookies.set('csrf_token', cookieValue, {
-      httpOnly: true,
+    // Set the cookie to the same token value so middleware comparison passes
+    response.cookies.set('csrf_token', token, {
+      httpOnly: false, // must be readable by JS so the client can copy it to a header
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       path: '/',

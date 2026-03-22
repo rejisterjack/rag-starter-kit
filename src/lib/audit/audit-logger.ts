@@ -79,8 +79,19 @@ export async function logAuditEvent(input: LogAuditEventInput): Promise<void> {
           userAgent: input.userAgent,
         },
       })
-      .catch((_error) => {});
-  } catch (_error) {}
+      .catch((error) => {
+        logger.error('Failed to write audit log', {
+          event: input.event,
+          userId: input.userId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+  } catch (error) {
+    logger.error('Unexpected error in audit logger', {
+      event: input.event,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 /**

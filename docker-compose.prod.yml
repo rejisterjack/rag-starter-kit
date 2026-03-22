@@ -116,7 +116,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@db:5432/plausible
-      - SECRET_KEY_BASE=${PLAUSIBLE_SECRET_KEY_BASE:-dev-secret-key-base-change-in-production-min-64-characters-long}"
+      - SECRET_KEY_BASE=${PLAUSIBLE_SECRET_KEY_BASE:-dev-secret-key-base-change-in-production-min-64-characters-long}
       - BASE_URL=${PLAUSIBLE_BASE_URL:-http://localhost:8000}
       - DISABLE_REGISTRATION=${PLAUSIBLE_DISABLE_REGISTRATION:-true}
     depends_on:
@@ -164,7 +164,7 @@ services:
 
       # Auth
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dev-secret-change-in-production}"
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dev-secret-change-in-production}
 
       # Analytics
       NEXT_PUBLIC_ANALYTICS_HOST: ${NEXT_PUBLIC_ANALYTICS_HOST:-http://localhost:8000}
