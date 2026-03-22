@@ -348,6 +348,8 @@ export function validateLoginInput(input: unknown): LoginInput {
 const ALLOWED_MIME_TYPES: Record<DocumentType, string[]> = {
   PDF: ['application/pdf'],
   DOCX: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+  XLSX: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+  PPTX: ['application/vnd.openxmlformats-officedocument.presentationml.presentation'],
   TXT: ['text/plain'],
   MD: ['text/plain', 'text/markdown'],
   HTML: ['text/html', 'application/xhtml+xml'],
@@ -415,6 +417,14 @@ const MAGIC_BYTES: Record<string, { bytes: number[]; offset: number }> = {
   'application/pdf': { bytes: [0x25, 0x50, 0x44, 0x46], offset: 0 }, // %PDF
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': {
     bytes: [0x50, 0x4b, 0x03, 0x04], // ZIP signature (DOCX is a ZIP archive)
+    offset: 0,
+  },
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
+    bytes: [0x50, 0x4b, 0x03, 0x04], // ZIP signature (XLSX is a ZIP archive)
+    offset: 0,
+  },
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': {
+    bytes: [0x50, 0x4b, 0x03, 0x04], // ZIP signature (PPTX is a ZIP archive)
     offset: 0,
   },
   'text/html': { bytes: [0x3c], offset: 0 }, // < (less than sign)

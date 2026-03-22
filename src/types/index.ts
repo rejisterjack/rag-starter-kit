@@ -74,7 +74,7 @@ export interface Document {
   metadata?: DocumentMetadata;
 }
 
-export type DocumentType = 'PDF' | 'DOCX' | 'TXT' | 'MD' | 'HTML';
+export type DocumentType = 'PDF' | 'DOCX' | 'XLSX' | 'PPTX' | 'TXT' | 'MD' | 'HTML';
 
 export type DocumentStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 

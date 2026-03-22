@@ -11,6 +11,8 @@ import { logger } from '@/lib/logger';
 import { createChunks } from '@/lib/rag/chunking';
 import type { DocumentType, IngestionOptions } from '@/types';
 import { parseHTML as parseHTMLContent } from './parsers/html';
+import { parseXLSX } from './parsers/xlsx';
+import { parsePPTX } from './parsers/pptx';
 
 // ============================================================================
 // Document Parsing
@@ -81,6 +83,36 @@ export function parseText(buffer: Buffer): string {
 }
 
 /**
+ * Parse XLSX buffer to text
+ */
+export async function parseXLSXBuffer(buffer: Buffer): Promise<string> {
+  try {
+    const parsed = await parseXLSX(buffer);
+    return parsed.text;
+  } catch (error) {
+    logger.error('XLSX parsing error', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
+    throw new Error('Failed to parse XLSX file');
+  }
+}
+
+/**
+ * Parse PPTX buffer to text
+ */
+export async function parsePPTXBuffer(buffer: Buffer): Promise<string> {
+  try {
+    const parsed = await parsePPTX(buffer);
+    return parsed.text;
+  } catch (error) {
+    logger.error('PPTX parsing error', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
+    throw new Error('Failed to parse PPTX file');
+  }
+}
+
+/**
  * Detect document type from filename
  */
 export function detectDocumentType(filename: string): DocumentType {
@@ -91,6 +123,10 @@ export function detectDocumentType(filename: string): DocumentType {
       return 'PDF';
     case 'docx':
       return 'DOCX';
+    case 'xlsx':
+      return 'XLSX';
+    case 'pptx':
+      return 'PPTX';
     case 'html':
     case 'htm':
       return 'HTML';
@@ -110,6 +146,10 @@ export async function parseDocument(buffer: Buffer, type: DocumentType): Promise
       return parsePDF(buffer);
     case 'DOCX':
       return parseDOCX(buffer);
+    case 'XLSX':
+      return parseXLSXBuffer(buffer);
+    case 'PPTX':
+      return parsePPTXBuffer(buffer);
     case 'HTML':
       return parseHTML(buffer);
     default:

@@ -348,6 +348,70 @@ See [Contributors](./CONTRIBUTORS.md) for our community!
 
 ---
 
+## 📚 Additional Guides
+
+### 🔧 Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| **Docker fails to start** | Check if ports 3000, 5432, 6379 are free: `lsof -i :3000` |
+| **Prisma generate fails** | Run `pnpm prisma generate` manually |
+| **Embedding errors** | Verify `GOOGLE_API_KEY` is valid and has quota remaining |
+| **LLM timeout** | Check OpenRouter status or switch models in settings |
+| **Upload fails** | Ensure MinIO is running: `docker-compose ps minio` |
+| **WebSocket not connecting** | Check `NEXT_PUBLIC_APP_URL` matches your browser URL |
+
+### 🤖 Model Selection Guide
+
+| Use Case | Recommended Model | Context | Provider |
+|----------|------------------|---------|----------|
+| **General chat** | DeepSeek Chat | 32K | OpenRouter |
+| **Code assistance** | CodeLlama 70B | 16K | OpenRouter |
+| **Fast responses** | Mistral 7B | 32K | OpenRouter |
+| **Creative writing** | Llama 3.1 70B | 128K | OpenRouter |
+| **Local/privacy** | llama3.2 (Ollama) | 128K | Self-hosted |
+
+Switch models in the chat header dropdown or set `DEFAULT_MODEL` in your environment.
+
+### 📊 Monitoring Setup
+
+The starter kit includes built-in observability:
+
+```bash
+# Enable detailed logging
+LOG_LEVEL=debug
+
+# API usage tracking (stored in database)
+# View analytics at /chat/analytics
+
+# Health check endpoint
+curl http://localhost:3000/api/health
+```
+
+Key metrics tracked:
+- Token usage per user/workspace
+- API latency (p50, p95, p99)
+- Document processing queue depth
+- Rate limit hits
+
+### ⚡ Performance Tuning
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MAX_CHUNK_SIZE` | 1000 | Characters per document chunk |
+| `CHUNK_OVERLAP` | 200 | Overlap between chunks |
+| `TOP_K_RETRIEVAL` | 5 | Chunks to retrieve per query |
+| `SIMILARITY_THRESHOLD` | 0.7 | Minimum relevance score |
+| `MAX_TOKENS` | 2000 | LLM response limit |
+
+For production with high traffic:
+1. Enable Redis caching: `REDIS_URL=redis://localhost:6379`
+2. Use connection pooling for database
+3. Enable CDN for static assets
+4. Consider dedicated embedding service
+
+---
+
 ## 🛡️ Security
 
 The RAG Starter Kit implements comprehensive security measures:

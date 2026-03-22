@@ -32,6 +32,10 @@ export enum Permission {
   // Admin permissions
   VIEW_AUDIT_LOGS = 'view:audit_logs',
   DELETE_WORKSPACE = 'delete:workspace',
+
+  // Webhook permissions
+  READ_WEBHOOKS = 'read:webhooks',
+  MANAGE_WEBHOOKS = 'manage:webhooks',
 }
 
 // =============================================================================
@@ -56,6 +60,8 @@ const ROLE_PERMISSIONS: Record<MemberRole, Permission[]> = {
     Permission.READ_API_USAGE,
     Permission.VIEW_AUDIT_LOGS,
     Permission.DELETE_WORKSPACE,
+    Permission.READ_WEBHOOKS,
+    Permission.MANAGE_WEBHOOKS,
   ],
   ADMIN: [
     Permission.READ_DOCUMENTS,
@@ -71,6 +77,8 @@ const ROLE_PERMISSIONS: Record<MemberRole, Permission[]> = {
     Permission.MANAGE_API_KEYS,
     Permission.READ_API_USAGE,
     Permission.VIEW_AUDIT_LOGS,
+    Permission.READ_WEBHOOKS,
+    Permission.MANAGE_WEBHOOKS,
   ],
   MEMBER: [
     Permission.READ_DOCUMENTS,

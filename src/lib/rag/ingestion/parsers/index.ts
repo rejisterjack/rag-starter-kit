@@ -99,3 +99,38 @@ export {
   type URLScrapeOptions,
   URLScraperError,
 } from './url';
+
+// XLSX Parser
+export {
+  convertToMarkdown as convertXLSXToMarkdown,
+  extractSheet,
+  extractSheetByIndex,
+  getColumnValues,
+  isValidXLSX,
+  parseXLSX,
+  type ParsedXLSX,
+  type XLSXCell,
+  type XLSXMetadata,
+  type XLSXRow,
+  type XLSXSheet,
+  XLSXParserError,
+} from './xlsx';
+
+// PPTX Parser
+export {
+  convertToMarkdown as convertPPTXToMarkdown,
+  extractSlide as extractPPTXSlide,
+  extractSlidesByType,
+  getOutline,
+  getSlideText,
+  isValidPPTX,
+  parsePPTX,
+  type ParsedPPTX,
+  type PPTXMetadata,
+  type PPTXParagraph,
+  type PPTXShape,
+  type PPTXSlide,
+  type PPTXTextRun,
+  PPTXParserError,
+  searchInPPTX,
+} from './pptx';

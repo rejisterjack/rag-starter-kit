@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bot, Check, Copy, Pencil, Trash2, User, X } from 'lucide-react';
+import { Bot, Check, Copy, Pencil, RefreshCw, ThumbsDown, ThumbsUp, Trash2, User, X } from 'lucide-react';
 import { useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,10 @@ interface MessageItemProps {
   onDelete?: (id: string) => void;
   onCitationClick?: (index: number) => void;
   showSources?: boolean;
+  isLastMessage?: boolean;
+  isStreaming?: boolean;
+  onRegenerate?: () => void;
+  onFeedback?: (id: string, rating: 'up' | 'down') => void;
 }
 
 export function MessageItem({
@@ -43,10 +47,15 @@ export function MessageItem({
   onDelete,
   onCitationClick,
   showSources = true,
+  isLastMessage = false,
+  isStreaming = false,
+  onRegenerate,
+  onFeedback,
 }: MessageItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
 
   const isUser = message.role === 'user';
   const isAssistant = message.role === 'assistant';
@@ -67,6 +76,11 @@ export function MessageItem({
     await navigator.clipboard.writeText(message.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleFeedback = (rating: 'up' | 'down') => {
+    setFeedback(rating);
+    onFeedback?.(message.id, rating);
   };
 
   return (
@@ -172,6 +186,75 @@ export function MessageItem({
           <div className="absolute right-4 top-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100 bg-background/80 backdrop-blur-md rounded-full shadow-sm p-0.5 border border-border/50">
             <TooltipProvider>
               <div className="flex items-center gap-0.5">
+                {/* Regenerate button for last assistant message */}
+                {isAssistant && isLastMessage && !isStreaming && onRegenerate && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full hover:bg-foreground/5"
+                        onClick={onRegenerate}
+                      >
+                        <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="rounded-lg text-xs border-none shadow-xl bg-popover/90 backdrop-blur-md">
+                      <p>Regenerate response</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {/* Feedback buttons for assistant messages */}
+                {isAssistant && onFeedback && (
+                  <>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full hover:bg-foreground/5"
+                          onClick={() => handleFeedback('up')}
+                          disabled={feedback !== null}
+                        >
+                          <ThumbsUp
+                            className={`h-4 w-4 ${
+                              feedback === 'up'
+                                ? 'text-green-500 fill-green-500'
+                                : 'text-muted-foreground'
+                            }`}
+                          />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="rounded-lg text-xs border-none shadow-xl bg-popover/90 backdrop-blur-md">
+                        <p>Helpful</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full hover:bg-foreground/5"
+                          onClick={() => handleFeedback('down')}
+                          disabled={feedback !== null}
+                        >
+                          <ThumbsDown
+                            className={`h-4 w-4 ${
+                              feedback === 'down'
+                                ? 'text-red-500 fill-red-500'
+                                : 'text-muted-foreground'
+                            }`}
+                          />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="rounded-lg text-xs border-none shadow-xl bg-popover/90 backdrop-blur-md">
+                        <p>Not helpful</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </>
+                )}
+
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button

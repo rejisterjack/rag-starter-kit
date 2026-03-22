@@ -53,13 +53,13 @@ model User {
   image               String?
   password            String?
   role                UserRole  @default(USER)
-  
+
   // Active workspace for session
   activeWorkspaceId   String?
-  
+
   // SSO fields
   samlId              String?   @unique
-  
+
   accounts      Account[]
   sessions      Session[]
 
@@ -73,6 +73,7 @@ model User {
   rateLimits        RateLimit[]
   apiUsage          ApiUsage[]
   invitationsSent   WorkspaceInvitation[] @relation("InvitationSender")
+  feedback          MessageFeedback[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -105,14 +106,14 @@ model Workspace {
   slug        String        @unique
   description String?
   logoUrl     String?
-  
+
   // SSO settings
   ssoEnabled  Boolean       @default(false)
   ssoDomain   String?
-  
+
   // Settings stored as JSON
   settings    Json          @default("{}")
-  
+
   // Relations
   ownerId     String
   owner       User          @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
@@ -123,7 +124,9 @@ model Workspace {
   apiKeys     ApiKey[]
   auditLogs   AuditLog[]
   samlConnection SamlConnection?
-  
+  tags        DocumentTag[]
+  collections DocumentCollection[]
+
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -139,7 +142,7 @@ model WorkspaceMember {
   role        WorkspaceRole    @default(MEMBER)
   status      MemberStatus     @default(ACTIVE)
   joinedAt    DateTime         @default(now())
-  
+
   workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -176,10 +179,10 @@ model WorkspaceInvitation {
   acceptedAt    DateTime?
   cancelledAt   DateTime?
   cancelledById String?
-  
+
   workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   invitedBy     User          @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: Cascade)
-  
+
   @@index([workspaceId])
   @@index([email])
   @@index([token])
@@ -204,15 +207,15 @@ model Document {
   contentType String
   size        Int
   content     String?          @db.Text
-  
+
   // Metadata
   sourceUrl   String?
   sourceType  String?
   metadata    Json             @default("{}")
-  
+
   // Processing status
   status      DocumentStatus   @default(PENDING)
-  
+
   // OCR-specific fields (for documents processed with OCR)
   /** Whether OCR was applied to this document */
   ocrProcessed     Boolean   @default(false)
@@ -230,7 +233,7 @@ model Document {
   ocrPreprocessing Boolean   @default(false)
   /** Error message if OCR failed */
   ocrError         String?
-  
+
   // Relations
   userId      String
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -239,7 +242,9 @@ model Document {
   chunks      DocumentChunk[]
   images      DocumentImage[]
   ingestionJob IngestionJob?
-  
+  tags        DocumentTagsOnDocuments[]
+  collections DocumentCollectionsOnDocuments[]
+
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
@@ -260,14 +265,14 @@ model DocumentChunk {
   end         Int
   page        Int?
   section     String?
-  
+
   // Vector embedding (using pgvector extension)
   // Dimensions: 768 for Google Gemini, 1536 for OpenAI, 384 for local
   embedding   Unsupported("vector(768)")?
-  
+
   document    Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
   images      DocumentImage[]
-  
+
   createdAt   DateTime   @default(now())
 
   @@index([documentId])
@@ -282,9 +287,9 @@ model IngestionJob {
   error       String?
   startedAt   DateTime?
   completedAt DateTime?
-  
+
   document    Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  
+
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -313,22 +318,22 @@ model DocumentImage {
   id          String     @id @default(cuid())
   documentId  String
   document    Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  
+
   // Image metadata
   filename    String
   mimeType    String
   size        Int
   width       Int?
   height      Int?
-  
+
   // Storage
   storageKey  String     // MinIO/S3 key
   storageUrl  String     // Public URL
-  
+
   // OCR / Caption
   caption     String?    @db.Text
   ocrText     String?    @db.Text
-  
+
   // OCR-specific metadata
   /** OCR confidence score (0-100) */
   ocrConfidence    Float?
@@ -340,15 +345,15 @@ model DocumentImage {
   ocrPreprocessing Boolean @default(false)
   /** OCR bounding boxes as JSON */
   ocrBoundingBoxes Json?
-  
+
   // Relations
   chunkId     String?
   chunk       DocumentChunk? @relation(fields: [chunkId], references: [id], onDelete: SetNull)
   pageNumber  Int?
-  
+
   // Processing status
   status      ImageStatus @default(PENDING)
-  
+
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -361,19 +366,19 @@ model DocumentImage {
 
 model ImageEmbedding {
   id          String     @id @default(cuid())
-  
+
   // Reference to the image
   imageId     String?
   imageUrl    String?    // For external images
   contentHash String     @unique // For caching
-  
+
   // 512-dimensional CLIP embedding
   embedding   Unsupported("vector(512)")
-  
+
   // Model info
   model       String     @default("Xenova/clip-vit-base-patch32")
   dimensions  Int        @default(512)
-  
+
   createdAt   DateTime   @default(now())
 
   @@index([imageId])
@@ -395,20 +400,21 @@ enum ImageStatus {
 model Chat {
   id          String     @id @default(cuid())
   title       String     @default("New Chat")
-  
+
   // Optional metadata for features like branching
   metadata    Json?      @default("{}")
-  
+
   // Document processing tracking
   chunkCount  Int?
-  
+
   // Relations
   userId      String
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspaceId String?
   workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
   messages    Message[]
-  
+  share       ChatShare?
+
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -422,18 +428,19 @@ model Message {
   chatId      String
   content     String    @db.Text
   role        MessageRole
-  
+
   // Source citations
   sources     Json?
-  
+
   // Token usage
   tokensUsed  Json?
-  
+
   // Message metadata for features like editing
   metadata    Json?
-  
+
   chat        Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  
+  feedback    MessageFeedback[]
+
   createdAt   DateTime  @default(now())
 
   @@index([chatId])
@@ -447,6 +454,146 @@ enum MessageRole {
 }
 
 // ============================================================================
+// Message Feedback
+// ============================================================================
+
+model MessageFeedback {
+  id          String    @id @default(cuid())
+  messageId   String
+  message     Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  // Feedback data
+  rating      FeedbackRating
+  comment     String?   @db.Text
+
+  // Optional categorization
+  categories  String[]  @default([])
+
+  // User who gave feedback (may be anonymous)
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Metadata
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
+  @@index([rating])
+  @@index([createdAt])
+  @@map("message_feedback")
+}
+
+enum FeedbackRating {
+  UP
+  DOWN
+}
+
+// ============================================================================
+// Chat Sharing
+// ============================================================================
+
+model ChatShare {
+  id          String    @id @default(cuid())
+  chatId      String    @unique
+  chat        Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  // Share configuration
+  isPublic    Boolean   @default(false)
+  shareToken  String    @unique @default(cuid())
+
+  // Access control
+  allowComments Boolean @default(false)
+  expiresAt   DateTime?
+
+  // Tracking
+  viewCount   Int       @default(0)
+  lastViewedAt DateTime?
+
+  // Creator
+  createdBy   String
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([shareToken])
+  @@index([isPublic])
+  @@index([expiresAt])
+  @@map("chat_shares")
+}
+
+// ============================================================================
+// Document Organization (Tags & Collections)
+// ============================================================================
+
+model DocumentTag {
+  id          String    @id @default(cuid())
+  name        String
+  color       String    @default("#6366f1")
+
+  // Relations
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  documents   DocumentTagsOnDocuments[]
+
+  createdAt   DateTime  @default(now())
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("document_tags")
+}
+
+model DocumentTagsOnDocuments {
+  documentId  String
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tagId       String
+  tag         DocumentTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  assignedAt  DateTime  @default(now())
+  assignedBy  String?
+
+  @@id([documentId, tagId])
+  @@index([tagId])
+  @@map("document_tags_on_documents")
+}
+
+model DocumentCollection {
+  id          String    @id @default(cuid())
+  name        String
+  description String?   @db.Text
+
+  // Relations
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  documents   DocumentCollectionsOnDocuments[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId])
+  @@map("document_collections")
+}
+
+model DocumentCollectionsOnDocuments {
+  documentId   String
+  document     Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  collectionId String
+  collection   DocumentCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  addedAt      DateTime  @default(now())
+  addedBy      String?
+  order        Int       @default(0)
+
+  @@id([documentId, collectionId])
+  @@index([collectionId])
+  @@map("document_collections_on_documents")
+}
+
+// ============================================================================
 // API Key Models
 // ============================================================================
 
@@ -455,25 +602,25 @@ model ApiKey {
   name        String
   keyHash     String     @unique
   keyPreview  String
-  
+
   // Permissions
   permissions String[]   @default([])
-  
+
   // Status
   status      ApiKeyStatus @default(ACTIVE)
   expiresAt   DateTime?
   lastUsedAt  DateTime?
-  
+
   // Rate limiting
   rateLimit   Int        @default(100)
-  
+
   // Relations
   userId      String
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspaceId String?
   workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
   usage       ApiUsage[]
-  
+
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -485,24 +632,24 @@ model ApiKey {
 
 model ApiUsage {
   id                String   @id @default(cuid())
-  
+
   // Request details
   endpoint          String
   method            String
-  
+
   // Usage metrics
   tokensPrompt      Int      @default(0)
   tokensCompletion  Int      @default(0)
   tokensTotal       Int      @default(0)
   latencyMs         Int      @default(0)
-  
+
   // Relations
   apiKeyId          String?
   apiKey            ApiKey?  @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
   userId            String?
   user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   workspaceId       String?
-  
+
   createdAt         DateTime @default(now())
 
   @@index([apiKeyId])
@@ -527,25 +674,25 @@ model AuditLog {
   id          String       @id @default(cuid())
   event       AuditEvent
   severity    AuditSeverity @default(INFO)
-  
+
   // Actor
   userId      String?
   user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
+
   // Resource
   workspaceId String?
   workspace   Workspace?   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  
+
   // Event data
   metadata    Json?
   resource    Json?
   changes     Json?
   error       String?
-  
+
   // Request context
   ipAddress   String?
   userAgent   String?
-  
+
   createdAt   DateTime     @default(now())
 
   @@index([userId])
@@ -562,56 +709,56 @@ enum AuditEvent {
   USER_REGISTERED
   PASSWORD_CHANGED
   PASSWORD_RESET_REQUESTED
-  
+
   // Workspace
   WORKSPACE_CREATED
   WORKSPACE_UPDATED
   WORKSPACE_DELETED
   WORKSPACE_SETTINGS_CHANGED
-  
+
   // Members
   MEMBER_INVITED
   MEMBER_JOINED
   MEMBER_REMOVED
   MEMBER_ROLE_CHANGED
-  
+
   // Documents
   DOCUMENT_UPLOADED
   DOCUMENT_DELETED
   DOCUMENT_UPDATED
   DOCUMENT_PROCESSED
   DOCUMENT_PROCESSING_FAILED
-  
+
   // Chat
   CHAT_CREATED
   CHAT_UPDATED
   CHAT_DELETED
   CHAT_MESSAGE_SENT
-  
+
   // API Keys
   API_KEY_CREATED
   API_KEY_REVOKED
   API_KEY_USED
-  
+
   // Rate Limiting
   RATE_LIMIT_HIT
-  
+
   // Security
   SUSPICIOUS_ACTIVITY
   PERMISSION_DENIED
-  
+
   // Agentic Features
   AGENT_QUERY_CLASSIFIED
   AGENT_TOOL_CALLED
   MULTI_STEP_REASONING_STARTED
   CONVERSATION_BRANCHED
-  
+
   // Voice
   VOICE_TRANSCRIPTION
-  
+
   // Analytics
   READ_API_USAGE
-  
+
   // Encryption
   ENCRYPTION_OPERATION
 }
@@ -629,21 +776,21 @@ enum AuditSeverity {
 
 model RateLimit {
   id        String   @id @default(cuid())
-  
+
   // Identifier (IP, userId, or apiKey)
   key       String
-  
+
   // Window tracking
   windowStart DateTime
   requests    Int      @default(0)
-  
+
   // Type of limit
   type      String     @default("default")
-  
+
   // Relations
   userId    String?
   user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
@@ -660,34 +807,34 @@ model RateLimit {
 
 model RAGEvent {
   id              String   @id @default(cuid())
-  
+
   // Query info
   query           String   @db.Text
   conversationId  String?
-  
+
   // Context
   workspaceId     String?
   userId          String?
-  
+
   // Retrieval info
   retrievedChunksData Json? @map("retrievedChunks")
-  
+
   // Relations
   retrievedChunks RetrievedChunk[]
-  
+
   // Response
   response        String?  @db.Text
-  
+
   // Metrics
   latencyMs       Int
   totalTokens     Int      @default(0)
   model           String   @default("gpt-4o-mini")
-  
+
   // Classification
   queryType       String?
   confidence      Float?
   reranked        Boolean  @default(false)
-  
+
   createdAt       DateTime @default(now())
 
   @@index([workspaceId])
@@ -698,15 +845,15 @@ model RAGEvent {
 
 model RetrievedChunk {
   id          String   @id @default(cuid())
-  
+
   eventId     String
   event       RAGEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  
+
   chunkId     String
   documentId  String
   similarity  Float
   rank        Int
-  
+
   createdAt   DateTime @default(now())
 
   @@index([eventId])
@@ -732,23 +879,23 @@ model Metric {
 
 model IntegrationAccount {
   id                String   @id @default(cuid())
-  
+
   // Provider info
   provider          String   // 'slack', 'notion', 'github', etc.
   providerAccountId String
-  
+
   // OAuth tokens
   accessToken       String   @db.Text
   refreshToken      String?  @db.Text
   expiresAt         DateTime?
-  
+
   // Scopes/permissions
   scope             String?
-  
+
   // Relations
   userId            String
   workspaceId       String?
-  
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -767,18 +914,18 @@ model Experiment {
   description   String?
   type          String          // 'prompt', 'model', 'retrieval', 'ui'
   status        ExperimentStatus @default(DRAFT)
-  
+
   // Configuration
   variants      Json            // Array of variant configs
   trafficAllocation Json        // Percentage per variant
-  
+
   // Relations
   workspaceId   String
   createdById   String
-  
+
   startDate     DateTime?
   endDate       DateTime?
-  
+
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
@@ -796,20 +943,20 @@ enum ExperimentStatus {
 
 model ExperimentEvent {
   id            String   @id @default(cuid())
-  
+
   experimentId  String
   variantId     String
-  
+
   // Event type
   eventType     String   // 'impression', 'conversion', 'custom'
-  
+
   // User info
   userId        String?
   sessionId     String
-  
+
   // Event data
   metadata      Json?
-  
+
   createdAt     DateTime @default(now())
 
   @@index([experimentId])
@@ -823,35 +970,35 @@ model ExperimentEvent {
 
 model SamlConnection {
   id                String   @id @default(cuid())
-  
+
   // Workspace relation
   workspaceId       String   @unique
   workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  
+
   // IdP Configuration
   idpMetadata       String?  // Raw SAML metadata XML
   idpEntityId       String?
   idpSsoUrl         String?
   idpSloUrl         String?  // Single Logout URL
   idpCertificate    String?
-  
+
   // SP Configuration
   spEntityId        String   @default("rag-starter-kit")
   spAcsUrl          String?
-  
+
   // Security
   publicCertificate String?  // Our public cert for signing
   privateKey        String?  // Our private key (encrypted)
-  
+
   // Settings
   allowIdpInitiated Boolean  @default(false)
   defaultRole       String   @default("MEMBER") // Default role for SAML users
   attributeMapping  Json     @default("{}") // Attribute mapping configuration
-  
+
   // State
   enabled           Boolean  @default(true)
   lastLoginAt       DateTime?
-  
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -871,15 +1018,16 @@ model Webhook {
   secret      String        // For HMAC signature
   events      String[]      // Events to subscribe to
   status      WebhookStatus @default(ACTIVE)
-  
+
   // Relations
   workspaceId String
   createdById String
-  
+  deliveries  WebhookDelivery[]
+
   // Stats
   lastTriggeredAt DateTime?
   failureCount    Int       @default(0)
-  
+
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -892,4 +1040,40 @@ enum WebhookStatus {
   ACTIVE
   PAUSED
   FAILED
+}
+
+model WebhookDelivery {
+  id          String            @id @default(cuid())
+  webhookId   String
+  webhook     Webhook           @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  // Request details
+  event       String
+  payload     Json
+
+  // Response details
+  statusCode  Int?
+  response    String?           @db.Text
+  error       String?
+
+  // Timing
+  startedAt   DateTime          @default(now())
+  completedAt DateTime?
+  durationMs  Int?
+
+  // Delivery status
+  status      DeliveryStatus    @default(PENDING)
+  retryCount  Int               @default(0)
+
+  @@index([webhookId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("webhook_deliveries")
+}
+
+enum DeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+  RETRYING
 }

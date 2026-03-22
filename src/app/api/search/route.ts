@@ -1,10 +1,14 @@
 /**
- * Global Search API
+ * Global Search API with Filters
+ * Supports: type, dateFrom, dateTo filters
  */
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+
+const VALID_TYPES = ['chat', 'document', 'message', 'workspace'] as const;
+type SearchType = typeof VALID_TYPES[number];
 
 export async function GET(req: Request) {
   try {
@@ -16,9 +20,24 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const query = searchParams.get('q')?.trim();
     const limit = parseInt(searchParams.get('limit') ?? '20', 10);
+    
+    // Parse filters
+    const typesParam = searchParams.get('type');
+    const types = typesParam 
+      ? typesParam.split(',').filter((t): t is SearchType => VALID_TYPES.includes(t as SearchType))
+      : VALID_TYPES;
+    
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
+    
+    // Build date filter
+    const dateFilter: { gte?: Date; lte?: Date } = {};
+    if (dateFrom) dateFilter.gte = new Date(dateFrom);
+    if (dateTo) dateFilter.lte = new Date(dateTo);
+    const hasDateFilter = Object.keys(dateFilter).length > 0;
 
     if (!query || query.length < 2) {
-      return NextResponse.json({ results: [] });
+      return NextResponse.json({ results: [], filters: { types, dateFrom, dateTo } });
     }
 
     const userId = session.user.id;
@@ -27,77 +46,115 @@ export async function GET(req: Request) {
       OR: [{ userId }, { workspace: { members: { some: { userId } } } }],
     };
 
-    const [chats, documents, messages, workspaces] = await Promise.all([
-      prisma.chat.findMany({
-        where: {
-          ...workspaceFilter,
-          title: { contains: query, mode: 'insensitive' },
-        },
-        take: limit,
-        orderBy: { updatedAt: 'desc' },
-        select: {
-          id: true,
-          title: true,
-          updatedAt: true,
-          workspace: { select: { name: true } },
-          _count: { select: { messages: true } },
-        },
-      }),
+    // Build queries based on type filter
+    const queries: Promise<unknown[]>[] = [];
 
-      prisma.document.findMany({
-        where: {
-          ...workspaceFilter,
-          OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { content: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-        take: limit,
-        orderBy: { updatedAt: 'desc' },
-        select: {
-          id: true,
-          name: true,
-          content: true,
-          updatedAt: true,
-          workspace: { select: { name: true } },
-        },
-      }),
+    if (types.includes('chat')) {
+      queries.push(
+        prisma.chat.findMany({
+          where: {
+            ...workspaceFilter,
+            title: { contains: query, mode: 'insensitive' },
+            ...(hasDateFilter && { updatedAt: dateFilter }),
+          },
+          take: limit,
+          orderBy: { updatedAt: 'desc' },
+          select: {
+            id: true,
+            title: true,
+            updatedAt: true,
+            workspace: { select: { name: true } },
+            _count: { select: { messages: true } },
+          },
+        })
+      );
+    } else {
+      queries.push(Promise.resolve([]));
+    }
 
-      prisma.message.findMany({
-        where: {
-          chat: workspaceFilter,
-          content: { contains: query, mode: 'insensitive' },
-        },
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          content: true,
-          createdAt: true,
-          chat: { select: { id: true, title: true } },
-        },
-      }),
+    if (types.includes('document')) {
+      queries.push(
+        prisma.document.findMany({
+          where: {
+            ...workspaceFilter,
+            OR: [
+              { name: { contains: query, mode: 'insensitive' } },
+              { content: { contains: query, mode: 'insensitive' } },
+            ],
+            ...(hasDateFilter && { updatedAt: dateFilter }),
+          },
+          take: limit,
+          orderBy: { updatedAt: 'desc' },
+          select: {
+            id: true,
+            name: true,
+            content: true,
+            updatedAt: true,
+            workspace: { select: { name: true } },
+          },
+        })
+      );
+    } else {
+      queries.push(Promise.resolve([]));
+    }
 
-      prisma.workspace.findMany({
-        where: {
-          members: { some: { userId } },
-          OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { slug: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-        take: limit,
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          _count: { select: { members: true, documents: true } },
-        },
-      }),
-    ]);
+    if (types.includes('message')) {
+      queries.push(
+        prisma.message.findMany({
+          where: {
+            chat: workspaceFilter,
+            content: { contains: query, mode: 'insensitive' },
+            ...(hasDateFilter && { createdAt: dateFilter }),
+          },
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
+            chat: { select: { id: true, title: true } },
+          },
+        })
+      );
+    } else {
+      queries.push(Promise.resolve([]));
+    }
+
+    if (types.includes('workspace')) {
+      queries.push(
+        prisma.workspace.findMany({
+          where: {
+            members: { some: { userId } },
+            OR: [
+              { name: { contains: query, mode: 'insensitive' } },
+              { slug: { contains: query, mode: 'insensitive' } },
+            ],
+            ...(hasDateFilter && { createdAt: dateFilter }),
+          },
+          take: limit,
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            createdAt: true,
+            _count: { select: { members: true, documents: true } },
+          },
+        })
+      );
+    } else {
+      queries.push(Promise.resolve([]));
+    }
+
+    const [chats, documents, messages, workspaces] = await Promise.all(queries);
 
     const results = [
-      ...chats.map((chat) => ({
+      ...(chats as Array<{
+        id: string;
+        title: string;
+        updatedAt: Date;
+        workspace?: { name: string };
+        _count: { messages: number };
+      }>).map((chat) => ({
         id: chat.id,
         type: 'chat' as const,
         title: chat.title,
@@ -107,7 +164,13 @@ export async function GET(req: Request) {
         url: `/chat/${chat.id}`,
       })),
 
-      ...documents.map((doc) => ({
+      ...(documents as Array<{
+        id: string;
+        name: string;
+        content: string | null;
+        updatedAt: Date;
+        workspace?: { name: string };
+      }>).map((doc) => ({
         id: doc.id,
         type: 'document' as const,
         title: doc.name,
@@ -117,22 +180,33 @@ export async function GET(req: Request) {
         url: `/documents/${doc.id}`,
       })),
 
-      ...messages.map((msg) => ({
+      ...(messages as Array<{
+        id: string;
+        content: string;
+        createdAt: Date;
+        chat?: { id: string; title: string | null };
+      }>).map((msg) => ({
         id: msg.id,
         type: 'message' as const,
         title: msg.chat?.title || 'Untitled Chat',
         subtitle: 'Message',
         content: msg.content.slice(0, 200),
         updatedAt: msg.createdAt,
-        url: `/chat/${msg.chat.id}?message=${msg.id}`,
+        url: `/chat/${msg.chat?.id}?message=${msg.id}`,
       })),
 
-      ...workspaces.map((ws) => ({
+      ...(workspaces as Array<{
+        id: string;
+        name: string;
+        slug: string;
+        createdAt: Date;
+        _count: { members: number; documents: number };
+      }>).map((ws) => ({
         id: ws.id,
         type: 'workspace' as const,
         title: ws.name,
         subtitle: `${ws._count.members} members • ${ws._count.documents} documents`,
-        updatedAt: new Date(),
+        updatedAt: ws.createdAt,
         url: `/workspaces/${ws.slug}`,
       })),
     ];
@@ -158,9 +232,14 @@ export async function GET(req: Request) {
     return NextResponse.json({
       results: scoredResults.slice(0, limit),
       total: scoredResults.length,
-      query,
+      filters: {
+        types,
+        dateFrom,
+        dateTo,
+      },
     });
-  } catch (_error) {
+  } catch (error) {
+    console.error('Search error:', error);
     return NextResponse.json({ error: 'Search failed' }, { status: 500 });
   }
 }

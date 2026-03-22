@@ -10,7 +10,7 @@
  * - Audit logging
  */
 
-import { type LanguageModel, streamText } from 'ai';
+import { generateText, type LanguageModel, streamText } from 'ai';
 import { NextResponse } from 'next/server';
 import { createProviderFromEnv, type LLMMessage } from '@/lib/ai/llm';
 import { buildSystemPromptWithContext } from '@/lib/ai/prompts/templates';
@@ -255,6 +255,9 @@ export async function POST(req: Request) {
               role: 'assistant',
               content: completion.text,
             });
+            
+            // Generate title if this is the first exchange
+            await maybeGenerateTitle(effectiveConversationId, userMessage, completion.text, config.model);
           }
 
           // Log token usage
@@ -330,6 +333,9 @@ export async function POST(req: Request) {
             total: response.usage.totalTokens,
           },
         });
+        
+        // Generate title if this is the first exchange
+        await maybeGenerateTitle(effectiveConversationId, userMessage, response.content, config.model);
       }
 
       // Log token usage
@@ -528,6 +534,94 @@ export async function DELETE(req: Request) {
 }
 
 // =============================================================================
+// PATCH Handler - Update chat (title, model, etc.)
+// =============================================================================
+
+export async function PATCH(req: Request) {
+  try {
+    // Authenticate user
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const workspaceId = session.user.workspaceId;
+
+    // Parse request body
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON body', code: 'INVALID_BODY' },
+        { status: 400 }
+      );
+    }
+
+    const { chatId, title, model } = body as { chatId?: string; title?: string; model?: string };
+
+    if (!chatId) {
+      return NextResponse.json(
+        { error: 'chatId is required', code: 'MISSING_ID' },
+        { status: 400 }
+      );
+    }
+
+    // Verify user has access to this chat
+    const chat = await prisma.chat.findFirst({
+      where: {
+        id: chatId,
+        OR: [{ userId }, workspaceId ? { workspaceId } : {}],
+      },
+    });
+
+    if (!chat) {
+      return NextResponse.json({ error: 'Chat not found', code: 'NOT_FOUND' }, { status: 404 });
+    }
+
+    // Build update data
+    const updateData: { title?: string; model?: string } = {};
+    if (title !== undefined) updateData.title = title;
+    if (model !== undefined) updateData.model = model;
+
+    // Update chat
+    const updatedChat = await prisma.chat.update({
+      where: { id: chatId },
+      data: updateData,
+    });
+
+    // Log update
+    await logAuditEvent({
+      event: AuditEvent.WORKSPACE_UPDATED,
+      userId,
+      workspaceId: chat.workspaceId ?? undefined,
+      metadata: { chatId, updates: Object.keys(updateData) },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        chat: {
+          id: updatedChat.id,
+          title: updatedChat.title,
+          model: updatedChat.model,
+          updatedAt: updatedChat.updatedAt.toISOString(),
+        },
+      },
+    });
+  } catch (error) {
+    logger.warn('Failed to update chat', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json(
+      { error: 'Failed to update chat', code: 'INTERNAL_ERROR' },
+      { status: 500 }
+    );
+  }
+}
+
+// =============================================================================
 // Helper Functions
 // =============================================================================
 
@@ -578,4 +672,63 @@ function getErrorStatusCode(code: string): number {
   };
 
   return statusMap[code] ?? 500;
+}
+
+/**
+ * Generate a title for the chat based on the first user message and assistant response
+ * Only generates if the chat still has the default title
+ */
+async function maybeGenerateTitle(
+  chatId: string,
+  userMessage: string,
+  assistantResponse: string,
+  modelName: string
+): Promise<void> {
+  try {
+    // Check if chat has default title
+    const chat = await prisma.chat.findUnique({
+      where: { id: chatId },
+      select: { title: true },
+    });
+
+    if (!chat || (chat.title !== 'New Chat' && chat.title !== '')) {
+      return; // Already has a custom title
+    }
+
+    // Generate title using a quick LLM call
+    const titleModel = modelName.includes(':') ? 'mistralai/mistral-7b-instruct:free' : modelName;
+    
+    const { text: title } = await generateText({
+      model: getModel(titleModel),
+      messages: [
+        {
+          role: 'system',
+          content: 'Generate a concise 4-6 word title for this conversation. Return ONLY the title, no quotes or explanation.',
+        },
+        {
+          role: 'user',
+          content: `User: ${userMessage.slice(0, 200)}\n\nAssistant: ${assistantResponse.slice(0, 200)}`,
+        },
+      ],
+      maxTokens: 20,
+      temperature: 0.7,
+    });
+
+    const cleanTitle = title.trim().replace(/^["']|["']$/g, '').slice(0, 100);
+    
+    if (cleanTitle && cleanTitle.length > 0) {
+      await prisma.chat.update({
+        where: { id: chatId },
+        data: { title: cleanTitle },
+      });
+      
+      logger.info({ chatId, title: cleanTitle }, 'Generated chat title');
+    }
+  } catch (error) {
+    // Don't fail the chat if title generation fails
+    logger.warn({
+      chatId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }, 'Failed to generate chat title');
+  }
 }

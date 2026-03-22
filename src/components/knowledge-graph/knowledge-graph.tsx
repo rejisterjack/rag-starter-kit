@@ -1,8 +1,19 @@
 'use client';
 
-import type { Simulation, SimulationLinkDatum, SimulationNodeDatum } from 'd3';
-// Use d3 with tree-shaking - importing specific modules from the main package
-import { type Selection, select } from 'd3';
+// Tree-shaken D3 imports - only import what we need (Fix #12)
+import { select, type Selection } from 'd3-selection';
+import { zoom, zoomIdentity, type ZoomBehavior, type D3ZoomEvent } from 'd3-zoom';
+import { drag, type D3DragEvent } from 'd3-drag';
+import {
+  forceSimulation,
+  forceLink,
+  forceManyBody,
+  forceCenter,
+  forceCollide,
+  type Simulation,
+  type SimulationNodeDatum,
+  type SimulationLinkDatum,
+} from 'd3-force';
 import { RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -49,36 +60,29 @@ export function KnowledgeGraph({ nodes, edges, onNodeClick, className }: Knowled
     const width = svgRef.current.clientWidth;
     const height = svgRef.current.clientHeight;
 
-    // Create zoom behavior using d3.zoom
-    const zoomBehavior = (d3 as typeof import('d3'))
-      .zoom<SVGSVGElement, unknown>()
+    // Create zoom behavior
+    const zoomBehavior: ZoomBehavior<SVGSVGElement, unknown> = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 4])
-      .on('zoom', (event: import('d3').D3ZoomEvent<SVGSVGElement, unknown>) => {
+      .on('zoom', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
         g.attr('transform', event.transform.toString());
         setZoomLevel(event.transform.k);
       });
 
-    svg.call(
-      zoomBehavior as unknown as (
-        selection: Selection<SVGSVGElement, unknown, null, undefined>
-      ) => void
-    );
+    svg.call(zoomBehavior);
 
     const g = svg.append('g');
 
-    // Create simulation
-    const simulation = (d3 as typeof import('d3'))
-      .forceSimulation<Node>(nodes)
+    // Create simulation with named imports
+    const simulation: Simulation<Node, Edge> = forceSimulation<Node>(nodes)
       .force(
         'link',
-        (d3 as typeof import('d3'))
-          .forceLink<Node, Edge>(edges)
+        forceLink<Node, Edge>(edges)
           .id((d) => d.id)
           .distance(100)
       )
-      .force('charge', (d3 as typeof import('d3')).forceManyBody().strength(-300))
-      .force('center', (d3 as typeof import('d3')).forceCenter(width / 2, height / 2))
-      .force('collision', (d3 as typeof import('d3')).forceCollide().radius(30));
+      .force('charge', forceManyBody().strength(-300))
+      .force('center', forceCenter(width / 2, height / 2))
+      .force('collision', forceCollide().radius(30));
 
     simulationRef.current = simulation;
 
@@ -102,18 +106,17 @@ export function KnowledgeGraph({ nodes, edges, onNodeClick, className }: Knowled
       .append('g')
       .attr('cursor', 'pointer')
       .call(
-        (d3 as typeof import('d3'))
-          .drag<SVGGElement, Node>()
-          .on('start', (event: import('d3').D3DragEvent<SVGGElement, Node, unknown>, d: Node) => {
+        drag<SVGGElement, Node>()
+          .on('start', (event: D3DragEvent<SVGGElement, Node>, d: Node) => {
             if (!event.active) simulation.alphaTarget(0.3).restart();
             d.fx = d.x ?? null;
             d.fy = d.y ?? null;
           })
-          .on('drag', (event: import('d3').D3DragEvent<SVGGElement, Node, unknown>, d: Node) => {
+          .on('drag', (event: D3DragEvent<SVGGElement, Node>, d: Node) => {
             d.fx = event.x;
             d.fy = event.y;
           })
-          .on('end', (event: import('d3').D3DragEvent<SVGGElement, Node, unknown>, d: Node) => {
+          .on('end', (event: D3DragEvent<SVGGElement, Node>, d: Node) => {
             if (!event.active) simulation.alphaTarget(0);
             d.fx = null;
             d.fy = null;
@@ -170,25 +173,17 @@ export function KnowledgeGraph({ nodes, edges, onNodeClick, className }: Knowled
 
   const handleZoomIn = () => {
     if (svgRef.current) {
-      const d3Module = d3 as typeof import('d3');
       select(svgRef.current)
         .transition()
-        .call(
-          d3Module.zoom<SVGSVGElement, unknown>().transform,
-          d3Module.zoomIdentity.scale(zoomLevel * 1.2)
-        );
+        .call(zoom<SVGSVGElement, unknown>().transform, zoomIdentity.scale(zoomLevel * 1.2));
     }
   };
 
   const handleZoomOut = () => {
     if (svgRef.current) {
-      const d3Module = d3 as typeof import('d3');
       select(svgRef.current)
         .transition()
-        .call(
-          d3Module.zoom<SVGSVGElement, unknown>().transform,
-          d3Module.zoomIdentity.scale(zoomLevel * 0.8)
-        );
+        .call(zoom<SVGSVGElement, unknown>().transform, zoomIdentity.scale(zoomLevel * 0.8));
     }
   };
 
@@ -238,8 +233,5 @@ export function KnowledgeGraph({ nodes, edges, onNodeClick, className }: Knowled
     </div>
   );
 }
-
-// Import d3 as a namespace for types
-import * as d3 from 'd3';
 
 export default KnowledgeGraph;

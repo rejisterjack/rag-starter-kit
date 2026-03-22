@@ -21,6 +21,8 @@ interface MessageListProps {
   onDeleteMessage?: (id: string) => void;
   onCitationClick?: (index: number) => void;
   onCancelStreaming?: () => void;
+  onRegenerate?: () => void;
+  onFeedback?: (messageId: string, rating: 'up' | 'down') => void;
   className?: string;
 }
 
@@ -35,6 +37,8 @@ export function MessageList({
   onDeleteMessage,
   onCitationClick,
   onCancelStreaming,
+  onRegenerate,
+  onFeedback,
   className,
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -115,17 +119,21 @@ export function MessageList({
 
           {/* Messages */}
           <AnimatePresence mode="popLayout">
-            {messages.map((message) => (
+            {messages.map((message, index) => (
               <MessageItem
                 key={message.id}
                 message={message}
                 onEdit={onEditMessage}
                 onDelete={onDeleteMessage}
                 onCitationClick={onCitationClick}
+                isLastMessage={index === messages.length - 1}
+                isStreaming={isStreaming}
+                onRegenerate={onRegenerate}
+                onFeedback={onFeedback}
               />
             ))}
 
-            {/* Streaming message chunk */}
+            {/* Streaming message chunk with aria-live for accessibility */}
             {isStreaming && (
               <motion.div
                 key="streaming-message"
@@ -134,6 +142,9 @@ export function MessageList({
                 transition={{ duration: 0.3, ease: 'easeOut' }}
                 layout
                 className="mt-4"
+                aria-live="polite"
+                aria-atomic="false"
+                aria-label="AI is typing"
               >
                 <StreamingMessage content={streamingContent} onCancel={onCancelStreaming} />
               </motion.div>

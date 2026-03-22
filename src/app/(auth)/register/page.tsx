@@ -1,16 +1,37 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, type Variants } from 'framer-motion';
 import { Github, Loader2, Mail, User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+
+// Validation schema
+const registerSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Please enter a valid email address'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/\d/, 'Password must contain at least one number'),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
+});
+
+type RegisterFormData = z.infer<typeof registerSchema>;
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -33,50 +54,41 @@ export default function RegisterPage(): React.ReactElement {
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const validatePassword = (password: string): string | null => {
-    if (password.length < 8) return 'Password must be at least 8 characters long';
-    if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter';
-    if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter';
-    if (!/\d/.test(password)) return 'Password must contain at least one number';
-    return null;
-  };
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    mode: 'onBlur',
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
     setError(null);
-
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-      setError(passwordError);
-      setIsLoading(false);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      setIsLoading(false);
-      return;
-    }
 
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          password: data.password,
+        }),
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error?.message || 'Failed to create account');
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message || 'Failed to create account');
 
-      const result = await signIn('credentials', { email, password, redirect: false });
-      if (result?.error) {
+      const signInResult = await signIn('credentials', {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
+      if (signInResult?.error) {
         router.push('/login?registered=true');
       } else {
         router.push('/chat');
@@ -88,12 +100,6 @@ export default function RegisterPage(): React.ReactElement {
       setIsLoading(false);
     }
   };
-
-  // OAuth signup disabled - no GitHub/Google credentials configured
-  // const handleOAuthSignUp = (provider: string) => {
-  //   setIsLoading(true);
-  //   signIn(provider, { callbackUrl: '/chat' });
-  // };
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">
@@ -175,7 +181,7 @@ export default function RegisterPage(): React.ReactElement {
         </div>
       </motion.div>
 
-      <motion.form variants={itemVariants} onSubmit={handleSubmit} className="space-y-4">
+      <motion.form variants={itemVariants} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="name" className="text-muted-foreground">
             Full name
@@ -186,13 +192,15 @@ export default function RegisterPage(): React.ReactElement {
               id="name"
               type="text"
               placeholder="John Doe"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              {...register('name')}
               className="pl-10 bg-background/50 border-white/10 focus-visible:ring-primary/50"
-              required
               disabled={isLoading}
+              aria-invalid={errors.name ? 'true' : 'false'}
             />
           </div>
+          {errors.name && (
+            <p className="text-sm text-red-500">{errors.name.message}</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="email" className="text-muted-foreground">
@@ -204,13 +212,15 @@ export default function RegisterPage(): React.ReactElement {
               id="email"
               type="email"
               placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              {...register('email')}
               className="pl-10 bg-background/50 border-white/10 focus-visible:ring-primary/50"
-              required
               disabled={isLoading}
+              aria-invalid={errors.email ? 'true' : 'false'}
             />
           </div>
+          {errors.email && (
+            <p className="text-sm text-red-500">{errors.email.message}</p>
+          )}
         </div>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -221,15 +231,18 @@ export default function RegisterPage(): React.ReactElement {
               id="password"
               type="password"
               placeholder="Create a password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+              {...register('password')}
               disabled={isLoading}
+              aria-invalid={errors.password ? 'true' : 'false'}
               className="bg-background/50 border-white/10 focus-visible:ring-primary/50"
             />
-            <p className="text-xs text-muted-foreground/80 px-1">
-              At least 8 items, mixed case & numbers
-            </p>
+            {errors.password ? (
+              <p className="text-sm text-red-500">{errors.password.message}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground/80 px-1">
+                At least 8 items, mixed case & numbers
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword" className="text-muted-foreground">
@@ -239,12 +252,14 @@ export default function RegisterPage(): React.ReactElement {
               id="confirmPassword"
               type="password"
               placeholder="Confirm your password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
+              {...register('confirmPassword')}
               disabled={isLoading}
+              aria-invalid={errors.confirmPassword ? 'true' : 'false'}
               className="bg-background/50 border-white/10 focus-visible:ring-primary/50"
             />
+            {errors.confirmPassword && (
+              <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
+            )}
           </div>
         </div>
         <Button type="submit" className="w-full mt-2 font-medium" disabled={isLoading}>

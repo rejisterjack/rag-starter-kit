@@ -22,6 +22,8 @@ import { EmptyState } from './empty-state';
 import { MessageInput } from './message-input';
 import type { Message } from './message-item';
 import { MessageList } from './message-list';
+import { ModelPicker } from './model-picker';
+import { ShareDialog } from './share-dialog';
 import { InlineSourcesPanel, SourcesPanel } from './sources-panel';
 
 interface ChatContainerProps {
@@ -29,12 +31,18 @@ interface ChatContainerProps {
   sources: Source[];
   isStreaming: boolean;
   streamingContent: string;
+  selectedModel?: string;
+  chatId?: string;
+  chatTitle?: string;
   onSendMessage: (message: string, files?: File[]) => void;
   onCancelStreaming: () => void;
   onLoadMore?: () => void;
   onEditMessage?: (id: string, newContent: string) => void;
   onDeleteMessage?: (id: string) => void;
   onNewChat?: () => void;
+  onModelChange?: (modelId: string) => void;
+  onRegenerate?: () => void;
+  onFeedback?: (messageId: string, rating: 'up' | 'down') => void;
   hasMore?: boolean;
   isLoading?: boolean;
   sidebar?: React.ReactNode;
@@ -46,12 +54,18 @@ export function ChatContainer({
   sources,
   isStreaming,
   streamingContent,
+  selectedModel = 'deepseek/deepseek-chat:free',
+  chatId,
+  chatTitle,
   onSendMessage,
   onCancelStreaming,
   onLoadMore,
   onEditMessage,
   onDeleteMessage,
   onNewChat,
+  onModelChange,
+  onRegenerate,
+  onFeedback,
   hasMore = false,
   isLoading = false,
   sidebar,
@@ -141,6 +155,20 @@ export function ChatContainer({
                   <span className="hidden sm:inline">New Chat</span>
                 </Button>
               </motion.div>
+            )}
+            {/* Model Picker */}
+            <ModelPicker
+              selectedModel={selectedModel}
+              onModelChange={onModelChange || (() => {})}
+              disabled={isStreaming}
+            />
+            
+            {/* Share Button */}
+            {chatId && (
+              <ShareDialog
+                chatId={chatId}
+                chatTitle={chatTitle}
+              />
             )}
           </div>
 
@@ -242,6 +270,8 @@ export function ChatContainer({
                       onDeleteMessage={onDeleteMessage}
                       onCitationClick={handleCitationClick}
                       onCancelStreaming={onCancelStreaming}
+                      onRegenerate={onRegenerate}
+                      onFeedback={onFeedback}
                     />
                   </motion.div>
                 ) : (

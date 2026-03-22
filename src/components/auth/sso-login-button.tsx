@@ -1,6 +1,7 @@
 'use client';
 
 import { Building2, Fingerprint, Loader2, Shield } from 'lucide-react';
+import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -208,8 +209,14 @@ export function SSOLoginButton({
         {isLoading ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : domainResult?.workspaceLogo ? (
-          // biome-ignore lint/performance/noImgElement: External logos cannot use Next.js Image
-          <img src={domainResult.workspaceLogo} alt="" className="mr-2 h-4 w-4 object-contain" />
+          <Image
+            src={domainResult.workspaceLogo}
+            alt=""
+            width={16}
+            height={16}
+            className="mr-2 h-4 w-4 object-contain"
+            unoptimized // External logos may not work with Next.js image optimization
+          />
         ) : domainResult?.found && domainResult.ssoMethods.length === 1 ? (
           <ProviderIcon provider={domainResult.ssoMethods[0].provider} />
         ) : (
@@ -324,8 +331,14 @@ export function CompactSSOButton({
       {isLoading ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : workspaceLogo ? (
-        // biome-ignore lint/performance/noImgElement: External logos cannot use Next.js Image
-        <img src={workspaceLogo} alt="" className="h-4 w-4 object-contain" />
+        <Image
+          src={workspaceLogo}
+          alt=""
+          width={16}
+          height={16}
+          className="h-4 w-4 object-contain"
+          unoptimized
+        />
       ) : (
         <Building2 className="h-4 w-4" />
       )}

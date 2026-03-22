@@ -1,16 +1,27 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, type Variants } from 'framer-motion';
 import { AlertTriangle, Github, Loader2, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+
+// Validation schema
+const loginSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 interface SSOMethod {
   type: 'saml' | 'oauth';
@@ -54,11 +65,21 @@ export default function LoginPage(): React.ReactElement {
   const error = searchParams.get('error');
 
   const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(error);
   const [ssoDetected, setSsoDetected] = useState<DomainLookupResult | null>(null);
   const [isCheckingDomain, setIsCheckingDomain] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    mode: 'onBlur',
+  });
+
+  const email = watch('email');
 
   useEffect(() => {
     const checkDomain = async () => {
@@ -84,15 +105,14 @@ export default function LoginPage(): React.ReactElement {
     return () => clearTimeout(timeoutId);
   }, [email]);
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setLoginError(null);
 
     try {
       const result = await signIn('credentials', {
-        email,
-        password,
+        email: data.email,
+        password: data.password,
         redirect: false,
         callbackUrl,
       });
@@ -109,12 +129,6 @@ export default function LoginPage(): React.ReactElement {
       setIsLoading(false);
     }
   };
-
-  // OAuth login disabled - no GitHub/Google credentials configured
-  // const handleOAuthLogin = (provider: string) => {
-  //   setIsLoading(true);
-  //   signIn(provider, { callbackUrl });
-  // };
 
   const handleSSOSelected = useCallback(
     (method: SSOMethod, workspaceId: string) => {
@@ -228,7 +242,7 @@ export default function LoginPage(): React.ReactElement {
             </div>
           )}
           <SSOLoginButton
-            email={email}
+            email={email || ''}
             onSSODetected={setSsoDetected}
             onSSOSelected={handleSSOSelected}
             showAlways={showSSOOnly}
@@ -252,7 +266,7 @@ export default function LoginPage(): React.ReactElement {
               </span>
             </div>
           </div>
-          <form onSubmit={handleEmailLogin} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-muted-foreground">
                 Email
@@ -263,13 +277,15 @@ export default function LoginPage(): React.ReactElement {
                   id="email"
                   type="email"
                   placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  {...register('email')}
                   className="pl-10 bg-background/50 border-white/10 focus-visible:ring-primary/50"
-                  required
                   disabled={isLoading}
+                  aria-invalid={errors.email ? 'true' : 'false'}
                 />
               </div>
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email.message}</p>
+              )}
               {isCheckingDomain && (
                 <p className="text-xs text-muted-foreground">
                   <Loader2 className="inline h-3 w-3 animate-spin mr-1" />
@@ -293,12 +309,14 @@ export default function LoginPage(): React.ReactElement {
                 id="password"
                 type="password"
                 placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                {...register('password')}
                 disabled={isLoading}
+                aria-invalid={errors.password ? 'true' : 'false'}
                 className="bg-background/50 border-white/10 focus-visible:ring-primary/50"
               />
+              {errors.password && (
+                <p className="text-sm text-red-500">{errors.password.message}</p>
+              )}
             </div>
             <Button type="submit" className="w-full font-medium" disabled={isLoading}>
               {isLoading ? (

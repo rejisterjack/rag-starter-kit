@@ -77,7 +77,7 @@ This project implements the following security measures:
 
 - File uploads are scanned client-side only (ClamAV integration is optional)
 - Rate limits depend on Redis availability
-- Document content is stored in plain text in the database
+- Document content is encrypted at rest using field-level encryption (ENCRYPTION_MASTER_KEY)
 
 ## Acknowledgments
 

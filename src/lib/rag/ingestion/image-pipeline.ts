@@ -329,8 +329,13 @@ export async function processImage(
           status: 'COMPLETED',
         },
       });
-    } catch {
+    } catch (error) {
       // Caption generation timed out or failed, that's ok
+      logger.warn('Caption generation timed out or failed', {
+        documentId,
+        imageId: result.docImage.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
       await prisma.documentImage.update({
         where: { id: result.docImage.id },
         data: { status: 'COMPLETED' },

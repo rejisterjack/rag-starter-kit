@@ -20,7 +20,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { inngest } from '@/lib/inngest/client';
 import { parseDOCX, parseHTML, parsePDF, parseText } from '@/lib/rag/ingestion';
-import { validateFile } from '@/lib/security/input-validator';
+import { validateFile, validateFileBytes } from '@/lib/security/input-validator';
 import {
   addRateLimitHeaders,
   checkApiRateLimit,
@@ -235,8 +235,24 @@ async function handleFileIngestion(
     );
   }
 
-  // Step 5: Convert to buffer and parse content
+  // Step 5: Convert to buffer and validate magic bytes
   const bytes = await file.arrayBuffer();
+  
+  // Validate file bytes using magic byte detection (Fix #8)
+  const magicBytesValidation = validateFileBytes(bytes, file.type);
+  if (!magicBytesValidation.valid) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'INVALID_FILE_CONTENT',
+          message: magicBytesValidation.error ?? 'File content does not match expected type',
+        },
+      },
+      { status: 400 }
+    );
+  }
+  
   const buffer = Buffer.from(bytes);
 
   let content: string;
@@ -253,6 +269,18 @@ async function handleFileIngestion(
       case 'DOCX': {
         content = await parseDOCX(buffer);
         metadata = { source: 'docx' };
+        break;
+      }
+
+      case 'XLSX': {
+        content = await parseXLSXBuffer(buffer);
+        metadata = { source: 'xlsx' };
+        break;
+      }
+
+      case 'PPTX': {
+        content = await parsePPTXBuffer(buffer);
+        metadata = { source: 'pptx' };
         break;
       }
 

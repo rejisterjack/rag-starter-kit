@@ -67,6 +67,13 @@ export const rateLimits = {
 
   // Search endpoints
   search: { limit: 100, windowMs: 60 * 1000, prefix: 'search' }, // 100/min
+  
+  // Feedback endpoints
+  feedback: { limit: 30, windowMs: 60 * 1000, prefix: 'feedback' }, // 30/min
+  
+  // Share endpoints
+  share: { limit: 20, windowMs: 60 * 1000, prefix: 'share' }, // 20/min
+  share_view: { limit: 60, windowMs: 60 * 1000, prefix: 'share_view' }, // 60/min
 } as const;
 
 export type RateLimitType = keyof typeof rateLimits;
