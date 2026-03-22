@@ -184,7 +184,7 @@
     "mammoth": "^1.9.0",
     "next-swagger-doc": "^0.4.0",
     "postcss": "^8.5.3",
-    "prisma": "^6.5.0",
+    "prisma": "^7.5.0",
     "storybook": "^10.3.1",
     "swagger-ui-react": "^5.0.0",
     "tailwindcss": "4.x",
