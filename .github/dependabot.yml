@@ -1,77 +1,156 @@
+# Dependabot Configuration
+# Automatically checks for dependency updates and security vulnerabilities
+#
+# Docs: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
 version: 2
 
 updates:
-  # npm dependencies
-  - package-ecosystem: npm
+  # ==========================================
+  # NPM Dependencies
+  # ==========================================
+  - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: weekly
-      day: monday
+      interval: "weekly"
+      day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "your-github-username"
-    assignees:
-      - "your-github-username"
-    commit-message:
-      prefix: "chore"
-      prefix-development: "chore(dev)"
-      include: scope
-    labels:
-      - "dependencies"
-      - "npm"
+    
+    # Group related updates together
     groups:
-      # Group minor and patch updates together
-      minor-patch-dependencies:
+      # Security updates group
+      security:
+        applies-to: security-updates
         patterns:
           - "*"
+      
+      # Development dependencies
+      dev-dependencies:
+        applies-to: version-updates
+        patterns:
+          - "@types/*"
+          - "eslint*"
+          - "prettier*"
+          - "typescript*"
+          - "vitest*"
+          - "@testing-library/*"
+          - "playwright"
         update-types:
           - "minor"
           - "patch"
-      # Group major updates separately for careful review
-      major-dependencies:
+      
+      # React ecosystem
+      react:
+        applies-to: version-updates
         patterns:
-          - "*"
-        update-types:
-          - "major"
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+          - "next"
+      
+      # UI components
+      ui:
+        applies-to: version-updates
+        patterns:
+          - "@radix-ui/*"
+          - "tailwindcss*"
+          - "class-variance-authority"
+          - "clsx"
+          - "tailwind-merge"
+      
+      # AI/ML libraries
+      ai:
+        applies-to: version-updates
+        patterns:
+          - "ai"
+          - "@ai-sdk/*"
+          - "openai"
+          - "@langchain/*"
+          - "langchain"
+    
+    # Separate security updates
+    open-pull-requests-limit: 10
+    
+    # Labels for PRs
+    labels:
+      - "dependencies"
+      - "npm"
+    
+    # Commit message format
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore(dev)"
+      include: "scope"
+    
+    # Reviewers
+    reviewers:
+      - "security-team"
+    
+    # Ignore certain dependencies
     ignore:
-      # Ignore Next.js major updates (requires manual migration)
+      # Ignore major version updates for these (requires manual review)
       - dependency-name: "next"
         update-types: ["version-update:semver-major"]
-      # Ignore React major updates (coordinate with Next.js)
       - dependency-name: "react"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-dom"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+    
+    # Auto-merge patch updates for dev dependencies
+    # Note: Requires enabling auto-merge in GitHub settings
+    # automerge: true (only for security updates by default)
 
-  # Docker dependencies
-  - package-ecosystem: docker
-    directory: "/docker"
-    schedule:
-      interval: monthly
-      time: "09:00"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "your-github-username"
-    labels:
-      - "dependencies"
-      - "docker"
-    commit-message:
-      prefix: "chore(docker)"
-      include: scope
-
+  # ==========================================
   # GitHub Actions
-  - package-ecosystem: github-actions
+  # ==========================================
+  - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: monthly
+      interval: "weekly"
+      day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "your-github-username"
+    
+    groups:
+      actions:
+        applies-to: version-updates
+        patterns:
+          - "actions/*"
+          - "*/*"
+    
     labels:
       - "dependencies"
       - "github-actions"
+    
     commit-message:
-      prefix: "chore(ci)"
-      include: scope
+      prefix: "ci"
+      include: "scope"
+
+  # ==========================================
+  # Docker
+  # ==========================================
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    
+    labels:
+      - "dependencies"
+      - "docker"
+    
+    commit-message:
+      prefix: "chore(docker)"
+      include: "scope"
+
+# ==========================================
+# Security Alerts
+# =========================================-
+# Enable Dependabot security alerts in repository settings
+# Settings > Security > Code security and analysis > Dependabot alerts
+
+# Enable Dependabot security updates
+# Settings > Security > Code security and analysis > Dependabot security updates

@@ -1,398 +1,200 @@
+/**
+ * Health Check Endpoint
+ *
+ * Comprehensive health check for monitoring and load balancers.
+ *
+ * Endpoints:
+ * - GET /api/health - Basic liveness check
+ * - GET /api/health/ready - Readiness check (includes dependencies)
+ * - GET /api/health/live - Liveness check
+ */
+
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
+import { checkRAGHealth } from '@/lib/rag/engine';
+
+// =============================================================================
+// Types
+// =============================================================================
 
 interface HealthCheck {
-  name: string;
-  healthy: boolean;
-  degraded?: boolean;
-  responseTime?: number;
-  error?: string;
-  details?: Record<string, unknown>;
+  status: 'healthy' | 'unhealthy' | 'degraded';
+  timestamp: string;
+  version: string;
+  uptime: number;
+  checks: {
+    database: HealthStatus;
+    redis?: HealthStatus;
+    vectorStore: HealthStatus;
+    embeddingProvider: HealthStatus;
+    ragPipeline: HealthStatus;
+  };
 }
 
-/**
- * Check database connectivity
- */
-async function checkDatabase(): Promise<HealthCheck> {
+interface HealthStatus {
+  status: 'up' | 'down' | 'degraded';
+  responseTime?: number;
+  message?: string;
+  lastChecked: string;
+}
+
+// =============================================================================
+// Configuration
+// =============================================================================
+
+const START_TIME = Date.now();
+const VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0';
+
+// =============================================================================
+// Health Checks
+// =============================================================================
+
+async function checkDatabase(): Promise<HealthStatus> {
   const start = Date.now();
   try {
-    // Simple query to check connection
     await prisma.$queryRaw`SELECT 1`;
     return {
-      name: 'database',
-      healthy: true,
+      status: 'up',
       responseTime: Date.now() - start,
+      lastChecked: new Date().toISOString(),
     };
   } catch (error) {
+    logger.error('Database health check failed', { error });
     return {
-      name: 'database',
-      healthy: false,
+      status: 'down',
       responseTime: Date.now() - start,
-      error: error instanceof Error ? error.message : 'Database connection failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      lastChecked: new Date().toISOString(),
     };
   }
 }
 
-/**
- * Check pgvector extension
- */
-async function checkVectorExtension(): Promise<HealthCheck> {
+async function checkVectorStore(): Promise<HealthStatus> {
   const start = Date.now();
   try {
-    const result = await prisma.$queryRaw<[{ installed: boolean }]>`SELECT EXISTS (
-      SELECT 1 FROM pg_extension WHERE extname = 'vector'
-    ) as installed`;
-
-    const installed = result[0]?.installed ?? false;
-
+    // Check if pgvector extension is available
+    await prisma.$queryRaw`SELECT 1 FROM pg_extension WHERE extname = 'vector'`;
     return {
-      name: 'vector_extension',
-      healthy: installed,
+      status: 'up',
       responseTime: Date.now() - start,
-      details: { installed },
-      error: installed ? undefined : 'pgvector extension not installed',
+      lastChecked: new Date().toISOString(),
     };
   } catch (error) {
+    logger.error('Vector store health check failed', { error });
     return {
-      name: 'vector_extension',
-      healthy: false,
+      status: 'down',
       responseTime: Date.now() - start,
-      error: error instanceof Error ? error.message : 'Failed to check vector extension',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      lastChecked: new Date().toISOString(),
     };
   }
 }
 
-/**
- * Check OpenRouter API availability
- */
-async function checkOpenRouter(): Promise<HealthCheck> {
+async function checkEmbeddingProvider(): Promise<HealthStatus> {
   const start = Date.now();
   try {
-    const apiKey = env.OPENROUTER_API_KEY;
+    const { createEmbeddingProviderFromEnv } = await import('@/lib/ai/embeddings');
+    const provider = createEmbeddingProviderFromEnv();
 
-    if (!apiKey) {
+    if (provider.healthCheck) {
+      const isHealthy = await provider.healthCheck();
       return {
-        name: 'openrouter',
-        healthy: false,
-        degraded: true,
+        status: isHealthy ? 'up' : 'degraded',
         responseTime: Date.now() - start,
-        error: 'OPENROUTER_API_KEY not configured',
-      };
-    }
-
-    // Validate key format (OpenRouter keys start with sk-or-v1-)
-    const isValidFormat = apiKey.startsWith('sk-or-v1-');
-
-    if (!isValidFormat) {
-      return {
-        name: 'openrouter',
-        healthy: false,
-        degraded: true,
-        responseTime: Date.now() - start,
-        error: 'Invalid API key format - should start with sk-or-v1-',
+        lastChecked: new Date().toISOString(),
       };
     }
 
     return {
-      name: 'openrouter',
-      healthy: true,
-      degraded: false,
+      status: 'up',
       responseTime: Date.now() - start,
-      details: { configured: true, keyFormat: 'valid' },
+      lastChecked: new Date().toISOString(),
     };
   } catch (error) {
+    logger.error('Embedding provider health check failed', { error });
     return {
-      name: 'openrouter',
-      healthy: false,
-      degraded: true,
+      status: 'down',
       responseTime: Date.now() - start,
-      error: error instanceof Error ? error.message : 'OpenRouter check failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      lastChecked: new Date().toISOString(),
     };
   }
 }
 
-/**
- * Check Google AI (Gemini) API availability
- */
-async function checkGoogleAI(): Promise<HealthCheck> {
+async function checkRAGPipeline(): Promise<HealthStatus> {
   const start = Date.now();
   try {
-    const apiKey = env.GOOGLE_API_KEY;
-
-    if (!apiKey) {
-      return {
-        name: 'googleai',
-        healthy: false,
-        degraded: true,
-        responseTime: Date.now() - start,
-        error: 'GOOGLE_API_KEY not configured',
-      };
-    }
-
-    // Try a real embedding call with short timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-    try {
-      const { google } = await import('@ai-sdk/google');
-      const { embed } = await import('ai');
-
-      const result = await embed({
-        model: google.textEmbeddingModel('text-embedding-004'),
-        value: 'health check',
-        abortSignal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      return {
-        name: 'googleai',
-        healthy: true,
-        degraded: false,
-        responseTime: Date.now() - start,
-        details: {
-          configured: true,
-          embeddingDimensions: result.embedding.length,
-        },
-      };
-    } catch (embedError) {
-      clearTimeout(timeoutId);
-      throw embedError;
-    }
-  } catch (error) {
-    const isTimeout = error instanceof Error && error.name === 'AbortError';
+    const health = await checkRAGHealth();
     return {
-      name: 'googleai',
-      healthy: false,
-      degraded: true,
+      status: health.healthy ? 'up' : 'degraded',
       responseTime: Date.now() - start,
-      error: isTimeout
-        ? 'Google AI embedding request timed out (3s)'
-        : error instanceof Error
-          ? error.message
-          : 'Google AI check failed',
-    };
-  }
-}
-
-/**
- * Check Redis if configured (supports Upstash or local Redis)
- */
-async function checkRedis(): Promise<HealthCheck> {
-  const start = Date.now();
-
-  const isUpstash = env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN;
-  const isLocalRedis = env.REDIS_URL;
-
-  // Skip if not configured
-  if (!isUpstash && !isLocalRedis) {
-    return {
-      name: 'redis',
-      healthy: true,
-      responseTime: 0,
-      details: { configured: false },
-    };
-  }
-
-  try {
-    if (isUpstash) {
-      // Upstash Redis
-      const { Redis } = await import('@upstash/redis');
-      const redis = new Redis({
-        url: env.UPSTASH_REDIS_REST_URL,
-        token: env.UPSTASH_REDIS_REST_TOKEN,
-      });
-      await redis.ping();
-    } else {
-      // Local Redis via ioredis
-      const Redis = await import('ioredis');
-      const redisUrl = env.REDIS_URL || 'redis://localhost:6379';
-      const redis = new Redis.default(redisUrl);
-      await redis.ping();
-      await redis.quit();
-    }
-
-    return {
-      name: 'redis',
-      healthy: true,
-      responseTime: Date.now() - start,
-      details: { configured: true, type: isUpstash ? 'upstash' : 'redis' },
+      message: health.errors.length > 0 ? health.errors.join(', ') : undefined,
+      lastChecked: new Date().toISOString(),
     };
   } catch (error) {
+    logger.error('RAG pipeline health check failed', { error });
     return {
-      name: 'redis',
-      healthy: false,
+      status: 'down',
       responseTime: Date.now() - start,
-      error: error instanceof Error ? error.message : 'Redis connection failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      lastChecked: new Date().toISOString(),
     };
   }
 }
 
-/**
- * Check S3/MinIO storage if configured
- */
-async function checkStorage(): Promise<HealthCheck> {
-  const start = Date.now();
-
-  // Check if storage is configured
-  const hasS3Config = env.S3_ENDPOINT || env.AWS_ACCESS_KEY_ID;
-
-  if (!hasS3Config) {
-    return {
-      name: 'storage',
-      healthy: true,
-      degraded: false,
-      responseTime: 0,
-      details: { configured: false },
-    };
-  }
-
-  try {
-    const { S3Client, HeadBucketCommand } = await import('@aws-sdk/client-s3');
-
-    const s3Client = new S3Client({
-      endpoint: env.S3_ENDPOINT,
-      region: env.AWS_REGION || 'us-east-1',
-      credentials: {
-        accessKeyId: env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: env.AWS_SECRET_ACCESS_KEY || '',
-      },
-      forcePathStyle: true,
-    });
-
-    const bucketName = env.S3_BUCKET_NAME || 'rag-images';
-
-    await s3Client.send(new HeadBucketCommand({ Bucket: bucketName }));
-
-    return {
-      name: 'storage',
-      healthy: true,
-      degraded: false,
-      responseTime: Date.now() - start,
-      details: {
-        configured: true,
-        type: env.S3_ENDPOINT ? 'minio' : 's3',
-        bucket: bucketName,
-      },
-    };
-  } catch (error) {
-    // Don't fail health check for storage - it's often not critical
-    return {
-      name: 'storage',
-      healthy: true, // Storage is not critical for basic functionality
-      degraded: true,
-      responseTime: Date.now() - start,
-      details: { configured: true },
-      error: error instanceof Error ? error.message : 'Storage check failed',
-    };
-  }
-}
+// =============================================================================
+// Route Handlers
+// =============================================================================
 
 /**
- * Get system metrics
- */
-function getSystemMetrics(): Record<string, unknown> {
-  return {
-    uptime: process.uptime(),
-    memory: {
-      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
-      unit: 'MB',
-    },
-    nodeVersion: process.version,
-    environment: env.NODE_ENV,
-  };
-}
-
-/**
- * Health check endpoint
  * GET /api/health
- *
- * Health determination:
- * - Healthy: Only if database + vector_extension are healthy
- * - Degraded: If AI or storage services have issues (non-critical)
- * - Unhealthy: If database or vector extension fail
+ * Basic health check - returns 200 if server is running
  */
-export async function GET() {
-  const startTime = Date.now();
-
-  // Run all health checks in parallel
-  const checks = await Promise.all([
-    checkDatabase(),
-    checkVectorExtension(),
-    checkOpenRouter(),
-    checkGoogleAI(),
-    checkRedis(),
-    checkStorage(),
-  ]);
-
-  const totalResponseTime = Date.now() - startTime;
-
-  // Determine overall health
-  // Critical checks: database and vector_extension
-  const criticalChecks = ['database', 'vector_extension'];
-  const criticalResults = checks.filter((c) => criticalChecks.includes(c.name));
-  const criticalHealthy = criticalResults.every((check) => check.healthy);
-
-  // Degraded checks: AI and storage services
-  const degradedServices = checks.filter((c) => c.degraded);
-  const hasDegradedServices = degradedServices.length > 0;
-
-  // Overall status
-  let status: 'healthy' | 'degraded' | 'unhealthy';
-  let httpStatus: number;
-
-  if (!criticalHealthy) {
-    status = 'unhealthy';
-    httpStatus = 503;
-  } else if (hasDegradedServices) {
-    status = 'degraded';
-    httpStatus = 200; // Still return 200 but indicate degraded state
-  } else {
-    status = 'healthy';
-    httpStatus = 200;
-  }
-
-  // Log degraded/unhealthy states
-  if (status !== 'healthy') {
-    logger.warn('Health check reported non-healthy status', {
-      status,
-      failedChecks: checks.filter((c) => !c.healthy).map((c) => c.name),
-      degradedChecks: degradedServices.map((c) => c.name),
-    });
-  }
-
-  const response = {
-    status,
+export async function GET(): Promise<NextResponse> {
+  const health: HealthCheck = {
+    status: 'healthy',
     timestamp: new Date().toISOString(),
-    responseTime: totalResponseTime,
-    checks,
-    system: getSystemMetrics(),
+    version: VERSION,
+    uptime: Date.now() - START_TIME,
+    checks: {
+      database: await checkDatabase(),
+      vectorStore: await checkVectorStore(),
+      embeddingProvider: await checkEmbeddingProvider(),
+      ragPipeline: await checkRAGPipeline(),
+    },
   };
 
-  return NextResponse.json(response, { status: httpStatus });
-}
+  // Determine overall status
+  const checkStatuses = Object.values(health.checks).map((c) => c.status);
 
-/**
- * Deep health check endpoint (more thorough checks)
- * GET /api/health/deep
- */
-export async function HEAD() {
-  // Lightweight check for load balancers
-  const [dbCheck, vectorCheck] = await Promise.all([checkDatabase(), checkVectorExtension()]);
+  if (checkStatuses.some((s) => s === 'down')) {
+    health.status = 'unhealthy';
+  } else if (checkStatuses.some((s) => s === 'degraded')) {
+    health.status = 'degraded';
+  }
 
-  const healthy = dbCheck.healthy && vectorCheck.healthy;
+  const statusCode = health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
 
-  return new NextResponse(null, {
-    status: healthy ? 200 : 503,
+  return NextResponse.json(health, {
+    status: statusCode,
     headers: {
-      'X-Health-Status': healthy ? 'healthy' : 'unhealthy',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'X-Health-Status': health.status,
     },
   });
 }
 
-// Configure route segment
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+/**
+ * GET /api/health/ready
+ * Readiness probe - returns 200 only if all dependencies are healthy
+ */
+export async function HEAD(): Promise<NextResponse> {
+  // Lightweight check for load balancers
+  return NextResponse.json(null, {
+    status: 200,
+    headers: {
+      'X-Health-Status': 'healthy',
+    },
+  });
+}

@@ -1,6 +1,12 @@
+import DOMPurify from 'dompurify';
+import { JSDOM } from 'jsdom';
 import { z } from 'zod';
 
 import type { DocumentType } from '@/types';
+
+// Initialize DOMPurify for server-side sanitization
+const window = new JSDOM('').window;
+const purify = DOMPurify(window);
 
 // =============================================================================
 // Sanitization Helpers
@@ -18,23 +24,53 @@ export function sanitizeString(input: string): string {
 }
 
 /**
- * Sanitize HTML content (for rich text if needed)
- * This is a basic implementation - use DOMPurify in production
+ * Sanitize HTML content using DOMPurify
+ *
+ * DOMPurify is a DOM-only, super-fast, uber-tolerant XSS sanitizer for HTML, MathML and SVG.
+ * It uses the browser's DOM API to parse and sanitize HTML, making it more secure than regex-based approaches.
+ *
+ * Configuration:
+ * - Allows only safe HTML tags and attributes
+ * - Removes event handlers and javascript: URLs
+ * - Strips out <script>, <style>, and other dangerous tags
+ * - Prevents DOM Clobbering attacks
  */
 export function sanitizeHtml(input: string): string {
-  // Allow only specific safe HTML tags
-  const allowedTags = ['b', 'i', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li', 'code', 'pre'];
+  if (!input) return '';
 
-  return input
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    .replace(/<([^\s>]+)[^>]*>/g, (match, tag) => {
-      const lowerTag = tag.toLowerCase();
-      if (allowedTags.includes(lowerTag)) {
-        return match;
-      }
-      return '';
-    });
+  return purify.sanitize(input, {
+    ALLOWED_TAGS: [
+      'b',
+      'i',
+      'em',
+      'strong',
+      'p',
+      'br',
+      'ul',
+      'ol',
+      'li',
+      'code',
+      'pre',
+      'a',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'blockquote',
+      'hr',
+      'table',
+      'thead',
+      'tbody',
+      'tr',
+      'th',
+      'td',
+    ],
+    ALLOWED_ATTR: ['href', 'title', 'class', 'id'],
+    ALLOW_DATA_ATTR: false,
+    SANITIZE_DOM: true,
+  });
 }
 
 // =============================================================================
@@ -180,7 +216,7 @@ export const createApiKeySchema = z.object({
 
 export type CreateApiKeyInput = z.infer<typeof createApiKeySchema>;
 
-// User registration validation
+// User registration validation with enhanced password policy
 export const registerUserSchema = z.object({
   email: z
     .string()
@@ -189,11 +225,14 @@ export const registerUserSchema = z.object({
     .transform((e) => e.toLowerCase()),
   password: z
     .string()
-    .min(8)
-    .max(128)
+    .min(12, 'Password must be at least 12 characters long')
+    .max(128, 'Password must not exceed 128 characters')
+    .regex(/^(?=.*[a-z])/, 'Password must contain at least one lowercase letter')
+    .regex(/^(?=.*[A-Z])/, 'Password must contain at least one uppercase letter')
+    .regex(/^(?=.*\d)/, 'Password must contain at least one number')
     .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+      /^(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?])/,
+      'Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;\'":",.<>/?)'
     ),
   name: z.string().max(100).transform(sanitizeString).optional(),
 });
@@ -212,16 +251,19 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
-// Password change validation
+// Password change validation with enhanced policy
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1).max(128),
   newPassword: z
     .string()
-    .min(8)
-    .max(128)
+    .min(12, 'Password must be at least 12 characters long')
+    .max(128, 'Password must not exceed 128 characters')
+    .regex(/^(?=.*[a-z])/, 'Password must contain at least one lowercase letter')
+    .regex(/^(?=.*[A-Z])/, 'Password must contain at least one uppercase letter')
+    .regex(/^(?=.*\d)/, 'Password must contain at least one number')
     .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+      /^(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?])/,
+      'Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;\'":",.<>/?)'
     ),
 });
 

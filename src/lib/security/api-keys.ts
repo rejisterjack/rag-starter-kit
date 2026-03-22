@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import bcrypt from 'bcrypt';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
@@ -57,19 +58,24 @@ export interface ApiKeyWithWorkspace {
 
 const API_KEY_PREFIX = 'rag_';
 const API_KEY_LENGTH = 48;
+const BCRYPT_ROUNDS = 12; // Higher = more secure but slower
 
 /**
- * Hash a key using SHA-256 (since argon2 is not available)
+ * Hash a key using bcrypt (secure, slow hash)
+ *
+ * Uses bcrypt with 12 rounds of salt for secure key storage.
+ * Unlike SHA-256, bcrypt is designed to be slow to prevent brute-force attacks.
  */
-function hashKey(key: string): string {
-  return crypto.createHash('sha256').update(key).digest('hex');
+async function hashKey(key: string): Promise<string> {
+  const salt = await bcrypt.genSalt(BCRYPT_ROUNDS);
+  return bcrypt.hash(key, salt);
 }
 
 /**
- * Verify a key against a hash
+ * Verify a key against a hash using bcrypt
  */
-function verifyKey(hash: string, key: string): boolean {
-  return hash === hashKey(key);
+async function verifyKey(hash: string, key: string): Promise<boolean> {
+  return bcrypt.compare(key, hash);
 }
 
 /**
@@ -88,8 +94,8 @@ export async function createApiKey(
   // Create prefix (first 8 chars after prefix)
   const keyPreview = key.slice(0, API_KEY_PREFIX.length + 8);
 
-  // Hash the key for storage
-  const keyHash = hashKey(key);
+  // Hash the key for storage (async for bcrypt)
+  const keyHash = await hashKey(key);
 
   // Calculate expiration
   const expiresAt = input.expiresInDays
@@ -182,8 +188,8 @@ export async function validateApiKey(
     return { valid: false, error: 'API key has expired' };
   }
 
-  // Verify key hash
-  const isValid = verifyKey(apiKey.keyHash, key);
+  // Verify key hash using bcrypt
+  const isValid = await verifyKey(apiKey.keyHash, key);
   if (!isValid) {
     await logAuditEvent({
       event: AuditEvent.SUSPICIOUS_ACTIVITY,

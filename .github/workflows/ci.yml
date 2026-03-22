@@ -201,6 +201,42 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run npm audit
-        run: pnpm audit --audit-level moderate
-        continue-on-error: true
+      - name: Run pnpm audit
+        id: audit
+        run: |
+          echo "Running security audit..."
+          pnpm audit --audit-level moderate --json > audit-results.json || true
+          
+          # Check for critical and high vulnerabilities
+          CRITICAL_COUNT=$(cat audit-results.json | jq '[.advisories[]? | select(.severity == "critical")] | length' 2>/dev/null || echo "0")
+          HIGH_COUNT=$(cat audit-results.json | jq '[.advisories[]? | select(.severity == "high")] | length' 2>/dev/null || echo "0")
+          
+          echo "Critical vulnerabilities: $CRITICAL_COUNT"
+          echo "High vulnerabilities: $HIGH_COUNT"
+          
+          if [ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ]; then
+            echo "::error::Found $CRITICAL_COUNT critical and $HIGH_COUNT high severity vulnerabilities"
+            cat audit-results.json | jq -r '.advisories[]? | select(.severity == "critical" or .severity == "high") | "\(.severity): \(.module_name) - \(.title)"'
+            exit 1
+          fi
+          
+          echo "✅ No critical or high severity vulnerabilities found"
+
+      - name: Check for outdated dependencies
+        run: |
+          echo "Checking for outdated dependencies..."
+          pnpm outdated --format json > outdated.json 2>/dev/null || true
+          
+          MAJOR_OUTDATED=$(cat outdated.json | jq '[.[]? | select(.current != .latest)] | length' 2>/dev/null || echo "0")
+          
+          if [ "$MAJOR_OUTDATED" -gt 10 ]; then
+            echo "::warning::Found $MAJOR_OUTDATED outdated dependencies. Consider updating."
+          fi
+
+      - name: Upload audit results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit-results
+          path: audit-results.json
+          retention-days: 30

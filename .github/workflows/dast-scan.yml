@@ -1,0 +1,209 @@
+/**
+ * DAST (Dynamic Application Security Testing) with OWASP ZAP
+ * 
+ * Performs active security scanning against running application
+ * to find vulnerabilities like XSS, SQL injection, CSRF, etc.
+ */
+
+name: DAST Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target URL to scan'
+        required: false
+        default: 'http://localhost:3000'
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '10'
+
+jobs:
+  # ==========================================
+  # Build and Start Application
+  # ==========================================
+  setup:
+    name: Setup Application
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ragdb_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Run migrations
+        run: pnpm db:migrate
+        env:
+          POSTGRES_PRISMA_URL: postgres://postgres:postgres@localhost:5432/ragdb_test
+
+      - name: Build application
+        run: pnpm build
+        env:
+          POSTGRES_PRISMA_URL: postgres://postgres:postgres@localhost:5432/ragdb_test
+          NEXTAUTH_SECRET: test-secret-for-dast-only
+          NEXTAUTH_URL: http://localhost:3000
+          NODE_ENV: production
+
+      - name: Start application in background
+        run: |
+          pnpm start &
+          sleep 10
+          curl --retry 10 --retry-delay 5 --fail http://localhost:3000/api/health || exit 1
+        env:
+          POSTGRES_PRISMA_URL: postgres://postgres:postgres@localhost:5432/ragdb_test
+          NEXTAUTH_SECRET: test-secret-for-dast-only
+          NEXTAUTH_URL: http://localhost:3000
+          PORT: 3000
+
+  # ==========================================
+  # OWASP ZAP Baseline Scan
+  # ==========================================
+  zap-baseline:
+    name: ZAP Baseline Scan
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'http://localhost:3000'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+          allow_issue_writing: false
+          fail_action: true
+
+      - name: Upload ZAP report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-baseline-report
+          path: report_*
+          retention-days: 30
+
+  # ==========================================
+  # OWASP ZAP Full Scan
+  # ==========================================
+  zap-full:
+    name: ZAP Full Scan
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ZAP Full Scan
+        uses: zaproxy/action-full-scan@v0.10.0
+        with:
+          target: 'http://localhost:3000'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a -j'
+          allow_issue_writing: false
+          fail_action: true
+
+      - name: Upload ZAP report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-full-report
+          path: report_*
+          retention-days: 30
+
+  # ==========================================
+  # OWASP ZAP API Scan
+  # ==========================================
+  zap-api:
+    name: ZAP API Scan
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ZAP API Scan
+        uses: zaproxy/action-api-scan@v0.7.0
+        with:
+          target: 'http://localhost:3000/api/docs/openapi.json'
+          format: openapi
+          allow_issue_writing: false
+          fail_action: true
+
+      - name: Upload ZAP API report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-api-report
+          path: report_*
+          retention-days: 30
+
+  # ==========================================
+  # DAST Summary
+  # ==========================================
+  dast-summary:
+    name: DAST Summary
+    runs-on: ubuntu-latest
+    needs: [zap-baseline, zap-full, zap-api]
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## DAST Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "| Scan Type | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Baseline | ${{ needs.zap-baseline.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Full | ${{ needs.zap-full.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| API | ${{ needs.zap-api.result }} |" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.zap-baseline.result }}" == "failure" ]] || \
+             [[ "${{ needs.zap-full.result }}" == "failure" ]] || \
+             [[ "${{ needs.zap-api.result }}" == "failure" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Vulnerabilities detected!** Review the ZAP reports for details." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **All DAST scans passed!**" >> $GITHUB_STEP_SUMMARY
+          fi

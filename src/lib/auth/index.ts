@@ -87,7 +87,7 @@ export const {
   adapter: PrismaAdapter(prisma),
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 7 * 24 * 60 * 60, // 7 days - reduced from 30 for security
     updateAge: 24 * 60 * 60, // 24 hours
   },
   pages: {
@@ -120,20 +120,38 @@ export const {
       },
     }),
 
-    // Email/Password Credentials Provider
+    // Email/Password Credentials Provider with Account Lockout
     Credentials({
       name: 'credentials',
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
 
         const email = credentials.email as string;
         const password = credentials.password as string;
+
+        // Check if account is locked
+        const lockoutStatus = getLockoutStatus(email);
+        if (lockoutStatus.isLocked) {
+          // Log blocked login attempt
+          await logAuditEvent({
+            event: AuditEvent.SUSPICIOUS_ACTIVITY,
+            metadata: {
+              activity: 'login_blocked_due_to_lockout',
+              email,
+              lockedUntil: lockoutStatus.lockedUntil?.toISOString(),
+            },
+            severity: 'WARNING',
+          });
+
+          // Return null with a specific error that will be handled
+          throw new Error(`ACCOUNT_LOCKED:${lockoutStatus.lockedUntil?.getTime() || 0}`);
+        }
 
         // Find user by email
         const user = await prisma.user.findUnique({
@@ -148,6 +166,9 @@ export const {
         });
 
         if (!user || !user.password) {
+          // Record failed attempt
+          const ipAddress = req?.headers?.['x-forwarded-for'] as string | undefined;
+          await recordFailedAttempt(email, ipAddress);
           return null;
         }
 
@@ -155,8 +176,20 @@ export const {
         const isValid = await compare(password, user.password);
 
         if (!isValid) {
+          // Record failed attempt
+          const ipAddress = req?.headers?.['x-forwarded-for'] as string | undefined;
+          const newStatus = await recordFailedAttempt(email, ipAddress);
+
+          // If this attempt locked the account, throw error
+          if (newStatus.isLocked) {
+            throw new Error(`ACCOUNT_LOCKED:${newStatus.lockedUntil?.getTime() || 0}`);
+          }
+
           return null;
         }
+
+        // Record successful login (resets failed attempts)
+        await recordSuccessfulLogin(email);
 
         // Log successful login
         await logAuditEvent({

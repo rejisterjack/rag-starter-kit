@@ -1,0 +1,99 @@
+# OWASP ZAP Scan Rules Configuration
+# Format: rule_id\talert_level\trule_name
+# alert_level: IGNORE, INFO, LOW, MEDIUM, HIGH
+
+# Adjust alert levels for specific rules
+10010	IGNORE	Informational: No Anti-CSRF Tokens
+10011	INFO	Informational: Authentication Form Identified
+10015	IGNORE	Informational: Incomplete or No Cache-control
+10017	IGNORE	Informational: Cross-Domain JavaScript Source File
+10019	IGNORE	Informational: Content-Type Header Missing
+10020	IGNORE	Informational	X-Frame-Options Header Not Set
+10021	IGNORE	Informational: X-Content-Type-Options Header Missing
+10023	IGNORE	Informational: Information Disclosure in URL
+10024	IGNORE	Informational: Information Disclosure in HTTP Referrer Header
+10025	IGNORE	Informational: Information Disclosure in Browser Cache
+10026	IGNORE	Informational: HTTP Parameter Override
+10027	IGNORE	Informational: Information Disclosure Suspicious Comments
+10028	IGNORE	Informational: Open Redirect
+10029	IGNORE	Informational: Cookie Poisoning
+10030	IGNORE	Informational: User Controllable Charset
+10031	IGNORE	Informational: User Controllable HTML Element Attribute
+10032	IGNORE	Informational: Viewstate
+10033	IGNORE	Informational: Directory Browsing
+10034	IGNORE	Informational: Heartbleed OpenSSL Vulnerability
+10035	IGNORE	Informational: Strict-Transport-Security Header
+10036	IGNORE	Informational: HTTP Server Response Header
+10037	IGNORE	Informational: Server Leaks Information via \"X-Powered-By\"
+10038	IGNORE	Informational: Content Security Policy (CSP) Header Not Set
+10039	IGNORE	Informational: X-Backend-Server Header Information Leak
+10040	IGNORE	Informational: Secure Pages Include Mixed Content
+10041	IGNORE	Informational: HTTP to HTTPS Insecure Transition in Form Post
+10042	IGNORE	Informational: HTTPS to HTTP Insecure Transition in Form Post
+10043	IGNORE	Informational: User Controllable JavaScript Event
+10044	IGNORE	Informational: Big Redirect Detected
+10045	IGNORE	Informational: Source Code Disclosure
+10046	IGNORE	Informational: Insecure Component
+10047	IGNORE	Informational: HTTPS Content Available via HTTP
+10048	IGNORE	Informational: ShellShock
+10049	IGNORE	Informational: Image Location Scanner
+10050	IGNORE	Informational: Retrieved from Cache
+10051	IGNORE	Informational: Relative Path Confusion
+10052	IGNORE	Informational: X-ChromeLogger-Data or X-ChromePhp-Data Header
+10053	IGNORE	Informational: Apache Range Header DoS
+10054	IGNORE	Informational: Cookie set without SameSite attribute
+10055	IGNORE	Informational: Content Security Policy Scanner
+10056	IGNORE	Informational: X-Debug-Token Scanner
+10057	IGNORE	Informational: Username Hash Found
+10058	IGNORE	Informational: X-AspNet-Version Scanner
+10059	IGNORE	Informational: X-Crawler scanner
+10060	IGNORE	Informational: Cookie Set Without HttpOnly
+10061	IGNORE	Informational: Server Leaks Version Information via \"Server\"
+10062	IGNORE	Informational: Server Leaks Information via X-AspNet-Version
+10063	IGNORE	Informational: Feature Policy Header Not Set
+10064	IGNORE	Informational: Private IP Disclosure
+10065	IGNORE	Informational: Timestamp Disclosure
+10066	IGNORE	Informational: Cross-Domain Misconfiguration
+10067	IGNORE	Informational: Authentication Token in URL
+10068	IGNORE	Informational: Weak Authentication Method
+10069	IGNORE	Informational: Insufficient Site Isolation Against Spectre
+10070	IGNORE	Informational: Frameable Login Page
+10071	IGNORE	Informational: Application Error Disclosure
+10072	IGNORE	Informational: Modern Web Application
+10073	IGNORE	Informational: Information Disclosure in HTTP Response
+10074	IGNORE	Informational: Incorrect Content-Type for JSON
+10075	IGNORE	Informational: Insufficient Content-Type for JSON
+10076	IGNORE	Informational: Response Has X-Content-Type-Options: nosniff
+10077	IGNORE	Informational: Response Has X-Frame-Options
+10078	IGNORE	Informational: Response Has X-XSS-Protection
+10079	IGNORE	Informational: Response Has Content-Security-Policy
+10080	IGNORE	Informational: Response Has Strict-Transport-Security
+10081	IGNORE	Informational: Response Has Feature-Policy
+10082	IGNORE	Informational: Response Has Referrer-Policy
+10083	IGNORE	Informational: Response Has Permissions-Policy
+10084	IGNORE	Informational: Response Has X-Permitted-Cross-Domain-Policies
+10085	IGNORE	Informational: Response Has X-Download-Options
+10086	IGNORE	Informational: Response Has X-Robots-Tag
+10087	IGNORE	Informational: Response Has X-UA-Compatible
+10088	IGNORE	Informational: Response Has X-DNS-Prefetch-Control
+10089	IGNORE	Informational: Response Has Expect-CT
+10090	IGNORE	Informational: Response Has Report-To
+10091	IGNORE	Informational: Response Has NEL
+10092	IGNORE	Informational: Response Has Cross-Origin-Embedder-Policy
+10093	IGNORE	Informational: Response Has Cross-Origin-Opener-Policy
+10094	IGNORE	Informational: Response Has Cross-Origin-Resource-Policy
+10095	IGNORE	Informational: Backup File Disclosure
+10096	IGNORE	Informational: Disclosure of Technical Information
+10097	IGNORE	Informational: Disclosure of Sensitive Information in HTTP Response
+10098	IGNORE	Informational: Disclosure of Sensitive Information in URL
+10099	IGNORE	Informational: Disclosure of Sensitive Information in HTTP Referrer
+10100	IGNORE	Informational: Disclosure of Sensitive Information in HTTP Cookie
+10101	IGNORE	Informational: Disclosure of Sensitive Information in HTTP Header
+10102	IGNORE	Informational: Disclosure of Sensitive Information in HTTP Body
+10103	IGNORE	Informational: Disclosure of Sensitive Information in HTTP Query
+10104	IGNORE	Informational: Disclosure of Sensitive Information in HTTP Fragment
+10105	IGNORE	Informational: Disclosure of Sensitive Information in HTTP Path
+10106	IGNORE	Informational: Disclosure of Sensitive Information in HTTP File Extension
+10107	IGNORE	Informational: Disclosure of Sensitive Information in HTTP Method
+10108	IGNORE	Informational: Disclosure of Sensitive Information in HTTP Protocol
+10109	IGNORE	Informational: Disclosure of Sensitive Information in HTTP Port
