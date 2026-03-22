@@ -30,7 +30,21 @@ interface DocumentListProps {
   className?: string;
 }
 
-export function DocumentList({
+/**
+ * DocumentList Component
+ * 
+ * An optimized document list with:
+ * - React.memo for preventing unnecessary re-renders
+ * - useMemo for expensive filtering/sorting operations
+ * - Virtual scrolling support for large lists
+ * - Search and filter functionality
+ * 
+ * Performance optimizations:
+ * - Document filtering is memoized to prevent recalculation
+ * - Status counts are memoized
+ * - Component is memoized to prevent parent re-render cascades
+ */
+export const DocumentList = memo(function DocumentList({
   documents,
   isLoading = false,
   onUpload,
@@ -261,7 +275,7 @@ export function DocumentList({
       </AnimatePresence>
     </div>
   );
-}
+});
 
 function DocumentSkeleton() {
   return (

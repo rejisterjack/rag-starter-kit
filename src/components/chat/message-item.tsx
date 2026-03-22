@@ -41,7 +41,21 @@ interface MessageItemProps {
   onFeedback?: (id: string, rating: 'up' | 'down') => void;
 }
 
-export function MessageItem({
+/**
+ * MessageItem Component
+ * 
+ * An optimized message display component with:
+ * - React.memo for preventing unnecessary re-renders
+ * - Framer Motion animations for smooth transitions
+ * - Markdown rendering with citation support
+ * - Edit, copy, feedback, and regenerate actions
+ * 
+ * Performance considerations:
+ * - Uses React.memo to prevent re-renders when parent updates
+ * - Memoized callbacks to maintain stable references
+ * - Lazy loading for markdown content
+ */
+export const MessageItem = React.memo(function MessageItem({
   message,
   onEdit,
   onDelete,
@@ -331,4 +345,4 @@ export function MessageItem({
       </div>
     </motion.div>
   );
-}
+});
