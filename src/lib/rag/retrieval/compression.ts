@@ -6,6 +6,7 @@
  */
 
 import { estimateTokens, generateChatCompletion } from '@/lib/ai';
+import { logger } from '@/lib/logger';
 import type { CompressionConfig, RetrievedChunk } from './types';
 
 // Message type for AI completions
@@ -128,7 +129,12 @@ export class ContextualCompressor {
           retrievalMethod: `${chunk.retrievalMethod}-llm-compressed`,
         };
       }
-    } catch (_error) {}
+    } catch (error) {
+      logger.warn('LLM-based compression failed, falling back to heuristic', {
+        chunkId: chunk.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     // Fallback to heuristic compression
     const heuristicResult = this.heuristicCompression(query, chunk.content);

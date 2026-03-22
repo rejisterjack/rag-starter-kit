@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { env } from '@/lib/env';
+import { logger } from '@/lib/logger';
 
 interface HealthCheck {
   name: string;
   healthy: boolean;
+  degraded?: boolean;
   responseTime?: number;
   error?: string;
   details?: Record<string, unknown>;
@@ -62,38 +65,114 @@ async function checkVectorExtension(): Promise<HealthCheck> {
 }
 
 /**
- * Check OpenAI API availability (lightweight check)
+ * Check OpenRouter API availability
  */
-async function checkOpenAI(): Promise<HealthCheck> {
+async function checkOpenRouter(): Promise<HealthCheck> {
   const start = Date.now();
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = env.OPENROUTER_API_KEY;
 
     if (!apiKey) {
       return {
-        name: 'openai',
+        name: 'openrouter',
         healthy: false,
+        degraded: true,
         responseTime: Date.now() - start,
-        error: 'OPENAI_API_KEY not configured',
+        error: 'OPENROUTER_API_KEY not configured',
       };
     }
 
-    // We don't actually call the API to avoid costs, just validate key format
-    const isValidFormat = apiKey.startsWith('sk-') && apiKey.length > 20;
+    // Validate key format (OpenRouter keys start with sk-or-v1-)
+    const isValidFormat = apiKey.startsWith('sk-or-v1-');
+
+    if (!isValidFormat) {
+      return {
+        name: 'openrouter',
+        healthy: false,
+        degraded: true,
+        responseTime: Date.now() - start,
+        error: 'Invalid API key format - should start with sk-or-v1-',
+      };
+    }
 
     return {
-      name: 'openai',
-      healthy: isValidFormat,
+      name: 'openrouter',
+      healthy: true,
+      degraded: false,
       responseTime: Date.now() - start,
-      details: { configured: true },
-      error: isValidFormat ? undefined : 'Invalid API key format',
+      details: { configured: true, keyFormat: 'valid' },
     };
   } catch (error) {
     return {
-      name: 'openai',
+      name: 'openrouter',
       healthy: false,
+      degraded: true,
       responseTime: Date.now() - start,
-      error: error instanceof Error ? error.message : 'OpenAI check failed',
+      error: error instanceof Error ? error.message : 'OpenRouter check failed',
+    };
+  }
+}
+
+/**
+ * Check Google AI (Gemini) API availability
+ */
+async function checkGoogleAI(): Promise<HealthCheck> {
+  const start = Date.now();
+  try {
+    const apiKey = env.GOOGLE_API_KEY;
+
+    if (!apiKey) {
+      return {
+        name: 'googleai',
+        healthy: false,
+        degraded: true,
+        responseTime: Date.now() - start,
+        error: 'GOOGLE_API_KEY not configured',
+      };
+    }
+
+    // Try a real embedding call with short timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    try {
+      const { google } = await import('@ai-sdk/google');
+      const { embed } = await import('ai');
+
+      const result = await embed({
+        model: google.textEmbeddingModel('text-embedding-004'),
+        value: 'health check',
+        abortSignal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      return {
+        name: 'googleai',
+        healthy: true,
+        degraded: false,
+        responseTime: Date.now() - start,
+        details: {
+          configured: true,
+          embeddingDimensions: result.embedding.length,
+        },
+      };
+    } catch (embedError) {
+      clearTimeout(timeoutId);
+      throw embedError;
+    }
+  } catch (error) {
+    const isTimeout = error instanceof Error && error.name === 'AbortError';
+    return {
+      name: 'googleai',
+      healthy: false,
+      degraded: true,
+      responseTime: Date.now() - start,
+      error: isTimeout
+        ? 'Google AI embedding request timed out (3s)'
+        : error instanceof Error
+          ? error.message
+          : 'Google AI check failed',
     };
   }
 }
@@ -104,8 +183,8 @@ async function checkOpenAI(): Promise<HealthCheck> {
 async function checkRedis(): Promise<HealthCheck> {
   const start = Date.now();
 
-  const isUpstash = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN;
-  const isLocalRedis = process.env.REDIS_URL;
+  const isUpstash = env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN;
+  const isLocalRedis = env.REDIS_URL;
 
   // Skip if not configured
   if (!isUpstash && !isLocalRedis) {
@@ -122,14 +201,14 @@ async function checkRedis(): Promise<HealthCheck> {
       // Upstash Redis
       const { Redis } = await import('@upstash/redis');
       const redis = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+        url: env.UPSTASH_REDIS_REST_URL,
+        token: env.UPSTASH_REDIS_REST_TOKEN,
       });
       await redis.ping();
     } else {
       // Local Redis via ioredis
       const Redis = await import('ioredis');
-      const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+      const redisUrl = env.REDIS_URL || 'redis://localhost:6379';
       const redis = new Redis.default(redisUrl);
       await redis.ping();
       await redis.quit();
@@ -152,6 +231,66 @@ async function checkRedis(): Promise<HealthCheck> {
 }
 
 /**
+ * Check S3/MinIO storage if configured
+ */
+async function checkStorage(): Promise<HealthCheck> {
+  const start = Date.now();
+
+  // Check if storage is configured
+  const hasS3Config = env.S3_ENDPOINT || env.AWS_ACCESS_KEY_ID;
+
+  if (!hasS3Config) {
+    return {
+      name: 'storage',
+      healthy: true,
+      degraded: false,
+      responseTime: 0,
+      details: { configured: false },
+    };
+  }
+
+  try {
+    const { S3Client, HeadBucketCommand } = await import('@aws-sdk/client-s3');
+
+    const s3Client = new S3Client({
+      endpoint: env.S3_ENDPOINT,
+      region: env.AWS_REGION || 'us-east-1',
+      credentials: {
+        accessKeyId: env.AWS_ACCESS_KEY_ID || '',
+        secretAccessKey: env.AWS_SECRET_ACCESS_KEY || '',
+      },
+      forcePathStyle: true,
+    });
+
+    const bucketName = env.S3_BUCKET_NAME || 'rag-images';
+
+    await s3Client.send(new HeadBucketCommand({ Bucket: bucketName }));
+
+    return {
+      name: 'storage',
+      healthy: true,
+      degraded: false,
+      responseTime: Date.now() - start,
+      details: {
+        configured: true,
+        type: env.S3_ENDPOINT ? 'minio' : 's3',
+        bucket: bucketName,
+      },
+    };
+  } catch (error) {
+    // Don't fail health check for storage - it's often not critical
+    return {
+      name: 'storage',
+      healthy: true, // Storage is not critical for basic functionality
+      degraded: true,
+      responseTime: Date.now() - start,
+      details: { configured: true },
+      error: error instanceof Error ? error.message : 'Storage check failed',
+    };
+  }
+}
+
+/**
  * Get system metrics
  */
 function getSystemMetrics(): Record<string, unknown> {
@@ -163,13 +302,18 @@ function getSystemMetrics(): Record<string, unknown> {
       unit: 'MB',
     },
     nodeVersion: process.version,
-    environment: process.env.NODE_ENV || 'development',
+    environment: env.NODE_ENV,
   };
 }
 
 /**
  * Health check endpoint
  * GET /api/health
+ *
+ * Health determination:
+ * - Healthy: Only if database + vector_extension are healthy
+ * - Degraded: If AI or storage services have issues (non-critical)
+ * - Unhealthy: If database or vector extension fail
  */
 export async function GET() {
   const startTime = Date.now();
@@ -178,25 +322,57 @@ export async function GET() {
   const checks = await Promise.all([
     checkDatabase(),
     checkVectorExtension(),
-    checkOpenAI(),
+    checkOpenRouter(),
+    checkGoogleAI(),
     checkRedis(),
+    checkStorage(),
   ]);
 
-  const healthy = checks.every((check) => check.healthy);
   const totalResponseTime = Date.now() - startTime;
 
-  // Determine status code based on health
-  const status = healthy ? 200 : 503;
+  // Determine overall health
+  // Critical checks: database and vector_extension
+  const criticalChecks = ['database', 'vector_extension'];
+  const criticalResults = checks.filter((c) => criticalChecks.includes(c.name));
+  const criticalHealthy = criticalResults.every((check) => check.healthy);
+
+  // Degraded checks: AI and storage services
+  const degradedServices = checks.filter((c) => c.degraded);
+  const hasDegradedServices = degradedServices.length > 0;
+
+  // Overall status
+  let status: 'healthy' | 'degraded' | 'unhealthy';
+  let httpStatus: number;
+
+  if (!criticalHealthy) {
+    status = 'unhealthy';
+    httpStatus = 503;
+  } else if (hasDegradedServices) {
+    status = 'degraded';
+    httpStatus = 200; // Still return 200 but indicate degraded state
+  } else {
+    status = 'healthy';
+    httpStatus = 200;
+  }
+
+  // Log degraded/unhealthy states
+  if (status !== 'healthy') {
+    logger.warn('Health check reported non-healthy status', {
+      status,
+      failedChecks: checks.filter((c) => !c.healthy).map((c) => c.name),
+      degradedChecks: degradedServices.map((c) => c.name),
+    });
+  }
 
   const response = {
-    status: healthy ? 'healthy' : 'unhealthy',
+    status,
     timestamp: new Date().toISOString(),
     responseTime: totalResponseTime,
     checks,
     system: getSystemMetrics(),
   };
 
-  return NextResponse.json(response, { status });
+  return NextResponse.json(response, { status: httpStatus });
 }
 
 /**
@@ -205,7 +381,9 @@ export async function GET() {
  */
 export async function HEAD() {
   // Lightweight check for load balancers
-  const healthy = await checkDatabase().then((r) => r.healthy);
+  const [dbCheck, vectorCheck] = await Promise.all([checkDatabase(), checkVectorExtension()]);
+
+  const healthy = dbCheck.healthy && vectorCheck.healthy;
 
   return new NextResponse(null, {
     status: healthy ? 200 : 503,

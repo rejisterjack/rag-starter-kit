@@ -204,12 +204,17 @@ export function CsrfTokenInput(): React.ReactElement {
   return <input type="hidden" name="_csrf" id="csrf-token-input" data-csrf-token="" />;
 }
 
+interface CsrfTokenScriptProps {
+  nonce?: string;
+}
+
 /**
  * Script to initialize CSRF token on client
  */
-export function CsrfTokenScript(): React.ReactElement {
+export function CsrfTokenScript({ nonce }: CsrfTokenScriptProps): React.ReactElement {
   return (
     <script
+      nonce={nonce}
       // biome-ignore lint/security/noDangerouslySetInnerHtml: CSRF token initialization script requires inline execution
       dangerouslySetInnerHTML={{
         __html: `

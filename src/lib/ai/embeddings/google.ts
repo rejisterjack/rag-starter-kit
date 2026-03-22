@@ -9,10 +9,17 @@
  * - embedding-001 (legacy, 768 dimensions)
  *
  * Get API key: https://aistudio.google.com/app/apikey
+ *
+ * Quota tracking:
+ * - Free tier: 1,500 requests per day
+ * - Tracks usage via Redis with daily TTL
  */
 
 import { google } from '@ai-sdk/google';
 import { embed, embedMany } from 'ai';
+import { env } from '@/lib/env';
+import { logger } from '@/lib/logger';
+import { redis } from '@/lib/security/rate-limiter';
 import type { EmbeddingProvider } from './types';
 
 /**
@@ -32,6 +39,79 @@ export const GOOGLE_MODELS = {
 } as const;
 
 export type GoogleModel = keyof typeof GOOGLE_MODELS;
+
+// Daily quota configuration
+const DAILY_QUOTA_LIMIT = env.GOOGLE_EMBED_DAILY_LIMIT || 1400;
+const QUOTA_WARNING_THRESHOLD = Math.floor(DAILY_QUOTA_LIMIT * 0.93); // 93% of limit
+
+/**
+ * Custom error for quota exceeded
+ */
+export class EmbeddingQuotaExceededError extends Error {
+  constructor(used: number, limit: number) {
+    super(`Google Gemini embedding quota exceeded: ${used}/${limit} requests used today`);
+    this.name = 'EmbeddingQuotaExceededError';
+  }
+}
+
+/**
+ * Get Redis key for daily quota tracking
+ */
+function getQuotaKey(): string {
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  return `gemini:embed:${today}`;
+}
+
+/**
+ * Check and increment embedding quota
+ * @returns Current usage count after increment
+ * @throws EmbeddingQuotaExceededError if quota exceeded
+ */
+async function checkAndIncrementQuota(): Promise<number> {
+  try {
+    const key = getQuotaKey();
+
+    // Increment the counter
+    const count = await redis.incr(key);
+
+    // Set TTL on first increment (86400 seconds = 1 day)
+    if (count === 1) {
+      await redis.expire(key, 86400);
+    }
+
+    // Check if we're approaching the limit
+    if (count >= DAILY_QUOTA_LIMIT) {
+      logger.warn('Gemini embedding quota exceeded', {
+        used: count,
+        limit: DAILY_QUOTA_LIMIT,
+      });
+      throw new EmbeddingQuotaExceededError(count, DAILY_QUOTA_LIMIT);
+    }
+
+    // Warn if approaching limit
+    if (count >= QUOTA_WARNING_THRESHOLD) {
+      logger.warn('Gemini embedding quota approaching', {
+        used: count,
+        limit: DAILY_QUOTA_LIMIT,
+        remaining: DAILY_QUOTA_LIMIT - count,
+      });
+    }
+
+    return count;
+  } catch (error) {
+    // If it's our quota error, re-throw it
+    if (error instanceof EmbeddingQuotaExceededError) {
+      throw error;
+    }
+
+    // If Redis is unavailable, log warning but don't block embeddings
+    logger.warn('Redis quota tracking failed, proceeding without quota check', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return 0;
+  }
+}
 
 /**
  * Google Gemini Embedding Provider
@@ -57,6 +137,9 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
    * Embed a single query string
    */
   async embedQuery(text: string): Promise<number[]> {
+    // Check quota before making request
+    await checkAndIncrementQuota();
+
     const result = await embed({
       model: google.textEmbeddingModel(this.modelName),
       value: text,
@@ -69,6 +152,9 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
    * Embed multiple documents in batches
    */
   async embedDocuments(texts: string[]): Promise<number[][]> {
+    // Check quota before making request (one batch = one request for quota purposes)
+    await checkAndIncrementQuota();
+
     // Process in batches of 100 (Google's limit)
     const batchSize = 100;
     const embeddings: number[][] = [];

@@ -8,6 +8,7 @@
  */
 
 import { generateChatCompletion, generateEmbedding } from '@/lib/ai';
+import { logger } from '@/lib/logger';
 import type { HyDEConfig, QueryExpansionConfig } from './types';
 
 /**
@@ -119,7 +120,11 @@ export class QueryExpander {
       }
 
       return variations;
-    } catch (_error) {
+    } catch (error) {
+      logger.warn('Multi-query expansion failed, using fallback', {
+        query,
+        error: error instanceof Error ? error.message : String(error),
+      });
       // Fallback to original query
       return [query];
     }
@@ -191,7 +196,11 @@ export class QueryExpander {
 
       // Generate embedding for the hypothetical document
       return generateEmbedding(hypotheticalDoc);
-    } catch (_error) {
+    } catch (error) {
+      logger.warn('HyDE expansion failed, using query embedding', {
+        query,
+        error: error instanceof Error ? error.message : String(error),
+      });
       // Fallback to regular query embedding
       return generateEmbedding(query);
     }
@@ -226,7 +235,11 @@ export class QueryExpander {
       );
 
       return text;
-    } catch (_error) {
+    } catch (error) {
+      logger.warn('Hypothetical document generation failed', {
+        query,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return query;
     }
   }
@@ -265,7 +278,11 @@ export class QueryExpander {
 
       // Always include original query
       return [query, ...subQueries];
-    } catch (_error) {
+    } catch (error) {
+      logger.warn('Sub-query decomposition failed, using original query', {
+        query,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return [query];
     }
   }
@@ -281,7 +298,11 @@ export class QueryExpander {
   }> {
     const [multiQueries, hydeEmbedding, subQueries] = await Promise.all([
       this.expandMultiQuery(query),
-      this.expandHyDE(query).catch((_err: Error) => {
+      this.expandHyDE(query).catch((err: Error) => {
+        logger.warn('HyDE expansion failed during expandAll', {
+          query,
+          error: err.message,
+        });
         return undefined;
       }),
       this.expandSubQueries(query),

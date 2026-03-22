@@ -16,6 +16,8 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
+import { env } from '@/lib/env';
+import { logger } from '@/lib/logger';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,13 +33,11 @@ type GlobalWithPrisma = typeof globalThis & {
 // ---------------------------------------------------------------------------
 
 function createPool(): Pool {
-  const connectionString =
-    process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ragdb';
-
+  // Use validated DATABASE_URL from env.ts
   return new Pool({
-    connectionString,
+    connectionString: env.DATABASE_URL,
     // Keep pool small in development; scale up in production
-    max: process.env.NODE_ENV === 'production' ? 10 : 3,
+    max: env.NODE_ENV === 'production' ? 10 : 3,
     // Idle connections are released after 30 s
     idleTimeoutMillis: 30_000,
     // Fail fast if the DB is unreachable
@@ -59,10 +59,43 @@ function createPrismaClient(): PrismaClient {
 
   const adapter = new PrismaPg(g._prismaPool);
 
-  return new PrismaClient({
+  const client = new PrismaClient({
     adapter,
-    log: process.env.NODE_ENV === 'development' ? ['query', 'warn', 'error'] : ['warn', 'error'],
+    log: env.NODE_ENV === 'development' ? ['query', 'warn', 'error'] : ['warn', 'error'],
   });
+
+  return client;
+}
+
+// ---------------------------------------------------------------------------
+// Slow Query Middleware (Fix #10)
+// ---------------------------------------------------------------------------
+
+function extendWithSlowQueryMiddleware<T extends PrismaClient>(client: T): T {
+  return client.$extends({
+    query: {
+      $allModels: {
+        async $allOperations({ model, operation, args, query }) {
+          const start = Date.now();
+          const result = await query(args);
+          const durationMs = Date.now() - start;
+
+          // Warn on queries taking longer than 1000ms
+          if (durationMs > 1000) {
+            logger.warn('Slow Prisma query', {
+              model,
+              operation,
+              durationMs,
+              // Log query args in development only
+              ...(env.NODE_ENV === 'development' && { args }),
+            });
+          }
+
+          return result;
+        },
+      },
+    },
+  }) as unknown as T;
 }
 
 // ---------------------------------------------------------------------------
@@ -78,10 +111,13 @@ const g = globalThis as GlobalWithPrisma;
  *   a new client (and new pool) on every module reload.
  * - Production: module-level singleton (one per process).
  */
-export const prisma: PrismaClient = g._prismaClient ?? createPrismaClient();
+const basePrisma = g._prismaClient ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== 'production') {
-  g._prismaClient = prisma;
+// Extend with slow query middleware
+export const prisma = extendWithSlowQueryMiddleware(basePrisma);
+
+if (env.NODE_ENV !== 'production') {
+  g._prismaClient = basePrisma;
 }
 
 // Re-export PrismaClient type for convenience

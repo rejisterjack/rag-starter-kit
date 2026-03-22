@@ -57,6 +57,8 @@ import {
   streamText,
   type UIMessage,
 } from 'ai';
+import { logger } from '@/lib/logger';
+import { estimateTokens } from '@/lib/rag/token-budget';
 
 // Embedding model configuration (Google Gemini - FREE)
 const EMBEDDING_MODEL = 'text-embedding-004';
@@ -143,6 +145,10 @@ export async function streamChatCompletion(messages: UIMessage[], config: Partia
       return Object.assign(result, { _modelUsed: model });
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
+      logger.warn('Model failed during streaming, trying fallback', {
+        model,
+        error: lastError.message,
+      });
     }
   }
 
@@ -177,7 +183,12 @@ export async function generateChatCompletion(
       });
 
       return { text: result.text, modelUsed: model, usage: result.usage };
-    } catch (_error) {}
+    } catch (error) {
+      logger.warn('Model failed during generation, trying fallback', {
+        model,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   throw new Error('All models failed');
@@ -260,11 +271,10 @@ Instructions:
 }
 
 // ==================== Token Estimation ====================
+// Note: estimateTokens is now imported from token-budget.ts for consistency
+// See Fix #6 - Unified token estimation
 
-export function estimateTokens(text: string): number {
-  // Rough estimate: ~4 characters per token for English text
-  return Math.ceil(text.length / 4);
-}
+export { estimateTokens };
 
 export function truncateToTokenLimit(text: string, maxTokens: number): string {
   const estimatedChars = maxTokens * 4;

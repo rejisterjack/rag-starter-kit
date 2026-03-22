@@ -1,6 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { env } from '@/lib/env';
+import { logger } from '@/lib/logger';
 
 // =============================================================================
 // Route Configuration
@@ -16,6 +18,7 @@ const PUBLIC_ROUTES = [
   '/api/auth',
   '/api/webhook',
   '/api/csrf',
+  '/api/health',
   '/_next',
   '/static',
   '/favicon.ico',
@@ -43,14 +46,39 @@ const PROTECTED_API_ROUTES = ['/api/chat', '/api/ingest', '/api/documents', '/ap
 // Routes that require specific roles
 const ADMIN_ROUTES = ['/admin', '/api/admin'];
 
-// CORS headers for API routes
-const corsHeaders = {
-  'Access-Control-Allow-Origin': process.env.NEXTAUTH_URL || '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
-  'Access-Control-Allow-Credentials': 'true',
-  'Access-Control-Max-Age': '86400',
-};
+// =============================================================================
+// CORS Helpers
+// =============================================================================
+
+/**
+ * Compute CORS origin dynamically per request
+ * Returns the origin if it's in the allowed list, otherwise returns the first allowed origin
+ */
+function computeCorsOrigin(req: NextRequest): string {
+  const origin = req.headers.get('origin') ?? '';
+  const allowedOrigins = (env.ALLOWED_ORIGINS ?? env.NEXTAUTH_URL).split(',').map((s) => s.trim());
+  return allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+}
+
+function getCorsHeaders(req: NextRequest) {
+  const corsOrigin = computeCorsOrigin(req);
+  return {
+    'Access-Control-Allow-Origin': corsOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Request-ID',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Max-Age': '86400',
+  };
+}
+
+// =============================================================================
+// Response Helper
+// =============================================================================
+
+function withRequestId(response: NextResponse, requestId: string): NextResponse {
+  response.headers.set('X-Request-ID', requestId);
+  return response;
+}
 
 // =============================================================================
 // Middleware
@@ -60,17 +88,29 @@ export async function middleware(req: NextRequest) {
   const { nextUrl } = req;
   const { pathname } = nextUrl;
 
+  // Generate or propagate request ID for tracing
+  const requestId = req.headers.get('X-Request-ID') ?? crypto.randomUUID();
+
   // Get token from session
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const token = await getToken({ req, secret: env.NEXTAUTH_SECRET });
   const isLoggedIn = !!token;
   const user = token ? { id: token.sub, role: token.role, workspaceId: token.workspaceId } : null;
 
+  // Create a request-scoped logger
+  const requestLogger = logger.child({
+    requestId,
+    userId: user?.id,
+    path: pathname,
+  });
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new NextResponse(null, {
+    const corsHeaders = getCorsHeaders(req);
+    const response = new NextResponse(null, {
       status: 204,
       headers: corsHeaders,
     });
+    return withRequestId(response, requestId);
   }
 
   // CSRF Protection for state-changing API requests
@@ -78,10 +118,13 @@ export async function middleware(req: NextRequest) {
   if (requiresCsrf && !SAFE_METHODS.includes(req.method)) {
     const csrfValid = await validateCsrfToken(req);
     if (!csrfValid) {
-      return NextResponse.json(
+      requestLogger.warn('CSRF validation failed', { pathname });
+      const corsHeaders = getCorsHeaders(req);
+      const response = NextResponse.json(
         { error: 'Invalid CSRF token', code: 'CSRF_INVALID' },
         { status: 403, headers: corsHeaders }
       );
+      return withRequestId(response, requestId);
     }
   }
 
@@ -95,16 +138,17 @@ export async function middleware(req: NextRequest) {
     const response = NextResponse.next();
 
     // Add security headers
-    addSecurityHeaders(response);
+    addSecurityHeaders(response, requestId);
 
     // Add CORS headers for API routes
     if (pathname.startsWith('/api/')) {
+      const corsHeaders = getCorsHeaders(req);
       Object.entries(corsHeaders).forEach(([key, value]) => {
         response.headers.set(key, value);
       });
     }
 
-    return response;
+    return withRequestId(response, requestId);
   }
 
   // Check for API key authentication
@@ -113,8 +157,8 @@ export async function middleware(req: NextRequest) {
     // API key validation will be handled by the route handler
     // We just pass through here and let the route handle it
     const response = NextResponse.next();
-    addSecurityHeaders(response);
-    return response;
+    addSecurityHeaders(response, requestId);
+    return withRequestId(response, requestId);
   }
 
   // Check if route requires authentication
@@ -129,6 +173,7 @@ export async function middleware(req: NextRequest) {
     const ipResult = await checkIPRateLimit(req);
 
     if (!ipResult.allowed) {
+      const corsHeaders = getCorsHeaders(req);
       const response = NextResponse.json(
         {
           error: 'Rate limit exceeded',
@@ -146,7 +191,7 @@ export async function middleware(req: NextRequest) {
         }
       );
 
-      return response;
+      return withRequestId(response, requestId);
     }
   }
 
@@ -154,32 +199,41 @@ export async function middleware(req: NextRequest) {
   if (!isLoggedIn && requiresAuth) {
     // For API routes, return 401
     if (pathname.startsWith('/api/')) {
-      return NextResponse.json(
+      const corsHeaders = getCorsHeaders(req);
+      const response = NextResponse.json(
         { error: 'Unauthorized', code: 'UNAUTHORIZED' },
         { status: 401, headers: corsHeaders }
       );
+      return withRequestId(response, requestId);
     }
 
     // For page routes, redirect to login
     const loginUrl = new URL('/login', nextUrl);
     loginUrl.searchParams.set('callbackUrl', pathname);
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    return withRequestId(response, requestId);
   }
 
   // Check admin routes
   const isAdminRoute = ADMIN_ROUTES.some((route) => pathname.startsWith(route));
   if (isAdminRoute && user?.role !== 'ADMIN') {
     if (pathname.startsWith('/api/')) {
-      return NextResponse.json(
+      const corsHeaders = getCorsHeaders(req);
+      const response = NextResponse.json(
         { error: 'Forbidden', code: 'FORBIDDEN' },
         { status: 403, headers: corsHeaders }
       );
+      return withRequestId(response, requestId);
     }
-    return NextResponse.redirect(new URL('/', nextUrl));
+    const response = NextResponse.redirect(new URL('/', nextUrl));
+    return withRequestId(response, requestId);
   }
 
   // Add user info to headers for server components
   const requestHeaders = new Headers(req.headers);
+
+  // Set the request ID on headers for downstream use
+  requestHeaders.set('x-request-id', requestId);
 
   if (isLoggedIn && user) {
     requestHeaders.set('x-user-id', user.id as string);
@@ -197,16 +251,17 @@ export async function middleware(req: NextRequest) {
   });
 
   // Add security headers
-  addSecurityHeaders(response);
+  addSecurityHeaders(response, requestId);
 
   // Add CORS headers for API routes
   if (pathname.startsWith('/api/')) {
+    const corsHeaders = getCorsHeaders(req);
     Object.entries(corsHeaders).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
   }
 
-  return response;
+  return withRequestId(response, requestId);
 }
 
 // =============================================================================
@@ -247,7 +302,10 @@ async function validateCsrfToken(req: NextRequest): Promise<boolean> {
     }
 
     return result === 0;
-  } catch (_error) {
+  } catch (error) {
+    logger.warn('CSRF validation error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return false;
   }
 }
@@ -256,7 +314,7 @@ async function validateCsrfToken(req: NextRequest): Promise<boolean> {
 // Security Headers
 // =============================================================================
 
-function addSecurityHeaders(response: NextResponse): void {
+function addSecurityHeaders(response: NextResponse, requestId?: string): void {
   // Prevent clickjacking
   response.headers.set('X-Frame-Options', 'DENY');
 
@@ -269,11 +327,13 @@ function addSecurityHeaders(response: NextResponse): void {
   // Referrer Policy
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-  // Content Security Policy
+  // Content Security Policy with nonce (Fix #7)
+  const nonce = requestId ? Buffer.from(requestId).toString('base64') : '';
+
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline'",
+    `script-src 'self' 'nonce-${nonce}'`,
+    `style-src 'self' 'nonce-${nonce}'`,
     "img-src 'self' blob: data: https:",
     "font-src 'self'",
     "connect-src 'self' https://api.openai.com https://*.vercel.app",
@@ -284,8 +344,13 @@ function addSecurityHeaders(response: NextResponse): void {
 
   response.headers.set('Content-Security-Policy', csp);
 
+  // Expose nonce for use in layout.tsx
+  if (requestId) {
+    response.headers.set('X-Nonce', nonce);
+  }
+
   // HTTPS enforcement in production
-  if (process.env.NODE_ENV === 'production') {
+  if (env.NODE_ENV === 'production') {
     response.headers.set(
       'Strict-Transport-Security',
       'max-age=31536000; includeSubDomains; preload'

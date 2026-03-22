@@ -2,17 +2,22 @@
 
 import Script from 'next/script';
 
+interface PWAScriptsProps {
+  nonce?: string;
+}
+
 /**
  * PWA Scripts Component
  * Handles service worker registration and PWA initialization
  *
  * This component should be placed at the end of the body in layout.tsx
  */
-export function PWAScripts() {
+export function PWAScripts({ nonce }: PWAScriptsProps) {
   return (
     <Script
       id="pwa-register-sw"
       strategy="afterInteractive"
+      nonce={nonce}
       // biome-ignore lint/security/noDangerouslySetInnerHtml: Required for PWA service worker registration inline script
       dangerouslySetInnerHTML={{
         __html: `

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { headers } from 'next/headers';
 import { Navbar } from '@/components/navbar';
 import { Providers } from '@/components/providers';
 import { PWAScripts } from '@/components/pwa/pwa-scripts';
@@ -134,7 +135,13 @@ interface RootLayoutProps {
   children: React.ReactNode;
 }
 
-export default function RootLayout({ children }: RootLayoutProps): React.ReactElement {
+export default async function RootLayout({
+  children,
+}: RootLayoutProps): Promise<React.ReactElement> {
+  // Get nonce from headers (set by middleware)
+  const headersList = await headers();
+  const nonce = headersList.get('x-nonce') ?? '';
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -174,9 +181,9 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactEl
         </Providers>
         <StructuredData />
         {/* PWA Scripts - Service Worker Registration */}
-        <PWAScripts />
+        <PWAScripts nonce={nonce} />
         {/* CSRF Token Initialization */}
-        <CsrfTokenScript />
+        <CsrfTokenScript nonce={nonce} />
       </body>
     </html>
   );

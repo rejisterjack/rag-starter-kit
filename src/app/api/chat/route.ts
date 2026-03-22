@@ -17,6 +17,7 @@ import { buildSystemPromptWithContext } from '@/lib/ai/prompts/templates';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { CitationHandler, sourcesToChunks } from '@/lib/rag/citations';
 import { ConversationMemory } from '@/lib/rag/memory';
 import { retrieveSources } from '@/lib/rag/retrieval';
@@ -441,7 +442,10 @@ export async function GET(req: Request) {
         count: messages.length,
       },
     });
-  } catch (_error) {
+  } catch (error) {
+    logger.warn('Failed to retrieve chat history', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: 'Failed to retrieve chat history', code: 'INTERNAL_ERROR' },
       { status: 500 }
@@ -512,7 +516,10 @@ export async function DELETE(req: Request) {
       success: true,
       data: { message: 'Chat deleted successfully' },
     });
-  } catch (_error) {
+  } catch (error) {
+    logger.warn('Failed to delete chat', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: 'Failed to delete chat', code: 'INTERNAL_ERROR' },
       { status: 500 }

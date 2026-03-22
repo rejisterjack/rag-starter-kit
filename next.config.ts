@@ -62,30 +62,21 @@ const nextConfig: NextConfig = {
 	poweredByHeader: false,
 
 	async headers(): Promise<Header[]> {
-		const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
-			process.env.NEXTAUTH_URL || "http://localhost:3000",
-		];
-
-		const corsOrigin =
-			process.env.NODE_ENV === "production"
-				? allowedOrigins.join(", ")
-				: "*";
-
+		// Note: Access-Control-Allow-Origin is now handled dynamically in middleware.ts
+		// to properly handle multiple allowed origins per the HTTP spec
 		return [
 			{
 				source: "/api/:path*",
 				headers: [
-					{
-						key: "Access-Control-Allow-Origin",
-						value: corsOrigin,
-					},
+					// CORS headers are set dynamically in middleware.ts
+					// This fixes the invalid multi-value Access-Control-Allow-Origin header issue
 					{
 						key: "Access-Control-Allow-Methods",
 						value: "GET, POST, PUT, DELETE, OPTIONS",
 					},
 					{
 						key: "Access-Control-Allow-Headers",
-						value: "Content-Type, Authorization, X-Requested-With",
+						value: "Content-Type, Authorization, X-Requested-With, X-Request-ID, X-API-Key, X-CSRF-Token",
 					},
 					{
 						key: "Access-Control-Allow-Credentials",

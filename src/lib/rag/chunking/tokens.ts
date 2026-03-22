@@ -3,6 +3,7 @@
  * Uses tiktoken for accurate OpenAI token counting with fallback estimation
  */
 
+import { logger } from '@/lib/logger';
 import type { TokenCount } from './types';
 
 // Tiktoken encoding (loaded dynamically)
@@ -30,7 +31,10 @@ async function getEncoding(): Promise<{
     // Use cl100k_base encoding (used by GPT-4, GPT-3.5-turbo, text-embedding-3)
     encoding = tiktoken.get_encoding('cl100k_base');
     return encoding;
-  } catch {
+  } catch (error) {
+    logger.warn('Failed to load tiktoken encoding, using fallback estimation', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }
@@ -53,7 +57,11 @@ export async function countTokens(text: string): Promise<TokenCount> {
         total: tokens.length,
         isEstimated: false,
       };
-    } catch (_error) {}
+    } catch (error) {
+      logger.warn('Tiktoken encoding failed, using fallback', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   // Fallback estimation
@@ -85,7 +93,11 @@ export async function countTokensForChunks(chunks: string[]): Promise<TokenCount
         perChunk,
         isEstimated: false,
       };
-    } catch (_error) {}
+    } catch (error) {
+      logger.warn('Tiktoken chunk counting failed, using fallback', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   // Fallback estimation
@@ -159,7 +171,10 @@ export async function truncateToTokenLimit(text: string, maxTokens: number): Pro
     }
     const truncated = tokens.slice(0, maxTokens);
     return enc.decode(truncated);
-  } catch (_error) {
+  } catch (error) {
+    logger.warn('Token truncation failed, using character-based fallback', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     // Fallback
     return text.slice(0, maxTokens * 4);
   }

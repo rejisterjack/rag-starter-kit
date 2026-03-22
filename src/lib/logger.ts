@@ -15,10 +15,12 @@ export interface LogContext {
 class Logger {
   private level: LogLevel;
   private isDevelopment: boolean;
+  private context: LogContext;
 
-  constructor() {
+  constructor(context: LogContext = {}) {
     this.level = (process.env.LOG_LEVEL as LogLevel) || 'info';
     this.isDevelopment = process.env.NODE_ENV === 'development';
+    this.context = context;
   }
 
   private shouldLog(level: LogLevel): boolean {
@@ -35,6 +37,7 @@ class Logger {
       timestamp: new Date().toISOString(),
       level: level.toUpperCase(),
       message,
+      ...this.context,
       ...context,
       environment: process.env.NODE_ENV,
       service: 'rag-starter-kit',
@@ -65,9 +68,30 @@ class Logger {
     }
 
     // In production, use structured logging
-    // Could integrate with services like Datadog, LogDNA, etc.
+    const logOutput = JSON.stringify(formatted);
+
     if (level === 'error') {
+      // biome-ignore lint/suspicious/noConsole: Structured logging in production
+      console.error(logOutput);
+    } else if (level === 'warn') {
+      // biome-ignore lint/suspicious/noConsole: Structured logging in production
+      console.warn(logOutput);
     } else {
+      // biome-ignore lint/suspicious/noConsole: Structured logging in production
+      console.log(logOutput);
+    }
+
+    // Send to external log endpoint if configured
+    const logEndpoint = process.env.LOG_ENDPOINT;
+    if (logEndpoint) {
+      // Fire-and-forget non-blocking fetch
+      fetch(logEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: logOutput,
+      }).catch(() => {
+        // Silently fail to avoid disrupting the application
+      });
     }
   }
 
@@ -99,6 +123,14 @@ class Logger {
       duration: durationMs,
       operation,
     });
+  }
+
+  /**
+   * Create a child logger with merged context
+   * Used for request-scoped logging with requestId, userId, etc.
+   */
+  child(context: LogContext): Logger {
+    return new Logger({ ...this.context, ...context });
   }
 }
 

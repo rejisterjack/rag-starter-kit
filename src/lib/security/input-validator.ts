@@ -117,12 +117,31 @@ export const createWorkspaceSchema = z.object({
 
 export type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>;
 
+// Workspace settings schema (Fix #15)
+export const workspaceSettingsSchema = z
+  .object({
+    theme: z.enum(['light', 'dark', 'system']).optional(),
+    language: z.string().max(10).optional(),
+    defaultModel: z.string().max(100).optional(),
+    ragConfig: z
+      .object({
+        chunkSize: z.number().int().min(100).max(5000).optional(),
+        chunkOverlap: z.number().int().min(0).max(1000).optional(),
+        topK: z.number().int().min(1).max(50).optional(),
+        similarityThreshold: z.number().min(0).max(1).optional(),
+      })
+      .optional(),
+  })
+  .strict();
+
+export type WorkspaceSettings = z.infer<typeof workspaceSettingsSchema>;
+
 // Workspace update validation
 export const updateWorkspaceSchema = z.object({
   name: z.string().min(1).max(100).transform(sanitizeString).optional(),
   description: z.string().max(500).transform(sanitizeString).optional().nullable(),
   avatar: z.string().url().max(500).optional().nullable(),
-  settings: z.record(z.string(), z.unknown()).optional(),
+  settings: workspaceSettingsSchema.optional(),
 });
 
 export type UpdateWorkspaceInput = z.infer<typeof updateWorkspaceSchema>;
@@ -382,6 +401,77 @@ function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
+}
+
+// =============================================================================
+// Magic Byte File Validation (Fix #8)
+// =============================================================================
+
+/**
+ * Magic bytes for file type validation
+ * Maps MIME types to their expected byte signatures
+ */
+const MAGIC_BYTES: Record<string, { bytes: number[]; offset: number }> = {
+  'application/pdf': { bytes: [0x25, 0x50, 0x44, 0x46], offset: 0 }, // %PDF
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': {
+    bytes: [0x50, 0x4b, 0x03, 0x04], // ZIP signature (DOCX is a ZIP archive)
+    offset: 0,
+  },
+  'text/html': { bytes: [0x3c], offset: 0 }, // < (less than sign)
+};
+
+export interface FileBytesValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+/**
+ * Validate file bytes using magic byte detection
+ * This prevents renamed file attacks by checking the actual file content
+ *
+ * @param buffer - ArrayBuffer containing file data
+ * @param expectedMime - Expected MIME type from file.type
+ * @returns Validation result
+ */
+export function validateFileBytes(
+  buffer: ArrayBuffer,
+  expectedMime: string
+): FileBytesValidationResult {
+  // Text files have no reliable magic bytes, allow through
+  if (expectedMime === 'text/plain' || expectedMime === 'text/markdown') {
+    return { valid: true };
+  }
+
+  const magic = MAGIC_BYTES[expectedMime];
+  if (!magic) {
+    // Unknown file type, reject for security
+    return {
+      valid: false,
+      error: `Unknown file type for magic byte validation: ${expectedMime}`,
+    };
+  }
+
+  const view = new Uint8Array(buffer);
+
+  // Check if buffer is large enough
+  if (view.length < magic.offset + magic.bytes.length) {
+    return {
+      valid: false,
+      error: 'File too small for magic byte validation',
+    };
+  }
+
+  // Verify magic bytes match
+  for (let i = 0; i < magic.bytes.length; i++) {
+    if (view[magic.offset + i] !== magic.bytes[i]) {
+      return {
+        valid: false,
+        error: `File content does not match expected type ${expectedMime}. Possible renamed file attack.`,
+      };
+    }
+  }
+
+  return { valid: true };
 }
 
 // =============================================================================

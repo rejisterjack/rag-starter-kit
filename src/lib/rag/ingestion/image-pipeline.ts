@@ -12,6 +12,7 @@
 import { createHash } from 'node:crypto';
 import { generateImageEmbedding } from '@/lib/ai/embeddings/image';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 // Storage configuration
 const STORAGE_BUCKET = process.env.S3_BUCKET_NAME || 'rag-images';
@@ -100,11 +101,19 @@ export async function extractImagesFromPDF(pdfBuffer: Buffer): Promise<Extracted
             height: result.size?.height,
           });
         }
-      } catch (_error) {}
+      } catch (error) {
+        logger.warn('Failed to extract image from PDF page', {
+          pageNum,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
 
     return images;
-  } catch (_error) {
+  } catch (error) {
+    logger.warn('PDF image extraction failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     // Return empty array if extraction fails
     return [];
   }
@@ -176,7 +185,12 @@ export async function uploadImageToStorage(
     );
 
     return { storageKey, storageUrl };
-  } catch (_error) {
+  } catch (error) {
+    logger.warn('Image upload to storage failed, using fallback', {
+      documentId,
+      filename,
+      error: error instanceof Error ? error.message : String(error),
+    });
     // Fallback to data URL
     const base64 = buffer.toString('base64');
     return {
@@ -224,7 +238,10 @@ export async function generateImageCaption(imageBuffer: Buffer | string): Promis
     });
 
     return result.text;
-  } catch (_error) {
+  } catch (error) {
+    logger.warn('Image caption generation failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return '';
   }
 }
@@ -326,7 +343,12 @@ export async function processImage(
       storageUrl,
       caption,
     };
-  } catch (_error) {
+  } catch (error) {
+    logger.warn('Image processing failed', {
+      documentId,
+      filename: image.filename,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }
@@ -377,7 +399,11 @@ export async function processPDFImages(
 
     // Process extracted images
     return processDocumentImages(images, documentId);
-  } catch (_error) {
+  } catch (error) {
+    logger.warn('PDF image processing failed', {
+      documentId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return [];
   }
 }
@@ -438,7 +464,11 @@ export async function searchSimilarImages(
       pageNumber: r.page_number || undefined,
       similarity: Number(r.similarity),
     }));
-  } catch (_error) {
+  } catch (error) {
+    logger.warn('Similar image search failed', {
+      workspaceId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return [];
   }
 }
@@ -503,7 +533,12 @@ export async function searchImagesByText(
       pageNumber: r.page_number || undefined,
       similarity: Number(r.similarity),
     }));
-  } catch (_error) {
+  } catch (error) {
+    logger.warn('Image search by text failed', {
+      workspaceId,
+      query,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return [];
   }
 }
@@ -567,7 +602,12 @@ export async function deleteDocumentImages(documentId: string): Promise<void> {
           )
         )
       );
-    } catch (_error) {}
+    } catch (error) {
+      logger.warn('Failed to delete images from S3 storage', {
+        documentId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   // Delete from database (cascades to embeddings)

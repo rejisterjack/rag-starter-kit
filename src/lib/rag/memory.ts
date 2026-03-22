@@ -6,6 +6,7 @@
 import type { PrismaClient, Message as PrismaMessage } from '@prisma/client';
 import { createProviderFromEnv } from '@/lib/ai/llm';
 import { buildConversationSummarizationPrompt } from '@/lib/ai/prompts/templates';
+import { logger } from '@/lib/logger';
 import type { Source } from '@/types';
 
 // =============================================================================
@@ -51,6 +52,9 @@ const DEFAULT_CONFIG: MemoryConfig = {
   summaryLength: 200,
   includeSystemMessages: false,
 };
+
+// Maximum messages to load for compression to prevent memory issues
+const MAX_MESSAGES_CAP = 500;
 
 // =============================================================================
 // Conversation Memory
@@ -191,7 +195,11 @@ export class ConversationMemory {
       );
 
       return response.content.trim();
-    } catch (_error) {
+    } catch (error) {
+      logger.warn('Message summarization failed, using fallback', {
+        messageCount: messages.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
       // Fallback: return a simple concatenation of key messages
       return this.fallbackSummarize(messages);
     }
@@ -204,10 +212,21 @@ export class ConversationMemory {
     conversationId: string,
     maxMessages: number = this.config.maxMessagesBeforeSummarize
   ): Promise<void> {
+    // Cap the query to prevent loading too many messages into memory
     const allMessages = await this.prisma.message.findMany({
       where: { chatId: conversationId },
       orderBy: { createdAt: 'asc' },
+      take: MAX_MESSAGES_CAP,
     });
+
+    // Log warning if we hit the cap
+    if (allMessages.length >= MAX_MESSAGES_CAP) {
+      logger.warn('Message history cap reached', {
+        conversationId,
+        count: allMessages.length,
+        cap: MAX_MESSAGES_CAP,
+      });
+    }
 
     if (allMessages.length <= maxMessages) {
       return;
