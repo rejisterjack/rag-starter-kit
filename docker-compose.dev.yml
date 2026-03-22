@@ -163,7 +163,7 @@ services:
     environment:
       - DATABASE_URL=postgres://postgres:postgres@rag-db:5432/plausible
       - CLICKHOUSE_DATABASE_URL=http://plausible:plausible@rag-clickhouse:8123/plausible
-      - SECRET_KEY_BASE=b1Fvtocj/vJnDOJJ/LBc7xpr1uIwtk/ReoB97ORG/6Ao7wJmS9GwC+IpJwg7WJIa
+      - SECRET_KEY_BASE=${PLAUSIBLE_SECRET_KEY_BASE}
       - BASE_URL=http://localhost:8000
       - DISABLE_REGISTRATION=false
     command: sh -c "sleep 10 && /entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run"

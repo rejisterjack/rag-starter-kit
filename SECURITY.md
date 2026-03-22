@@ -15,7 +15,10 @@ We take security seriously. If you discover a security vulnerability, please rep
 
 **Please do NOT report security vulnerabilities through public GitHub issues.**
 
-Instead, please report them via email to: **security@example.com**
+Instead, please use GitHub's private vulnerability reporting:
+**[Report a vulnerability](https://github.com/rejisterjack/rag-starter-kit/security/advisories/new)**
+
+Or email: `security@rejisterjack.dev`
 
 Please include:
 - A description of the vulnerability
