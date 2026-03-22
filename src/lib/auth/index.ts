@@ -141,7 +141,7 @@ export const {
         const password = credentials.password as string;
 
         // Check if account is locked
-        const lockoutStatus = getLockoutStatus(email);
+        const lockoutStatus = await getLockoutStatus(email);
         if (lockoutStatus.isLocked) {
           // Log blocked login attempt
           await logAuditEvent({

@@ -1,9 +1,12 @@
 /**
  * Web URL Scraper with Playwright
  * Handles JavaScript-rendered pages, pagination, and content extraction
+ *
+ * Security: All URLs are validated against SSRF protection before fetching
  */
 
 import { logger } from '@/lib/logger';
+import { assertSafeUrl, SSRFError } from '@/lib/security/ssrf-protection';
 import type { ParsedHTML } from './html';
 import { parseHTML as parseHTMLContent } from './html';
 
@@ -100,12 +103,26 @@ function parseHTML(buffer: Buffer): ParsedHTML {
  * Scrape a URL and extract content
  */
 export async function scrapeURL(url: string, options: URLScrapeOptions = {}): Promise<ScrapedPage> {
-  // Validate URL
+  // Validate URL format
   let parsedUrl: URL;
   try {
     parsedUrl = new URL(url);
   } catch {
     throw new URLScraperError(`Invalid URL: ${url}`);
+  }
+
+  // SSRF Protection - validate URL before fetching
+  try {
+    await assertSafeUrl(url);
+  } catch (error) {
+    if (error instanceof SSRFError) {
+      logger.warn('SSRF protection blocked URL scrape', {
+        url,
+        reason: error.message,
+      });
+      throw new URLScraperError(`URL blocked for security reasons: ${error.message}`);
+    }
+    throw error;
   }
 
   // Check robots.txt
@@ -321,6 +338,22 @@ export async function* scrapePaginated(
 export async function checkRobotsTxt(origin: string): Promise<RobotsTxt> {
   try {
     const robotsUrl = `${origin}/robots.txt`;
+
+    // SSRF Protection for robots.txt URL
+    try {
+      await assertSafeUrl(robotsUrl);
+    } catch (error) {
+      if (error instanceof SSRFError) {
+        logger.warn('SSRF protection blocked robots.txt check', {
+          url: robotsUrl,
+          reason: error.message,
+        });
+        // Return allowed=true but log the issue
+        return { allowed: true };
+      }
+      throw error;
+    }
+
     const response = await fetch(robotsUrl, {
       headers: { 'User-Agent': getDefaultUserAgent() },
     });

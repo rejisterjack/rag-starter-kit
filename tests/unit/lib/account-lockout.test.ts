@@ -1,11 +1,12 @@
 /**
  * Account Lockout Unit Tests
  *
- * Tests for the account lockout protection system
+ * Tests for the account lockout protection system with Redis support
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  cleanupExpiredLockouts,
   getLockoutStats,
   getLockoutStatus,
   isAccountLocked,
@@ -30,18 +31,27 @@ vi.mock('@/lib/logger', () => ({
   },
 }));
 
+// Mock Redis
+vi.mock('@/lib/security/rate-limiter', () => ({
+  redis: {
+    get: vi.fn(),
+    set: vi.fn(),
+    del: vi.fn(),
+  },
+}));
+
 describe('Account Lockout', () => {
   const TEST_EMAIL = 'test@example.com';
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clean up any existing lockouts
-    unlockAccount(TEST_EMAIL, 'admin');
+    await unlockAccount(TEST_EMAIL, 'admin');
   });
 
   describe('recordFailedAttempt', () => {
     it('should track failed attempts', async () => {
       await recordFailedAttempt(TEST_EMAIL);
-      const status = getLockoutStatus(TEST_EMAIL);
+      const status = await getLockoutStatus(TEST_EMAIL);
 
       expect(status.remainingAttempts).toBe(4);
       expect(status.isLocked).toBe(false);
@@ -53,7 +63,7 @@ describe('Account Lockout', () => {
         await recordFailedAttempt(TEST_EMAIL);
       }
 
-      const status = getLockoutStatus(TEST_EMAIL);
+      const status = await getLockoutStatus(TEST_EMAIL);
       expect(status.isLocked).toBe(true);
       expect(status.remainingAttempts).toBe(0);
       expect(status.message).toContain('locked');
@@ -65,7 +75,7 @@ describe('Account Lockout', () => {
         await recordFailedAttempt(TEST_EMAIL);
       }
 
-      const status = getLockoutStatus(TEST_EMAIL);
+      const status = await getLockoutStatus(TEST_EMAIL);
       expect(status.remainingAttempts).toBe(2);
       expect(status.message).toContain('Warning');
     });
@@ -80,15 +90,15 @@ describe('Account Lockout', () => {
       // Successful login
       await recordSuccessfulLogin(TEST_EMAIL);
 
-      const status = getLockoutStatus(TEST_EMAIL);
+      const status = await getLockoutStatus(TEST_EMAIL);
       expect(status.remainingAttempts).toBe(5);
       expect(status.isLocked).toBe(false);
     });
   });
 
   describe('isAccountLocked', () => {
-    it('should return false for non-existent record', () => {
-      expect(isAccountLocked('nonexistent@example.com')).toBe(false);
+    it('should return false for non-existent record', async () => {
+      expect(await isAccountLocked('nonexistent@example.com')).toBe(false);
     });
 
     it('should return true for locked account', async () => {
@@ -97,7 +107,7 @@ describe('Account Lockout', () => {
         await recordFailedAttempt(TEST_EMAIL);
       }
 
-      expect(isAccountLocked(TEST_EMAIL)).toBe(true);
+      expect(await isAccountLocked(TEST_EMAIL)).toBe(true);
     });
   });
 
@@ -108,12 +118,12 @@ describe('Account Lockout', () => {
         await recordFailedAttempt(TEST_EMAIL);
       }
 
-      expect(isAccountLocked(TEST_EMAIL)).toBe(true);
+      expect(await isAccountLocked(TEST_EMAIL)).toBe(true);
 
       // Unlock
       const unlocked = await unlockAccount(TEST_EMAIL, 'admin');
       expect(unlocked).toBe(true);
-      expect(isAccountLocked(TEST_EMAIL)).toBe(false);
+      expect(await isAccountLocked(TEST_EMAIL)).toBe(false);
     });
 
     it('should return false if account was not locked', async () => {
@@ -131,9 +141,10 @@ describe('Account Lockout', () => {
         await recordFailedAttempt('user2@example.com');
       }
 
-      const stats = getLockoutStats();
+      const stats = await getLockoutStats();
       expect(stats.totalTracking).toBe(2);
       expect(stats.totalLocked).toBe(1);
+      expect(stats.usingRedis).toBe(false); // Mock returns false
     });
   });
 
@@ -142,10 +153,13 @@ describe('Account Lockout', () => {
       // Create a record
       await recordFailedAttempt(TEST_EMAIL);
 
-      // Fast-forward time by manipulating the store directly
-      // This is a simplified test - in reality we'd use fake timers
-      const statsBefore = getLockoutStats();
+      // Stats should show the record
+      const statsBefore = await getLockoutStats();
       expect(statsBefore.totalTracking).toBeGreaterThan(0);
+
+      // Cleanup (won't remove non-expired in this test)
+      const cleaned = await cleanupExpiredLockouts();
+      expect(typeof cleaned).toBe('number');
     });
   });
 });
