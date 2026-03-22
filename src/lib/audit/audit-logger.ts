@@ -1,5 +1,6 @@
 import { AuditEvent, AuditSeverity, type Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 // Re-export enums for convenience
 export { AuditEvent, AuditSeverity };

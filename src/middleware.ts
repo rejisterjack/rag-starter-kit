@@ -327,8 +327,12 @@ function addSecurityHeaders(response: NextResponse, requestId?: string): void {
   // Referrer Policy
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-  // Content Security Policy with nonce (Fix #7)
-  const nonce = requestId ? Buffer.from(requestId).toString('base64') : '';
+  // Content Security Policy — always generate a fresh cryptographic nonce,
+  // never derive it from requestId (which can be supplied by the client via
+  // X-Request-ID and would make the nonce predictable / attacker-controlled).
+  const nonceBytes = new Uint8Array(16);
+  crypto.getRandomValues(nonceBytes);
+  const nonce = Buffer.from(nonceBytes).toString('base64');
 
   const csp = [
     "default-src 'self'",
