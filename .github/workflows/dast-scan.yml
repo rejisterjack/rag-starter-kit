@@ -1,5 +1,6 @@
+---
 # DAST (Dynamic Application Security Testing) with OWASP ZAP
-# 
+#
 # Performs active security scanning against running application
 # to find vulnerabilities like XSS, SQL injection, CSRF, etc.
 
@@ -188,13 +189,13 @@ jobs:
         run: |
           echo "## DAST Scan Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "| Scan Type | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Baseline | ${{ needs.zap-baseline.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Full | ${{ needs.zap-full.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| API | ${{ needs.zap-api.result }} |" >> $GITHUB_STEP_SUMMARY
-          
+
           if [[ "${{ needs.zap-baseline.result }}" == "failure" ]] || \
              [[ "${{ needs.zap-full.result }}" == "failure" ]] || \
              [[ "${{ needs.zap-api.result }}" == "failure" ]]; then
