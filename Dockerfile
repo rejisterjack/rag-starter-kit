@@ -12,7 +12,7 @@ ARG PNPM_CACHE_ID=rag-pnpm-store
 # -----------------------------------------------------------------------------
 # Stage 1: development — hot-reload dev image
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS development
+FROM node:25-alpine AS development
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
@@ -40,7 +40,7 @@ CMD ["pnpm", "dev"]
 # -----------------------------------------------------------------------------
 # Stage 2: deps — production dependencies only
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS deps
+FROM node:25-alpine AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
@@ -57,7 +57,7 @@ RUN --mount=type=cache,id=${PNPM_CACHE_ID},target=/root/.local/share/pnpm/store 
 # -----------------------------------------------------------------------------
 # Stage 3: builder — compile the Next.js application
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS builder
+FROM node:25-alpine AS builder
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
@@ -84,7 +84,7 @@ RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" \
 # -----------------------------------------------------------------------------
 # Stage 4: runner — minimal production image
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS runner
+FROM node:25-alpine AS runner
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
