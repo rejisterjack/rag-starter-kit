@@ -17,8 +17,14 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 const KEY_LENGTH = 32;
 
-// Master key from environment (should be 32 bytes for AES-256)
-const MASTER_KEY = process.env.ENCRYPTION_MASTER_KEY || process.env.NEXTAUTH_SECRET || '';
+// Master key from environment (must be 32 bytes for AES-256)
+const MASTER_KEY = process.env.ENCRYPTION_MASTER_KEY || process.env.NEXTAUTH_SECRET;
+
+if (!MASTER_KEY) {
+  throw new Error(
+    'ENCRYPTION_MASTER_KEY or NEXTAUTH_SECRET environment variable must be set for field-level encryption'
+  );
+}
 
 // =============================================================================
 // Types

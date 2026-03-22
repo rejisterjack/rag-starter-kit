@@ -50,6 +50,11 @@ import Google from 'next-auth/providers/google';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import {
+  getLockoutStatus,
+  recordFailedAttempt,
+  recordSuccessfulLogin,
+} from '@/lib/security/account-lockout';
 import { createDefaultWorkspace, getUserWorkspaces } from '@/lib/workspace/workspace';
 
 // =============================================================================
