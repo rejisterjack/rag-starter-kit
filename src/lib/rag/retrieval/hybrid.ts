@@ -151,6 +151,13 @@ export function deduplicateChunks(
     let isDuplicate = false;
 
     for (const existing of deduplicated) {
+      // FIXED: Add exact-match short-circuit for O(1) comparison
+      // Only compute Jaccard for non-exact matches
+      if (chunk.content === existing.content) {
+        isDuplicate = true;
+        break;
+      }
+
       const similarity = calculateJaccardSimilarity(chunk.content, existing.content);
       if (similarity >= similarityThreshold) {
         isDuplicate = true;

@@ -175,8 +175,8 @@ export default defineConfig({
   ],
   
   // Global setup and teardown
-  // globalSetup: './tests/e2e/global-setup.ts',
-  // globalTeardown: './tests/e2e/global-teardown.ts',
+  globalSetup: './tests/e2e/global-setup.ts',
+  globalTeardown: './tests/e2e/global-teardown.ts',
   
   // Output directory for test artifacts
   outputDir: './playwright-report/test-results',

@@ -172,7 +172,8 @@ export const {
 
         if (!user || !user.password) {
           // Record failed attempt
-          const ipAddress = req?.headers?.['x-forwarded-for'] as string | undefined;
+          // FIXED: Use Headers.get() instead of bracket notation
+          const ipAddress = req?.headers?.get('x-forwarded-for') ?? undefined;
           await recordFailedAttempt(email, ipAddress);
           return null;
         }
@@ -182,7 +183,8 @@ export const {
 
         if (!isValid) {
           // Record failed attempt
-          const ipAddress = req?.headers?.['x-forwarded-for'] as string | undefined;
+          // FIXED: Use Headers.get() instead of bracket notation
+          const ipAddress = req?.headers?.get('x-forwarded-for') ?? undefined;
           const newStatus = await recordFailedAttempt(email, ipAddress);
 
           // If this attempt locked the account, throw error

@@ -59,20 +59,10 @@ import {
 } from 'ai';
 import { logger } from '@/lib/logger';
 import { estimateTokens } from '@/lib/rag/token-budget';
+import type { RAGConfig } from '@/types';
 
 // Embedding model configuration (Google Gemini - FREE)
 const EMBEDDING_MODEL = 'text-embedding-004';
-
-export interface RAGConfig {
-  chunkSize: number;
-  chunkOverlap: number;
-  topK: number;
-  similarityThreshold: number;
-  temperature: number;
-  maxTokens: number;
-  model: string;
-  embeddingModel: string;
-}
 
 /**
  * BEST OpenRouter FREE Models - Ranked by Performance
@@ -138,7 +128,7 @@ export async function streamChatCompletion(messages: UIMessage[], config: Partia
         // biome-ignore lint/suspicious/noExplicitAny: UIMessage to ModelMessage conversion
         messages: messages as any,
         temperature: modelConfig.temperature,
-        maxOutputTokens: modelConfig.maxTokens,
+        maxTokens: modelConfig.maxTokens,
       });
 
       // Add model info to result
@@ -179,7 +169,7 @@ export async function generateChatCompletion(
         // biome-ignore lint/suspicious/noExplicitAny: UIMessage to ModelMessage conversion
         messages: messages as any,
         temperature: modelConfig.temperature,
-        maxOutputTokens: modelConfig.maxTokens,
+        maxTokens: modelConfig.maxTokens,
       });
 
       return { text: result.text, modelUsed: model, usage: result.usage };
@@ -202,7 +192,8 @@ export async function generateChatCompletion(
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   const result = await embed({
-    model: google.textEmbeddingModel(EMBEDDING_MODEL),
+    // biome-ignore lint/suspicious/noExplicitAny: Google AI SDK v3 to v4 compatibility
+    model: google.textEmbeddingModel(EMBEDDING_MODEL) as any,
     value: text,
   });
 
@@ -221,7 +212,8 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
     const batch = texts.slice(i, i + batchSize);
 
     const result = await embedMany({
-      model: google.textEmbeddingModel(EMBEDDING_MODEL),
+      // biome-ignore lint/suspicious/noExplicitAny: Google AI SDK v3 to v4 compatibility
+      model: google.textEmbeddingModel(EMBEDDING_MODEL) as any,
       values: batch,
     });
 

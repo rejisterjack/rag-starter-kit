@@ -164,7 +164,8 @@ export const processDocumentJob = inngest.createFunction(
     const embeddings = createEmbeddings();
 
     // Process chunks in batches
-    const batchSize = 20;
+    // FIXED: Increased from 20 to 100 to match Google's limit and reduce API calls
+    const batchSize = 100;
     const totalChunks = chunks.length;
 
     for (let i = 0; i < totalChunks; i += batchSize) {
@@ -281,11 +282,18 @@ export const retryIngestionJob = inngest.createFunction(
     const { documentId, userId } = event.data;
 
     await step.run('reset-document', async () => {
+      // FIXED: Merge with existing metadata instead of overwriting
+      const existingDoc = await prisma.document.findUnique({
+        where: { id: documentId },
+        select: { metadata: true },
+      });
+
       await prisma.document.update({
         where: { id: documentId },
         data: {
           status: 'PENDING',
           metadata: {
+            ...((existingDoc?.metadata as Record<string, unknown>) ?? {}),
             retriedAt: new Date().toISOString(),
           },
         },

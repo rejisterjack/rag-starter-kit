@@ -98,11 +98,14 @@ jobs:
           - 5432:5432
 
     env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ragdb_test?pgbouncer=true&connect_timeout=15
+      DATABASE_URL_UNPOOLED: postgres://postgres:postgres@localhost:5432/ragdb_test
       POSTGRES_PRISMA_URL: postgres://postgres:postgres@localhost:5432/ragdb_test?pgbouncer=true&connect_timeout=15
       POSTGRES_URL_NON_POOLING: postgres://postgres:postgres@localhost:5432/ragdb_test
       NEXTAUTH_SECRET: test-secret-key-for-ci-only
       NEXTAUTH_URL: http://localhost:3000
-      OPENAI_API_KEY: sk-test-key-for-ci-only
+      OPENROUTER_API_KEY: sk-test-key-for-ci-only
+      GOOGLE_API_KEY: test-key-for-ci-only
       NODE_ENV: test
 
     steps:
@@ -133,6 +136,9 @@ jobs:
 
       - name: Run integration tests
         run: pnpm test:integration --reporter=verbose
+
+      - name: Run test coverage (enforces 90% threshold)
+        run: pnpm test:coverage
 
       - name: Upload test results
         if: always()

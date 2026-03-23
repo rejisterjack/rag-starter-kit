@@ -263,6 +263,7 @@ export async function POST(req: Request) {
           }
 
           // Log token usage
+          // FIXED: Use correct field names from LanguageModelUsage (promptTokens/completionTokens)
           if (completion.usage) {
             await prisma.apiUsage.create({
               data: {
@@ -270,10 +271,10 @@ export async function POST(req: Request) {
                 workspaceId,
                 endpoint: '/api/chat',
                 method: 'POST',
-                tokensPrompt: completion.usage.inputTokens ?? 0,
-                tokensCompletion: completion.usage.outputTokens ?? 0,
+                tokensPrompt: completion.usage.promptTokens ?? 0,
+                tokensCompletion: completion.usage.completionTokens ?? 0,
                 tokensTotal:
-                  (completion.usage.inputTokens ?? 0) + (completion.usage.outputTokens ?? 0),
+                  (completion.usage.promptTokens ?? 0) + (completion.usage.completionTokens ?? 0),
                 latencyMs: Date.now() - startTime,
               },
             });
@@ -599,8 +600,9 @@ export async function PATCH(req: Request) {
     });
 
     // Log update
+    // FIXED: Use correct audit event for chat updates
     await logAuditEvent({
-      event: AuditEvent.WORKSPACE_UPDATED,
+      event: AuditEvent.CHAT_UPDATED,
       userId,
       workspaceId: chat.workspaceId ?? undefined,
       metadata: { chatId, updates: Object.keys(updateData) },
@@ -688,7 +690,7 @@ async function generateWithFallback(
         model: getModel(modelName),
         messages,
         temperature: options.temperature,
-        maxTokens: options.maxTokens,
+        maxOutputTokens: options.maxTokens,
       });
 
       // Return successful result with the model that worked

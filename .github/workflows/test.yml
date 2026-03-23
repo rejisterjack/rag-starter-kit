@@ -27,9 +27,9 @@ jobs:
           cache: 'pnpm'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v3
         with:
-          version: 9
+          version: 10
 
       - name: Install dependencies
         run: pnpm install
@@ -53,9 +53,9 @@ jobs:
           cache: 'pnpm'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v3
         with:
-          version: 9
+          version: 10
 
       - name: Install dependencies
         run: pnpm install
@@ -79,9 +79,9 @@ jobs:
           cache: 'pnpm'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v3
         with:
-          version: 9
+          version: 10
 
       - name: Install dependencies
         run: pnpm install
@@ -120,9 +120,9 @@ jobs:
           cache: 'pnpm'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v3
         with:
-          version: 9
+          version: 10
 
       - name: Install dependencies
         run: pnpm install
@@ -132,13 +132,19 @@ jobs:
 
       - name: Run database migrations
         env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ragdb_test?schema=public
+          DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@localhost:5432/ragdb_test?schema=public
           POSTGRES_PRISMA_URL: postgresql://postgres:postgres@localhost:5432/ragdb_test?schema=public
         run: pnpm db:migrate:prod
 
       - name: Run integration tests
         env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ragdb_test?schema=public
+          DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@localhost:5432/ragdb_test?schema=public
           POSTGRES_PRISMA_URL: postgresql://postgres:postgres@localhost:5432/ragdb_test?schema=public
           NODE_ENV: test
+          NEXTAUTH_SECRET: test-secret-key-for-ci-only
+          NEXTAUTH_URL: http://localhost:3000
         run: pnpm test:integration --reporter=verbose
 
   # ==========================================
@@ -157,9 +163,9 @@ jobs:
           cache: 'pnpm'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v3
         with:
-          version: 9
+          version: 10
 
       - name: Install dependencies
         run: pnpm install
@@ -183,6 +189,32 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ragdb_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+      minio:
+        image: minio/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports:
+          - 9000:9000
+        command: server /data
     steps:
       - uses: actions/checkout@v4
 
@@ -193,15 +225,21 @@ jobs:
           cache: 'pnpm'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v3
         with:
-          version: 9
+          version: 10
 
       - name: Install dependencies
         run: pnpm install
 
       - name: Generate Prisma client
         run: pnpm db:generate
+
+      - name: Setup database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ragdb_test?schema=public
+          DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@localhost:5432/ragdb_test?schema=public
+        run: pnpm db:migrate:prod
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps
@@ -210,6 +248,14 @@ jobs:
         env:
           CI: true
           NODE_ENV: test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ragdb_test?schema=public
+          DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@localhost:5432/ragdb_test?schema=public
+          REDIS_URL: redis://localhost:6379
+          S3_ENDPOINT: http://localhost:9000
+          S3_ACCESS_KEY_ID: minioadmin
+          S3_SECRET_ACCESS_KEY: minioadmin
+          NEXTAUTH_SECRET: test-secret-key-for-ci-only
+          NEXTAUTH_URL: http://localhost:3000
         run: pnpm test:e2e
 
       - name: Upload Playwright report
@@ -237,9 +283,9 @@ jobs:
           cache: 'pnpm'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v3
         with:
-          version: 9
+          version: 10
 
       - name: Install dependencies
         run: pnpm install
@@ -275,9 +321,9 @@ jobs:
           cache: 'pnpm'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v3
         with:
-          version: 9
+          version: 10
 
       - name: Install dependencies
         run: pnpm install

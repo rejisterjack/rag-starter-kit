@@ -74,12 +74,13 @@ export async function generateRAGResponse(query: RAGQuery): Promise<RAGResponse>
     // Extract token usage from response
     const usage: LanguageModelUsage = response.usage;
 
+    // FIXED: Use correct field names from LanguageModelUsage (promptTokens/completionTokens)
     return {
       answer: response.text,
       sources,
       tokensUsed: {
-        prompt: usage.inputTokens ?? 0,
-        completion: usage.outputTokens ?? 0,
+        prompt: usage.promptTokens ?? 0,
+        completion: usage.completionTokens ?? 0,
         total: usage.totalTokens ?? 0,
       },
       latency,
