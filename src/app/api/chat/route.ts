@@ -12,7 +12,7 @@
 
 import { generateText, type LanguageModel, streamText } from 'ai';
 import { NextResponse } from 'next/server';
-import { createProviderFromEnv, type LLMMessage } from '@/lib/ai/llm';
+import type { LLMMessage } from '@/lib/ai/llm';
 import { buildSystemPromptWithContext } from '@/lib/ai/prompts/templates';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
@@ -48,15 +48,15 @@ const defaultConfig: RAGConfig = {
 
 /**
  * Best OpenRouter free models - tried in order if primary fails
- * TODO: Implement fallback logic in createProviderFromEnv
+ * IMPLEMENTED: Fallback logic tries each model in order until one succeeds
  */
-// const MODEL_FALLBACK_CHAIN = [
-//   'deepseek/deepseek-chat:free',
-//   'mistralai/mistral-7b-instruct:free',
-//   'meta-llama/llama-3.1-8b-instruct:free',
-//   'google/gemma-2-9b-it:free',
-//   'qwen/qwen-2.5-7b-instruct:free',
-// ];
+const MODEL_FALLBACK_CHAIN = [
+  'deepseek/deepseek-chat:free',
+  'mistralai/mistral-7b-instruct:free',
+  'meta-llama/llama-3.1-8b-instruct:free',
+  'google/gemma-2-9b-it:free',
+  'qwen/qwen-2.5-7b-instruct:free',
+];
 
 // =============================================================================
 // POST Handler
@@ -238,9 +238,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // Step 13: Initialize LLM provider
-    const llmProvider = createProviderFromEnv();
-
     if (shouldStream) {
       // Streaming response
       const result = streamText({
@@ -255,9 +252,14 @@ export async function POST(req: Request) {
               role: 'assistant',
               content: completion.text,
             });
-            
+
             // Generate title if this is the first exchange
-            await maybeGenerateTitle(effectiveConversationId, userMessage, completion.text, config.model);
+            await maybeGenerateTitle(
+              effectiveConversationId,
+              userMessage,
+              completion.text,
+              config.model
+            );
           }
 
           // Log token usage
@@ -300,21 +302,21 @@ export async function POST(req: Request) {
 
       return response;
     } else {
-      // Non-streaming response
-      const response = await llmProvider.generate(llmMessages, {
-        model: config.model,
+      // Non-streaming response with model fallback
+      const response = await generateWithFallback(llmMessages, {
         temperature: config.temperature,
         maxTokens: config.maxTokens,
+        primaryModel: config.model,
       });
 
       // Extract citations
-      const citations = citationHandler.extractCitations(response.content, citationMap);
+      const citations = citationHandler.extractCitations(response.text, citationMap);
 
       // Save assistant response
       if (effectiveConversationId) {
         await memory.addMessage(effectiveConversationId, {
           role: 'assistant',
-          content: response.content,
+          content: response.text,
           sources: citations.map((c) => ({
             id: c.chunkId,
             content: c.content,
@@ -328,14 +330,19 @@ export async function POST(req: Request) {
             },
           })),
           tokensUsed: {
-            prompt: response.usage.promptTokens,
-            completion: response.usage.completionTokens,
-            total: response.usage.totalTokens,
+            prompt: response.usage?.promptTokens ?? 0,
+            completion: response.usage?.completionTokens ?? 0,
+            total: response.usage?.totalTokens ?? 0,
           },
         });
-        
+
         // Generate title if this is the first exchange
-        await maybeGenerateTitle(effectiveConversationId, userMessage, response.content, config.model);
+        await maybeGenerateTitle(
+          effectiveConversationId,
+          userMessage,
+          response.text,
+          response.model
+        );
       }
 
       // Log token usage
@@ -345,9 +352,9 @@ export async function POST(req: Request) {
           workspaceId,
           endpoint: '/api/chat',
           method: 'POST',
-          tokensPrompt: response.usage.promptTokens,
-          tokensCompletion: response.usage.completionTokens,
-          tokensTotal: response.usage.totalTokens,
+          tokensPrompt: response.usage?.promptTokens ?? 0,
+          tokensCompletion: response.usage?.completionTokens ?? 0,
+          tokensTotal: response.usage?.totalTokens ?? 0,
           latencyMs: Date.now() - startTime,
         },
       });
@@ -355,7 +362,7 @@ export async function POST(req: Request) {
       const jsonResponse = NextResponse.json({
         success: true,
         data: {
-          content: response.content,
+          content: response.text,
           sources: citations.map((c) => ({
             id: c.id,
             documentName: c.documentName,
@@ -657,6 +664,59 @@ function getModel(modelName: string): LanguageModel {
 }
 
 /**
+ * Try to generate text with fallback models
+ * Attempts each model in the fallback chain until one succeeds
+ */
+async function generateWithFallback(
+  messages: LLMMessage[],
+  options: { temperature: number; maxTokens: number; primaryModel: string }
+): Promise<{
+  text: string;
+  model: string;
+  usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
+}> {
+  const modelsToTry = [
+    options.primaryModel,
+    ...MODEL_FALLBACK_CHAIN.filter((m) => m !== options.primaryModel),
+  ];
+
+  let lastError: Error | null = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      const result = await generateText({
+        model: getModel(modelName),
+        messages,
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+      });
+
+      // Return successful result with the model that worked
+      return {
+        text: result.text,
+        model: modelName,
+        usage: result.usage
+          ? {
+              promptTokens: result.usage.promptTokens ?? 0,
+              completionTokens: result.usage.completionTokens ?? 0,
+              totalTokens: (result.usage.promptTokens ?? 0) + (result.usage.completionTokens ?? 0),
+            }
+          : undefined,
+      };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      logger.warn(`Model ${modelName} failed, trying fallback`, {
+        error: lastError.message,
+      });
+      // Continue to next model in chain
+    }
+  }
+
+  // All models failed
+  throw lastError || new Error('All models in fallback chain failed');
+}
+
+/**
  * Map error codes to HTTP status codes
  */
 function getErrorStatusCode(code: string): number {
@@ -697,13 +757,14 @@ async function maybeGenerateTitle(
 
     // Generate title using a quick LLM call
     const titleModel = modelName.includes(':') ? 'mistralai/mistral-7b-instruct:free' : modelName;
-    
+
     const { text: title } = await generateText({
       model: getModel(titleModel),
       messages: [
         {
           role: 'system',
-          content: 'Generate a concise 4-6 word title for this conversation. Return ONLY the title, no quotes or explanation.',
+          content:
+            'Generate a concise 4-6 word title for this conversation. Return ONLY the title, no quotes or explanation.',
         },
         {
           role: 'user',
@@ -714,21 +775,27 @@ async function maybeGenerateTitle(
       temperature: 0.7,
     });
 
-    const cleanTitle = title.trim().replace(/^["']|["']$/g, '').slice(0, 100);
-    
+    const cleanTitle = title
+      .trim()
+      .replace(/^["']|["']$/g, '')
+      .slice(0, 100);
+
     if (cleanTitle && cleanTitle.length > 0) {
       await prisma.chat.update({
         where: { id: chatId },
         data: { title: cleanTitle },
       });
-      
+
       logger.info({ chatId, title: cleanTitle }, 'Generated chat title');
     }
   } catch (error) {
     // Don't fail the chat if title generation fails
-    logger.warn({
-      chatId,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }, 'Failed to generate chat title');
+    logger.warn(
+      {
+        chatId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      'Failed to generate chat title'
+    );
   }
 }

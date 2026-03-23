@@ -3,17 +3,47 @@
  *
  * Generates and returns a new CSRF token for the client.
  * Sets the CSRF cookie and returns the token in the response.
+ *
+ * SECURITY: Uses HMAC-SHA256 to sign tokens, preventing forgery even if
+ * an attacker can set cookies (e.g., via subdomain takeover).
  */
 
+import { createHmac } from 'crypto';
 import { type NextRequest, NextResponse } from 'next/server';
 
 /**
- * Generate a cryptographically secure random token
+ * Get the CSRF signing secret
+ * Uses CSRF_SECRET if available, otherwise falls back to NEXTAUTH_SECRET
  */
-function generateToken(): string {
+function getCsrfSecret(): string {
+  const secret = process.env.CSRF_SECRET || process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    throw new Error('CSRF_SECRET or NEXTAUTH_SECRET must be configured');
+  }
+  return secret;
+}
+
+/**
+ * Generate a cryptographically secure random token with HMAC signature
+ *
+ * SECURITY: The token is signed with a server-side secret to prevent forgery.
+ * Format: token.signature (both base64url encoded)
+ */
+function generateSignedToken(): { token: string; signature: string; combined: string } {
+  const secret = getCsrfSecret();
+
+  // Generate random token
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
-  return Buffer.from(array).toString('hex');
+  const token = Buffer.from(array).toString('base64url');
+
+  // Generate HMAC signature
+  const signature = createHmac('sha256', secret).update(token).digest('base64url');
+
+  // Combined format for cookie
+  const combined = `${token}.${signature}`;
+
+  return { token, signature, combined };
 }
 
 /**
@@ -22,18 +52,20 @@ function generateToken(): string {
  */
 export async function GET(_req: NextRequest): Promise<NextResponse> {
   try {
-    // Generate ONE token used for both the cookie and the response body.
+    // Generate signed token
     // The double-submit pattern requires the header value the client sends
-    // to match the cookie value the middleware reads — they must be identical.
-    const token = generateToken();
+    // to match the token portion of the cookie value — the signature is verified server-side.
+    const { token, combined } = generateSignedToken();
 
     const response = NextResponse.json({
       token,
       success: true,
     });
 
-    // Set the cookie to the same token value so middleware comparison passes
-    response.cookies.set('csrf_token', token, {
+    // Set the cookie to the combined value (token.signature)
+    // The client reads the token and sends it in the header
+    // The middleware verifies the signature using the server secret
+    response.cookies.set('csrf_token', combined, {
       httpOnly: false, // must be readable by JS so the client can copy it to a header
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -85,10 +117,50 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // In the double-submit pattern, the token should match the cookie
-    // For this implementation, we use a simple comparison
-    // In production, you might use HMAC or signed tokens
-    const isValid = token === cookie.value;
+    // Parse cookie value (format: token.signature)
+    const cookieParts = cookie.value.split('.');
+    if (cookieParts.length !== 2) {
+      return NextResponse.json(
+        {
+          valid: false,
+          error: 'Invalid cookie format',
+        },
+        { status: 400 }
+      );
+    }
+
+    const [cookieToken, cookieSignature] = cookieParts;
+
+    // Verify token matches
+    if (token !== cookieToken) {
+      return NextResponse.json(
+        {
+          valid: false,
+          error: 'Token mismatch',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Verify HMAC signature
+    const secret = getCsrfSecret();
+    const expectedSignature = createHmac('sha256', secret).update(token).digest('base64url');
+
+    // Use timing-safe comparison
+    const sigBuf = Buffer.from(cookieSignature);
+    const expectedBuf = Buffer.from(expectedSignature);
+
+    if (sigBuf.length !== expectedBuf.length) {
+      return NextResponse.json(
+        {
+          valid: false,
+          error: 'Invalid signature length',
+        },
+        { status: 400 }
+      );
+    }
+
+    const isValid = require('crypto').timingSafeEqual(sigBuf, expectedBuf);
 
     return NextResponse.json({
       valid: isValid,

@@ -265,12 +265,14 @@ export async function middleware(req: NextRequest) {
 }
 
 // =============================================================================
-// CSRF Token Validation
+// CSRF Token Generation and Validation
 // =============================================================================
+
+import { createHmac, timingSafeEqual } from 'crypto';
 
 /**
  * Validate CSRF token from request
- * Uses double-submit cookie pattern for validation
+ * Uses double-submit cookie pattern with HMAC validation for security
  */
 async function validateCsrfToken(req: NextRequest): Promise<boolean> {
   try {
@@ -281,27 +283,43 @@ async function validateCsrfToken(req: NextRequest): Promise<boolean> {
       return false;
     }
 
-    // Get cookie value
+    // Get cookie value (format: token.signature)
     const cookie = req.cookies.get('csrf_token');
     if (!cookie?.value) {
       return false;
     }
 
-    // Timing-safe comparison
-    const encoder = new TextEncoder();
-    const tokenData = encoder.encode(token);
-    const cookieData = encoder.encode(cookie.value);
-
-    if (tokenData.length !== cookieData.length) {
+    // Parse cookie value
+    const cookieParts = cookie.value.split('.');
+    if (cookieParts.length !== 2) {
       return false;
     }
 
-    let result = 0;
-    for (let i = 0; i < tokenData.length; i++) {
-      result |= tokenData[i] ^ cookieData[i];
+    const [cookieToken, cookieSignature] = cookieParts;
+
+    // Verify token matches
+    if (token !== cookieToken) {
+      return false;
     }
 
-    return result === 0;
+    // Verify HMAC signature
+    const secret = process.env.CSRF_SECRET || process.env.NEXTAUTH_SECRET || '';
+    if (!secret) {
+      logger.error('CSRF validation failed: no secret configured');
+      return false;
+    }
+
+    const expectedSignature = createHmac('sha256', secret).update(token).digest('base64url');
+
+    // Timing-safe signature comparison
+    const signatureBuffer = Buffer.from(cookieSignature);
+    const expectedBuffer = Buffer.from(expectedSignature);
+
+    if (signatureBuffer.length !== expectedBuffer.length) {
+      return false;
+    }
+
+    return timingSafeEqual(signatureBuffer, expectedBuffer);
   } catch (error) {
     logger.warn('CSRF validation error', {
       error: error instanceof Error ? error.message : String(error),
@@ -361,10 +379,10 @@ function addSecurityHeaders(response: NextResponse, requestId?: string): void {
     );
   }
 
-  // Permissions Policy
+  // Permissions Policy - allow microphone for voice input feature
   response.headers.set(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), interest-cohort=()'
+    'camera=(), microphone=(self), geolocation=(), interest-cohort=()'
   );
 }
 

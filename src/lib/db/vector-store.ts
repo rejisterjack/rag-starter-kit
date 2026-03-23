@@ -3,15 +3,19 @@
  *
  * Core vector operations using pgvector extension.
  * Provides document chunk storage, similarity search, and metadata filtering.
+ *
+ * SECURITY NOTE: All SQL queries use parameterized Prisma queries to prevent SQL injection.
+ * User-provided IDs and filters are never interpolated into raw SQL.
  */
 
-import type { DocumentChunk } from '@prisma/client';
-import { Prisma, type PrismaClient } from '@prisma/client';
+// Note: Prisma types will be available after `prisma generate`
+// These are type-only imports that require the Prisma client to be generated
+import type { PrismaClient } from '@prisma/client';
 
 // Type for transaction client
-type PrismaTransactionClient = Omit<
+type PrismaTransactionClient = Pick<
   PrismaClient,
-  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+  '$executeRaw' | '$queryRaw' | '$queryRawUnsafe' | 'documentChunk' | 'document'
 >;
 
 // ============================================================================
@@ -143,6 +147,9 @@ export class VectorStore {
 
   /**
    * Similarity search with filters
+   *
+   * SECURITY: All user-provided values are passed as Prisma parameters, never interpolated into SQL.
+   * This prevents SQL injection attacks on the document ID filter, date range filter, etc.
    */
   async similaritySearch(
     _query: string,
@@ -155,33 +162,51 @@ export class VectorStore {
     const distanceExpr = this.getDistanceExpression(searchType);
     const scoreExpr = this.getScoreExpression(searchType);
 
-    // Build WHERE clause
-    const conditions: string[] = [
-      `d.user_id = ${Prisma.sql`'` + userId + Prisma.sql`'`}`,
-      `d.status = 'COMPLETED'`,
-    ];
+    // Validate document IDs format (prevent injection attempts)
+    if (filter?.documentIds) {
+      for (const docId of filter.documentIds) {
+        if (!/^[a-zA-Z0-9_-]+$/.test(docId)) {
+          throw new Error('Invalid document ID format');
+        }
+      }
+    }
+
+    // Build parameters and WHERE clause parts
+    const params: unknown[] = [userId];
+    let paramIndex = 2;
+
+    // Build WHERE conditions using parameterized queries
+    let whereConditions = `d.user_id = $${paramIndex++}`;
 
     if (filter?.documentIds && filter.documentIds.length > 0) {
-      const ids = filter.documentIds.map((id) => `'${id}'`).join(',');
-      conditions.push(`d.id IN (${ids})`);
+      // Use parameterized array for document IDs
+      params.push(...filter.documentIds);
+      const docIdPlaceholders = filter.documentIds.map(() => `$${paramIndex++}`).join(', ');
+      whereConditions += ` AND d.id IN (${docIdPlaceholders})`;
     }
 
     if (filter?.documentTypes && filter.documentTypes.length > 0) {
-      const types = filter.documentTypes.map((t) => `'${t}'`).join(',');
-      conditions.push(`d.content_type IN (${types})`);
+      // Use parameterized array for document types
+      params.push(...filter.documentTypes);
+      const typePlaceholders = filter.documentTypes.map(() => `$${paramIndex++}`).join(', ');
+      whereConditions += ` AND d.content_type IN (${typePlaceholders})`;
     }
 
     if (filter?.dateRange) {
-      conditions.push(
-        `d.created_at >= '${filter.dateRange.from.toISOString()}'`,
-        `d.created_at <= '${filter.dateRange.to.toISOString()}'`
-      );
+      // Use parameterized dates
+      params.push(filter.dateRange.from, filter.dateRange.to);
+      whereConditions += ` AND d.created_at >= $${paramIndex++} AND d.created_at <= $${paramIndex++}`;
     }
 
-    const whereClause = conditions.join(' AND ');
+    // Add limit parameter (must be last)
+    params.push(topK * 2);
 
-    // Execute search query
-    const results = await this.prisma.$queryRaw<
+    // Note: scoreExpr and distanceExpr are safe as they are controlled by the application, not user input
+
+    // Execute search query with proper parameterization
+    // We need to use $queryRawUnsafe because we have dynamic column expressions
+    // But all user inputs are parameterized
+    const results = await this.prisma.$queryRawUnsafe<
       Array<{
         chunkId: string;
         content: string;
@@ -193,24 +218,29 @@ export class VectorStore {
         section: string | null;
         index: number;
       }>
-    >`
-      SELECT 
-        dc.id as "chunkId",
-        dc.content,
-        ${Prisma.raw(scoreExpr)} as score,
-        d.id as "documentId",
-        d.name as "documentName",
-        d.content_type as "documentType",
-        dc.page,
-        dc.section,
-        dc.index
-      FROM document_chunks dc
-      JOIN documents d ON dc.document_id = d.id
-      WHERE ${Prisma.raw(whereClause)}
-        AND dc.embedding IS NOT NULL
-      ORDER BY ${Prisma.raw(distanceExpr)} ${queryEmbedding}::vector
-      LIMIT ${topK * 2}
-    `;
+    >(
+      `
+        SELECT 
+          dc.id as "chunkId",
+          dc.content,
+          ${scoreExpr} as score,
+          d.id as "documentId",
+          d.name as "documentName",
+          d.content_type as "documentType",
+          dc.page,
+          dc.section,
+          dc.index
+        FROM document_chunks dc
+        JOIN documents d ON dc.document_id = d.id
+        WHERE ${whereConditions}
+          AND d.status = 'COMPLETED'
+          AND dc.embedding IS NOT NULL
+        ORDER BY ${distanceExpr} $1::vector
+        LIMIT $${paramIndex}
+      `,
+      queryEmbedding, // $1 - the query embedding
+      ...params.slice(1) // remaining parameters (userId, docIds, types, dates, limit)
+    );
 
     // Filter by minimum score and format results
     return results
@@ -429,17 +459,19 @@ export class VectorStore {
 
   /**
    * Get score expression (converts distance to similarity score)
+   *
+   * FIXED: All expressions are now complete with proper closing parentheses
    */
   private getScoreExpression(searchType: DistanceMetric): string {
     switch (searchType) {
       case 'cosine':
-        return '1 - (dc.embedding <=>'; // Cosine similarity
+        return '1 - (dc.embedding <=> $1::vector)'; // Cosine similarity: 1 - distance
       case 'euclidean':
-        return '1 / (1 + (dc.embedding <->'; // Convert to similarity
+        return '1 / (1 + (dc.embedding <-> $1::vector))'; // Convert to similarity
       case 'inner_product':
-        return '-(dc.embedding <#>'; // Negate to get similarity
+        return '-(dc.embedding <#> $1::vector)'; // Negate to get similarity
       default:
-        return '1 - (dc.embedding <=>';
+        return '1 - (dc.embedding <=> $1::vector)';
     }
   }
 }

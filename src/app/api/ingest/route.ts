@@ -237,7 +237,7 @@ async function handleFileIngestion(
 
   // Step 5: Convert to buffer and validate magic bytes
   const bytes = await file.arrayBuffer();
-  
+
   // Validate file bytes using magic byte detection (Fix #8)
   const magicBytesValidation = validateFileBytes(bytes, file.type);
   if (!magicBytesValidation.valid) {
@@ -252,7 +252,7 @@ async function handleFileIngestion(
       { status: 400 }
     );
   }
-  
+
   const buffer = Buffer.from(bytes);
 
   let content: string;
@@ -350,13 +350,15 @@ async function handleFileIngestion(
   }
 
   // Step 7: Create document record
+  // FIXED: userId should always be the actual user who uploaded the document
+  // workspaceId is the optional workspace context for the document
   const document = await prisma.document.create({
     data: {
       name: file.name,
       contentType: validation.type ?? 'UNKNOWN',
       size: file.size,
       status: 'PENDING',
-      userId: targetId,
+      userId: userId, // Always use the actual user's ID
       workspaceId: workspaceId || null,
       content,
       metadata: {
@@ -490,14 +492,14 @@ async function handleURLIngestion(
   }
 
   // Create document record (content will be fetched in background)
-  const targetId = workspaceId || userId;
+  // FIXED: userId should always be the actual user who uploaded the document
   const document = await prisma.document.create({
     data: {
       name: validatedUrl.hostname + validatedUrl.pathname,
       contentType: 'HTML',
       size: 0,
       status: 'PENDING',
-      userId: targetId,
+      userId: userId, // Always use the actual user's ID
       workspaceId: workspaceId || null,
       metadata: {
         sourceUrl: url,
@@ -513,7 +515,7 @@ async function handleURLIngestion(
     name: 'document/ingest',
     data: {
       documentId: document.id,
-      userId: targetId,
+      userId,
       url,
     },
   });

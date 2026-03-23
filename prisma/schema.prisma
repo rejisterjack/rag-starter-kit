@@ -7,6 +7,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================================================
@@ -400,6 +401,9 @@ enum ImageStatus {
 model Chat {
   id          String     @id @default(cuid())
   title       String     @default("New Chat")
+
+  // AI model used for this chat (e.g., "deepseek/deepseek-chat:free")
+  model       String?
 
   // Optional metadata for features like branching
   metadata    Json?      @default("{}")
@@ -986,9 +990,9 @@ model SamlConnection {
   spEntityId        String   @default("rag-starter-kit")
   spAcsUrl          String?
 
-  // Security
+  // Security - privateKey is encrypted at rest using AES-256-GCM
   publicCertificate String?  // Our public cert for signing
-  privateKey        String?  // Our private key (encrypted)
+  privateKey        String?  // Our private key (encrypted with ENCRYPTION_MASTER_KEY)
 
   // Settings
   allowIdpInitiated Boolean  @default(false)
@@ -1015,7 +1019,7 @@ model Webhook {
   id          String        @id @default(cuid())
   name        String
   url         String
-  secret      String        // For HMAC signature
+  secret      String        // For HMAC signature (encrypted with ENCRYPTION_MASTER_KEY)
   events      String[]      // Events to subscribe to
   status      WebhookStatus @default(ACTIVE)
 

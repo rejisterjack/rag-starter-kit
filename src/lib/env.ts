@@ -34,8 +34,8 @@ const envSchema = z.object({
   // Storage configuration (optional)
   S3_ENDPOINT: z.string().optional(),
   S3_BUCKET_NAME: z.string().optional(),
-  AWS_ACCESS_KEY_ID: z.string().optional(),
-  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_REGION: z.string().optional(),
 
   // CORS configuration
@@ -57,6 +57,12 @@ const envSchema = z.object({
 
   // Google embedding quota
   GOOGLE_EMBED_DAILY_LIMIT: z.coerce.number().default(1400),
+
+  // Encryption key for sensitive data at rest (min 32 chars)
+  ENCRYPTION_MASTER_KEY: z.string().min(32).optional(),
+
+  // Unpooled database URL for migrations
+  DATABASE_URL_UNPOOLED: z.string().optional(),
 });
 
 // =============================================================================

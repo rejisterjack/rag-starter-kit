@@ -133,8 +133,11 @@ export async function uploadImageToStorage(
   documentId: string
 ): Promise<{ storageKey: string; storageUrl: string }> {
   try {
-    // Check if S3/MinIO is configured
-    if (!process.env.S3_ENDPOINT && !process.env.AWS_ACCESS_KEY_ID) {
+    // Check if S3/MinIO is configured (supports both S3_* and legacy AWS_* env vars)
+    const s3AccessKeyId = process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+    const s3SecretAccessKey = process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+
+    if (!process.env.S3_ENDPOINT && !s3AccessKeyId) {
       // Fallback: Store locally or return data URL for development
       const base64 = buffer.toString('base64');
       return {
@@ -151,8 +154,8 @@ export async function uploadImageToStorage(
       endpoint: process.env.S3_ENDPOINT,
       region: process.env.AWS_REGION || 'us-east-1',
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+        accessKeyId: s3AccessKeyId || '',
+        secretAccessKey: s3SecretAccessKey || '',
       },
       forcePathStyle: true, // Required for MinIO
     });
@@ -582,8 +585,11 @@ export async function deleteDocumentImages(documentId: string): Promise<void> {
     select: { id: true, storageKey: true },
   });
 
-  // Delete from S3/MinIO if configured
-  if (process.env.S3_ENDPOINT || process.env.AWS_ACCESS_KEY_ID) {
+  // Delete from S3/MinIO if configured (supports both S3_* and legacy AWS_* env vars)
+  const s3AccessKeyId = process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+  const s3SecretAccessKey = process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+
+  if (process.env.S3_ENDPOINT || s3AccessKeyId) {
     try {
       const { S3Client, DeleteObjectCommand } = await import('@aws-sdk/client-s3');
 
@@ -591,8 +597,8 @@ export async function deleteDocumentImages(documentId: string): Promise<void> {
         endpoint: process.env.S3_ENDPOINT,
         region: process.env.AWS_REGION || 'us-east-1',
         credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+          accessKeyId: s3AccessKeyId || '',
+          secretAccessKey: s3SecretAccessKey || '',
         },
         forcePathStyle: true,
       });
