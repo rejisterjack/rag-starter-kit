@@ -107,7 +107,7 @@ export const tracing = {
     });
   },
 
-  // RAG retrieval
+  // RAG retrieval with enhanced metrics
   async retrieveSources(
     query: string,
     topK: number,
@@ -118,8 +118,39 @@ export const tracing = {
       span.setAttribute('rag.top_k', topK);
       const startTime = Date.now();
       const result = await fn();
+      const duration = Date.now() - startTime;
+
       span.setAttribute('rag.results_count', result.length);
-      span.setAttribute('rag.duration_ms', Date.now() - startTime);
+      span.setAttribute('rag.duration_ms', duration);
+
+      // Calculate average similarity score if available
+      if (result.length > 0 && 'similarity' in (result[0] as any)) {
+        const avgSimilarity =
+          result.reduce((sum: number, r: any) => sum + (r.similarity ?? 0), 0) / result.length;
+        span.setAttribute('rag.avg_similarity', avgSimilarity);
+      }
+
+      return result;
+    });
+  },
+
+  // RAG answer quality metrics
+  async measureAnswerQuality(
+    query: string,
+    answer: string,
+    sources: unknown[],
+    fn: () => Promise<{ relevanceScore: number; faithfulnessScore: number }>
+  ): Promise<{ relevanceScore: number; faithfulnessScore: number }> {
+    return withSpan('rag.answer_quality', async (span) => {
+      span.setAttribute('rag.query_length', query.length);
+      span.setAttribute('rag.answer_length', answer.length);
+      span.setAttribute('rag.sources_count', sources.length);
+
+      const result = await fn();
+
+      span.setAttribute('rag.relevance_score', result.relevanceScore);
+      span.setAttribute('rag.faithfulness_score', result.faithfulnessScore);
+
       return result;
     });
   },

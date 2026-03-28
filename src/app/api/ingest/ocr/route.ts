@@ -28,6 +28,7 @@ import {
   checkApiRateLimit,
   getRateLimitIdentifier,
 } from '@/lib/security/rate-limiter';
+import { assertSafeUrl } from '@/lib/security/ssrf-protection';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // Maximum file size: 20MB for images
@@ -394,13 +395,13 @@ interface FetchedImage {
 }
 
 async function fetchImageFromURL(url: string): Promise<FetchedImage> {
-  // Validate URL
+  // Validate URL with SSRF protection
+  await assertSafeUrl(url);
+
+  // Parse URL for further processing
   let validatedUrl: URL;
   try {
     validatedUrl = new URL(url);
-    if (validatedUrl.protocol !== 'http:' && validatedUrl.protocol !== 'https:') {
-      throw new Error('Only HTTP and HTTPS URLs are supported');
-    }
   } catch {
     throw new Error('Invalid URL provided');
   }

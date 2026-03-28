@@ -1,0 +1,152 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: rag-starter-kit
+  namespace: rag-starter-kit
+
+resources:
+  - namespace.yaml
+  - secrets.yaml
+  - configmap.yaml
+  - postgres.yaml
+  - redis.yaml
+  - minio.yaml
+  - app.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: rag-starter-kit
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: rag-starter-kit
+    newTag: latest
+  - name: pgvector/pgvector
+    newTag: pg16
+  - name: redis
+    newTag: 7-alpine
+  - name: minio/minio
+    newTag: latest
+  - name: minio/mc
+    newTag: latest
+
+configMapGenerator:
+  - name: rag-config
+    behavior: replace
+    literals:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - NEXT_TELEMETRY_DISABLED=1
+      - LLM_PROVIDER=openrouter
+      - EMBEDDING_PROVIDER=google
+      - DEFAULT_MODEL=deepseek/deepseek-chat:free
+      - EMBEDDING_MODEL=text-embedding-004
+      - EMBEDDING_DIMENSIONS=768
+      - NEXT_PUBLIC_ANALYTICS_HOST=http://plausible:8000
+      - NEXT_PUBLIC_ANALYTICS_SCRIPT_URL=http://plausible:8000/js/script.js
+      - PLAUSIBLE_BASE_URL=http://plausible:8000
+      - PLAUSIBLE_DISABLE_REGISTRATION=true
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MINIO_HOST=minio
+      - MINIO_PORT=9000
+
+secretGenerator:
+  - name: rag-secrets
+    behavior: replace
+    literals:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=CHANGE_ME_STRONG_PASSWORD
+      - POSTGRES_DB=ragdb
+      - DATABASE_URL=postgresql://postgres:CHANGE_ME_STRONG_PASSWORD@postgres:5432/ragdb
+      - DATABASE_URL_UNPOOLED=postgresql://postgres:CHANGE_ME_STRONG_PASSWORD@postgres:5432/ragdb
+      - REDIS_URL=redis://redis:6379
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY_ID=CHANGE_ME_MINIO_ACCESS_KEY
+      - S3_SECRET_ACCESS_KEY=CHANGE_ME_MINIO_SECRET_KEY
+      - S3_BUCKET_DOCUMENTS=documents
+      - S3_BUCKET_EXPORTS=exports
+      - S3_BUCKET_ATTACHMENTS=attachments
+      - NEXTAUTH_SECRET=CHANGE_ME_GENERATE_WITH_OPENSSL_RAND_BASE64_32
+      - NEXTAUTH_URL=http://localhost:3000
+      - OPENROUTER_API_KEY=CHANGE_ME
+      - GOOGLE_API_KEY=CHANGE_ME
+      - OPENAI_API_KEY=CHANGE_ME
+      - ENCRYPTION_KEY=CHANGE_ME_GENERATE_32_BYTE_HEX
+      - PLAUSIBLE_SECRET_KEY_BASE=CHANGE_ME_MIN_64_CHARACTERS
+
+patches:
+  - target:
+      kind: Deployment
+      name: rag-app
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 512Mi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 500m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 2Gi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 2000m
+
+  - target:
+      kind: StatefulSet
+      name: postgres
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 256Mi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 250m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 1Gi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 1000m
+
+  - target:
+      kind: Deployment
+      name: redis
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 128Mi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 100m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 512Mi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 500m
+
+  - target:
+      kind: Deployment
+      name: minio
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 256Mi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 250m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 1Gi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 1000m

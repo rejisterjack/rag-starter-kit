@@ -44,7 +44,16 @@
 
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
 import { createVectorStore, prisma, type SearchOptions } from '@/lib/db';
+import { createSemanticCache, MemoryCacheProvider } from '@/lib/db/vector-cache';
+import { tracing } from '@/lib/tracing';
 import type { RAGConfig, Source, VectorSearchResult } from '@/types';
+
+// Initialize semantic cache (can be replaced with Redis provider in production)
+export const semanticCache = createSemanticCache(new MemoryCacheProvider(), {
+  keyPrefix: 'rag:retrieval:',
+  defaultTtl: 3600, // 1 hour default TTL
+  similarityThreshold: 0.95, // 95% similarity threshold for cache hits
+});
 
 /**
  * Generate embedding for a query string
@@ -133,33 +142,47 @@ export async function retrieveSources(
   userId: string,
   config: Partial<RAGConfig> = {}
 ): Promise<Source[]> {
-  // Generate query embedding
-  const queryEmbedding = await generateQueryEmbedding(query);
+  return tracing.retrieveSources(query, config.topK ?? 5, async () => {
+    // Generate query embedding
+    const queryEmbedding = await generateQueryEmbedding(query);
 
-  // Search for similar chunks
-  const results = await searchSimilarChunks(queryEmbedding, userId, config);
+    // Check semantic cache first
+    const cachedResults = await semanticCache.findSimilar(query, queryEmbedding);
+    if (cachedResults) {
+      return cachedResults as Source[];
+    }
 
-  // Map to Source type
-  const sources = results.map((result) => ({
-    id: result.id,
-    content: result.content,
-    similarity: result.similarity,
-    metadata: {
-      documentId: result.documentId,
-      documentName: result.documentName,
-      page: result.page ?? undefined,
-      chunkIndex: result.index,
-      totalChunks: 0, // Will be populated if needed
-    },
-  }));
+    // Search for similar chunks
+    const results = await searchSimilarChunks(queryEmbedding, userId, config);
 
-  // Apply reranking if enabled
-  if (config.rerank && sources.length > 1) {
-    const reranked = rerankSources(sources, query);
-    return deduplicateSources(reranked, config.maxSourcesPerDocument);
-  }
+    // Map to Source type
+    const sources = results.map((result) => ({
+      id: result.id,
+      content: result.content,
+      similarity: result.similarity,
+      metadata: {
+        documentId: result.documentId,
+        documentName: result.documentName,
+        page: result.page ?? undefined,
+        chunkIndex: result.index,
+        totalChunks: 0, // Will be populated if needed
+      },
+    }));
 
-  return deduplicateSources(sources, config.maxSourcesPerDocument);
+    // Apply reranking if enabled
+    let finalSources: Source[];
+    if (config.rerank && sources.length > 1) {
+      const reranked = rerankSources(sources, query);
+      finalSources = deduplicateSources(reranked, config.maxSourcesPerDocument);
+    } else {
+      finalSources = deduplicateSources(sources, config.maxSourcesPerDocument);
+    }
+
+    // Cache the results
+    await semanticCache.set(query, queryEmbedding, finalSources, config.cacheTtl);
+
+    return finalSources;
+  }) as Promise<Source[]>;
 }
 
 /**
@@ -389,7 +412,7 @@ export async function hybridSearch(
       textScore: number;
     }>
   >`
-    SELECT 
+    SELECT
       dc.id,
       dc.document_id as "documentId",
       dc.content,

@@ -27,6 +27,7 @@ import {
   upsertSamlConfig,
 } from '@/lib/auth/saml/provider';
 import { prisma } from '@/lib/db';
+import { assertSafeUrl } from '@/lib/security/ssrf-protection';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // =============================================================================
@@ -167,6 +168,9 @@ export async function POST(
       let metadataXml: string;
 
       if (data.metadataUrl) {
+        // Validate URL with SSRF protection before fetching
+        await assertSafeUrl(data.metadataUrl);
+
         // Fetch metadata from URL
         const response = await fetch(data.metadataUrl, {
           headers: { Accept: 'application/xml' },
