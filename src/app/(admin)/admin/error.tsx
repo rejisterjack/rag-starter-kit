@@ -2,15 +2,16 @@
 
 /**
  * Admin Route Error Boundary
- * 
+ *
  * Handles errors specific to admin routes with appropriate
  * messaging for admin users.
  */
 
-import { logger } from '@/lib/logger';
-import { AlertTriangle, Shield, RefreshCw, Home } from 'lucide-react';
+import { AlertTriangle, Home, RefreshCw, Shield } from 'lucide-react';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { logger } from '@/lib/logger';
 
 interface AdminErrorProps {
   error: Error & { digest?: string };
@@ -22,7 +23,8 @@ export default function AdminError({ error, reset }: AdminErrorProps) {
     logger.error('Admin route error', { error: error.message, digest: error.digest });
   }, [error]);
 
-  const isPermissionError = error.message?.includes('permission') || error.message?.includes('forbidden');
+  const isPermissionError =
+    error.message?.includes('permission') || error.message?.includes('forbidden');
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
@@ -58,10 +60,10 @@ export default function AdminError({ error, reset }: AdminErrorProps) {
                 Try Again
               </Button>
             )}
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              onClick={() => window.location.href = '/'}
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => (window.location.href = '/')}
             >
               <Home className="mr-2 h-4 w-4" />
               Back to Dashboard

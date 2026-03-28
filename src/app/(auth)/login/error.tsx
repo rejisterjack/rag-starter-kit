@@ -2,15 +2,16 @@
 
 /**
  * Login Route Error Boundary
- * 
+ *
  * Handles authentication-related errors with appropriate
  * user guidance for login issues.
  */
 
-import { logger } from '@/lib/logger';
 import { Lock, RefreshCw } from 'lucide-react';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { logger } from '@/lib/logger';
 
 interface LoginErrorProps {
   error: Error & { digest?: string };
@@ -23,7 +24,8 @@ export default function LoginError({ error, reset }: LoginErrorProps) {
   }, [error]);
 
   const isOAuthError = error.message?.includes('oauth') || error.message?.includes('provider');
-  const isCredentialsError = error.message?.includes('credentials') || error.message?.includes('password');
+  const isCredentialsError =
+    error.message?.includes('credentials') || error.message?.includes('password');
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
@@ -53,10 +55,10 @@ export default function LoginError({ error, reset }: LoginErrorProps) {
               <RefreshCw className="mr-2 h-4 w-4" />
               Try Again
             </Button>
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              onClick={() => window.location.href = '/forgot-password'}
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => (window.location.href = '/forgot-password')}
             >
               Forgot Password?
             </Button>

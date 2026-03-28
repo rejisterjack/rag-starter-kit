@@ -29,7 +29,7 @@ export interface ErrorMessage {
 // Error Message Translations (English - Default)
 // ============================================================================
 
-const EN_ERROR_MESSAGES: Record<ErrorCode, ErrorMessage> = {
+const EN_ERROR_MESSAGES: Partial<Record<ErrorCode, ErrorMessage>> = {
   // Authentication Errors
   [ERROR_CODES.AUTH_INVALID_CREDENTIALS]: {
     message: 'Invalid email or password',

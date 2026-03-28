@@ -153,7 +153,7 @@ export function withAuth(): MiddlewareFunction {
 
     return {
       userId,
-      userRole,
+      userRole: userRole || undefined,
       workspaceId: workspaceId || undefined,
     };
   };
@@ -378,7 +378,7 @@ function handleRouteError(error: unknown, context: RequestContext): NextResponse
   logger.error('Route error', {
     error: error instanceof Error ? error.message : 'Unknown',
     userId: context.userId,
-    requestId: context.requestId,
+    requestId: context.requestId as string | undefined,
   });
 
   // Check for known error types

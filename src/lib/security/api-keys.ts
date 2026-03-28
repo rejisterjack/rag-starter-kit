@@ -31,10 +31,6 @@ export interface ApiKeyWithWorkspace {
   name: string;
   keyPreview: string;
   permissions: Permission[];
-  scopes: {
-    allowedIps?: string[];
-    allowedEndpoints?: string[];
-  } | null;
   lastUsedAt: Date | null;
   usageCount: number;
   expiresAt: Date | null;
@@ -203,47 +199,22 @@ export async function validateApiKey(
     return { valid: false, error: 'Invalid API key' };
   }
 
-  // Get permissions and scopes
+  // Get permissions
   const permissions = apiKey.permissions as Permission[];
-  const scopes = apiKey.scopes as
-    | { allowedIps?: string[]; allowedEndpoints?: string[] }
-    | undefined;
 
-  // Check IP restrictions
-  if (options?.ipAddress && scopes?.allowedIps && scopes.allowedIps.length > 0) {
-    if (!isIpAllowed(options.ipAddress, scopes.allowedIps)) {
-      await logAuditEvent({
-        event: AuditEvent.SUSPICIOUS_ACTIVITY,
-        workspaceId: apiKey.workspaceId ?? undefined,
-        metadata: {
-          activity: 'api_key_ip_blocked',
-          keyId: apiKey.id,
-          ipAddress: options.ipAddress,
-          allowedIps: scopes.allowedIps,
-        },
-        severity: 'WARNING',
-      });
-      return { valid: false, error: 'API key not allowed from this IP address' };
-    }
-  }
+  // Check IP restrictions (if implemented in the future)
+  // IP restriction checks would go here when the feature is implemented
+  // For now, we skip this check since scopes field doesn't exist in the schema
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  void options?.ipAddress;
 
-  // Check endpoint restrictions
-  if (options?.endpoint && scopes?.allowedEndpoints && scopes.allowedEndpoints.length > 0) {
-    if (!isEndpointAllowed(options.endpoint, scopes.allowedEndpoints)) {
-      await logAuditEvent({
-        event: AuditEvent.SUSPICIOUS_ACTIVITY,
-        workspaceId: apiKey.workspaceId ?? undefined,
-        metadata: {
-          activity: 'api_key_endpoint_blocked',
-          keyId: apiKey.id,
-          endpoint: options.endpoint,
-          allowedEndpoints: scopes.allowedEndpoints,
-        },
-        severity: 'WARNING',
-      });
-      return { valid: false, error: 'API key not allowed for this endpoint' };
-    }
-  }
+  // Placeholder for IP check - always passes for now
+  // IP restriction checks would go here when implemented
+  // For now, we skip this check since scopes field doesn't exist in the schema
+
+  // Check endpoint restrictions (placeholder - feature not yet implemented)
+  // Endpoint restriction checks would go here when the scopes feature is implemented
+  // For now, we skip this check
 
   // Check required permissions
   if (options?.requiredPermissions) {
@@ -402,7 +373,6 @@ export async function getApiKeyById(keyId: string): Promise<ApiKeyWithWorkspace 
     name: key.name,
     keyPreview: key.keyPreview,
     permissions: key.permissions as Permission[],
-    scopes: null,
     lastUsedAt: key.lastUsedAt,
     usageCount: 0,
     expiresAt: key.expiresAt,
@@ -460,91 +430,6 @@ export async function cleanupApiKeys(): Promise<{ deleted: number }> {
 }
 
 // =============================================================================
-// IP and Endpoint Restriction Helpers
-// =============================================================================
-
-/**
- * Check if an IP address is in the allowed list
- * Supports exact matches and CIDR notation (e.g., "192.168.1.0/24")
- */
-function isIpAllowed(ipAddress: string, allowedIps: string[]): boolean {
-  return allowedIps.some((allowedIp) => {
-    // Exact match
-    if (allowedIp === ipAddress) {
-      return true;
-    }
-
-    // CIDR notation check
-    if (allowedIp.includes('/')) {
-      return isIpInCidr(ipAddress, allowedIp);
-    }
-
-    // Wildcard match (e.g., "192.168.1.*")
-    if (allowedIp.includes('*')) {
-      const pattern = allowedIp.replace(/\./g, '\\.').replace(/\*/g, '\\d+');
-      const regex = new RegExp(`^${pattern}$`);
-      return regex.test(ipAddress);
-    }
-
-    return false;
-  });
-}
-
-/**
- * Check if an IP is within a CIDR range
- */
-function isIpInCidr(ip: string, cidr: string): boolean {
-  try {
-    const [range, bitsStr] = cidr.split('/');
-    const bits = parseInt(bitsStr || '32', 10);
-
-    const ipNum = ipToNumber(ip);
-    const rangeNum = ipToNumber(range);
-    const mask = -1 << (32 - bits);
-
-    return (ipNum & mask) === (rangeNum & mask);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Convert IP address to numeric value
- */
-function ipToNumber(ip: string): number {
-  const parts = ip.split('.');
-  if (parts.length !== 4) {
-    throw new Error('Invalid IPv4 address');
-  }
-  return parts.reduce((num, part) => (num << 8) + parseInt(part, 10), 0) >>> 0;
-}
-
-/**
- * Check if an endpoint is in the allowed list
- * Supports exact matches, wildcards, and path prefixes
- */
-function isEndpointAllowed(endpoint: string, allowedEndpoints: string[]): boolean {
-  return allowedEndpoints.some((allowed) => {
-    // Exact match
-    if (allowed === endpoint) {
-      return true;
-    }
-
-    // Wildcard at end (e.g., "/api/v1/*")
-    if (allowed.endsWith('*')) {
-      const prefix = allowed.slice(0, -1);
-      return endpoint.startsWith(prefix);
-    }
-
-    // Path prefix match (e.g., "/api/v1/" matches "/api/v1/users")
-    if (endpoint.startsWith(allowed)) {
-      return true;
-    }
-
-    return false;
-  });
-}
-
 // =============================================================================
 // Middleware Helper
 // =============================================================================

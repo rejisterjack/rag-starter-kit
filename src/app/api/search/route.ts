@@ -8,7 +8,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
 const VALID_TYPES = ['chat', 'document', 'message', 'workspace'] as const;
-type SearchType = typeof VALID_TYPES[number];
+type SearchType = (typeof VALID_TYPES)[number];
 
 export async function GET(req: Request) {
   try {
@@ -20,16 +20,16 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const query = searchParams.get('q')?.trim();
     const limit = parseInt(searchParams.get('limit') ?? '20', 10);
-    
+
     // Parse filters
     const typesParam = searchParams.get('type');
-    const types = typesParam 
+    const types = typesParam
       ? typesParam.split(',').filter((t): t is SearchType => VALID_TYPES.includes(t as SearchType))
       : VALID_TYPES;
-    
+
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
-    
+
     // Build date filter
     const dateFilter: { gte?: Date; lte?: Date } = {};
     if (dateFrom) dateFilter.gte = new Date(dateFrom);
@@ -148,13 +148,15 @@ export async function GET(req: Request) {
     const [chats, documents, messages, workspaces] = await Promise.all(queries);
 
     const results = [
-      ...(chats as Array<{
-        id: string;
-        title: string;
-        updatedAt: Date;
-        workspace?: { name: string };
-        _count: { messages: number };
-      }>).map((chat) => ({
+      ...(
+        chats as Array<{
+          id: string;
+          title: string;
+          updatedAt: Date;
+          workspace?: { name: string };
+          _count: { messages: number };
+        }>
+      ).map((chat) => ({
         id: chat.id,
         type: 'chat' as const,
         title: chat.title,
@@ -164,13 +166,15 @@ export async function GET(req: Request) {
         url: `/chat/${chat.id}`,
       })),
 
-      ...(documents as Array<{
-        id: string;
-        name: string;
-        content: string | null;
-        updatedAt: Date;
-        workspace?: { name: string };
-      }>).map((doc) => ({
+      ...(
+        documents as Array<{
+          id: string;
+          name: string;
+          content: string | null;
+          updatedAt: Date;
+          workspace?: { name: string };
+        }>
+      ).map((doc) => ({
         id: doc.id,
         type: 'document' as const,
         title: doc.name,
@@ -180,12 +184,14 @@ export async function GET(req: Request) {
         url: `/documents/${doc.id}`,
       })),
 
-      ...(messages as Array<{
-        id: string;
-        content: string;
-        createdAt: Date;
-        chat?: { id: string; title: string | null };
-      }>).map((msg) => ({
+      ...(
+        messages as Array<{
+          id: string;
+          content: string;
+          createdAt: Date;
+          chat?: { id: string; title: string | null };
+        }>
+      ).map((msg) => ({
         id: msg.id,
         type: 'message' as const,
         title: msg.chat?.title || 'Untitled Chat',
@@ -195,13 +201,15 @@ export async function GET(req: Request) {
         url: `/chat/${msg.chat?.id}?message=${msg.id}`,
       })),
 
-      ...(workspaces as Array<{
-        id: string;
-        name: string;
-        slug: string;
-        createdAt: Date;
-        _count: { members: number; documents: number };
-      }>).map((ws) => ({
+      ...(
+        workspaces as Array<{
+          id: string;
+          name: string;
+          slug: string;
+          createdAt: Date;
+          _count: { members: number; documents: number };
+        }>
+      ).map((ws) => ({
         id: ws.id,
         type: 'workspace' as const,
         title: ws.name,
@@ -238,8 +246,7 @@ export async function GET(req: Request) {
         dateTo,
       },
     });
-  } catch (error) {
-    console.error('Search error:', error);
+  } catch (_error) {
     return NextResponse.json({ error: 'Search failed' }, { status: 500 });
   }
 }

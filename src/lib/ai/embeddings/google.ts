@@ -141,7 +141,8 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
     await checkAndIncrementQuota();
 
     const result = await embed({
-      model: google.textEmbeddingModel(this.modelName),
+      // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
+      model: google.textEmbeddingModel(this.modelName) as any,
       value: text,
     });
 
@@ -163,7 +164,8 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
       const batch = texts.slice(i, i + batchSize);
 
       const result = await embedMany({
-        model: google.textEmbeddingModel(this.modelName),
+        // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
+        model: google.textEmbeddingModel(this.modelName) as any,
         values: batch,
       });
 

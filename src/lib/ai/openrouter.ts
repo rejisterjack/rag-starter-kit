@@ -98,7 +98,7 @@ export async function streamOpenRouterCompletion(
     model: openrouter(modelConfig.model),
     messages: messages as UIMessage[],
     temperature: modelConfig.temperature,
-    maxOutputTokens: Math.min(modelConfig.maxTokens, modelLimits.maxTokens),
+    maxTokens: Math.min(modelConfig.maxTokens, modelLimits.maxTokens),
   } as unknown as Parameters<typeof streamText>[0]);
 
   return result;
@@ -120,7 +120,7 @@ export async function generateOpenRouterCompletion(
     model: openrouter(modelConfig.model),
     messages: messages as UIMessage[],
     temperature: modelConfig.temperature,
-    maxOutputTokens: Math.min(modelConfig.maxTokens, modelLimits.maxTokens),
+    maxTokens: Math.min(modelConfig.maxTokens, modelLimits.maxTokens),
   } as unknown as Parameters<typeof generateText>[0]);
 
   return result;

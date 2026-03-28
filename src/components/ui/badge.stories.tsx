@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { Badge } from './badge';
-import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
 
 /**
  * Badge component for displaying status, labels, and counts.

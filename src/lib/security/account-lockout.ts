@@ -432,7 +432,6 @@ export async function cleanupExpiredLockouts(): Promise<number> {
   if (isRedisAvailable()) {
     try {
       // Use SCAN to find expired keys (if any slipped through TTL)
-      const _pattern = `${CONFIG.REDIS_PREFIX}*`;
       // Note: In production, use a more efficient cleanup strategy
       logger.debug('Redis lockout keys have TTL and auto-expire');
     } catch (error) {

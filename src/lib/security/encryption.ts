@@ -11,7 +11,7 @@
  * - Rotated periodically
  */
 
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
 import { logger } from '@/lib/logger';
 
 // Encryption configuration
@@ -159,7 +159,7 @@ export function isEncrypted(data: string | null | undefined): boolean {
  * Hash a value using SHA-256 (for one-way hashing like API keys)
  */
 export function hashValue(value: string): string {
-  const crypto = require('crypto');
+  const crypto = require('node:crypto');
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 

@@ -4,7 +4,7 @@
  * Implements secure secret rotation for webhooks.
  */
 
-import { randomBytes, createHmac } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 

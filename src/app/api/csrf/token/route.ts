@@ -8,7 +8,7 @@
  * an attacker can set cookies (e.g., via subdomain takeover).
  */
 
-import { createHmac } from 'crypto';
+import { createHmac } from 'node:crypto';
 import { type NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -160,7 +160,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const isValid = require('crypto').timingSafeEqual(sigBuf, expectedBuf);
+    const isValid = require('node:crypto').timingSafeEqual(sigBuf, expectedBuf);
 
     return NextResponse.json({
       valid: isValid,

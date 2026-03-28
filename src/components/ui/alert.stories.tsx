@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { AlertCircle, CheckCircle2, Info as InfoIcon, Terminal } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from './alert';
-import { AlertCircle, CheckCircle2, Terminal, Info } from 'lucide-react';
 
 /**
  * Alert component for displaying important messages.
@@ -34,9 +34,7 @@ export const Default: Story = {
       <>
         <Terminal className="h-4 w-4" />
         <AlertTitle>Heads up!</AlertTitle>
-        <AlertDescription>
-          You can add components to your app using the CLI.
-        </AlertDescription>
+        <AlertDescription>You can add components to your app using the CLI.</AlertDescription>
       </>
     ),
   },
@@ -52,9 +50,7 @@ export const Destructive: Story = {
       <>
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Error</AlertTitle>
-        <AlertDescription>
-          Something went wrong. Please try again later.
-        </AlertDescription>
+        <AlertDescription>Something went wrong. Please try again later.</AlertDescription>
       </>
     ),
   },
@@ -68,9 +64,7 @@ export const Success: Story = {
     <Alert className="border-green-500/50 bg-green-500/10 text-green-500">
       <CheckCircle2 className="h-4 w-4" />
       <AlertTitle>Success</AlertTitle>
-      <AlertDescription>
-        Your changes have been saved successfully.
-      </AlertDescription>
+      <AlertDescription>Your changes have been saved successfully.</AlertDescription>
     </Alert>
   ),
 };
@@ -81,7 +75,7 @@ export const Success: Story = {
 export const Info: Story = {
   render: () => (
     <Alert className="border-blue-500/50 bg-blue-500/10 text-blue-500">
-      <Info className="h-4 w-4" />
+      <InfoIcon className="h-4 w-4" />
       <AlertTitle>Information</AlertTitle>
       <AlertDescription>
         A new version is available. Update now to get the latest features.
@@ -97,7 +91,7 @@ export const TitleOnly: Story = {
   args: {
     children: (
       <>
-        <Info className="h-4 w-4" />
+        <InfoIcon className="h-4 w-4" />
         <AlertTitle>This is a simple alert message</AlertTitle>
       </>
     ),
@@ -111,13 +105,12 @@ export const LongContent: Story = {
   args: {
     children: (
       <>
-        <Info className="h-4 w-4" />
+        <InfoIcon className="h-4 w-4" />
         <AlertTitle>Important Notice</AlertTitle>
         <AlertDescription>
-          This is a longer alert message that contains more detailed information
-          about the current state. It might span multiple lines and provide
-          additional context to help users understand what&apos;s happening and
-          what actions they should take next.
+          This is a longer alert message that contains more detailed information about the current
+          state. It might span multiple lines and provide additional context to help users
+          understand what&apos;s happening and what actions they should take next.
         </AlertDescription>
       </>
     ),
@@ -131,7 +124,7 @@ export const Stacked: Story = {
   render: () => (
     <div className="space-y-4">
       <Alert>
-        <Info className="h-4 w-4" />
+        <InfoIcon className="h-4 w-4" />
         <AlertTitle>Information</AlertTitle>
         <AlertDescription>This is an informational message.</AlertDescription>
       </Alert>

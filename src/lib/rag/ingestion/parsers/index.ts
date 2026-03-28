@@ -72,6 +72,24 @@ export {
   performOCR,
   searchInPDF,
 } from './pdf';
+// PPTX Parser
+export {
+  convertToMarkdown as convertPPTXToMarkdown,
+  extractSlide as extractPPTXSlide,
+  extractSlidesByType,
+  getOutline,
+  getSlideText,
+  isValidPPTX,
+  type ParsedPPTX,
+  type PPTXMetadata,
+  type PPTXParagraph,
+  PPTXParserError,
+  type PPTXShape,
+  type PPTXSlide,
+  type PPTXTextRun,
+  parsePPTX,
+  searchInPPTX,
+} from './pptx';
 // TXT Parser
 export {
   extractByLineRange,
@@ -99,7 +117,6 @@ export {
   type URLScrapeOptions,
   URLScraperError,
 } from './url';
-
 // XLSX Parser
 export {
   convertToMarkdown as convertXLSXToMarkdown,
@@ -107,30 +124,11 @@ export {
   extractSheetByIndex,
   getColumnValues,
   isValidXLSX,
-  parseXLSX,
   type ParsedXLSX,
+  parseXLSX,
   type XLSXCell,
   type XLSXMetadata,
+  XLSXParserError,
   type XLSXRow,
   type XLSXSheet,
-  XLSXParserError,
 } from './xlsx';
-
-// PPTX Parser
-export {
-  convertToMarkdown as convertPPTXToMarkdown,
-  extractSlide as extractPPTXSlide,
-  extractSlidesByType,
-  getOutline,
-  getSlideText,
-  isValidPPTX,
-  parsePPTX,
-  type ParsedPPTX,
-  type PPTXMetadata,
-  type PPTXParagraph,
-  type PPTXShape,
-  type PPTXSlide,
-  type PPTXTextRun,
-  PPTXParserError,
-  searchInPPTX,
-} from './pptx';

@@ -11,8 +11,8 @@ import { logger } from '@/lib/logger';
 import { createChunks } from '@/lib/rag/chunking';
 import type { DocumentType, IngestionOptions } from '@/types';
 import { parseHTML as parseHTMLContent } from './parsers/html';
-import { parseXLSX } from './parsers/xlsx';
 import { parsePPTX } from './parsers/pptx';
+import { parseXLSX } from './parsers/xlsx';
 
 // ============================================================================
 // Document Parsing

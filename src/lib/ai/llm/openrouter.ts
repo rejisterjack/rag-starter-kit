@@ -95,13 +95,14 @@ export class OpenRouterProvider implements LLMProvider {
 
     try {
       const result = await generateText({
-        model: this.createModel(modelName),
+        // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
+        model: this.createModel(modelName) as any,
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,
         })),
         temperature: options.temperature,
-        maxOutputTokens: options.maxTokens,
+        maxTokens: options.maxTokens,
         topP: options.topP,
         frequencyPenalty: options.frequencyPenalty,
         presencePenalty: options.presencePenalty,
@@ -127,13 +128,14 @@ export class OpenRouterProvider implements LLMProvider {
 
     try {
       const result = streamText({
-        model: this.createModel(modelName),
+        // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
+        model: this.createModel(modelName) as any,
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,
         })),
         temperature: options.temperature,
-        maxOutputTokens: options.maxTokens,
+        maxTokens: options.maxTokens,
         topP: options.topP,
         frequencyPenalty: options.frequencyPenalty,
         presencePenalty: options.presencePenalty,

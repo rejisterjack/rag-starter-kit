@@ -38,6 +38,8 @@ export const AUTH_ERRORS = {
 export const VALIDATION_ERRORS = {
   /** Generic validation failure */
   VALIDATION_ERROR: 'VALIDATION_ERROR',
+  /** Invalid input provided */
+  VALIDATION_INVALID_INPUT: 'VALIDATION_INVALID_INPUT',
   /** Required field missing */
   VALIDATION_REQUIRED: 'VALIDATION_REQUIRED',
   /** Invalid email format */
@@ -56,6 +58,17 @@ export const VALIDATION_ERRORS = {
   VALIDATION_JSON: 'VALIDATION_JSON',
   /** Rate limit exceeded */
   VALIDATION_RATE_LIMIT: 'VALIDATION_RATE_LIMIT',
+  /** Duplicate entry */
+  VALIDATION_DUPLICATE: 'VALIDATION_DUPLICATE',
+} as const;
+
+// ============================================================================
+// Rate Limiting Errors (RATE_LIMIT_*)
+// ============================================================================
+
+export const RATE_LIMIT_ERRORS = {
+  /** Rate limit exceeded */
+  RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
 } as const;
 
 // ============================================================================
@@ -79,6 +92,10 @@ export const API_ERRORS = {
   API_GATEWAY_TIMEOUT: 'API_GATEWAY_TIMEOUT',
   /** Bad request */
   API_BAD_REQUEST: 'API_BAD_REQUEST',
+  /** System error */
+  API_SYSTEM_ERROR: 'API_SYSTEM_ERROR',
+  /** Unknown error */
+  API_UNKNOWN_ERROR: 'API_UNKNOWN_ERROR',
 } as const;
 
 // ============================================================================
@@ -127,6 +144,9 @@ export const DOCUMENT_ERRORS = {
   DOC_QUOTA_EXCEEDED: 'DOC_QUOTA_EXCEEDED',
 } as const;
 
+/** @deprecated Use DOCUMENT_ERRORS.DOC_NOT_FOUND instead */
+export const DOCUMENT_NOT_FOUND = 'DOCUMENT_NOT_FOUND';
+
 // ============================================================================
 // Database Errors (DB_*)
 // ============================================================================
@@ -146,6 +166,8 @@ export const DATABASE_ERRORS = {
   DB_FOREIGN_KEY: 'DB_FOREIGN_KEY',
   /** Record not found */
   DB_NOT_FOUND: 'DB_NOT_FOUND',
+  /** Database timeout */
+  DB_TIMEOUT: 'DB_TIMEOUT',
 } as const;
 
 // ============================================================================
@@ -176,11 +198,13 @@ export const EXTERNAL_ERRORS = {
 export const ERROR_CODES = {
   ...AUTH_ERRORS,
   ...VALIDATION_ERRORS,
+  ...RATE_LIMIT_ERRORS,
   ...API_ERRORS,
   ...RAG_ERRORS,
   ...DOCUMENT_ERRORS,
   ...DATABASE_ERRORS,
   ...EXTERNAL_ERRORS,
+  DOCUMENT_NOT_FOUND,
 } as const;
 
 /** Type for all error codes */
@@ -190,6 +214,7 @@ export type ErrorCode = keyof typeof ERROR_CODES;
 export function getErrorCategory(code: string): string {
   if (code.startsWith('AUTH_')) return 'authentication';
   if (code.startsWith('VALIDATION_')) return 'validation';
+  if (code.startsWith('RATE_LIMIT_')) return 'rate_limit';
   if (code.startsWith('API_')) return 'api';
   if (code.startsWith('RAG_')) return 'rag';
   if (code.startsWith('DOC_')) return 'document';

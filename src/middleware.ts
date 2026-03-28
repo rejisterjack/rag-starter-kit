@@ -268,7 +268,7 @@ export async function middleware(req: NextRequest) {
 // CSRF Token Generation and Validation
 // =============================================================================
 
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 /**
  * Validate CSRF token from request
@@ -352,13 +352,49 @@ function addSecurityHeaders(response: NextResponse, requestId?: string): void {
   crypto.getRandomValues(nonceBytes);
   const nonce = Buffer.from(nonceBytes).toString('base64');
 
+  // Build connect-src directive with external AI providers
+  // These can be extended via the CSP_CONNECT_SRC environment variable
+  const defaultConnectSrc = [
+    "'self'",
+    'https://api.openai.com',
+    'https://*.vercel.app',
+    // OpenRouter for AI model access
+    'https://openrouter.ai',
+    'https://*.openrouter.ai',
+    // Google AI / Gemini
+    'https://generativelanguage.googleapis.com',
+    'https://*.googleapis.com',
+    // Upstash for rate limiting
+    'https://*.upstash.io',
+    // PostHog for analytics
+    'https://*.posthog.com',
+    'https://*.posthog.io',
+    // Sentry for error tracking
+    'https://*.sentry.io',
+    // Inngest for background jobs
+    'https://*.inngest.com',
+    // Ollama (local development)
+    'http://localhost:*',
+    'ws://localhost:*',
+    // WebSocket for production (Socket.io, realtime)
+    'wss://*.vercel.app',
+    'wss://*.inngest.com',
+  ];
+
+  // Add custom domains from environment variable
+  const customConnectSrc =
+    env.CSP_CONNECT_SRC?.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean) || [];
+  const connectSrc = [...defaultConnectSrc, ...customConnectSrc].join(' ');
+
   const csp = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}'`,
     `style-src 'self' 'nonce-${nonce}'`,
     "img-src 'self' blob: data: https:",
     "font-src 'self'",
-    "connect-src 'self' https://api.openai.com https://*.vercel.app",
+    `connect-src ${connectSrc}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

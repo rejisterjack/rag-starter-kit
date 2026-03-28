@@ -1,6 +1,6 @@
 /**
  * OpenTelemetry Tracing Configuration
- * 
+ *
  * Provides distributed tracing for:
  * - Embedding operations
  * - RAG retrieval
@@ -8,15 +8,12 @@
  * - Database queries
  */
 
-import { NodeSDK } from '@opentelemetry/sdk-node';
+import { type Span, SpanStatusCode, type Tracer, trace } from '@opentelemetry/api';
+import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { Resource } from '@opentelemetry/resources';
-import {
-  ATTR_SERVICE_NAME,
-  ATTR_SERVICE_VERSION,
-} from '@opentelemetry/semantic-conventions';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { trace, SpanStatusCode, type Span, type Tracer } from '@opentelemetry/api';
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 
 // Initialize OpenTelemetry SDK
 let sdk: NodeSDK | null = null;
@@ -24,7 +21,6 @@ let sdk: NodeSDK | null = null;
 export function initTracing(): void {
   if (sdk) return;
   if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT === 'false') {
-    console.log('OpenTelemetry disabled via OTEL_EXPORTER_OTLP_ENDPOINT=false');
     return;
   }
 
@@ -32,7 +28,9 @@ export function initTracing(): void {
     url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
     headers: process.env.OTEL_EXPORTER_OTLP_HEADERS
       ? Object.fromEntries(
-          process.env.OTEL_EXPORTER_OTLP_HEADERS.split(',').map((h) => h.split('=') as [string, string])
+          process.env.OTEL_EXPORTER_OTLP_HEADERS.split(',').map(
+            (h) => h.split('=') as [string, string]
+          )
         )
       : undefined,
   });
@@ -53,14 +51,11 @@ export function initTracing(): void {
   });
 
   sdk.start();
-  console.log('OpenTelemetry tracing initialized');
 }
 
 export function shutdownTracing(): Promise<void> {
   if (!sdk) return Promise.resolve();
-  return sdk.shutdown().then(() => {
-    console.log('OpenTelemetry tracing shut down');
-  });
+  return sdk.shutdown().then(() => {});
 }
 
 // Get tracer instance
@@ -101,21 +96,15 @@ export async function withSpan<T>(
 // Specific instrumentation helpers for RAG operations
 export const tracing = {
   // Embedding operations
-  async embedDocuments(
-    documents: string[],
-    fn: () => Promise<number[][]>
-  ): Promise<number[][]> {
-    return withSpan(
-      'embeddings.documents',
-      async (span) => {
-        span.setAttribute('embedding.count', documents.length);
-        span.setAttribute('embedding.model', process.env.EMBEDDING_MODEL || 'text-embedding-004');
-        const startTime = Date.now();
-        const result = await fn();
-        span.setAttribute('embedding.duration_ms', Date.now() - startTime);
-        return result;
-      }
-    );
+  async embedDocuments(documents: string[], fn: () => Promise<number[][]>): Promise<number[][]> {
+    return withSpan('embeddings.documents', async (span) => {
+      span.setAttribute('embedding.count', documents.length);
+      span.setAttribute('embedding.model', process.env.EMBEDDING_MODEL || 'text-embedding-004');
+      const startTime = Date.now();
+      const result = await fn();
+      span.setAttribute('embedding.duration_ms', Date.now() - startTime);
+      return result;
+    });
   },
 
   // RAG retrieval
@@ -124,18 +113,15 @@ export const tracing = {
     topK: number,
     fn: () => Promise<unknown[]>
   ): Promise<unknown[]> {
-    return withSpan(
-      'rag.retrieve',
-      async (span) => {
-        span.setAttribute('rag.query_length', query.length);
-        span.setAttribute('rag.top_k', topK);
-        const startTime = Date.now();
-        const result = await fn();
-        span.setAttribute('rag.results_count', result.length);
-        span.setAttribute('rag.duration_ms', Date.now() - startTime);
-        return result;
-      }
-    );
+    return withSpan('rag.retrieve', async (span) => {
+      span.setAttribute('rag.query_length', query.length);
+      span.setAttribute('rag.top_k', topK);
+      const startTime = Date.now();
+      const result = await fn();
+      span.setAttribute('rag.results_count', result.length);
+      span.setAttribute('rag.duration_ms', Date.now() - startTime);
+      return result;
+    });
   },
 
   // Reranking
@@ -144,71 +130,62 @@ export const tracing = {
     documents: unknown[],
     fn: () => Promise<unknown[]>
   ): Promise<unknown[]> {
-    return withSpan(
-      'rag.rerank',
-      async (span) => {
-        span.setAttribute('rerank.query_length', query.length);
-        span.setAttribute('rerank.documents_count', documents.length);
-        const startTime = Date.now();
-        const result = await fn();
-        span.setAttribute('rerank.duration_ms', Date.now() - startTime);
-        return result;
-      }
-    );
+    return withSpan('rag.rerank', async (span) => {
+      span.setAttribute('rerank.query_length', query.length);
+      span.setAttribute('rerank.documents_count', documents.length);
+      const startTime = Date.now();
+      const result = await fn();
+      span.setAttribute('rerank.duration_ms', Date.now() - startTime);
+      return result;
+    });
   },
 
   // LLM generation
   async generate(
     model: string,
     messageCount: number,
-    fn: () => Promise<{ content: string; usage?: { promptTokens: number; completionTokens: number } }>
+    fn: () => Promise<{
+      content: string;
+      usage?: { promptTokens: number; completionTokens: number };
+    }>
   ): Promise<{ content: string; usage?: { promptTokens: number; completionTokens: number } }> {
-    return withSpan(
-      'llm.generate',
-      async (span) => {
-        span.setAttribute('llm.model', model);
-        span.setAttribute('llm.message_count', messageCount);
-        const startTime = Date.now();
-        const result = await fn();
-        span.setAttribute('llm.duration_ms', Date.now() - startTime);
-        span.setAttribute('llm.response_length', result.content.length);
-        if (result.usage) {
-          span.setAttribute('llm.tokens.prompt', result.usage.promptTokens);
-          span.setAttribute('llm.tokens.completion', result.usage.completionTokens);
-          span.setAttribute('llm.tokens.total', result.usage.promptTokens + result.usage.completionTokens);
-        }
-        return result;
+    return withSpan('llm.generate', async (span) => {
+      span.setAttribute('llm.model', model);
+      span.setAttribute('llm.message_count', messageCount);
+      const startTime = Date.now();
+      const result = await fn();
+      span.setAttribute('llm.duration_ms', Date.now() - startTime);
+      span.setAttribute('llm.response_length', result.content.length);
+      if (result.usage) {
+        span.setAttribute('llm.tokens.prompt', result.usage.promptTokens);
+        span.setAttribute('llm.tokens.completion', result.usage.completionTokens);
+        span.setAttribute(
+          'llm.tokens.total',
+          result.usage.promptTokens + result.usage.completionTokens
+        );
       }
-    );
+      return result;
+    });
   },
 
   // Database operations
   async queryDb(operation: string, table: string, fn: () => Promise<unknown>): Promise<unknown> {
-    return withSpan(
-      'db.query',
-      async (span) => {
-        span.setAttribute('db.operation', operation);
-        span.setAttribute('db.table', table);
-        const startTime = Date.now();
-        const result = await fn();
-        span.setAttribute('db.duration_ms', Date.now() - startTime);
-        return result;
-      }
-    );
+    return withSpan('db.query', async (span) => {
+      span.setAttribute('db.operation', operation);
+      span.setAttribute('db.table', table);
+      const startTime = Date.now();
+      const result = await fn();
+      span.setAttribute('db.duration_ms', Date.now() - startTime);
+      return result;
+    });
   },
 
   // Chat completion streaming
-  async streamGenerate(
-    model: string,
-    fn: (span: Span) => Promise<void>
-  ): Promise<void> {
-    return withSpan(
-      'llm.stream',
-      async (span) => {
-        span.setAttribute('llm.model', model);
-        span.setAttribute('llm.streaming', true);
-        await fn(span);
-      }
-    );
+  async streamGenerate(model: string, fn: (span: Span) => Promise<void>): Promise<void> {
+    return withSpan('llm.stream', async (span) => {
+      span.setAttribute('llm.model', model);
+      span.setAttribute('llm.streaming', true);
+      await fn(span);
+    });
   },
 };

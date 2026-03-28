@@ -1,7 +1,7 @@
 'use client';
 
+import { Calendar, Check, Copy, Globe, Link2, Lock, Share2 } from 'lucide-react';
 import { useState } from 'react';
-import { Share2, Copy, Check, Link2, Globe, Lock, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,9 +11,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
 interface ShareDialogProps {
@@ -44,7 +44,7 @@ export function ShareDialog({ chatId, chatTitle, className }: ShareDialogProps) 
     try {
       const response = await fetch(`/api/chat/${chatId}/share`);
       const data = await response.json();
-      
+
       if (data.success && data.data.isShared) {
         setIsShared(true);
         setShareUrl(data.data.shareUrl);
@@ -75,9 +75,9 @@ export function ShareDialog({ chatId, chatTitle, className }: ShareDialogProps) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         setIsShared(true);
         setShareUrl(data.data.shareUrl);
@@ -147,9 +147,7 @@ export function ShareDialog({ chatId, chatTitle, className }: ShareDialogProps) 
                 <Switch
                   id="isPublic"
                   checked={settings.isPublic}
-                  onCheckedChange={(checked) =>
-                    setSettings((s) => ({ ...s, isPublic: checked }))
-                  }
+                  onCheckedChange={(checked) => setSettings((s) => ({ ...s, isPublic: checked }))}
                 />
               </div>
               <p className="text-sm text-muted-foreground">
@@ -190,11 +188,7 @@ export function ShareDialog({ chatId, chatTitle, className }: ShareDialogProps) 
                 />
               </div>
 
-              <Button
-                onClick={handleShare}
-                disabled={isLoading}
-                className="w-full"
-              >
+              <Button onClick={handleShare} disabled={isLoading} className="w-full">
                 {isLoading ? 'Creating...' : 'Create Share Link'}
               </Button>
             </div>
@@ -207,9 +201,7 @@ export function ShareDialog({ chatId, chatTitle, className }: ShareDialogProps) 
                   ) : (
                     <Lock className="h-4 w-4 text-yellow-500" />
                   )}
-                  <span className="font-medium">
-                    {settings.isPublic ? 'Public' : 'Private'}
-                  </span>
+                  <span className="font-medium">{settings.isPublic ? 'Public' : 'Private'}</span>
                 </div>
                 <Button
                   variant="ghost"
@@ -223,11 +215,7 @@ export function ShareDialog({ chatId, chatTitle, className }: ShareDialogProps) 
               </div>
 
               <div className="flex items-center gap-2">
-                <Input
-                  value={shareUrl}
-                  readOnly
-                  className="flex-1 font-mono text-sm"
-                />
+                <Input value={shareUrl} readOnly className="flex-1 font-mono text-sm" />
                 <Button
                   size="icon"
                   variant="outline"
@@ -244,9 +232,7 @@ export function ShareDialog({ chatId, chatTitle, className }: ShareDialogProps) 
 
               <div className="space-y-2 text-sm text-muted-foreground">
                 {settings.expiresAt && (
-                  <p>
-                    Expires: {new Date(settings.expiresAt).toLocaleString()}
-                  </p>
+                  <p>Expires: {new Date(settings.expiresAt).toLocaleString()}</p>
                 )}
                 {settings.allowComments && <p>Comments enabled</p>}
               </div>

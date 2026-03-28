@@ -1,8 +1,19 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bot, Check, Copy, Pencil, RefreshCw, ThumbsDown, ThumbsUp, Trash2, User, X } from 'lucide-react';
-import { useState } from 'react';
+import {
+  Bot,
+  Check,
+  Copy,
+  Pencil,
+  RefreshCw,
+  ThumbsDown,
+  ThumbsUp,
+  Trash2,
+  User,
+  X,
+} from 'lucide-react';
+import React, { useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,13 +54,13 @@ interface MessageItemProps {
 
 /**
  * MessageItem Component
- * 
+ *
  * An optimized message display component with:
  * - React.memo for preventing unnecessary re-renders
  * - Framer Motion animations for smooth transitions
  * - Markdown rendering with citation support
  * - Edit, copy, feedback, and regenerate actions
- * 
+ *
  * Performance considerations:
  * - Uses React.memo to prevent re-renders when parent updates
  * - Memoized callbacks to maintain stable references

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { Lock, Mail, Search as SearchIcon, User } from 'lucide-react';
 import { Input } from './input';
 import { Label } from './label';
-import { Mail, Lock, Search, User } from 'lucide-react';
 
 /**
  * Input component for text entry.
@@ -89,7 +89,7 @@ export const Password: Story = {
 export const Search: Story = {
   render: () => (
     <div className="relative w-full max-w-sm">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <Input className="pl-10" placeholder="Search..." type="search" />
     </div>
   ),

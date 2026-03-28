@@ -244,7 +244,7 @@ export async function POST(req: Request) {
         model: getModel(config.model),
         messages: llmMessages,
         temperature: config.temperature,
-        maxOutputTokens: config.maxTokens,
+        maxTokens: config.maxTokens,
         onFinish: async (completion) => {
           // Save assistant response to database
           if (effectiveConversationId) {
@@ -395,6 +395,103 @@ export async function POST(req: Request) {
         details: errorMessage,
       },
       { status: statusCode }
+    );
+  }
+}
+
+// =============================================================================
+// PUT Handler - Create a new chat
+// =============================================================================
+
+export async function PUT(req: Request) {
+  try {
+    // Authenticate user
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const workspaceId = session.user.workspaceId;
+
+    // Check rate limit for chat creation
+    const rateLimitIdentifier = getRateLimitIdentifier(req, { userId, workspaceId });
+    const rateLimitResult = await checkApiRateLimit(rateLimitIdentifier, 'chat', {
+      userId,
+      workspaceId,
+      endpoint: '/api/chat',
+    });
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          code: 'RATE_LIMIT',
+          resetAt: new Date(rateLimitResult.reset).toISOString(),
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
+          },
+        }
+      );
+    }
+
+    // Parse request body
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON body', code: 'INVALID_BODY' },
+        { status: 400 }
+      );
+    }
+
+    const { title, model } = body as { title?: string; model?: string };
+
+    // Create chat
+    const chat = await prisma.chat.create({
+      data: {
+        title: title || 'New Chat',
+        model: model || defaultConfig.model,
+        userId,
+        workspaceId: workspaceId || null,
+      },
+    });
+
+    // Log creation
+    await logAuditEvent({
+      event: AuditEvent.CHAT_CREATED,
+      userId,
+      workspaceId: workspaceId ?? undefined,
+      metadata: { chatId: chat.id, title: chat.title },
+    });
+
+    const response = NextResponse.json({
+      success: true,
+      data: {
+        chat: {
+          id: chat.id,
+          title: chat.title,
+          model: chat.model,
+          createdAt: chat.createdAt.toISOString(),
+        },
+      },
+    });
+
+    // Add rate limit headers
+    addRateLimitHeaders(response.headers, rateLimitResult);
+
+    return response;
+  } catch (error) {
+    logger.warn('Failed to create chat', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json(
+      { error: 'Failed to create chat', code: 'INTERNAL_ERROR' },
+      { status: 500 }
     );
   }
 }
@@ -690,7 +787,7 @@ async function generateWithFallback(
         model: getModel(modelName),
         messages,
         temperature: options.temperature,
-        maxOutputTokens: options.maxTokens,
+        maxTokens: options.maxTokens,
       });
 
       // Return successful result with the model that worked
@@ -788,16 +885,13 @@ async function maybeGenerateTitle(
         data: { title: cleanTitle },
       });
 
-      logger.info({ chatId, title: cleanTitle }, 'Generated chat title');
+      logger.info('Generated chat title', { chatId, title: cleanTitle });
     }
   } catch (error) {
     // Don't fail the chat if title generation fails
-    logger.warn(
-      {
-        chatId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
-      'Failed to generate chat title'
-    );
+    logger.warn('Failed to generate chat title', {
+      chatId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 }

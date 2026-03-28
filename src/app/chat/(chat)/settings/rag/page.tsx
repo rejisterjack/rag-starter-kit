@@ -1,16 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Save, RotateCcw, Brain, FileText, Thermometer, Database, AlertCircle } from 'lucide-react';
+import { AlertCircle, Brain, Database, FileText, RotateCcw, Save } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 interface RAGSettings {
@@ -44,18 +42,13 @@ const embeddingModels = [
 ];
 
 export default function RAGSettingsPage() {
-  const router = useRouter();
   const [settings, setSettings] = useState<RAGSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
       const response = await fetch('/api/workspaces/current/rag-settings');
       if (response.ok) {
@@ -64,12 +57,15 @@ export default function RAGSettingsPage() {
           setSettings({ ...defaultSettings, ...data.settings });
         }
       }
-    } catch (err) {
-      console.error('Failed to load settings:', err);
+    } catch (_err) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -100,10 +96,7 @@ export default function RAGSettingsPage() {
     setSettings(defaultSettings);
   };
 
-  const updateSetting = <K extends keyof RAGSettings>(
-    key: K,
-    value: RAGSettings[K]
-  ) => {
+  const updateSetting = <K extends keyof RAGSettings>(key: K, value: RAGSettings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -149,9 +142,7 @@ export default function RAGSettingsPage() {
             <FileText className="h-5 w-5" />
             Document Chunking
           </CardTitle>
-          <CardDescription>
-            Control how documents are split into searchable chunks
-          </CardDescription>
+          <CardDescription>Control how documents are split into searchable chunks</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
@@ -199,9 +190,7 @@ export default function RAGSettingsPage() {
             <Database className="h-5 w-5" />
             Retrieval
           </CardTitle>
-          <CardDescription>
-            Configure how relevant documents are retrieved
-          </CardDescription>
+          <CardDescription>Configure how relevant documents are retrieved</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
@@ -277,16 +266,16 @@ export default function RAGSettingsPage() {
             <Brain className="h-5 w-5" />
             Generation
           </CardTitle>
-          <CardDescription>
-            Control LLM response generation
-          </CardDescription>
+          <CardDescription>Control LLM response generation</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Temperature</Label>
-                <span className="text-sm text-muted-foreground">{settings.temperature.toFixed(1)}</span>
+                <span className="text-sm text-muted-foreground">
+                  {settings.temperature.toFixed(1)}
+                </span>
               </div>
               <Slider
                 value={[settings.temperature * 10]}

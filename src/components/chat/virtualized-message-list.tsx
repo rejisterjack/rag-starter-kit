@@ -1,9 +1,9 @@
 /**
  * Virtualized Message List
- * 
+ *
  * High-performance message list using windowing/virtualization
  * for handling thousands of messages efficiently.
- * 
+ *
  * Features:
  * - Virtual scrolling for large message lists
  * - Dynamic row heights based on content
@@ -14,9 +14,9 @@
 
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowDown, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/types';
@@ -43,7 +43,6 @@ interface VirtualizedMessageListProps {
   gap?: number;
 }
 
-
 // =============================================================================
 // Components
 // =============================================================================
@@ -53,7 +52,7 @@ export function VirtualizedMessageList({
   isLoading,
   hasMore,
   onLoadMore,
-  onMessageClick,
+  onMessageClick: _onMessageClick,
   renderMessage,
   className,
   autoScroll = true,
@@ -95,7 +94,7 @@ export function VirtualizedMessageList({
       const { scrollTop, scrollHeight, clientHeight } = scrollElement;
       const atBottom = scrollHeight - scrollTop - clientHeight < 100;
       setIsAtBottom(atBottom);
-      
+
       if (!atBottom) {
         setUserScrolled(true);
       }
@@ -126,25 +125,17 @@ export function VirtualizedMessageList({
   useEffect(() => {
     if (!initialScrollTo || !messages.length) return;
 
-    const index = reversedMessages.findIndex(m => m.id === initialScrollTo);
+    const index = reversedMessages.findIndex((m) => m.id === initialScrollTo);
     if (index !== -1) {
       virtualizer.scrollToIndex(index, { align: 'center' });
     }
-  }, [initialScrollTo, reversedMessages, virtualizer]);
+  }, [initialScrollTo, reversedMessages, virtualizer, messages.length]);
 
   // Scroll to bottom handler
   const scrollToBottom = useCallback(() => {
     virtualizer.scrollToIndex(0, { align: 'start' });
     setUserScrolled(false);
   }, [virtualizer]);
-
-  // Scroll to message handler
-  const scrollToMessage = useCallback((messageId: string) => {
-    const index = reversedMessages.findIndex(m => m.id === messageId);
-    if (index !== -1) {
-      virtualizer.scrollToIndex(index, { align: 'center' });
-    }
-  }, [reversedMessages, virtualizer]);
 
   // Load more when scrolling to top
   useEffect(() => {
@@ -157,12 +148,12 @@ export function VirtualizedMessageList({
   }, [virtualItems, hasMore, isLoading, onLoadMore, reversedMessages.length]);
 
   return (
-    <div className={cn("relative flex flex-col h-full", className)}>
+    <div className={cn('relative flex flex-col h-full', className)}>
       {/* Message List */}
       <div
         ref={parentRef}
         className="flex-1 overflow-auto scroll-smooth"
-        style={{ 
+        style={{
           display: 'flex',
           flexDirection: 'column-reverse',
         }}
@@ -190,11 +181,7 @@ export function VirtualizedMessageList({
                   width: '100%',
                   transform: `translateY(${virtualItem.start}px)`,
                 }}
-                className="px-4 cursor-pointer"
-                role="button"
-                tabIndex={0}
-                onClick={() => onMessageClick?.(message.id)}
-                onKeyDown={(e) => e.key === 'Enter' && onMessageClick?.(message.id)}
+                className="px-4"
               >
                 {renderMessage(message, messages.length - 1 - virtualItem.index)}
               </div>
@@ -278,7 +265,7 @@ export function WindowedMessageList({
   return (
     <div
       ref={containerRef}
-      className={cn("overflow-auto", className)}
+      className={cn('overflow-auto', className)}
       onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
     >
       <div style={{ height: totalHeight, position: 'relative' }}>
@@ -298,10 +285,13 @@ export function WindowedMessageList({
 // Hook for message list virtualization
 // =============================================================================
 
-export function useMessageVirtualization(messages: Message[], options?: {
-  enabled?: boolean;
-  threshold?: number;
-}) {
+export function useMessageVirtualization(
+  messages: Message[],
+  options?: {
+    enabled?: boolean;
+    threshold?: number;
+  }
+) {
   const { enabled = true, threshold = 50 } = options ?? {};
 
   const shouldVirtualize = enabled && messages.length > threshold;
@@ -323,11 +313,9 @@ function SimpleMessageList({
   className?: string;
 }) {
   return (
-    <div className={cn("space-y-4 overflow-auto", className)}>
+    <div className={cn('space-y-4 overflow-auto', className)}>
       {messages.map((message, index) => (
-        <div key={message.id}>
-          {renderMessage(message, index)}
-        </div>
+        <div key={message.id}>{renderMessage(message, index)}</div>
       ))}
     </div>
   );

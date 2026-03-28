@@ -5,6 +5,7 @@ import { Menu, Moon, PanelLeft, Plus, Settings, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type React from 'react';
 import { useCallback, useState } from 'react';
+import { AgentModeToggleCompact } from '@/components/agent/agent-mode-toggle';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -34,6 +35,7 @@ interface ChatContainerProps {
   selectedModel?: string;
   chatId?: string;
   chatTitle?: string;
+  agentMode?: boolean;
   onSendMessage: (message: string, files?: File[]) => void;
   onCancelStreaming: () => void;
   onLoadMore?: () => void;
@@ -41,6 +43,7 @@ interface ChatContainerProps {
   onDeleteMessage?: (id: string) => void;
   onNewChat?: () => void;
   onModelChange?: (modelId: string) => void;
+  onAgentModeToggle?: (enabled: boolean) => void;
   onRegenerate?: () => void;
   onFeedback?: (messageId: string, rating: 'up' | 'down') => void;
   hasMore?: boolean;
@@ -57,6 +60,7 @@ export function ChatContainer({
   selectedModel = 'deepseek/deepseek-chat:free',
   chatId,
   chatTitle,
+  agentMode = false,
   onSendMessage,
   onCancelStreaming,
   onLoadMore,
@@ -64,6 +68,7 @@ export function ChatContainer({
   onDeleteMessage,
   onNewChat,
   onModelChange,
+  onAgentModeToggle,
   onRegenerate,
   onFeedback,
   hasMore = false,
@@ -75,6 +80,15 @@ export function ChatContainer({
   const [isSourcesPanelOpen, setIsSourcesPanelOpen] = useState(false);
   const [isSourcesInlineCollapsed, setIsSourcesInlineCollapsed] = useState(true);
   const [, setSelectedSource] = useState<Source | null>(null);
+  const [isAgentMode, setIsAgentMode] = useState(agentMode);
+
+  const handleAgentModeToggle = useCallback(
+    (enabled: boolean) => {
+      setIsAgentMode(enabled);
+      onAgentModeToggle?.(enabled);
+    },
+    [onAgentModeToggle]
+  );
 
   const handleCitationClick = useCallback(
     (index: number) => {
@@ -162,14 +176,16 @@ export function ChatContainer({
               onModelChange={onModelChange || (() => {})}
               disabled={isStreaming}
             />
-            
+
+            {/* Agent Mode Toggle */}
+            <AgentModeToggleCompact
+              enabled={isAgentMode}
+              onToggle={handleAgentModeToggle}
+              disabled={isStreaming}
+            />
+
             {/* Share Button */}
-            {chatId && (
-              <ShareDialog
-                chatId={chatId}
-                chatTitle={chatTitle}
-              />
-            )}
+            {chatId && <ShareDialog chatId={chatId} chatTitle={chatTitle || 'Chat'} />}
           </div>
 
           <div className="flex items-center gap-2 bg-foreground/5 p-1 rounded-full border border-white/5 shadow-inner">

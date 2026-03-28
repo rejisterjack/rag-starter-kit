@@ -1,6 +1,6 @@
 /**
  * Persistent State Hook
- * 
+ *
  * A React hook that persists state to localStorage with:
  * - Automatic serialization/deserialization
  * - Schema validation with Zod
@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { z, type ZodType } from 'zod';
+import { type ZodType, z } from 'zod';
 import { logger } from '@/lib/logger';
 
 // =============================================================================
@@ -48,18 +48,20 @@ interface StoredValue<T> {
 
 function encryptData(data: string, key: string): string {
   // Simple XOR encryption for demo - use proper encryption in production
-  const encrypted = data.split('').map((char, i) => 
-    String.fromCharCode(char.charCodeAt(0) ^ key.charCodeAt(i % key.length))
-  ).join('');
+  const encrypted = data
+    .split('')
+    .map((char, i) => String.fromCharCode(char.charCodeAt(0) ^ key.charCodeAt(i % key.length)))
+    .join('');
   return btoa(encrypted);
 }
 
 function decryptData(encrypted: string, key: string): string {
   try {
     const data = atob(encrypted);
-    return data.split('').map((char, i) => 
-      String.fromCharCode(char.charCodeAt(0) ^ key.charCodeAt(i % key.length))
-    ).join('');
+    return data
+      .split('')
+      .map((char, i) => String.fromCharCode(char.charCodeAt(0) ^ key.charCodeAt(i % key.length)))
+      .join('');
   } catch {
     throw new Error('Failed to decrypt data');
   }
@@ -69,76 +71,80 @@ function decryptData(encrypted: string, key: string): string {
 // Hook
 // =============================================================================
 
-export function usePersistentState<T>(options: PersistentStateOptions<T>) {
-  const {
-    key,
-    defaultValue,
-    schema,
-    encrypt = false,
-    encryptionKey,
-    ttl,
-    syncAcrossTabs = true,
-    onExternalChange,
-  } = options;
-
+export function usePersistentState<T>({
+  key,
+  defaultValue,
+  schema,
+  encrypt = false,
+  encryptionKey,
+  ttl,
+  syncAcrossTabs = true,
+  onExternalChange,
+}: PersistentStateOptions<T>) {
   const storageKey = useMemo(() => `app:${key}`, [key]);
   const versionRef = useRef(1);
   const isUpdatingRef = useRef(false);
 
   // Deserialize and validate stored value
-  const deserialize = useCallback((stored: string | null): T => {
-    if (!stored) return defaultValue;
+  const deserialize = useCallback(
+    (stored: string | null): T => {
+      if (!stored) return defaultValue;
 
-    try {
-      let data: string;
-      
-      if (encrypt && encryptionKey) {
-        data = decryptData(stored, encryptionKey);
-      } else {
-        data = stored;
-      }
+      try {
+        let data: string;
 
-      const parsed: StoredValue<T> = JSON.parse(data);
+        if (encrypt && encryptionKey) {
+          data = decryptData(stored, encryptionKey);
+        } else {
+          data = stored;
+        }
 
-      // Check TTL
-      if (ttl && Date.now() - parsed.timestamp > ttl) {
-        localStorage.removeItem(storageKey);
-        return defaultValue;
-      }
+        const parsed: StoredValue<T> = JSON.parse(data);
 
-      // Validate with schema
-      if (schema) {
-        const result = schema.safeParse(parsed.value);
-        if (!result.success) {
-          logger.warn('Persistent state validation failed', { key, errors: result.error.errors });
+        // Check TTL
+        if (ttl && Date.now() - parsed.timestamp > ttl) {
+          localStorage.removeItem(storageKey);
           return defaultValue;
         }
-        return result.data;
-      }
 
-      return parsed.value;
-    } catch (error) {
-      logger.error('Failed to deserialize persistent state', { key, error });
-      return defaultValue;
-    }
-  }, [defaultValue, encrypt, encryptionKey, schema, storageKey, ttl]);
+        // Validate with schema
+        if (schema) {
+          const result = schema.safeParse(parsed.value);
+          if (!result.success) {
+            logger.warn('Persistent state validation failed', { key, errors: result.error.errors });
+            return defaultValue;
+          }
+          return result.data;
+        }
+
+        return parsed.value;
+      } catch (error) {
+        logger.error('Failed to deserialize persistent state', { key, error });
+        return defaultValue;
+      }
+    },
+    [defaultValue, encrypt, encryptionKey, schema, storageKey, ttl, key]
+  );
 
   // Serialize value for storage
-  const serialize = useCallback((value: T): string => {
-    const data: StoredValue<T> = {
-      value,
-      timestamp: Date.now(),
-      version: versionRef.current++,
-    };
+  const serialize = useCallback(
+    (value: T): string => {
+      const data: StoredValue<T> = {
+        value,
+        timestamp: Date.now(),
+        version: versionRef.current++,
+      };
 
-    const json = JSON.stringify(data);
+      const json = JSON.stringify(data);
 
-    if (encrypt && encryptionKey) {
-      return encryptData(json, encryptionKey);
-    }
+      if (encrypt && encryptionKey) {
+        return encryptData(json, encryptionKey);
+      }
 
-    return json;
-  }, [encrypt, encryptionKey]);
+      return json;
+    },
+    [encrypt, encryptionKey]
+  );
 
   // Initialize state
   const [state, setState] = useState<T>(() => {
@@ -158,7 +164,7 @@ export function usePersistentState<T>(options: PersistentStateOptions<T>) {
     } catch (error) {
       logger.error('Failed to persist state', { key, error });
     }
-  }, [state, serialize, storageKey]);
+  }, [state, serialize, storageKey, key]);
 
   // Listen for changes from other tabs
   useEffect(() => {
@@ -178,37 +184,38 @@ export function usePersistentState<T>(options: PersistentStateOptions<T>) {
   }, [deserialize, onExternalChange, storageKey, syncAcrossTabs]);
 
   // Update function with batching support
-  const updateState = useCallback((
-    updater: T | ((prev: T) => T),
-    options?: { skipPersistence?: boolean }
-  ) => {
-    setState(prev => {
-      const newValue = typeof updater === 'function' 
-        ? (updater as (prev: T) => T)(prev) 
-        : updater;
+  const updateState = useCallback(
+    (updater: T | ((prev: T) => T), options?: { skipPersistence?: boolean }) => {
+      setState((prev) => {
+        const newValue =
+          typeof updater === 'function' ? (updater as (prev: T) => T)(prev) : updater;
 
-      if (!options?.skipPersistence) {
-        try {
-          isUpdatingRef.current = true;
-          const serialized = serialize(newValue);
-          localStorage.setItem(storageKey, serialized);
-          
-          // Dispatch custom event for same-tab sync
-          if (syncAcrossTabs) {
-            window.dispatchEvent(new CustomEvent('persistent-state-change', {
-              detail: { key: storageKey, value: newValue }
-            }));
+        if (!options?.skipPersistence) {
+          try {
+            isUpdatingRef.current = true;
+            const serialized = serialize(newValue);
+            localStorage.setItem(storageKey, serialized);
+
+            // Dispatch custom event for same-tab sync
+            if (syncAcrossTabs) {
+              window.dispatchEvent(
+                new CustomEvent('persistent-state-change', {
+                  detail: { key: storageKey, value: newValue },
+                })
+              );
+            }
+          } catch (error) {
+            logger.error('Failed to update persistent state', { key, error });
+          } finally {
+            isUpdatingRef.current = false;
           }
-        } catch (error) {
-          logger.error('Failed to update persistent state', { key, error });
-        } finally {
-          isUpdatingRef.current = false;
         }
-      }
 
-      return newValue;
-    });
-  }, [serialize, storageKey, syncAcrossTabs]);
+        return newValue;
+      });
+    },
+    [serialize, storageKey, syncAcrossTabs, key]
+  );
 
   // Remove from storage
   const removeState = useCallback(() => {
@@ -261,7 +268,7 @@ export function useChatPreferences() {
       showSources: true,
       theme: 'system',
     },
-    schema,
+    schema: schema as unknown as z.ZodType<ChatPreferences>,
     syncAcrossTabs: true,
   });
 
@@ -290,22 +297,29 @@ export function useUploadState() {
     ttl: 24 * 60 * 60 * 1000, // 24 hours
   });
 
-  const addUpload = useCallback((upload: Omit<UploadProgress, 'status'>) => {
-    setState(prev => [...prev, { ...upload, status: 'pending' }]);
-  }, [setState]);
+  const addUpload = useCallback(
+    (upload: Omit<UploadProgress, 'status'>) => {
+      setState((prev) => [...prev, { ...upload, status: 'pending' }]);
+    },
+    [setState]
+  );
 
-  const updateUpload = useCallback((fileId: string, updates: Partial<UploadProgress>) => {
-    setState(prev => 
-      prev.map(u => u.fileId === fileId ? { ...u, ...updates } : u)
-    );
-  }, [setState]);
+  const updateUpload = useCallback(
+    (fileId: string, updates: Partial<UploadProgress>) => {
+      setState((prev) => prev.map((u) => (u.fileId === fileId ? { ...u, ...updates } : u)));
+    },
+    [setState]
+  );
 
-  const removeUpload = useCallback((fileId: string) => {
-    setState(prev => prev.filter(u => u.fileId !== fileId));
-  }, [setState]);
+  const removeUpload = useCallback(
+    (fileId: string) => {
+      setState((prev) => prev.filter((u) => u.fileId !== fileId));
+    },
+    [setState]
+  );
 
   const clearCompleted = useCallback(() => {
-    setState(prev => prev.filter(u => u.status !== 'completed'));
+    setState((prev) => prev.filter((u) => u.status !== 'completed'));
   }, [setState]);
 
   return {
@@ -340,7 +354,7 @@ export function useSecureSession() {
   });
 
   const updateActivity = useCallback(() => {
-    setState(prev => ({ ...prev, lastActivity: Date.now() }));
+    setState((prev) => ({ ...prev, lastActivity: Date.now() }));
   }, [setState]);
 
   const isSessionExpired = useCallback(() => {

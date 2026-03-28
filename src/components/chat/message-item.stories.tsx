@@ -72,13 +72,38 @@ export const WithCitations: Story = {
   args: {
     message: {
       id: '3',
-      content: 'According to the documentation, the system supports multiple authentication methods including OAuth, SAML, and API keys.',
+      content:
+        'According to the documentation, the system supports multiple authentication methods including OAuth, SAML, and API keys.',
       role: 'assistant',
       createdAt: new Date(),
-      citations: [
-        { index: 1, documentName: 'Authentication Guide', content: 'OAuth 2.0 support', page: 5 },
-        { index: 2, documentName: 'SSO Setup', content: 'SAML 2.0 configuration', page: 12 },
-        { index: 3, documentName: 'API Reference', content: 'API key management', page: 8 },
+      sources: [
+        {
+          id: '1',
+          index: 1,
+          documentName: 'Authentication Guide',
+          documentType: 'pdf',
+          chunkText: 'OAuth 2.0 support',
+          pageNumber: 5,
+          relevanceScore: 0.92,
+        },
+        {
+          id: '2',
+          index: 2,
+          documentName: 'SSO Setup',
+          documentType: 'pdf',
+          chunkText: 'SAML 2.0 configuration',
+          pageNumber: 12,
+          relevanceScore: 0.88,
+        },
+        {
+          id: '3',
+          index: 3,
+          documentName: 'API Reference',
+          documentType: 'pdf',
+          chunkText: 'API key management',
+          pageNumber: 8,
+          relevanceScore: 0.85,
+        },
       ],
     },
   },
@@ -120,7 +145,7 @@ export const LastMessage: Story = {
       createdAt: new Date(),
     },
     isLastMessage: true,
-    onRegenerate: () => console.log('Regenerate clicked'),
+    onRegenerate: () => {},
   },
 };
 
@@ -131,11 +156,12 @@ export const WithFeedback: Story = {
   args: {
     message: {
       id: '6',
-      content: 'The system architecture consists of three main layers: presentation, API, and data.',
+      content:
+        'The system architecture consists of three main layers: presentation, API, and data.',
       role: 'assistant',
       createdAt: new Date(),
     },
-    onFeedback: (id, rating) => console.log(`Feedback: ${id} - ${rating}`),
+    onFeedback: (_id, _rating) => {},
   },
 };
 

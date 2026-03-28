@@ -1,16 +1,16 @@
 /**
  * RAG (Retrieval-Augmented Generation) Engine - Annotated
- * 
+ *
  * This file provides detailed inline documentation for the RAG engine,
  * explaining the complex logic and architectural decisions.
- * 
+ *
  * What is RAG?
  * ------------
  * RAG combines retrieval systems with LLM generation to produce more
  * accurate, up-to-date, and verifiable responses. Instead of relying
  * solely on the model's training data, RAG retrieves relevant documents
  * from a knowledge base and incorporates them into the generation context.
- * 
+ *
  * Architecture Overview:
  * ---------------------
  * 1. Ingestion Pipeline: Documents → Chunks → Embeddings → Vector Store
@@ -35,20 +35,20 @@ interface ChatMessage {
 
 /**
  * Default RAG Configuration
- * 
+ *
  * These defaults are tuned for general-purpose question answering.
  * Adjust based on your use case:
- * 
+ *
  * - chunkSize: 1000 tokens is a good balance between context window
  *   utilization and retrieval precision. Smaller chunks = more precise
  *   retrieval but less context per chunk.
- * 
+ *
  * - chunkOverlap: 200 tokens (20%) ensures continuity between chunks.
  *   Critical for maintaining context across chunk boundaries.
- * 
+ *
  * - topK: 5 chunks provides enough context without overwhelming the
  *   LLM's context window. Increase for complex multi-document queries.
- * 
+ *
  * - similarityThreshold: 0.7 filters out low-relevance chunks.
  *   Lower = more results but potentially lower quality.
  */
@@ -69,31 +69,31 @@ export const defaultRAGConfig: RAGConfig = {
 
 /**
  * Generate a response using the RAG pipeline
- * 
+ *
  * This function orchestrates the full RAG process:
- * 
+ *
  * Phase 1: Retrieval
  *   - Convert query to embedding vector
  *   - Search vector database for similar chunks
  *   - Apply similarity threshold filtering
  *   - Rerank results for better relevance
- * 
+ *
  * Phase 2: Context Building
  *   - Format retrieved chunks into context string
  *   - Truncate to fit within model's context window
  *   - Add source attribution markers
- * 
+ *
  * Phase 3: Generation
  *   - Build system prompt with context
  *   - Include conversation history
  *   - Send to LLM with streaming support
  *   - Track token usage and latency
- * 
+ *
  * Why this order matters:
  *   - Retrieval must happen first to get context
  *   - Context building must respect token limits
  *   - Generation needs complete prompt before starting
- * 
+ *
  * @param query - The RAG query containing user message and config
  * @returns Promise<RAGResponse> - Generated response with metadata
  */
@@ -110,7 +110,7 @@ export async function generateRAGResponse(query: RAGQuery): Promise<RAGResponse>
     // ------------------
     // Retrieve relevant chunks from the knowledge base.
     // This is the "R" in RAG - the retrieval step.
-    // 
+    //
     // Under the hood, this:
     // 1. Generates embedding for the query
     // 2. Performs vector similarity search (cosine similarity)
@@ -121,7 +121,7 @@ export async function generateRAGResponse(query: RAGQuery): Promise<RAGResponse>
     // PHASE 2: CONTEXT BUILDING
     // -------------------------
     // Transform retrieved chunks into a context string the LLM can use.
-    // 
+    //
     // Key considerations:
     // - Order chunks by relevance (most relevant first)
     // - Add source markers [1], [2] for citation
@@ -132,7 +132,7 @@ export async function generateRAGResponse(query: RAGQuery): Promise<RAGResponse>
     // PHASE 3: GENERATION
     // -------------------
     // Build the complete prompt and send to LLM.
-    // 
+    //
     // Prompt structure:
     // 1. System prompt with RAG instructions and context
     // 2. Conversation history (if any)
@@ -159,8 +159,8 @@ export async function generateRAGResponse(query: RAGQuery): Promise<RAGResponse>
       answer: response.text,
       sources,
       tokensUsed: {
-        prompt: usage.inputTokens ?? 0,
-        completion: usage.outputTokens ?? 0,
+        prompt: usage.promptTokens ?? 0,
+        completion: usage.completionTokens ?? 0,
         total: usage.totalTokens ?? 0,
       },
       latency,
@@ -184,21 +184,21 @@ export async function generateRAGResponse(query: RAGQuery): Promise<RAGResponse>
 
 /**
  * Stream a RAG response
- * 
+ *
  * Similar to generateRAGResponse but yields chunks as they're generated
  * for real-time display. This provides better UX for long responses.
- * 
+ *
  * The generator yields:
  * - 'sources': Retrieved sources (sent first for immediate display)
  * - 'content': Text chunks as they're generated
  * - 'done': Completion signal
  * - 'error': Error information
- * 
+ *
  * Why streaming matters:
  * - Users perceive faster response times
  * - Can display sources immediately while waiting for LLM
  * - Allows cancellation mid-generation
- * 
+ *
  * @param query - The RAG query
  * @yields AsyncGenerator with partial results
  */
@@ -262,18 +262,18 @@ export async function* streamRAGResponse(query: RAGQuery): AsyncGenerator<{
 
 /**
  * Build a system prompt for RAG with context
- * 
+ *
  * The system prompt is crucial for RAG quality. It instructs the LLM:
  * 1. How to use the provided context
  * 2. When to cite sources
  * 3. What to do when context is insufficient
- * 
+ *
  * Prompt engineering notes:
  * - Explicit instructions work better than implicit
  * - Include examples of good citation format
  * - Set clear boundaries ("only use provided context")
  * - Handle edge cases ("say 'I don't know' if...")
- * 
+ *
  * @param context - Retrieved context from documents
  * @param instructions - Optional custom instructions
  * @returns Complete system prompt string
@@ -310,14 +310,14 @@ Instructions:
 
 /**
  * Check if RAG pipeline is healthy
- * 
+ *
  * Validates all components of the RAG pipeline:
  * - Embedding provider connectivity
  * - Vector store availability
  * - Retrieval functionality
- * 
+ *
  * Used by health check endpoints and monitoring systems.
- * 
+ *
  * @returns Health status for each component
  */
 export async function checkRAGHealth(): Promise<{
@@ -375,14 +375,14 @@ export async function checkRAGHealth(): Promise<{
 
 /**
  * Format chat history for the LLM prompt
- * 
+ *
  * Converts the internal message format to a text representation
  * that can be included in prompts.
- * 
+ *
  * Format:
  * Human: [message]
  * Assistant: [message]
- * 
+ *
  * @param messages - Array of chat messages
  * @returns Formatted history string
  */
@@ -396,7 +396,7 @@ export function formatChatHistory(
 
 /**
  * Build context string from retrieved sources (legacy version)
- * 
+ *
  * @deprecated Use buildContext from retrieval module
  * @param sources - Retrieved sources
  * @returns Formatted context string
@@ -420,17 +420,17 @@ export function buildContextFromSources(sources: Source[]): string {
 
 /**
  * Create an embedding generator function using the configured embedding provider
- * 
+ *
  * This is a convenience wrapper around the embedding provider that provides
  * a simplified interface for common operations.
- * 
+ *
  * Usage:
  * ```typescript
  * const embeddings = createEmbeddings();
  * const vectors = await embeddings.embedDocuments(['text1', 'text2']);
  * const queryVector = await embeddings.embedQuery('search query');
  * ```
- * 
+ *
  * @returns Object with embedQuery and embedDocuments methods
  */
 export function createEmbeddings() {

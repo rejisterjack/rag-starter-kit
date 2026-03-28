@@ -12,14 +12,6 @@ interface PerformanceMetric {
   rating: 'good' | 'needs-improvement' | 'poor';
 }
 
-const _THRESHOLDS = {
-  LCP: { good: 2500, poor: 4000 },
-  FID: { good: 100, poor: 300 },
-  FCP: { good: 1800, poor: 3000 },
-  TTFB: { good: 800, poor: 1800 },
-  CLS: { good: 0.1, poor: 0.25 },
-};
-
 export function initPerformanceMonitoring(): void {
   if (typeof window === 'undefined') return;
 
@@ -62,7 +54,7 @@ function observeLongTasks(): void {
 }
 
 export function reportMetric(metric: PerformanceMetric): void {
-  logger.debug('Performance metric', metric);
+  logger.debug('Performance metric', metric as unknown as Record<string, unknown>);
 }
 
 export function mark(name: string): void {

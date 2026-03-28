@@ -4,11 +4,11 @@
  * PUT /api/workspaces/[workspaceId]/rag-settings - Update RAG settings
  */
 
+import { type NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const ragSettingsSchema = z.object({
   chunkSize: z.number().min(100).max(4000).default(1000),
@@ -20,6 +20,7 @@ const ragSettingsSchema = z.object({
   embeddingModel: z.string().default('text-embedding-004'),
   rerankingEnabled: z.boolean().default(false),
   hybridSearchEnabled: z.boolean().default(true),
+  chunkingStrategy: z.enum(['fixed', 'semantic', 'hierarchical', 'late']).default('fixed'),
 });
 
 export async function GET(
@@ -63,12 +64,8 @@ export async function GET(
       success: true,
       settings: ragSettings,
     });
-  } catch (error) {
-    console.error('Failed to fetch RAG settings:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch settings' },
-      { status: 500 }
-    );
+  } catch (_error) {
+    return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
   }
 }
 
@@ -135,11 +132,7 @@ export async function PUT(
       success: true,
       settings: ragSettings,
     });
-  } catch (error) {
-    console.error('Failed to update RAG settings:', error);
-    return NextResponse.json(
-      { error: 'Failed to update settings' },
-      { status: 500 }
-    );
+  } catch (_error) {
+    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
   }
 }

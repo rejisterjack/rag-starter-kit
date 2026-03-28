@@ -68,7 +68,7 @@ export class OllamaProvider implements LLMProvider {
           content: m.content,
         })),
         temperature: options.temperature,
-        maxOutputTokens: options.maxTokens,
+        maxTokens: options.maxTokens,
         topP: options.topP,
       });
 
@@ -105,7 +105,7 @@ export class OllamaProvider implements LLMProvider {
           content: m.content,
         })),
         temperature: options.temperature,
-        maxOutputTokens: options.maxTokens,
+        maxTokens: options.maxTokens,
         topP: options.topP,
       });
 

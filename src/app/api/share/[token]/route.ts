@@ -3,11 +3,11 @@
  * GET /api/share/[token] - View a shared chat
  */
 
+import { type NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
 import { logger } from '@/lib/logger';
 import { checkApiRateLimit } from '@/lib/security/rate-limiter';
-import { auth } from '@/lib/auth';
-import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/share/[token]
@@ -19,7 +19,7 @@ export async function GET(
 ): Promise<NextResponse> {
   try {
     const { token } = await params;
-    
+
     // Check rate limit
     const rateLimitIdentifier = `share_view:${token}`;
     const rateLimitResult = await checkApiRateLimit(rateLimitIdentifier, 'share_view');
@@ -29,7 +29,7 @@ export async function GET(
         { status: 429 }
       );
     }
-    
+
     // Find the share by token
     const share = await prisma.chatShare.findUnique({
       where: { shareToken: token },
@@ -60,14 +60,14 @@ export async function GET(
         },
       },
     });
-    
+
     if (!share) {
       return NextResponse.json(
         { error: 'Shared chat not found', code: 'NOT_FOUND' },
         { status: 404 }
       );
     }
-    
+
     // Check if share has expired
     if (share.expiresAt && new Date() > share.expiresAt) {
       return NextResponse.json(
@@ -75,18 +75,18 @@ export async function GET(
         { status: 410 }
       );
     }
-    
+
     // Check if share is public or user is the owner
     const session = await auth();
     const isOwner = session?.user?.id === share.chat.user.id;
-    
+
     if (!share.isPublic && !isOwner) {
       return NextResponse.json(
         { error: 'This chat is not publicly shared', code: 'FORBIDDEN' },
         { status: 403 }
       );
     }
-    
+
     // Update view count and last viewed
     await prisma.chatShare.update({
       where: { id: share.id },
@@ -95,9 +95,9 @@ export async function GET(
         lastViewedAt: new Date(),
       },
     });
-    
+
     logger.info('Shared chat viewed');
-    
+
     return NextResponse.json({
       success: true,
       data: {
@@ -118,20 +118,28 @@ export async function GET(
             name: share.chat.user.name,
             image: share.chat.user.image,
           },
-          messages: share.chat.messages.map((msg: { id: string; content: string; role: string; sources: unknown; createdAt: Date }) => ({
-            id: msg.id,
-            content: msg.content,
-            role: msg.role,
-            sources: msg.sources,
-            createdAt: msg.createdAt.toISOString(),
-          })),
+          messages: share.chat.messages.map(
+            (msg: {
+              id: string;
+              content: string;
+              role: string;
+              sources: unknown;
+              createdAt: Date;
+            }) => ({
+              id: msg.id,
+              content: msg.content,
+              role: msg.role,
+              sources: msg.sources,
+              createdAt: msg.createdAt.toISOString(),
+            })
+          ),
           messageCount: share.chat.messages.length,
         },
-      }
+      },
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to get shared chat');
-    
+
     return NextResponse.json(
       { error: 'Failed to get shared chat', code: 'INTERNAL_ERROR' },
       { status: 500 }

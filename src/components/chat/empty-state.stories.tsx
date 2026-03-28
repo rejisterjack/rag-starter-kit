@@ -1,6 +1,6 @@
+import { action } from '@storybook/addon-actions';
 import type { Meta, StoryObj } from '@storybook/react';
 import { EmptyState } from './empty-state';
-import { action } from '@storybook/addon-actions';
 
 /**
  * EmptyState component displayed when no messages exist in a chat.

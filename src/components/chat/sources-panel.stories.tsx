@@ -1,46 +1,36 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { SourcesPanel, InlineSourcesPanel } from './sources-panel';
 import { action } from '@storybook/addon-actions';
+import type { Meta, StoryObj } from '@storybook/react';
+import { InlineSourcesPanel, SourcesPanel } from './sources-panel';
 
 const sampleSources = [
   {
     id: '1',
-    title: 'Q3 Financial Report',
-    content: 'Revenue increased by 15% year-over-year, reaching $2.4M. The growth was primarily driven by new enterprise contracts.',
-    similarity: 0.92,
     index: 1,
-    metadata: {
-      documentId: 'doc-1',
-      documentName: 'Q3 Financial Report',
-      page: 5,
-      chunkIndex: 2,
-    },
+    documentName: 'Q3 Financial Report',
+    documentType: 'pdf',
+    chunkText:
+      'Revenue increased by 15% year-over-year, reaching $2.4M. The growth was primarily driven by new enterprise contracts.',
+    pageNumber: 5,
+    relevanceScore: 0.92,
   },
   {
     id: '2',
-    title: 'Annual Review 2024',
-    content: 'Customer acquisition cost decreased by 20% while lifetime value increased by 35%.',
-    similarity: 0.87,
     index: 2,
-    metadata: {
-      documentId: 'doc-2',
-      documentName: 'Annual Review 2024',
-      page: 12,
-      chunkIndex: 5,
-    },
+    documentName: 'Annual Review 2024',
+    documentType: 'pdf',
+    chunkText: 'Customer acquisition cost decreased by 20% while lifetime value increased by 35%.',
+    pageNumber: 12,
+    relevanceScore: 0.87,
   },
   {
     id: '3',
-    title: 'Product Roadmap',
-    content: 'The new AI features are scheduled for Q4 release, with beta testing starting in October.',
-    similarity: 0.75,
     index: 3,
-    metadata: {
-      documentId: 'doc-3',
-      documentName: 'Product Roadmap',
-      page: 3,
-      chunkIndex: 1,
-    },
+    documentName: 'Product Roadmap',
+    documentType: 'pdf',
+    chunkText:
+      'The new AI features are scheduled for Q4 release, with beta testing starting in October.',
+    pageNumber: 3,
+    relevanceScore: 0.75,
   },
 ];
 

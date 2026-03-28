@@ -1,6 +1,6 @@
+import { action } from '@storybook/addon-actions';
 import type { Meta, StoryObj } from '@storybook/react';
 import { MessageInput } from './message-input';
-import { action } from '@storybook/addon-actions';
 
 /**
  * MessageInput component for entering chat messages.

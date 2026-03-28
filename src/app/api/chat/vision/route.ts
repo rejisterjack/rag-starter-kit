@@ -186,11 +186,12 @@ export async function POST(req: Request) {
     // Step 8: Generate response
     if (shouldStream) {
       const result = streamText({
-        model: google('gemini-1.5-flash'),
+        // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
+        model: google('gemini-1.5-flash') as any,
         // biome-ignore lint/suspicious/noExplicitAny: AI SDK type compatibility
         messages: visionMessages as any,
         temperature: config?.temperature ?? 0.7,
-        maxOutputTokens: config?.maxTokens ?? 2000,
+        maxTokens: config?.maxTokens ?? 2000,
       });
 
       const sourcesMetadata = retrievedImages.map((img) => ({
@@ -211,11 +212,12 @@ export async function POST(req: Request) {
       return response;
     } else {
       const result = await generateText({
-        model: google('gemini-1.5-flash'),
+        // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
+        model: google('gemini-1.5-flash') as any,
         // biome-ignore lint/suspicious/noExplicitAny: AI SDK type compatibility
         messages: visionMessages as any,
         temperature: config?.temperature ?? 0.7,
-        maxOutputTokens: config?.maxTokens ?? 2000,
+        maxTokens: config?.maxTokens ?? 2000,
       });
 
       // Save to conversation history
@@ -242,9 +244,9 @@ export async function POST(req: Request) {
             pageNumber: img.pageNumber,
           })),
           usage: {
-            promptTokens: result.usage?.inputTokens ?? 0,
-            completionTokens: result.usage?.outputTokens ?? 0,
-            totalTokens: (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0),
+            promptTokens: result.usage?.promptTokens ?? 0,
+            completionTokens: result.usage?.completionTokens ?? 0,
+            totalTokens: result.usage?.totalTokens ?? 0,
           },
           model: 'gemini-1.5-flash',
         },

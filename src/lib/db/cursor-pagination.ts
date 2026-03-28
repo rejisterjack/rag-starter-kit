@@ -1,9 +1,9 @@
 /**
  * Cursor-Based Pagination
- * 
+ *
  * Implements cursor-based pagination for efficient data fetching
  * with better performance than offset-based pagination for large datasets.
- * 
+ *
  * Benefits:
  * - O(1) performance regardless of page depth
  * - Stable results during concurrent writes
@@ -110,9 +110,7 @@ export function buildCursorWhereClause(options: CursorQueryOptions): Record<stri
   const useGreaterThan = isForward === isAsc;
 
   return {
-    [cursorField]: useGreaterThan 
-      ? { gt: cursorValue }
-      : { lt: cursorValue },
+    [cursorField]: useGreaterThan ? { gt: cursorValue } : { lt: cursorValue },
   };
 }
 
@@ -135,7 +133,7 @@ export function buildCursorQuery<T extends Record<string, unknown>>(
   const take = direction === 'backward' ? -pageSize : pageSize;
 
   let where: Record<string, unknown> = {};
-  let orderBy: Array<Record<string, string>> = [];
+  const orderBy: Array<Record<string, string>> = [];
 
   // Build order by
   orderBy.push({ [cursorField as string]: sortOrder });
@@ -196,13 +194,14 @@ export function buildPaginationResult<T extends { id: string }>(
   const firstItem = orderedItems[0];
   const lastItem = orderedItems[orderedItems.length - 1];
 
-  const nextCursor = hasExtra && lastItem
-    ? encodeCursor({
-        id: lastItem.id,
-        value: lastItem[cursorField],
-        direction: 'forward',
-      })
-    : null;
+  const nextCursor =
+    hasExtra && lastItem
+      ? encodeCursor({
+          id: lastItem.id,
+          value: lastItem[cursorField],
+          direction: 'forward',
+        })
+      : null;
 
   const previousCursor = firstItem
     ? encodeCursor({
@@ -340,7 +339,7 @@ export function useCursorPagination<T extends { id: string }>(
         direction: 'forward',
       });
 
-      setItems(prev => [...prev, ...result.items]);
+      setItems((prev) => [...prev, ...result.items]);
       setPagination({
         hasNextPage: result.pagination.hasNextPage,
         hasPreviousPage: true, // We have previous now
@@ -367,7 +366,7 @@ export function useCursorPagination<T extends { id: string }>(
         direction: 'backward',
       });
 
-      setItems(prev => [...result.items, ...prev]);
+      setItems((prev) => [...result.items, ...prev]);
       setPagination({
         hasNextPage: true,
         hasPreviousPage: result.pagination.hasPreviousPage,

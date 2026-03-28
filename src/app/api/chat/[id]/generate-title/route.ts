@@ -5,9 +5,9 @@
  * Automatically generates a concise title for a chat based on the first user message.
  */
 
+import { openrouter } from '@openrouter/ai-sdk-provider';
 import { generateText } from 'ai';
 import { NextResponse } from 'next/server';
-import { openrouter } from '@openrouter/ai-sdk-provider';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
@@ -73,7 +73,7 @@ export async function POST(_req: Request, { params }: RouteParams) {
 Message: "${firstMessage.content.slice(0, 500)}"`;
 
     const result = await generateText({
-      model: openrouter.chat('mistralai/mistral-7b-instruct:free') as any,
+      model: openrouter.chat('mistralai/mistral-7b-instruct:free'),
       prompt,
       maxTokens: 20,
       temperature: 0.7,
@@ -85,12 +85,12 @@ Message: "${firstMessage.content.slice(0, 500)}"`;
     // Fallback if generation fails or returns empty
     if (!generatedTitle || generatedTitle.length < 3) {
       // Use first 30 chars of message as fallback
-      generatedTitle = firstMessage.content.slice(0, 30).trim() + '...';
+      generatedTitle = `${firstMessage.content.slice(0, 30).trim()}...`;
     }
 
     // Limit to 50 characters
     if (generatedTitle.length > 50) {
-      generatedTitle = generatedTitle.slice(0, 47).trim() + '...';
+      generatedTitle = `${generatedTitle.slice(0, 47).trim()}...`;
     }
 
     // Update chat with generated title

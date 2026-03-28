@@ -225,7 +225,8 @@ export async function generateImageCaption(imageBuffer: Buffer | string): Promis
     }
 
     const result = await generateText({
-      model: google('gemini-1.5-flash'),
+      // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
+      model: google('gemini-1.5-flash') as any,
       messages: [
         {
           role: 'user',

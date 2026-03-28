@@ -44,6 +44,9 @@ const envSchema = z.object({
   // CORS configuration
   ALLOWED_ORIGINS: z.string().optional(),
 
+  // CSP configuration - additional connect-src domains
+  CSP_CONNECT_SRC: z.string().optional(),
+
   // Logging configuration
   LOG_ENDPOINT: z.string().url().optional(),
 
@@ -69,6 +72,11 @@ const envSchema = z.object({
 
   // Unpooled database URL for migrations
   DATABASE_URL_UNPOOLED: z.string().optional(),
+
+  // Stripe configuration
+  STRIPE_SECRET_KEY: z.string().optional(),
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
 });
 
 // =============================================================================

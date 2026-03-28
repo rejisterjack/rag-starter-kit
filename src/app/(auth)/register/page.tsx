@@ -16,20 +16,22 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 
 // Validation schema
-const registerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Please enter a valid email address'),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/\d/, 'Password must contain at least one number'),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: 'Passwords do not match',
-  path: ['confirmPassword'],
-});
+const registerSchema = z
+  .object({
+    name: z.string().min(2, 'Name must be at least 2 characters'),
+    email: z.string().email('Please enter a valid email address'),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+      .regex(/\d/, 'Password must contain at least one number'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
@@ -198,9 +200,7 @@ export default function RegisterPage(): React.ReactElement {
               aria-invalid={errors.name ? 'true' : 'false'}
             />
           </div>
-          {errors.name && (
-            <p className="text-sm text-red-500">{errors.name.message}</p>
-          )}
+          {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="email" className="text-muted-foreground">
@@ -218,9 +218,7 @@ export default function RegisterPage(): React.ReactElement {
               aria-invalid={errors.email ? 'true' : 'false'}
             />
           </div>
-          {errors.email && (
-            <p className="text-sm text-red-500">{errors.email.message}</p>
-          )}
+          {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
         </div>
         <div className="space-y-4">
           <div className="space-y-2">

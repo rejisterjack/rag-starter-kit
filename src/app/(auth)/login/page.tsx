@@ -283,9 +283,7 @@ export default function LoginPage(): React.ReactElement {
                   aria-invalid={errors.email ? 'true' : 'false'}
                 />
               </div>
-              {errors.email && (
-                <p className="text-sm text-red-500">{errors.email.message}</p>
-              )}
+              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
               {isCheckingDomain && (
                 <p className="text-xs text-muted-foreground">
                   <Loader2 className="inline h-3 w-3 animate-spin mr-1" />
@@ -314,9 +312,7 @@ export default function LoginPage(): React.ReactElement {
                 aria-invalid={errors.password ? 'true' : 'false'}
                 className="bg-background/50 border-white/10 focus-visible:ring-primary/50"
               />
-              {errors.password && (
-                <p className="text-sm text-red-500">{errors.password.message}</p>
-              )}
+              {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
             </div>
             <Button type="submit" className="w-full font-medium" disabled={isLoading}>
               {isLoading ? (

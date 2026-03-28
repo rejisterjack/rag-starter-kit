@@ -1,6 +1,6 @@
+import { action } from '@storybook/addon-actions';
 import type { Meta, StoryObj } from '@storybook/react';
 import { StreamingMessage } from './streaming-message';
-import { action } from '@storybook/addon-actions';
 
 /**
  * StreamingMessage component shows an in-progress AI response
@@ -40,7 +40,8 @@ export const Initial: Story = {
  */
 export const PartialContent: Story = {
   args: {
-    content: 'Based on the documentation, the system supports multiple authentication methods including',
+    content:
+      'Based on the documentation, the system supports multiple authentication methods including',
     onCancel: action('cancelled'),
   },
 };

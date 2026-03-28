@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { ShareDialog } from './share-dialog';
-import { action } from '@storybook/addon-actions';
 
 /**
  * ShareDialog component for creating and managing chat shares.

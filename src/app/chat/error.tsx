@@ -2,15 +2,16 @@
 
 /**
  * Chat Route Error Boundary
- * 
+ *
  * Handles errors specific to the chat route with user-friendly
  * recovery options and proper error reporting.
  */
 
-import { logger } from '@/lib/logger';
 import { AlertCircle, MessageSquare, RefreshCw } from 'lucide-react';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { logger } from '@/lib/logger';
 
 interface ChatErrorProps {
   error: Error & { digest?: string };
@@ -37,7 +38,7 @@ export default function ChatError({ error, reset }: ChatErrorProps) {
             {isAuthError ? 'Authentication Error' : 'Chat Error'}
           </CardTitle>
           <CardDescription>
-            {isAuthError 
+            {isAuthError
               ? 'Your session may have expired. Please sign in again.'
               : isMessageError
                 ? 'Failed to load messages. Please try again.'
@@ -57,16 +58,20 @@ export default function ChatError({ error, reset }: ChatErrorProps) {
               <RefreshCw className="mr-2 h-4 w-4" />
               Try Again
             </Button>
-            
+
             {isAuthError ? (
-              <Button variant="outline" className="w-full" onClick={() => window.location.href = '/login'}>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => (window.location.href = '/login')}
+              >
                 Sign In
               </Button>
             ) : (
-              <Button 
-                variant="outline" 
-                className="w-full" 
-                onClick={() => window.location.href = '/chat'}
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => (window.location.href = '/chat')}
               >
                 <MessageSquare className="mr-2 h-4 w-4" />
                 New Conversation

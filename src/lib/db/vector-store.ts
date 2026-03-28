@@ -10,7 +10,7 @@
 
 // Note: Prisma types will be available after `prisma generate`
 // These are type-only imports that require the Prisma client to be generated
-import type { PrismaClient } from '@prisma/client';
+import type { DocumentChunk, PrismaClient } from '@prisma/client';
 
 // Type for transaction client
 type PrismaTransactionClient = Pick<

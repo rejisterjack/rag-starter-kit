@@ -158,10 +158,7 @@ export function ModelPicker({
           variant="ghost"
           size="sm"
           disabled={disabled}
-          className={cn(
-            'h-8 gap-1.5 px-2 text-muted-foreground hover:text-foreground',
-            className
-          )}
+          className={cn('h-8 gap-1.5 px-2 text-muted-foreground hover:text-foreground', className)}
         >
           {getProviderIcon(currentModel.provider)}
           <span className="max-w-[120px] truncate hidden sm:inline">{currentModel.name}</span>
@@ -209,7 +206,9 @@ export function ModelPicker({
                     {model.badge}
                   </span>
                 )}
-                {selectedModel === model.id && <Sparkles className="h-3 w-3 ml-auto text-primary" />}
+                {selectedModel === model.id && (
+                  <Sparkles className="h-3 w-3 ml-auto text-primary" />
+                )}
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span>{model.description}</span>
@@ -273,12 +272,7 @@ export function ModelBadge({ modelId, className }: ModelBadgeProps) {
   if (!model) return null;
 
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 text-xs text-muted-foreground',
-        className
-      )}
-    >
+    <span className={cn('inline-flex items-center gap-1 text-xs text-muted-foreground', className)}>
       {getProviderIcon(model.provider)}
       <span className="truncate max-w-[100px]">{model.name}</span>
       {model.isFree && (

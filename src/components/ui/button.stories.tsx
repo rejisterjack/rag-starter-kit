@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { Button } from './button';
 import { Loader2, Mail, Plus } from 'lucide-react';
+import { Button } from './button';
 
 /**
  * Button component with variants and sizes.

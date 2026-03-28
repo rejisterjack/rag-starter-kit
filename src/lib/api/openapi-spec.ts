@@ -1,6 +1,6 @@
 /**
  * OpenAPI Specification
- * 
+ *
  * Complete OpenAPI 3.1.0 specification for the RAG Starter Kit API.
  * Provides documentation for all endpoints with proper schemas.
  */
@@ -9,7 +9,8 @@ export const openApiSpec = {
   openapi: '3.1.0',
   info: {
     title: 'RAG Starter Kit API',
-    description: 'Production-ready RAG (Retrieval-Augmented Generation) API with enterprise-grade features',
+    description:
+      'Production-ready RAG (Retrieval-Augmented Generation) API with enterprise-grade features',
     version: '1.0.0',
     contact: {
       name: 'API Support',
@@ -26,15 +27,12 @@ export const openApiSpec = {
       description: 'Base API path',
     },
   ],
-  
+
   // =============================================================================
   // Security
   // =============================================================================
-  security: [
-    { bearerAuth: [] },
-    { apiKey: [] },
-  ],
-  
+  security: [{ bearerAuth: [] }, { apiKey: [] }],
+
   components: {
     securitySchemes: {
       bearerAuth: {
@@ -50,7 +48,7 @@ export const openApiSpec = {
         description: 'API key for programmatic access',
       },
     },
-    
+
     // =============================================================================
     // Schemas
     // =============================================================================
@@ -73,7 +71,7 @@ export const openApiSpec = {
         },
         required: ['success', 'error'],
       },
-      
+
       ValidationError: {
         allOf: [
           { $ref: '#/components/schemas/Error' },
@@ -94,7 +92,7 @@ export const openApiSpec = {
           },
         ],
       },
-      
+
       // Message schemas
       Message: {
         type: 'object',
@@ -118,7 +116,7 @@ export const openApiSpec = {
         },
         required: ['id', 'role', 'content', 'createdAt'],
       },
-      
+
       Source: {
         type: 'object',
         properties: {
@@ -137,7 +135,7 @@ export const openApiSpec = {
         },
         required: ['id', 'content', 'score'],
       },
-      
+
       // Document schemas
       Document: {
         type: 'object',
@@ -146,8 +144,8 @@ export const openApiSpec = {
           name: { type: 'string' },
           type: { type: 'string', enum: ['pdf', 'docx', 'txt', 'md', 'html', 'url'] },
           size: { type: 'integer', description: 'File size in bytes' },
-          status: { 
-            type: 'string', 
+          status: {
+            type: 'string',
             enum: ['pending', 'processing', 'completed', 'error'],
           },
           createdAt: { type: 'string', format: 'date-time' },
@@ -163,7 +161,7 @@ export const openApiSpec = {
         },
         required: ['id', 'name', 'type', 'status', 'createdAt'],
       },
-      
+
       // Workspace schemas
       Workspace: {
         type: 'object',
@@ -186,7 +184,7 @@ export const openApiSpec = {
         },
         required: ['id', 'name', 'slug', 'ownerId', 'createdAt'],
       },
-      
+
       // API Key schemas
       ApiKey: {
         type: 'object',
@@ -205,34 +203,34 @@ export const openApiSpec = {
         },
         required: ['id', 'name', 'keyPrefix', 'permissions', 'createdAt'],
       },
-      
+
       // Chat request/response schemas
       ChatRequest: {
         type: 'object',
         properties: {
-          message: { 
-            type: 'string', 
-            minLength: 1, 
+          message: {
+            type: 'string',
+            minLength: 1,
             maxLength: 10000,
             description: 'User message content',
           },
-          conversationId: { 
-            type: 'string', 
+          conversationId: {
+            type: 'string',
             format: 'uuid',
             description: 'Optional conversation ID for continuing a chat',
           },
-          model: { 
+          model: {
             type: 'string',
             description: 'Model to use for generation',
           },
-          temperature: { 
-            type: 'number', 
-            minimum: 0, 
+          temperature: {
+            type: 'number',
+            minimum: 0,
             maximum: 2,
             default: 0.7,
           },
-          stream: { 
-            type: 'boolean', 
+          stream: {
+            type: 'boolean',
             default: true,
             description: 'Whether to stream the response',
           },
@@ -247,7 +245,7 @@ export const openApiSpec = {
         },
         required: ['message'],
       },
-      
+
       ChatResponse: {
         type: 'object',
         properties: {
@@ -271,7 +269,7 @@ export const openApiSpec = {
         },
         required: ['success', 'data'],
       },
-      
+
       // Pagination schemas
       CursorPagination: {
         type: 'object',
@@ -291,29 +289,29 @@ export const openApiSpec = {
         },
         required: ['items', 'pagination'],
       },
-      
+
       // Rate limit headers
       RateLimitHeaders: {
         type: 'object',
         description: 'Rate limit information in response headers',
         properties: {
-          'X-RateLimit-Limit': { 
-            type: 'integer', 
+          'X-RateLimit-Limit': {
+            type: 'integer',
             description: 'Maximum requests allowed in the window',
           },
-          'X-RateLimit-Remaining': { 
-            type: 'integer', 
+          'X-RateLimit-Remaining': {
+            type: 'integer',
             description: 'Remaining requests in current window',
           },
-          'X-RateLimit-Reset': { 
-            type: 'string', 
+          'X-RateLimit-Reset': {
+            type: 'string',
             format: 'date-time',
             description: 'When the rate limit window resets',
           },
         },
       },
     },
-    
+
     // =============================================================================
     // Parameters
     // =============================================================================
@@ -338,7 +336,7 @@ export const openApiSpec = {
         schema: { type: 'string', format: 'uuid' },
       },
     },
-    
+
     // =============================================================================
     // Responses
     // =============================================================================
@@ -359,7 +357,7 @@ export const openApiSpec = {
           },
         },
       },
-      
+
       ForbiddenError: {
         description: 'Forbidden - Insufficient permissions',
         content: {
@@ -376,7 +374,7 @@ export const openApiSpec = {
           },
         },
       },
-      
+
       ValidationError: {
         description: 'Validation error',
         content: {
@@ -397,7 +395,7 @@ export const openApiSpec = {
           },
         },
       },
-      
+
       RateLimitError: {
         description: 'Rate limit exceeded',
         headers: {
@@ -420,7 +418,7 @@ export const openApiSpec = {
           },
         },
       },
-      
+
       NotFoundError: {
         description: 'Resource not found',
         content: {
@@ -439,7 +437,7 @@ export const openApiSpec = {
       },
     },
   },
-  
+
   // =============================================================================
   // Paths
   // =============================================================================
@@ -470,7 +468,7 @@ export const openApiSpec = {
         },
       },
     },
-    
+
     // Chat endpoints
     '/chat': {
       post: {
@@ -500,8 +498,12 @@ export const openApiSpec = {
               },
             },
             headers: {
-              'X-RateLimit-Limit': { $ref: '#/components/schemas/RateLimitHeaders/properties/X-RateLimit-Limit' },
-              'X-RateLimit-Remaining': { $ref: '#/components/schemas/RateLimitHeaders/properties/X-RateLimit-Remaining' },
+              'X-RateLimit-Limit': {
+                $ref: '#/components/schemas/RateLimitHeaders/properties/X-RateLimit-Limit',
+              },
+              'X-RateLimit-Remaining': {
+                $ref: '#/components/schemas/RateLimitHeaders/properties/X-RateLimit-Remaining',
+              },
             },
           },
           '401': { $ref: '#/components/responses/UnauthorizedError' },
@@ -510,7 +512,7 @@ export const openApiSpec = {
         },
       },
     },
-    
+
     // Document endpoints
     '/documents': {
       get: {
@@ -550,7 +552,7 @@ export const openApiSpec = {
           '401': { $ref: '#/components/responses/UnauthorizedError' },
         },
       },
-      
+
       post: {
         tags: ['Documents'],
         summary: 'Upload document',
@@ -606,7 +608,7 @@ export const openApiSpec = {
         },
       },
     },
-    
+
     '/documents/{id}': {
       get: {
         tags: ['Documents'],
@@ -639,7 +641,7 @@ export const openApiSpec = {
           '404': { $ref: '#/components/responses/NotFoundError' },
         },
       },
-      
+
       delete: {
         tags: ['Documents'],
         summary: 'Delete document',
@@ -662,7 +664,7 @@ export const openApiSpec = {
         },
       },
     },
-    
+
     // Workspace endpoints
     '/workspaces': {
       get: {
@@ -690,7 +692,7 @@ export const openApiSpec = {
           '401': { $ref: '#/components/responses/UnauthorizedError' },
         },
       },
-      
+
       post: {
         tags: ['Workspaces'],
         summary: 'Create workspace',
@@ -731,7 +733,7 @@ export const openApiSpec = {
         },
       },
     },
-    
+
     // API Key endpoints
     '/api-keys': {
       get: {
@@ -759,7 +761,7 @@ export const openApiSpec = {
           '401': { $ref: '#/components/responses/UnauthorizedError' },
         },
       },
-      
+
       post: {
         tags: ['API Keys'],
         summary: 'Create API key',
@@ -796,7 +798,7 @@ export const openApiSpec = {
                     data: {
                       type: 'object',
                       properties: {
-                        apiKey: { 
+                        apiKey: {
                           type: 'object',
                           properties: {
                             id: { type: 'string' },

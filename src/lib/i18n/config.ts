@@ -1,6 +1,6 @@
 /**
  * Internationalization Configuration
- * 
+ *
  * Expanded i18n support with:
  * - 10+ languages
  * - RTL language support
@@ -8,8 +8,6 @@
  * - Pluralization
  * - Date/number formatting
  */
-
-import type { Messages } from '@/types';
 
 // =============================================================================
 // Supported Locales
@@ -31,7 +29,7 @@ export const locales = [
   { code: 'pl', name: 'Polski', dir: 'ltr', flag: '🇵🇱' },
   { code: 'tr', name: 'Türkçe', dir: 'ltr', flag: '🇹🇷' },
   { code: 'vi', name: 'Tiếng Việt', dir: 'ltr', flag: '🇻🇳' },
-  
+
   // RTL Languages
   { code: 'ar', name: 'العربية', dir: 'rtl', flag: '🇸🇦' },
   { code: 'he', name: 'עברית', dir: 'rtl', flag: '🇮🇱' },
@@ -39,17 +37,17 @@ export const locales = [
   { code: 'ur', name: 'اردو', dir: 'rtl', flag: '🇵🇰' },
 ] as const;
 
-export type SupportedLocale = typeof locales[number]['code'];
+export type SupportedLocale = (typeof locales)[number]['code'];
 export const defaultLocale: SupportedLocale = 'en';
 
 // Check if locale is supported
 export function isValidLocale(locale: string): locale is SupportedLocale {
-  return locales.some(l => l.code === locale);
+  return locales.some((l) => l.code === locale);
 }
 
 // Get locale info
 export function getLocaleInfo(locale: SupportedLocale) {
-  return locales.find(l => l.code === locale) || locales[0];
+  return locales.find((l) => l.code === locale) || locales[0];
 }
 
 // Get text direction
@@ -66,6 +64,16 @@ export function isRTL(locale: SupportedLocale): boolean {
 // Translation Messages
 // =============================================================================
 
+// Type for nested translation messages
+type Messages = {
+  nav: Record<string, string>;
+  chat: Record<string, string>;
+  documents: Record<string, string>;
+  settings: Record<string, string>;
+  errors: Record<string, string>;
+  common: Record<string, string>;
+};
+
 // Core translations for all supported languages
 export const messages: Record<SupportedLocale, Messages> = {
   en: {
@@ -80,7 +88,7 @@ export const messages: Record<SupportedLocale, Messages> = {
       login: 'Sign In',
       register: 'Sign Up',
     },
-    
+
     // Chat
     chat: {
       title: 'Chat',
@@ -97,7 +105,7 @@ export const messages: Record<SupportedLocale, Messages> = {
       noMessages: 'Start a conversation by typing a message below.',
       uploadDocuments: 'Upload documents to enhance responses with your knowledge base.',
     },
-    
+
     // Documents
     documents: {
       title: 'Documents',
@@ -112,7 +120,7 @@ export const messages: Record<SupportedLocale, Messages> = {
       noDocuments: 'No documents yet. Upload your first document to get started.',
       search: 'Search documents...',
     },
-    
+
     // Settings
     settings: {
       title: 'Settings',
@@ -127,7 +135,7 @@ export const messages: Record<SupportedLocale, Messages> = {
       save: 'Save Changes',
       saved: 'Changes saved successfully',
     },
-    
+
     // Errors
     errors: {
       generic: 'Something went wrong',
@@ -138,7 +146,7 @@ export const messages: Record<SupportedLocale, Messages> = {
       validation: 'Please check your input and try again',
       network: 'Network error. Please check your connection.',
     },
-    
+
     // Common
     common: {
       loading: 'Loading...',
@@ -162,7 +170,7 @@ export const messages: Record<SupportedLocale, Messages> = {
       collapse: 'Collapse',
     },
   },
-  
+
   // Spanish
   es: {
     nav: {
@@ -247,7 +255,7 @@ export const messages: Record<SupportedLocale, Messages> = {
       collapse: 'Colapsar',
     },
   },
-  
+
   // Arabic (RTL)
   ar: {
     nav: {
@@ -332,7 +340,7 @@ export const messages: Record<SupportedLocale, Messages> = {
       collapse: 'طي',
     },
   },
-  
+
   // French
   fr: {
     nav: {
@@ -358,7 +366,8 @@ export const messages: Record<SupportedLocale, Messages> = {
       edit: 'Modifier',
       delete: 'Supprimer',
       noMessages: 'Commencez une conversation en tapant un message ci-dessous.',
-      uploadDocuments: 'Téléchargez des documents pour enrichir les réponses avec votre base de connaissances.',
+      uploadDocuments:
+        'Téléchargez des documents pour enrichir les réponses avec votre base de connaissances.',
     },
     documents: {
       title: 'Documents',
@@ -370,7 +379,8 @@ export const messages: Record<SupportedLocale, Messages> = {
       completed: 'Terminé',
       error: 'Erreur',
       deleteConfirm: 'Êtes-vous sûr de vouloir supprimer ce document ?',
-      noDocuments: 'Aucun document pour le moment. Téléchargez votre premier document pour commencer.',
+      noDocuments:
+        'Aucun document pour le moment. Téléchargez votre premier document pour commencer.',
       search: 'Rechercher des documents...',
     },
     settings: {
@@ -390,7 +400,7 @@ export const messages: Record<SupportedLocale, Messages> = {
       generic: 'Une erreur est survenue',
       notFound: 'Page non trouvée',
       unauthorized: 'Veuillez vous connecter pour continuer',
-      forbidden: 'Vous n\'avez pas la permission d\'accéder à cette ressource',
+      forbidden: "Vous n'avez pas la permission d'accéder à cette ressource",
       rateLimit: 'Trop de requêtes. Veuillez réessayer plus tard.',
       validation: 'Veuillez vérifier vos informations et réessayer',
       network: 'Erreur réseau. Veuillez vérifier votre connexion.',
@@ -417,7 +427,7 @@ export const messages: Record<SupportedLocale, Messages> = {
       collapse: 'Réduire',
     },
   },
-  
+
   // Hebrew (RTL)
   he: {
     nav: {
@@ -502,7 +512,7 @@ export const messages: Record<SupportedLocale, Messages> = {
       collapse: 'כווץ',
     },
   },
-  
+
   // Placeholder for other languages - extend as needed
   de: {} as Messages,
   it: {} as Messages,
@@ -584,7 +594,7 @@ export function formatRelativeTime(date: Date, locale: SupportedLocale): string 
   if (diffMins < 60) return rtf.format(-diffMins, 'minute');
   if (diffHours < 24) return rtf.format(-diffHours, 'hour');
   if (diffDays < 30) return rtf.format(-diffDays, 'day');
-  
+
   return formatDate(date, locale);
 }
 

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { ModelPicker } from './model-picker';
 import { useState } from 'react';
+import { ModelPicker } from './model-picker';
 
 /**
  * ModelPicker component allows users to select from available AI models.
@@ -23,13 +23,7 @@ type Story = StoryObj<typeof meta>;
  */
 function ModelPickerDemo(props: { disabled?: boolean }) {
   const [model, setModel] = useState('deepseek/deepseek-chat:free');
-  return (
-    <ModelPicker
-      selectedModel={model}
-      onModelChange={setModel}
-      disabled={props.disabled}
-    />
-  );
+  return <ModelPicker selectedModel={model} onModelChange={setModel} disabled={props.disabled} />;
 }
 
 /**
@@ -52,12 +46,7 @@ export const Disabled: Story = {
 export const LocalModel: Story = {
   render: () => {
     const [model, setModel] = useState('llama3.2');
-    return (
-      <ModelPicker
-        selectedModel={model}
-        onModelChange={setModel}
-      />
-    );
+    return <ModelPicker selectedModel={model} onModelChange={setModel} />;
   },
 };
 

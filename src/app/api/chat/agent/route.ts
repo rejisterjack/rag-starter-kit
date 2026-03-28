@@ -489,7 +489,7 @@ ${memoryContext ? `\nContext:\n${memoryContext}` : ''}`,
       model: getModel(config.model),
       messages: llmMessages,
       temperature: config.temperature,
-      maxOutputTokens: config.maxTokens,
+      maxTokens: config.maxTokens,
       onFinish: async (completion) => {
         if (effectiveConversationId) {
           await memory.addMessage(effectiveConversationId, {
@@ -501,8 +501,8 @@ ${memoryContext ? `\nContext:\n${memoryContext}` : ''}`,
           userId,
           workspaceId: workspaceId ?? '',
           conversationId: effectiveConversationId ?? '',
-          promptTokens: completion.usage?.inputTokens ?? 0,
-          completionTokens: completion.usage?.outputTokens ?? 0,
+          promptTokens: completion.usage?.promptTokens ?? 0,
+          completionTokens: completion.usage?.completionTokens ?? 0,
           model: config.model,
         });
 
@@ -518,9 +518,10 @@ ${memoryContext ? `\nContext:\n${memoryContext}` : ''}`,
           toolCalls: 0,
           latency: Date.now() - queryStartTime,
           tokensUsed: {
-            prompt: completion.usage?.inputTokens ?? 0,
-            completion: completion.usage?.outputTokens ?? 0,
-            total: (completion.usage?.inputTokens ?? 0) + (completion.usage?.outputTokens ?? 0),
+            prompt: completion.usage?.promptTokens ?? 0,
+            completion: completion.usage?.completionTokens ?? 0,
+            total:
+              (completion.usage?.promptTokens ?? 0) + (completion.usage?.completionTokens ?? 0),
           },
           toolUsage: {},
           timestamp: new Date(),
@@ -823,7 +824,7 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
       model: getModel(config.model),
       messages: llmMessages,
       temperature: config.temperature,
-      maxOutputTokens: config.maxTokens,
+      maxTokens: config.maxTokens,
       onFinish: async (completion) => {
         citationHandler.extractCitations(completion.text, citationMap);
 
@@ -838,8 +839,8 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
           userId,
           workspaceId: workspaceId ?? '',
           conversationId: effectiveConversationId ?? '',
-          promptTokens: completion.usage?.inputTokens ?? 0,
-          completionTokens: completion.usage?.outputTokens ?? 0,
+          promptTokens: completion.usage?.promptTokens ?? 0,
+          completionTokens: completion.usage?.completionTokens ?? 0,
           model: config.model,
         });
 
@@ -855,9 +856,10 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
           toolCalls: 0,
           latency: Date.now() - queryStartTime,
           tokensUsed: {
-            prompt: completion.usage?.inputTokens ?? 0,
-            completion: completion.usage?.outputTokens ?? 0,
-            total: (completion.usage?.inputTokens ?? 0) + (completion.usage?.outputTokens ?? 0),
+            prompt: completion.usage?.promptTokens ?? 0,
+            completion: completion.usage?.completionTokens ?? 0,
+            total:
+              (completion.usage?.promptTokens ?? 0) + (completion.usage?.completionTokens ?? 0),
           },
           toolUsage: { document_search: 1 },
           timestamp: new Date(),

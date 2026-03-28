@@ -1,6 +1,6 @@
 /**
  * API Documentation Route
- * 
+ *
  * Serves interactive API documentation using Swagger UI.
  * Available at /api/docs
  */
@@ -14,7 +14,7 @@ import { generateSwaggerUIHTML } from '@/lib/api/openapi-spec';
  */
 export async function GET(): Promise<NextResponse> {
   const html = generateSwaggerUIHTML();
-  
+
   return new NextResponse(html, {
     headers: {
       'Content-Type': 'text/html',

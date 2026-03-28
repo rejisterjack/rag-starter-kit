@@ -1,19 +1,19 @@
 'use client';
 
-// Tree-shaken D3 imports - only import what we need (Fix #12)
-import { select, type Selection } from 'd3-selection';
-import { zoom, zoomIdentity, type ZoomBehavior, type D3ZoomEvent } from 'd3-zoom';
-import { drag, type D3DragEvent } from 'd3-drag';
+import { type D3DragEvent, drag } from 'd3-drag';
 import {
-  forceSimulation,
-  forceLink,
-  forceManyBody,
   forceCenter,
   forceCollide,
+  forceLink,
+  forceManyBody,
+  forceSimulation,
   type Simulation,
-  type SimulationNodeDatum,
   type SimulationLinkDatum,
+  type SimulationNodeDatum,
 } from 'd3-force';
+// Tree-shaken D3 imports - only import what we need (Fix #12)
+import { select } from 'd3-selection';
+import { type D3ZoomEvent, type ZoomBehavior, zoom, zoomIdentity } from 'd3-zoom';
 import { RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -107,16 +107,16 @@ export function KnowledgeGraph({ nodes, edges, onNodeClick, className }: Knowled
       .attr('cursor', 'pointer')
       .call(
         drag<SVGGElement, Node>()
-          .on('start', (event: D3DragEvent<SVGGElement, Node>, d: Node) => {
+          .on('start', (event: D3DragEvent<SVGGElement, Node, Node>, d: Node) => {
             if (!event.active) simulation.alphaTarget(0.3).restart();
             d.fx = d.x ?? null;
             d.fy = d.y ?? null;
           })
-          .on('drag', (event: D3DragEvent<SVGGElement, Node>, d: Node) => {
+          .on('drag', (event: D3DragEvent<SVGGElement, Node, Node>, d: Node) => {
             d.fx = event.x;
             d.fy = event.y;
           })
-          .on('end', (event: D3DragEvent<SVGGElement, Node>, d: Node) => {
+          .on('end', (event: D3DragEvent<SVGGElement, Node, Node>, d: Node) => {
             if (!event.active) simulation.alphaTarget(0);
             d.fx = null;
             d.fy = null;

@@ -5,13 +5,13 @@
  * DELETE /api/messages/[id]/feedback - Remove feedback
  */
 
+import { headers } from 'next/headers';
+import { type NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
 import { logger } from '@/lib/logger';
 import { checkApiRateLimit } from '@/lib/security/rate-limiter';
-import { z } from 'zod';
-import { headers } from 'next/headers';
-import { NextRequest, NextResponse } from 'next/server';
 
 // Validation schema for feedback submission
 const feedbackSchema = z.object({
@@ -30,11 +30,11 @@ export async function POST(
 ): Promise<NextResponse> {
   try {
     const { id: messageId } = await params;
-    
+
     // Authenticate user (optional - feedback can be anonymous)
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     // Check rate limit
     const rateLimitIdentifier = `feedback:${userId || 'anonymous'}`;
     const rateLimitResult = await checkApiRateLimit(rateLimitIdentifier, 'feedback');
@@ -44,23 +44,23 @@ export async function POST(
         { status: 429 }
       );
     }
-    
+
     // Parse and validate request body
     const body = await req.json();
     const validation = feedbackSchema.safeParse(body);
-    
+
     if (!validation.success) {
       return NextResponse.json(
-        { 
-          error: `Invalid feedback data: ${validation.error.errors.map(e => e.message).join(', ')}`,
-          code: 'VALIDATION_ERROR'
+        {
+          error: `Invalid feedback data: ${validation.error.errors.map((e) => e.message).join(', ')}`,
+          code: 'VALIDATION_ERROR',
         },
         { status: 400 }
       );
     }
-    
+
     const { rating, comment, categories } = validation.data;
-    
+
     // Verify message exists and get chat info for authorization
     const message = await prisma.message.findUnique({
       where: { id: messageId },
@@ -74,27 +74,27 @@ export async function POST(
         },
       },
     });
-    
+
     if (!message) {
-      return NextResponse.json(
-        { error: 'Message not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Message not found', code: 'NOT_FOUND' }, { status: 404 });
     }
-    
+
     // Only allow feedback on assistant messages
     if (message.role !== 'ASSISTANT') {
       return NextResponse.json(
-        { error: 'Feedback can only be submitted for assistant messages', code: 'VALIDATION_ERROR' },
+        {
+          error: 'Feedback can only be submitted for assistant messages',
+          code: 'VALIDATION_ERROR',
+        },
         { status: 400 }
       );
     }
-    
+
     // Get client info for analytics
     const headersList = await headers();
     const ipAddress = headersList.get('x-forwarded-for') || 'unknown';
     const userAgent = headersList.get('user-agent') || undefined;
-    
+
     // Upsert feedback (create or update)
     const feedback = await prisma.messageFeedback.upsert({
       where: {
@@ -120,9 +120,9 @@ export async function POST(
         userAgent,
       },
     });
-    
+
     logger.info('Message feedback submitted');
-    
+
     return NextResponse.json({
       success: true,
       data: {
@@ -132,11 +132,11 @@ export async function POST(
         comment: feedback.comment,
         categories: feedback.categories,
         createdAt: feedback.createdAt.toISOString(),
-      }
+      },
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to submit message feedback');
-    
+
     return NextResponse.json(
       { error: 'Failed to submit feedback', code: 'INTERNAL_ERROR' },
       { status: 500 }
@@ -154,7 +154,7 @@ export async function GET(
 ): Promise<NextResponse> {
   try {
     const { id: messageId } = await params;
-    
+
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
@@ -163,7 +163,7 @@ export async function GET(
         { status: 401 }
       );
     }
-    
+
     // Verify message exists and user has access
     const message = await prisma.message.findUnique({
       where: { id: messageId },
@@ -173,25 +173,19 @@ export async function GET(
         },
       },
     });
-    
+
     if (!message) {
-      return NextResponse.json(
-        { error: 'Message not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Message not found', code: 'NOT_FOUND' }, { status: 404 });
     }
-    
+
     // Only message owner or admin can view feedback
     const isOwner = message.chat.userId === session.user.id;
     const isAdmin = session.user.role === 'ADMIN';
-    
+
     if (!isOwner && !isAdmin) {
-      return NextResponse.json(
-        { error: 'Access denied', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Access denied', code: 'FORBIDDEN' }, { status: 403 });
     }
-    
+
     // Get feedback statistics
     const feedbacks = await prisma.messageFeedback.findMany({
       where: { messageId },
@@ -205,30 +199,39 @@ export async function GET(
       },
       orderBy: { createdAt: 'desc' },
     });
-    
+
     const stats = {
       total: feedbacks.length,
       upvotes: feedbacks.filter((f: { rating: string }) => f.rating === 'UP').length,
       downvotes: feedbacks.filter((f: { rating: string }) => f.rating === 'DOWN').length,
     };
-    
+
     return NextResponse.json({
       success: true,
       data: {
         stats,
-        feedbacks: feedbacks.map((f: { id: string; rating: string; comment: string | null; categories: string[]; createdAt: Date; userId: string | null }) => ({
-          id: f.id,
-          rating: f.rating,
-          comment: f.comment,
-          categories: f.categories,
-          createdAt: f.createdAt.toISOString(),
-          isOwn: f.userId === session.user.id,
-        })),
-      }
+        feedbacks: feedbacks.map(
+          (f: {
+            id: string;
+            rating: string;
+            comment: string | null;
+            categories: string[];
+            createdAt: Date;
+            userId: string | null;
+          }) => ({
+            id: f.id,
+            rating: f.rating,
+            comment: f.comment,
+            categories: f.categories,
+            createdAt: f.createdAt.toISOString(),
+            isOwn: f.userId === session.user.id,
+          })
+        ),
+      },
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to get message feedback');
-    
+
     return NextResponse.json(
       { error: 'Failed to get feedback', code: 'INTERNAL_ERROR' },
       { status: 500 }
@@ -246,7 +249,7 @@ export async function DELETE(
 ): Promise<NextResponse> {
   try {
     const { id: messageId } = await params;
-    
+
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
@@ -255,9 +258,9 @@ export async function DELETE(
         { status: 401 }
       );
     }
-    
+
     const userId = session.user.id;
-    
+
     // Delete the user's feedback for this message
     await prisma.messageFeedback.deleteMany({
       where: {
@@ -265,13 +268,13 @@ export async function DELETE(
         userId,
       },
     });
-    
+
     logger.info('Message feedback deleted');
-    
+
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to delete message feedback');
-    
+
     return NextResponse.json(
       { error: 'Failed to delete feedback', code: 'INTERNAL_ERROR' },
       { status: 500 }

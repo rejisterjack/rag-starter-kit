@@ -6,6 +6,7 @@ import type { Message } from '@/components/chat/message-item';
 
 export interface UseChatOptions {
   conversationId?: string;
+  agentMode?: boolean;
   onError?: (error: Error) => void;
   onFinish?: (message: Message) => void;
 }
@@ -29,7 +30,7 @@ export interface UseChatReturn {
 }
 
 export function useChat(options: UseChatOptions = {}): UseChatReturn {
-  const { conversationId, onError, onFinish } = options;
+  const { conversationId, agentMode, onError, onFinish } = options;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -136,7 +137,10 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
         abortControllerRef.current = new AbortController();
 
-        const response = await fetch('/api/chat', {
+        // Use agent endpoint when agent mode is enabled
+        const endpoint = agentMode ? '/api/chat/agent' : '/api/chat';
+
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -221,7 +225,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         abortControllerRef.current = null;
       }
     },
-    [conversationId, onError, onFinish, uploadFiles]
+    [conversationId, onError, onFinish, uploadFiles, agentMode]
   );
 
   const stop = useCallback(() => {

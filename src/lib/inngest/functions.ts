@@ -45,8 +45,8 @@ export const processDocumentJob = inngest.createFunction(
     name: 'Process Document Ingestion',
     concurrency: 5,
     retries: 3,
-    triggers: [{ event: 'document/ingest' }],
   },
+  { event: 'document/ingest' },
   async ({ event, step }: { event: { data: IngestEventData }; step: InngestContext['step'] }) => {
     const { documentId, userId } = event.data;
     const startTime = Date.now();
@@ -135,13 +135,39 @@ export const processDocumentJob = inngest.createFunction(
     );
 
     // Step 3: Create Chunks
+    // FEATURE: Dynamic chunking strategy from workspace settings
     const chunks = await step.run('create-chunks', async () => {
       const chunkSize =
         document.contentType === 'PDF' ? 1200 : document.contentType === 'MD' ? 1500 : 1000;
       const chunkOverlap = 200;
 
+      // Fetch workspace settings to determine chunking strategy
+      let strategy: 'fixed' | 'semantic' | 'hierarchical' | 'late' = 'fixed';
+
+      if (document.workspaceId) {
+        try {
+          const workspace = await prisma.workspace.findUnique({
+            where: { id: document.workspaceId },
+            select: { settings: true },
+          });
+
+          if (workspace?.settings) {
+            const settings = workspace.settings as Record<string, unknown>;
+            const ragSettings = settings.rag as Record<string, unknown> | undefined;
+            const workspaceStrategy = ragSettings?.chunkingStrategy;
+
+            if (
+              workspaceStrategy &&
+              ['fixed', 'semantic', 'hierarchical', 'late'].includes(workspaceStrategy as string)
+            ) {
+              strategy = workspaceStrategy as 'fixed' | 'semantic' | 'hierarchical' | 'late';
+            }
+          }
+        } catch (_error) {}
+      }
+
       return ChunkingEngine.chunk(parsedContent.text, {
-        strategy: 'fixed',
+        strategy,
         chunkSize,
         chunkOverlap,
         documentId,
@@ -276,8 +302,8 @@ export const retryIngestionJob = inngest.createFunction(
     id: 'retry-ingestion',
     name: 'Retry Failed Document Ingestion',
     retries: 2,
-    triggers: [{ event: 'document/ingestion.retry' }],
   },
+  { event: 'document/ingestion.retry' },
   async ({ event, step }: { event: { data: IngestEventData }; step: InngestContext['step'] }) => {
     const { documentId, userId } = event.data;
 
@@ -324,8 +350,8 @@ export const bulkIngestJob = inngest.createFunction(
     id: 'bulk-ingest',
     name: 'Bulk Document Ingestion',
     concurrency: 1,
-    triggers: [{ event: 'document/bulk-ingest' }],
   },
+  { event: 'document/bulk-ingest' },
   async ({ event, step }: { event: { data: BulkIngestData }; step: InngestContext['step'] }) => {
     const { documentIds, userId } = event.data;
     const results: Array<{ documentId: string; success: boolean; error?: string }> = [];
@@ -379,8 +405,8 @@ export const cleanupStaleJobs = inngest.createFunction(
   {
     id: 'cleanup-stale-jobs',
     name: 'Cleanup Stale Ingestion Jobs',
-    triggers: [{ cron: '0 */6 * * *' }],
   },
+  { cron: '0 */6 * * *' },
   async ({ step }: { step: InngestContext['step'] }) => {
     const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
 

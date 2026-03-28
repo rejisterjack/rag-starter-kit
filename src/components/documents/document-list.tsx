@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { FileText, Filter, FolderOpen, Search, Trash2, Upload } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,13 +32,13 @@ interface DocumentListProps {
 
 /**
  * DocumentList Component
- * 
+ *
  * An optimized document list with:
  * - React.memo for preventing unnecessary re-renders
  * - useMemo for expensive filtering/sorting operations
  * - Virtual scrolling support for large lists
  * - Search and filter functionality
- * 
+ *
  * Performance optimizations:
  * - Document filtering is memoized to prevent recalculation
  * - Status counts are memoized

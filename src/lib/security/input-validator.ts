@@ -106,7 +106,7 @@ export const chatInputSchema = z.object({
   stream: z.boolean().optional().default(true),
 });
 
-export type ChatInput = z.infer<typeof chatInputSchema>;
+export type ChatInput = z.infer<typeof chatInputSchema> & { stream: boolean };
 
 // Ingest input validation
 export const ingestInputSchema = z.object({
@@ -136,7 +136,9 @@ export const urlIngestSchema = z.object({
     .optional(),
 });
 
-export type UrlIngestInput = z.infer<typeof urlIngestSchema>;
+export type UrlIngestInput = z.infer<typeof urlIngestSchema> & {
+  options?: { maxDepth: number; maxPages: number; includeImages: boolean };
+};
 
 // Workspace creation validation
 export const createWorkspaceSchema = z.object({
@@ -345,7 +347,9 @@ export function formatValidationErrors(error: z.ZodError): Array<{
  * Validate chat input
  */
 export function validateChatInput(input: unknown): ChatInput {
-  return validateOrThrow(chatInputSchema, input);
+  const result = validateOrThrow(chatInputSchema, input);
+  // Ensure stream has a default value
+  return { ...result, stream: result.stream ?? true };
 }
 
 /**
@@ -359,7 +363,18 @@ export function validateIngestInput(input: unknown): IngestInput {
  * Validate URL ingest input
  */
 export function validateUrlIngestInput(input: unknown): UrlIngestInput {
-  return validateOrThrow(urlIngestSchema, input);
+  const result = validateOrThrow(urlIngestSchema, input);
+  // Ensure options have default values
+  return {
+    ...result,
+    options: result.options
+      ? {
+          maxDepth: result.options.maxDepth ?? 0,
+          maxPages: result.options.maxPages ?? 1,
+          includeImages: result.options.includeImages ?? false,
+        }
+      : undefined,
+  };
 }
 
 /**

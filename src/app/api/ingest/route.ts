@@ -19,7 +19,14 @@ import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { inngest } from '@/lib/inngest/client';
-import { parseDOCX, parseHTML, parsePDF, parseText } from '@/lib/rag/ingestion';
+import {
+  parseDOCX,
+  parseHTML,
+  parsePDF,
+  parsePPTXBuffer,
+  parseText,
+  parseXLSXBuffer,
+} from '@/lib/rag/ingestion';
 import { validateFile, validateFileBytes } from '@/lib/security/input-validator';
 import {
   addRateLimitHeaders,

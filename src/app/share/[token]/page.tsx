@@ -1,25 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
-import { 
-  MessageSquare, 
-  User, 
-  Eye, 
-  Lock, 
-  Globe, 
-  AlertCircle,
-  Calendar,
-  Clock
-} from 'lucide-react';
+import { AlertCircle, Calendar, Clock, Eye, Globe, Lock, MessageSquare, User } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { Markdown } from '@/components/chat/markdown';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Markdown } from '@/components/chat/markdown';
 import { cn } from '@/lib/utils';
 
 interface SharedMessage {
@@ -62,7 +53,7 @@ interface ShareData {
 export default function SharedChatPage() {
   const params = useParams();
   const token = params.token as string;
-  
+
   const [data, setData] = useState<ShareData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,12 +63,12 @@ export default function SharedChatPage() {
       try {
         const response = await fetch(`/api/share/${token}`);
         const result = await response.json();
-        
+
         if (!response.ok) {
           setError(result.error || 'Failed to load shared chat');
           return;
         }
-        
+
         setData(result.data);
       } catch {
         setError('Failed to load shared chat');
@@ -138,7 +129,7 @@ export default function SharedChatPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
               <Badge variant={share.isPublic ? 'default' : 'secondary'} className="gap-1">
                 {share.isPublic ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
@@ -153,7 +144,7 @@ export default function SharedChatPage() {
               </Button>
             </div>
           </div>
-          
+
           {/* Share metadata */}
           <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
             <div className="flex items-center gap-1">
@@ -173,12 +164,8 @@ export default function SharedChatPage() {
       {/* Messages */}
       <main className="max-w-4xl mx-auto p-6">
         <div className="space-y-6">
-          {chat.messages.map((message, index) => (
-            <MessageCard 
-              key={message.id} 
-              message={message}
-              isFirst={index === 0}
-            />
+          {chat.messages.map((message) => (
+            <MessageCard key={message.id} message={message} />
           ))}
         </div>
 
@@ -196,31 +183,22 @@ export default function SharedChatPage() {
   );
 }
 
-function MessageCard({ 
-  message, 
-  isFirst 
-}: { 
-  message: SharedMessage;
-  isFirst: boolean;
-}) {
+function MessageCard({ message }: { message: SharedMessage }) {
   const isUser = message.role === 'USER';
-  
+
   return (
-    <Card className={cn(
-      "overflow-hidden",
-      isUser ? "bg-muted/50" : "bg-card"
-    )}>
+    <Card className={cn('overflow-hidden', isUser ? 'bg-muted/50' : 'bg-card')}>
       <CardHeader className="py-3 px-4">
         <div className="flex items-center gap-2">
-          <div className={cn(
-            "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
-            isUser ? "bg-primary text-primary-foreground" : "bg-secondary"
-          )}>
+          <div
+            className={cn(
+              'w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium',
+              isUser ? 'bg-primary text-primary-foreground' : 'bg-secondary'
+            )}
+          >
             {isUser ? <User className="h-3 w-3" /> : 'AI'}
           </div>
-          <span className="font-medium text-sm">
-            {isUser ? 'You' : 'Assistant'}
-          </span>
+          <span className="font-medium text-sm">{isUser ? 'You' : 'Assistant'}</span>
           <span className="text-xs text-muted-foreground flex items-center gap-1">
             <Clock className="h-3 w-3" />
             {formatDistanceToNow(new Date(message.createdAt))} ago
@@ -231,7 +209,7 @@ function MessageCard({
         <div className="prose prose-sm dark:prose-invert max-w-none">
           <Markdown content={message.content} />
         </div>
-        
+
         {/* Sources */}
         {message.sources && message.sources.length > 0 && (
           <div className="mt-4 pt-4 border-t">

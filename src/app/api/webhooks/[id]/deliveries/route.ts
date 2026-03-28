@@ -3,12 +3,12 @@
  * GET /api/webhooks/[id]/deliveries - Get delivery logs for a webhook
  */
 
-import { DeliveryStatus } from '@prisma/client';
+import type { DeliveryStatus } from '@prisma/client';
+import { type NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const querySchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(50),
@@ -28,7 +28,7 @@ export async function GET(
 
     const { id: webhookId } = await params;
     const { searchParams } = new URL(req.url);
-    
+
     const query = querySchema.safeParse({
       limit: searchParams.get('limit'),
       offset: searchParams.get('offset'),
@@ -100,10 +100,13 @@ export async function GET(
       _count: { status: true },
     });
 
-    const statsMap = stats.reduce((acc, s) => {
-      acc[s.status] = s._count.status;
-      return acc;
-    }, {} as Record<string, number>);
+    const statsMap = stats.reduce(
+      (acc, s) => {
+        acc[s.status] = s._count.status;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     return NextResponse.json({
       success: true,
@@ -115,10 +118,10 @@ export async function GET(
         })),
         total,
         stats: {
-          delivered: statsMap['DELIVERED'] || 0,
-          failed: statsMap['FAILED'] || 0,
-          pending: statsMap['PENDING'] || 0,
-          retrying: statsMap['RETRYING'] || 0,
+          delivered: statsMap.DELIVERED || 0,
+          failed: statsMap.FAILED || 0,
+          pending: statsMap.PENDING || 0,
+          retrying: statsMap.RETRYING || 0,
         },
         pagination: {
           limit,
@@ -127,11 +130,7 @@ export async function GET(
         },
       },
     });
-  } catch (error) {
-    console.error('Failed to fetch webhook deliveries:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch deliveries' },
-      { status: 500 }
-    );
+  } catch (_error) {
+    return NextResponse.json({ error: 'Failed to fetch deliveries' }, { status: 500 });
   }
 }

@@ -2,14 +2,15 @@
 
 /**
  * Share Route Error Boundary
- * 
+ *
  * Handles errors for shared conversation links.
  */
 
-import { logger } from '@/lib/logger';
-import { Link2, AlertCircle, Home } from 'lucide-react';
+import { Home, Link2 } from 'lucide-react';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { logger } from '@/lib/logger';
 
 interface ShareErrorProps {
   error: Error & { digest?: string };
@@ -44,10 +45,7 @@ export default function ShareError({ error }: ShareErrorProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-2">
-            <Button 
-              className="w-full" 
-              onClick={() => window.location.href = '/'}
-            >
+            <Button className="w-full" onClick={() => (window.location.href = '/')}>
               <Home className="mr-2 h-4 w-4" />
               Go to Homepage
             </Button>

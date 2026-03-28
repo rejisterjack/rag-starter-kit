@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowRight,
   Bot,
+  Check,
   ChevronRight,
   Database,
   Github,
@@ -67,6 +68,56 @@ const features = [
     title: 'Async Processing',
     description:
       'Background job processing with Inngest for handling large documents and batch operations.',
+  },
+];
+
+const pricingPlans = [
+  {
+    name: 'Free',
+    price: 0,
+    description: 'Perfect for personal projects and experimentation',
+    features: [
+      '1 workspace',
+      '10 documents',
+      '1 GB storage',
+      '100 messages/month',
+      'Community support',
+    ],
+    cta: 'Get Started',
+    popular: false,
+  },
+  {
+    name: 'Pro',
+    price: 29,
+    description: 'For professionals and small teams',
+    features: [
+      '5 workspaces',
+      '100 documents',
+      '10 GB storage',
+      '1,000 messages/month',
+      'Priority support',
+      'API access',
+      'Custom embeddings',
+    ],
+    cta: 'Start Free Trial',
+    popular: true,
+  },
+  {
+    name: 'Enterprise',
+    price: null,
+    description: 'For organizations with advanced needs',
+    features: [
+      'Unlimited workspaces',
+      'Unlimited documents',
+      '100 GB+ storage',
+      'Unlimited messages',
+      '24/7 dedicated support',
+      'SSO & SAML',
+      'Custom contracts',
+      'SLA guarantee',
+    ],
+    cta: 'Contact Sales',
+    popular: false,
   },
 ];
 
@@ -289,8 +340,81 @@ export default function HomePage(): React.ReactElement {
         </div>
       </section>
 
-      {/* Tech Stack */}
+      {/* Pricing Section */}
       <section className="py-24 bg-muted/30">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Simple, Transparent Pricing
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+              Start free and scale as you grow. No hidden fees, cancel anytime.
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="grid gap-8 lg:grid-cols-3"
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+          >
+            {pricingPlans.map((plan) => (
+              <motion.div
+                key={plan.name}
+                variants={fadeInUp}
+                className={`relative rounded-2xl bg-card border p-8 ${
+                  plan.popular ? 'border-primary shadow-lg shadow-primary/10' : 'border-border'
+                }`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <span className="bg-primary text-primary-foreground text-xs px-4 py-1.5 rounded-full font-medium">
+                      Most Popular
+                    </span>
+                  </div>
+                )}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
+                  <p className="text-muted-foreground text-sm mt-1">{plan.description}</p>
+                </div>
+                <div className="mb-6">
+                  {plan.price !== null ? (
+                    <div className="flex items-baseline">
+                      <span className="text-4xl font-bold text-foreground">${plan.price}</span>
+                      <span className="text-muted-foreground ml-2">/month</span>
+                    </div>
+                  ) : (
+                    <div className="text-2xl font-bold text-foreground">Custom</div>
+                  )}
+                </div>
+                <ul className="space-y-3 mb-8">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start text-sm">
+                      <Check className="h-4 w-4 text-green-500 mr-3 mt-0.5 shrink-0" />
+                      <span className="text-muted-foreground">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button asChild className="w-full" variant={plan.popular ? 'default' : 'outline'}>
+                  <Link href={plan.name === 'Enterprise' ? '/contact' : '/register'}>
+                    {plan.cta}
+                  </Link>
+                </Button>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Tech Stack */}
+      <section className="py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

@@ -1,6 +1,6 @@
 /**
  * Global API Error Handler
- * 
+ *
  * Provides centralized error handling for API routes with:
  * - Standardized error responses
  * - Automatic error logging
@@ -11,10 +11,9 @@
  */
 
 import { NextResponse } from 'next/server';
-import { logger } from '@/lib/logger';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { logger } from '@/lib/logger';
 import { ERROR_CODES, type ErrorCode } from './error-codes';
-import { createErrorResponse, getErrorStatusCode } from './error-messages';
 
 // =============================================================================
 // Types
@@ -121,7 +120,7 @@ export function handleAPIError(
   // Handle known API errors
   if (error instanceof APIError) {
     logError(error, context, requestId);
-    
+
     const headers: Record<string, string> = {
       'X-Request-ID': requestId,
     };
@@ -169,8 +168,8 @@ function handlePrismaError(
   requestId: string
 ): NextResponse<APIErrorResponse> {
   const prismaError = error as unknown as { code: string; meta?: { target?: string[] } };
-  
-  let code = ERROR_CODES.DATABASE_ERROR;
+
+  let code: ErrorCode = ERROR_CODES.DB_ERROR;
   let message = 'Database error occurred';
   let statusCode = 500;
 
@@ -191,7 +190,7 @@ function handlePrismaError(
       statusCode = 400;
       break;
     case 'P2024':
-      code = ERROR_CODES.DATABASE_TIMEOUT;
+      code = ERROR_CODES.DB_TIMEOUT;
       message = 'Database connection timeout';
       statusCode = 504;
       break;
@@ -273,24 +272,26 @@ function handleUnknownError(
 
   // Send to Sentry if configured
   if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
-    import('@sentry/nextjs').then(({ captureException }) => {
-      captureException(error, {
-        tags: {
-          endpoint: context.endpoint,
-          method: context.method,
-        },
-        extra: {
-          requestId,
-          userId: context.userId,
-          workspaceId: context.workspaceId,
-        },
-      });
-    }).catch(() => {});
+    import('@sentry/nextjs')
+      .then(({ captureException }) => {
+        captureException(error, {
+          tags: {
+            endpoint: context.endpoint,
+            method: context.method,
+          },
+          extra: {
+            requestId,
+            userId: context.userId,
+            workspaceId: context.workspaceId,
+          },
+        });
+      })
+      .catch(() => {});
   }
 
   // Log audit event for critical errors
   logAuditEvent({
-    event: AuditEvent.SYSTEM_ERROR,
+    event: AuditEvent.SUSPICIOUS_ACTIVITY,
     userId: context.userId,
     workspaceId: context.workspaceId,
     metadata: {
@@ -308,10 +309,9 @@ function handleUnknownError(
     {
       success: false,
       error: {
-        code: ERROR_CODES.UNKNOWN_ERROR,
-        message: process.env.NODE_ENV === 'production' 
-          ? 'An unexpected error occurred' 
-          : errorMessage,
+        code: ERROR_CODES.API_UNKNOWN_ERROR,
+        message:
+          process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : errorMessage,
         requestId,
       },
     },
@@ -344,11 +344,11 @@ function logError(
 
 /**
  * Wrap async API route handlers with automatic error handling
- * 
+ *
  * @example
  * ```typescript
  * import { withErrorHandler } from '@/lib/errors/api-error-handler';
- * 
+ *
  * export const GET = withErrorHandler(async (request, context) => {
  *   const data = await fetchData();
  *   return NextResponse.json({ success: true, data });
@@ -368,9 +368,10 @@ export function withErrorHandler<T = unknown>(
         endpoint: url.pathname,
         method: request.method,
         requestId: request.headers.get('X-Request-ID') || crypto.randomUUID(),
-        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-                   request.headers.get('x-real-ip') || 
-                   'unknown',
+        ipAddress:
+          request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+          request.headers.get('x-real-ip') ||
+          'unknown',
         userAgent: request.headers.get('user-agent') || undefined,
         ...options,
       };
@@ -384,5 +385,5 @@ export function withErrorHandler<T = unknown>(
 // Re-exports
 // =============================================================================
 
-export { ERROR_CODES };
 export { createErrorResponse, getErrorMessage, getErrorStatusCode } from './error-messages';
+export { ERROR_CODES };

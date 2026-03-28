@@ -1,4 +1,4 @@
-import { Metadata } from 'next';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
@@ -18,7 +18,8 @@ const endpoints: Endpoint[] = [
     method: 'POST',
     path: '/api/chat',
     summary: 'Send a chat message',
-    description: 'Process a chat message with RAG context and return streaming or non-streaming response',
+    description:
+      'Process a chat message with RAG context and return streaming or non-streaming response',
   },
   {
     method: 'GET',
@@ -54,7 +55,8 @@ const endpoints: Endpoint[] = [
     method: 'GET',
     path: '/api/health',
     summary: 'Health check',
-    description: 'Check API and dependency health status (database, vector extension, AI services, storage)',
+    description:
+      'Check API and dependency health status (database, vector extension, AI services, storage)',
   },
   {
     method: 'GET',
@@ -102,7 +104,8 @@ export default function DocsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">API Documentation</h1>
         <p className="text-muted-foreground">
-          RAG Starter Kit REST API reference. All endpoints require authentication via JWT or API key.
+          RAG Starter Kit REST API reference. All endpoints require authentication via JWT or API
+          key.
         </p>
       </div>
 
@@ -138,7 +141,9 @@ export default function DocsPage() {
               >
                 {endpoint.method}
               </span>
-              <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{endpoint.path}</code>
+              <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
+                {endpoint.path}
+              </code>
             </div>
             <div className="mt-2 ml-16">
               <h3 className="font-medium">{endpoint.summary}</h3>
@@ -156,8 +161,8 @@ export default function DocsPage() {
           <p>The API supports two authentication methods:</p>
           <ul>
             <li>
-              <strong>JWT Token (Recommended for browser clients):</strong> Include the session cookie
-              from NextAuth.js authentication.
+              <strong>JWT Token (Recommended for browser clients):</strong> Include the session
+              cookie from NextAuth.js authentication.
             </li>
             <li>
               <strong>API Key:</strong> Include the <code>X-API-Key</code> header with your API key.
