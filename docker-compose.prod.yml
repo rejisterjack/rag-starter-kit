@@ -151,7 +151,6 @@ services:
 
       # Service URLs (internal Docker network)
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/ragdb
-      DATABASE_URL_UNPOOLED: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/ragdb
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
 

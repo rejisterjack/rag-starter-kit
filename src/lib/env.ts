@@ -70,9 +70,6 @@ const envSchema = z.object({
   // CSRF protection key (falls back to NEXTAUTH_SECRET if not set)
   CSRF_SECRET: z.string().min(32).optional(),
 
-  // Unpooled database URL for migrations
-  DATABASE_URL_UNPOOLED: z.string().optional(),
-
   // Stripe configuration
   STRIPE_SECRET_KEY: z.string().optional(),
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),

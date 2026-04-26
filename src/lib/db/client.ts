@@ -9,8 +9,6 @@
  * - A single Pool instance is stored on globalThis in development to prevent
  *   connection exhaustion from hot-reloads (Next.js dev server).
  * - In production, a fresh pool is created per process (one process = one pool).
- * - DATABASE_URL_UNPOOLED is used when available (e.g. Vercel Postgres direct
- *   connection), otherwise falls back to DATABASE_URL.
  */
 
 import { PrismaPg } from '@prisma/adapter-pg';

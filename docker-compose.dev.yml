@@ -45,7 +45,6 @@ services:
       - NEXT_TELEMETRY_DISABLED=1
       # Service URLs (internal Docker network)
       - DATABASE_URL=postgresql://postgres:postgres@rag-db:5432/ragdb
-      - DATABASE_URL_UNPOOLED=postgresql://postgres:postgres@rag-db:5432/ragdb
       - REDIS_URL=redis://rag-redis:6379
       - S3_ENDPOINT=http://rag-minio:9000
     depends_on:
