@@ -145,8 +145,8 @@ EXPOSE 3000
 HEALTHCHECK \
     --interval=30s \
     --timeout=10s \
-    --start-period=40s \
-    --retries=3 \
+    --start-period=60s \
+    --retries=5 \
     CMD node -e "\
       require('http').get('http://127.0.0.1:3000/api/health', (r) => \
         r.statusCode === 200 ? process.exit(0) : process.exit(1) \

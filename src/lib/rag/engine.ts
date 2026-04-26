@@ -27,8 +27,8 @@ export const defaultRAGConfig: RAGConfig = {
   similarityThreshold: 0.7,
   temperature: 0.7,
   maxTokens: 2000,
-  model: 'gpt-4o-mini',
-  embeddingModel: 'text-embedding-3-small',
+  model: process.env.DEFAULT_MODEL || 'deepseek/deepseek-chat:free',
+  embeddingModel: process.env.EMBEDDING_MODEL || 'text-embedding-004',
 };
 
 // ============================================================================

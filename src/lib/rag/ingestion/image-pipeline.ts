@@ -152,7 +152,7 @@ export async function uploadImageToStorage(
 
     const s3Client = new S3Client({
       endpoint: process.env.S3_ENDPOINT,
-      region: process.env.AWS_REGION || 'us-east-1',
+      region: process.env.S3_REGION || process.env.AWS_REGION || 'us-east-1',
       credentials: {
         accessKeyId: s3AccessKeyId || '',
         secretAccessKey: s3SecretAccessKey || '',
@@ -596,7 +596,7 @@ export async function deleteDocumentImages(documentId: string): Promise<void> {
 
       const s3Client = new S3Client({
         endpoint: process.env.S3_ENDPOINT,
-        region: process.env.AWS_REGION || 'us-east-1',
+        region: process.env.S3_REGION || process.env.AWS_REGION || 'us-east-1',
         credentials: {
           accessKeyId: s3AccessKeyId || '',
           secretAccessKey: s3SecretAccessKey || '',

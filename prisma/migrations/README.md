@@ -176,7 +176,7 @@ pnpm prisma db push
                                                │ documentId (FK) │
                                                │ workspaceId(FK) │
                                                │ content         │
-                                               │ embedding       │◄── vector(1536)
+                                               │ embedding       │◄── vector(768)
                                                └─────────────────┘
 
 ┌─────────────────┐     ┌─────────────────┐

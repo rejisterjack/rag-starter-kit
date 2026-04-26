@@ -96,7 +96,7 @@ CREATE TABLE "document_chunks" (
     "id" TEXT NOT NULL,
     "documentId" TEXT NOT NULL,
     "content" TEXT NOT NULL,
-    "embedding" vector(1536),
+    "embedding" vector(768),
     "index" INTEGER NOT NULL,
     "start" INTEGER NOT NULL,
     "end" INTEGER NOT NULL,

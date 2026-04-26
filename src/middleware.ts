@@ -169,7 +169,7 @@ export async function middleware(req: NextRequest) {
 
   // IP-based rate limiting for unauthenticated API requests
   if (!isLoggedIn && pathname.startsWith('/api/')) {
-    const { checkIPRateLimit } = await import('@/lib/security/ip-rate-limiter');
+    const { checkIPRateLimit } = await import('@/lib/security/ip-rate-limiter-edge');
     const ipResult = await checkIPRateLimit(req);
 
     if (!ipResult.allowed) {
@@ -363,7 +363,7 @@ function addSecurityHeaders(response: NextResponse, requestId?: string): void {
   // X-Request-ID and would make the nonce predictable / attacker-controlled).
   const nonceBytes = new Uint8Array(16);
   crypto.getRandomValues(nonceBytes);
-  const nonce = Buffer.from(nonceBytes).toString('base64');
+  const nonce = btoa(String.fromCharCode(...nonceBytes));
 
   // Build connect-src directive with external AI providers
   // These can be extended via the CSP_CONNECT_SRC environment variable

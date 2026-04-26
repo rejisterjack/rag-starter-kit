@@ -1,7 +1,12 @@
 /**
  * Structured Logging Service
- * Replaces console.log with proper logging
+ *
+ * Wraps Pino with a compatible API for the rest of the codebase.
+ * Provides structured JSON output, log-level filtering, redaction
+ * of sensitive fields, and request-scoped child loggers.
  */
+
+import pino from 'pino';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -12,111 +17,98 @@ export interface LogContext {
   workspaceId?: string;
 }
 
-class Logger {
-  private level: LogLevel;
-  private isDevelopment: boolean;
-  private context: LogContext;
+const isProduction = process.env.NODE_ENV === 'production';
+const isTest = process.env.NODE_ENV === 'test';
 
-  constructor(context: LogContext = {}) {
-    this.level = (process.env.LOG_LEVEL as LogLevel) || 'info';
-    this.isDevelopment = process.env.NODE_ENV === 'development';
-    this.context = context;
-  }
+const pinoInstance = pino({
+  level: process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
+  transport:
+    isProduction || isTest
+      ? undefined
+      : {
+          target: 'pino-pretty',
+          options: {
+            colorize: true,
+            translateTime: 'HH:MM:ss Z',
+            ignore: 'pid,hostname',
+          },
+        },
+  redact: {
+    paths: [
+      'password',
+      '*.password',
+      'token',
+      '*.token',
+      'apiKey',
+      '*.apiKey',
+      'secret',
+      '*.secret',
+      'authorization',
+      '*.authorization',
+      'cookie',
+      '*.cookie',
+    ],
+    remove: true,
+  },
+  base: {
+    env: process.env.NODE_ENV,
+    service: 'rag-starter-kit',
+  },
+  ...(isProduction && {
+    formatters: {
+      level: (label) => ({ level: label.toUpperCase() }),
+    },
+    timestamp: pino.stdTimeFunctions.isoTime,
+  }),
+});
 
-  private shouldLog(level: LogLevel): boolean {
-    const levels: LogLevel[] = ['debug', 'info', 'warn', 'error'];
-    return levels.indexOf(level) >= levels.indexOf(this.level);
-  }
+class LoggerAdapter {
+  private pino: pino.Logger;
 
-  private formatMessage(
-    level: LogLevel,
-    message: string,
-    context?: LogContext
-  ): Record<string, unknown> {
-    return {
-      timestamp: new Date().toISOString(),
-      level: level.toUpperCase(),
-      message,
-      ...this.context,
-      ...context,
-      environment: process.env.NODE_ENV,
-      service: 'rag-starter-kit',
-    };
-  }
-
-  private log(level: LogLevel, message: string, context?: LogContext): void {
-    if (!this.shouldLog(level)) return;
-
-    const formatted = this.formatMessage(level, message, context);
-
-    // In development, use console for readability
-    if (this.isDevelopment) {
-      const consoleFn =
-        level === 'error'
-          ? // biome-ignore lint/suspicious/noConsole: Intentional console logging in development
-            console.error
-          : level === 'warn'
-            ? // biome-ignore lint/suspicious/noConsole: Intentional console logging in development
-              console.warn
-            : level === 'debug'
-              ? // biome-ignore lint/suspicious/noConsole: Intentional console logging in development
-                console.debug
-              : // biome-ignore lint/suspicious/noConsole: Intentional console logging in development
-                console.log;
-      consoleFn(`[${formatted.level}] ${message}`, context || '');
-      return;
-    }
-
-    // In production, use structured logging
-    const logOutput = JSON.stringify(formatted);
-
-    if (level === 'error') {
-      // biome-ignore lint/suspicious/noConsole: Structured logging in production
-      console.error(logOutput);
-    } else if (level === 'warn') {
-      // biome-ignore lint/suspicious/noConsole: Structured logging in production
-      console.warn(logOutput);
-    } else {
-      // biome-ignore lint/suspicious/noConsole: Structured logging in production
-      console.log(logOutput);
-    }
-
-    // Send to external log endpoint if configured
-    const logEndpoint = process.env.LOG_ENDPOINT;
-    if (logEndpoint) {
-      // Fire-and-forget non-blocking fetch
-      fetch(logEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: logOutput,
-      }).catch(() => {
-        // Silently fail to avoid disrupting the application
-      });
-    }
+  constructor(pinoLogger: pino.Logger) {
+    this.pino = pinoLogger;
   }
 
   debug(message: string, context?: LogContext): void {
-    this.log('debug', message, context);
+    if (context) {
+      this.pino.debug(context, message);
+    } else {
+      this.pino.debug(message);
+    }
   }
 
   info(message: string, context?: LogContext): void {
-    this.log('info', message, context);
+    if (context) {
+      this.pino.info(context, message);
+    } else {
+      this.pino.info(message);
+    }
   }
 
   warn(message: string, context?: LogContext): void {
-    this.log('warn', message, context);
+    if (context) {
+      this.pino.warn(context, message);
+    } else {
+      this.pino.warn(message);
+    }
   }
 
   error(message: string, context?: LogContext): void {
-    this.log('error', message, context);
+    if (context) {
+      this.pino.error(context, message);
+    } else {
+      this.pino.error(message);
+    }
   }
 
-  // Request logging helper
+  child(context: LogContext): LoggerAdapter {
+    return new LoggerAdapter(this.pino.child(context));
+  }
+
   request(method: string, path: string, context?: LogContext): void {
     this.info(`Request: ${method} ${path}`, context);
   }
 
-  // Performance logging
   performance(operation: string, durationMs: number, context?: LogContext): void {
     this.info(`Performance: ${operation} took ${durationMs}ms`, {
       ...context,
@@ -124,16 +116,7 @@ class Logger {
       operation,
     });
   }
-
-  /**
-   * Create a child logger with merged context
-   * Used for request-scoped logging with requestId, userId, etc.
-   */
-  child(context: LogContext): Logger {
-    return new Logger({ ...this.context, ...context });
-  }
 }
 
-// Singleton instance
-export const logger = new Logger();
+export const logger = new LoggerAdapter(pinoInstance);
 export default logger;

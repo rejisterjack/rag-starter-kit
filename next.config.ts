@@ -44,7 +44,15 @@ const nextConfig: NextConfig = {
 			/^nodemailer/,
 			/^tesseract\.js/,
 			/^pdf2pic/,
+			/^pg-native/,
 		);
+
+		// Prevent pg from trying to load optional native bindings
+		config.resolve.alias = {
+			...config.resolve.alias,
+			'pg-native': false,
+		};
+
 		return config;
 	},
 	images: {

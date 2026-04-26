@@ -53,6 +53,22 @@ async function main() {
     enableTyping: true,
   });
 
+  // Handle port conflicts
+  server.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(
+        `\nPort ${port} is already in use.\n` +
+          `  Option 1: Kill the process using it:\n` +
+          `    lsof -i :${port} | grep LISTEN | awk '{print $2}' | xargs kill -9\n` +
+          `  Option 2: Use a different port:\n` +
+          `    PORT=${port + 1} pnpm dev\n`
+      );
+      process.exit(1);
+    } else {
+      throw error;
+    }
+  });
+
   // Start the server
   server.listen(port, hostname, () => {
     console.log(`✓ Ready on http://${hostname}:${port}`);

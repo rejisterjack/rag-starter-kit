@@ -25,6 +25,7 @@ const envSchema = z.object({
   // Optional variables with defaults
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  PORT: z.coerce.number().default(3000),
 
   // Redis configuration (optional)
   REDIS_URL: z.string().optional(),
@@ -40,6 +41,7 @@ const envSchema = z.object({
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_REGION: z.string().optional(),
+  S3_REGION: z.string().optional(),
 
   // CORS configuration
   ALLOWED_ORIGINS: z.string().optional(),
