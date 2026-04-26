@@ -8,7 +8,7 @@ on:
     branches: [main]
     paths:
       - 'Dockerfile'
-      - 'docker-compose*.yml'
+      - 'docker-compose.yml'
       - '.github/workflows/docker-build.yml'
   workflow_dispatch:
 
@@ -172,7 +172,7 @@ jobs:
       - name: Pull and test image
         run: |
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
-          
+
           # Run container with health check
           docker run -d \
             --name rag-app \
@@ -185,7 +185,7 @@ jobs:
             -e OPENAI_API_KEY=test-key \
             --add-host=host.docker.internal:host-gateway \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
-          
+
           # Wait for container to be healthy
           echo "Waiting for container to be healthy..."
           for i in {1..30}; do
@@ -196,14 +196,14 @@ jobs:
             echo "Attempt $i: Container not healthy yet, waiting..."
             sleep 5
           done
-          
+
           # Check if container is still running
           if ! docker ps | grep rag-app; then
             echo "❌ Container failed to start"
             docker logs rag-app
             exit 1
           fi
-          
+
           # Cleanup
           docker stop rag-app
           docker rm rag-app

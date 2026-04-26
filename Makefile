@@ -1,11 +1,14 @@
 # RAG Starter Kit - Docker Makefile
-# Complete Docker-based development - no local dependencies required
+# Single docker-compose.yml — no local dependencies required
 
-.PHONY: help dev prod down logs build clean prune test db-migrate db-studio backup
+.PHONY: help up up-d up-analytics up-backup up-full down down-v \
+        logs logs-app build build-no-cache prune \
+        db-shell db-migrate db-studio db-seed db-backup \
+        shell cmd lint lint-fix format type-check \
+        test test-run test-coverage status clean
 
-DC_DEV = docker compose -f docker-compose.dev.yml
-DC_PROD = docker compose -f docker-compose.prod.yml
-APP_DEV = $(DC_DEV) exec -it app
+DC      = docker compose
+APP     = $(DC) exec app
 
 # Default target
 .DEFAULT_GOAL := help
@@ -15,51 +18,55 @@ APP_DEV = $(DC_DEV) exec -it app
 # =============================================================================
 
 help: ## Show this help message
-	@echo "RAG Starter Kit - Docker Commands"
-	@echo "=================================="
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo ""
+	@echo "  RAG Starter Kit — Docker Commands"
+	@echo "  =================================="
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo ""
 
 # =============================================================================
-# Development
+# Stack Lifecycle
 # =============================================================================
 
-dev: ## Start development environment (attached)
-	$(DC_DEV) up
+up: ## Start core services (attached)
+	DOCKER_BUILDKIT=1 $(DC) up
 
-dev-d: ## Start development environment (detached)
-	$(DC_DEV) up -d
+up-d: ## Start core services (detached)
+	DOCKER_BUILDKIT=1 $(DC) up -d
 
-prod: ## Start production environment
-	$(DC_PROD) up -d
+up-analytics: ## Start core services + Plausible analytics
+	DOCKER_BUILDKIT=1 $(DC) --profile analytics up -d
 
-prod-backup: ## Start production with automated backups
-	$(DC_PROD) --profile backup up -d
+up-backup: ## Start core services + scheduled DB backup
+	DOCKER_BUILDKIT=1 $(DC) --profile backup up -d
 
-down: ## Stop all environments
-	$(DC_DEV) down
-	$(DC_PROD) down
+up-full: ## Start everything (analytics + backup)
+	DOCKER_BUILDKIT=1 $(DC) --profile analytics --profile backup up -d
 
-down-v: ## Stop and remove all volumes (⚠️ destroys data)
-	$(DC_DEV) down -v
-	$(DC_PROD) down -v
+down: ## Stop all running services
+	$(DC) down
 
-logs: ## View logs from all services
-	$(DC_DEV) logs -f
+down-v: ## Stop and remove all volumes ⚠️  destroys data
+	$(DC) down -v
+	$(DC) --profile analytics --profile backup down -v
 
-logs-app: ## View app logs only
-	$(DC_DEV) logs -f app
+logs: ## Tail logs from all running services
+	$(DC) logs -f
+
+logs-app: ## Tail app logs only
+	$(DC) logs -f app
 
 # =============================================================================
 # Build & Maintenance
 # =============================================================================
 
-build: ## Build/rebuild development images
-	DOCKER_BUILDKIT=1 $(DC_DEV) build
+build: ## Build / rebuild images (uses BuildKit cache)
+	DOCKER_BUILDKIT=1 $(DC) build
 
-build-no-cache: ## Clean build (no cache)
-	DOCKER_BUILDKIT=1 $(DC_DEV) build --no-cache
+build-no-cache: ## Full clean rebuild (no cache)
+	DOCKER_BUILDKIT=1 $(DC) build --no-cache
 
-prune: ## Prune Docker build cache and unused images
+prune: ## Prune Docker build cache and dangling images
 	docker builder prune -f
 	docker image prune -f
 
@@ -67,70 +74,70 @@ prune: ## Prune Docker build cache and unused images
 # Database
 # =============================================================================
 
-db-shell: ## Open PostgreSQL shell
-	$(DC_DEV) exec db psql -U postgres -d ragdb
+db-shell: ## Open an interactive PostgreSQL shell
+	$(DC) exec db psql -U postgres -d ragdb
 
-db-migrate: ## Run database migrations
-	$(APP_DEV) pnpm db:migrate
+db-migrate: ## Run Prisma migrations (development)
+	$(APP) pnpm db:migrate
 
-db-migrate-prod: ## Run production migrations
-	$(DC_PROD) exec app pnpm db:migrate:prod
+db-migrate-prod: ## Run Prisma migrations (production / deploy)
+	$(APP) pnpm db:migrate:prod
 
-db-studio: ## Open Prisma Studio (http://localhost:5555)
-	$(APP_DEV) pnpm prisma studio --hostname 0.0.0.0
+db-studio: ## Launch Prisma Studio  →  http://localhost:5555
+	$(APP) pnpm prisma studio --hostname 0.0.0.0 --port 5555 --browser none
 
-db-seed: ## Seed database with sample data
-	$(APP_DEV) pnpm db:seed
+db-seed: ## Seed the database with sample data
+	$(APP) pnpm db:seed
 
-db-backup: ## Create database backup
+db-backup: ## Create a one-off gzipped PostgreSQL backup
 	@mkdir -p backups
-	$(DC_DEV) exec db pg_dump -U postgres ragdb | gzip > backups/backup-$$(date +%Y%m%d-%H%M%S).sql.gz
-	@echo "✅ Backup created in backups/"
+	$(DC) exec db pg_dump -U postgres ragdb | gzip > backups/backup-$$(date +%Y%m%d-%H%M%S).sql.gz
+	@echo "✅  Backup saved to backups/"
 
 # =============================================================================
-# Application Shell & Commands
+# Application Shell
 # =============================================================================
 
-shell: ## Open shell in app container
-	$(APP_DEV) sh
+shell: ## Open an interactive shell inside the app container
+	$(APP) sh
 
-cmd: ## Run custom command in app container (usage: make cmd CMD="pnpm lint")
-	$(APP_DEV) $(CMD)
+cmd: ## Run any command inside the app container  (usage: make cmd CMD="pnpm lint")
+	$(APP) $(CMD)
 
 # =============================================================================
 # Code Quality
 # =============================================================================
 
-lint: ## Run linter
-	$(APP_DEV) pnpm lint
+lint: ## Run Biome linter
+	$(APP) pnpm lint
 
-lint-fix: ## Run linter with auto-fix
-	$(APP_DEV) pnpm lint:fix
+lint-fix: ## Run Biome linter with auto-fix
+	$(APP) pnpm lint:fix
 
-format: ## Format code
-	$(APP_DEV) pnpm format
+format: ## Format source code
+	$(APP) pnpm format
 
-type-check: ## Run TypeScript type checking
-	$(APP_DEV) pnpm type-check
+type-check: ## TypeScript type-check (no emit)
+	$(APP) pnpm type-check
 
 # =============================================================================
 # Testing
 # =============================================================================
 
-test: ## Run tests in watch mode
-	$(APP_DEV) pnpm test
+test: ## Run Vitest in watch mode
+	$(APP) pnpm test
 
-test-run: ## Run tests once
-	$(APP_DEV) pnpm test:run
+test-run: ## Run Vitest once
+	$(APP) pnpm test:run
 
-test-coverage: ## Run tests with coverage
-	$(APP_DEV) pnpm test:coverage
+test-coverage: ## Run Vitest with coverage report
+	$(APP) pnpm test:coverage
 
 # =============================================================================
 # Utilities
 # =============================================================================
 
-status: ## Check container status
-	$(DC_DEV) ps
+status: ## Show running container status
+	$(DC) ps
 
-clean: down-v prune ## Complete cleanup (stop, remove volumes, prune)
+clean: down-v prune ## Full cleanup — stop containers, remove volumes, prune cache

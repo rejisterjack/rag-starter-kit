@@ -15,8 +15,7 @@
 | **Presigned URLs** | ✅ Done | Secure temporary access to private files |
 
 **Files Modified/Created:**
-- `docker-compose.dev.yml` - Added MinIO service + init container
-- `docker-compose.prod.yml` - Production MinIO configuration
+- `docker-compose.yml` - Unified compose with MinIO service + init container
 - `src/lib/storage/index.ts` - Unified storage interface
 - `src/lib/storage/s3-storage.ts` - S3/MinIO implementation
 - `src/lib/storage/local-storage.ts` - Local filesystem fallback
@@ -195,7 +194,7 @@ POSTHOG_API_KEY=""  # Server-side
 
 ```bash
 # Start PostgreSQL, MinIO, and all services
-docker-compose -f docker-compose.dev.yml up -d
+docker compose up -d
 
 # Access MinIO Console: http://localhost:9001
 # Default credentials: minioadmin / minioadmin
@@ -211,11 +210,14 @@ cp .env.example .env
 ### 3. Start All Services
 
 ```bash
-# Start everything (PostgreSQL, Redis, MinIO, Inngest, Plausible, Next.js)
-docker-compose up
+# Start everything (PostgreSQL, Redis, MinIO, Inngest, Next.js)
+docker compose up
 
 # Or detached mode
-docker-compose up -d
+docker compose up -d
+
+# With Plausible analytics (optional)
+docker compose --profile analytics up -d
 ```
 
 ---
@@ -247,7 +249,7 @@ docker-compose up -d
 
 2. **Deploy:**
    ```bash
-   docker-compose -f docker-compose.prod.yml up -d
+   docker compose up -d
    ```
 
 ---

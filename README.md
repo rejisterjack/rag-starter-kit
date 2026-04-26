@@ -176,8 +176,8 @@ cd rag-starter-kit
 cp .env.example .env
 # Edit .env with your API keys
 
-# 4. Start all services (PostgreSQL, Redis, MinIO, Inngest, Plausible, Next.js)
-docker-compose up
+# 4. Start all services (PostgreSQL, Redis, MinIO, Inngest, Next.js)
+docker compose up
 
 # 5. Open http://localhost:3000 🎉
 ```
@@ -187,10 +187,9 @@ docker-compose up
 | Service | URL | Notes |
 |---------|-----|-------|
 | Next.js app | http://localhost:3000 | Main application |
-| Prisma Studio | http://localhost:5555 | Database GUI |
 | Inngest Dashboard | http://localhost:8288 | Background jobs |
 | MinIO Console | http://localhost:9001 | S3 storage (minioadmin/minioadmin) |
-| Plausible Analytics | http://localhost:8000 | Privacy-focused analytics |
+| Plausible Analytics | http://localhost:8000 | `--profile analytics` only |
 
 ### Option B — One-Click Deploy
 
@@ -225,7 +224,7 @@ docker-compose up
 graph TB
     User([User]) -->|Upload Document| S3[MinIO S3]
     User -->|Chat Query| Next[Next.js 15 App]
-    
+
     subgraph "Background Processing"
         S3 -->|Trigger| Inngest[Inngest Jobs]
         Inngest -->|Extract Text| OCR[OCR/Text Extraction]
@@ -233,7 +232,7 @@ graph TB
         Chunker -->|Embed| Google[Google Gemini Embeddings]
         Google -->|Store| PG[(PostgreSQL + pgvector)]
     end
-    
+
     subgraph "Chat Flow"
         Next -->|1. Embed Query| Google
         Next -->|2. Vector Search| PG
@@ -241,7 +240,7 @@ graph TB
         Next -->|4. Generate Response| OR[OpenRouter LLM]
         OR -->|5. Stream Tokens| User
     end
-    
+
     subgraph "Real-time Features"
         Next -->|WebSocket| WS[Socket.io]
         WS -->|Presence/Typing| User
@@ -285,7 +284,7 @@ cp .env.example .env
 # 3. Edit .env with your keys
 
 # 4. Start the stack
-docker-compose up
+docker compose up
 ```
 
 ### Required (FREE)
@@ -325,7 +324,7 @@ rag-starter-kit/
 │   └── hooks/              # Custom React hooks
 ├── prisma/                 # Database schema & migrations
 ├── tests/                  # Unit, integration, E2E tests
-├── docker-compose.*.yml    # Docker setups
+├── docker-compose.yml      # Unified Docker stack (all services)
 └── .github/workflows/      # CI/CD pipelines
 ```
 
@@ -341,7 +340,7 @@ git clone https://github.com/YOUR_USERNAME/rag-starter-kit.git
 cd rag-starter-kit && pnpm install
 cp .env.example .env
 # Edit .env with your API keys
-docker-compose up
+docker compose up
 ```
 
 See [Contributors](./CONTRIBUTORS.md) for our community!
@@ -358,7 +357,7 @@ See [Contributors](./CONTRIBUTORS.md) for our community!
 | **Prisma generate fails** | Run `pnpm prisma generate` manually |
 | **Embedding errors** | Verify `GOOGLE_API_KEY` is valid and has quota remaining |
 | **LLM timeout** | Check OpenRouter status or switch models in settings |
-| **Upload fails** | Ensure MinIO is running: `docker-compose ps minio` |
+| **Upload fails** | Ensure MinIO is running: `docker compose ps minio` |
 | **WebSocket not connecting** | Check `NEXT_PUBLIC_APP_URL` matches your browser URL |
 
 ### 🤖 Model Selection Guide

@@ -1,0 +1,439 @@
+# =============================================================================
+# RAG Starter Kit — Single Unified Docker Compose
+# =============================================================================
+#
+# 🚀 QUICK START:
+#   1. cp .env.example .env          # copy env template
+#   2. Edit .env with your API keys
+#   3. docker compose up -d          # start all core services
+#
+# Optional profiles:
+#   --profile analytics   → Plausible self-hosted analytics
+#   --profile backup      → Scheduled PostgreSQL backups
+#
+# Port map:
+#   3000  → Next.js app
+#   5432  → PostgreSQL  (not exposed by default; internal only)
+#   6379  → Redis       (not exposed by default; internal only)
+#   9000  → MinIO S3 API
+#   9001  → MinIO Console
+#   8288  → Inngest Dev Server
+#   8000  → Plausible Analytics  (--profile analytics)
+#
+# Image sizes (optimised):
+#   app       ~200 MB   (node:20-alpine + standalone)
+#   db        ~400 MB   (pgvector/pgvector:pg16)
+#   redis      ~30 MB   (redis:7-alpine)
+#   minio     ~170 MB   (minio/minio pinned)
+#   inngest    ~80 MB   (inngest/inngest pinned)
+#   plausible ~250 MB   (Postgres-only, no ClickHouse)
+# =============================================================================
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-restart-policy: &restart-unless-stopped
+  restart: unless-stopped
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16 + pgvector
+  # ---------------------------------------------------------------------------
+  db:
+    <<: *restart-unless-stopped
+    image: pgvector/pgvector:pg16
+    container_name: rag-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ragdb
+      # Tune Postgres for container workloads
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    command: >
+      postgres
+        -c shared_buffers=128MB
+        -c effective_cache_size=256MB
+        -c max_connections=100
+        -c checkpoint_completion_target=0.9
+        -c wal_buffers=16MB
+        -c default_statistics_target=100
+        -c random_page_cost=1.1
+        -c work_mem=4MB
+        -c maintenance_work_mem=64MB
+        -c log_min_duration_statement=1000
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ragdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - rag-internal
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  # ---------------------------------------------------------------------------
+  # Redis 7 — rate limiting, caching, presence
+  # ---------------------------------------------------------------------------
+  redis:
+    <<: *restart-unless-stopped
+    image: redis:7-alpine
+    container_name: rag-redis
+    # Persistence via AOF; bounded memory with LRU eviction
+    command: >
+      redis-server
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+        --appendonly yes
+        --appendfsync everysec
+        --no-appendfsync-on-rewrite yes
+        --loglevel warning
+        --protected-mode no
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - rag-internal
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    # Redis 7 can run as user 999 (redis) — already set in official image
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 384M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  # ---------------------------------------------------------------------------
+  # MinIO — S3-compatible object storage
+  # Pinned to a specific release to prevent unexpected upgrades.
+  # Check latest: https://github.com/minio/minio/releases
+  # ---------------------------------------------------------------------------
+  minio:
+    <<: *restart-unless-stopped
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    container_name: rag-minio
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+      MINIO_BROWSER: "on"
+      # Reduce MinIO's memory footprint in single-node mode
+      MINIO_STORAGE_CLASS_STANDARD: "EC:0"
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    networks:
+      - rag-internal
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  # ---------------------------------------------------------------------------
+  # MinIO Init — one-shot bucket provisioner (runs once, then exits)
+  # ---------------------------------------------------------------------------
+  minio-init:
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    container_name: rag-minio-init
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+        mc alias set local http://rag-minio:9000 ${S3_ACCESS_KEY_ID:-minioadmin} ${S3_SECRET_ACCESS_KEY:-minioadmin} &&
+        mc mb --ignore-existing local/documents &&
+        mc mb --ignore-existing local/exports &&
+        mc mb --ignore-existing local/attachments &&
+        mc anonymous set download local/exports &&
+        echo 'MinIO buckets provisioned.'
+      "
+    networks:
+      - rag-internal
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 64M
+
+  # ---------------------------------------------------------------------------
+  # Inngest Dev Server — background job orchestration
+  # Pinned tag: https://github.com/inngest/inngest/releases
+  # ---------------------------------------------------------------------------
+  inngest:
+    <<: *restart-unless-stopped
+    image: inngest/inngest:v0.29.0
+    container_name: rag-inngest
+    # -u points the dev server to the app's Inngest API route
+    command: "inngest dev -u http://rag-app:3000/api/inngest --no-discovery"
+    ports:
+      - "${INNGEST_PORT:-8288}:8288"
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8288/ || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - rag-internal
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 32M
+
+  # ---------------------------------------------------------------------------
+  # Next.js Application (hyper-optimised runner stage)
+  # ---------------------------------------------------------------------------
+  app:
+    <<: *restart-unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+      # BuildKit cache ID — reuse the pnpm store across builds
+      args:
+        PNPM_CACHE_ID: rag-pnpm-store
+        NODE_VERSION: "20"
+        PNPM_VERSION: "10"
+      # Enable inline BuildKit for --mount=type=cache support
+      cache_from:
+        - type=local,src=/tmp/.buildx-cache
+      cache_to:
+        - type=local,dest=/tmp/.buildx-cache,mode=max
+    container_name: rag-app
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      NEXT_TELEMETRY_DISABLED: "1"
+
+      # Internal service URLs — use container names (internal network only)
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@rag-db:5432/ragdb
+      REDIS_URL: redis://rag-redis:6379
+      S3_ENDPOINT: http://rag-minio:9000
+
+      # Auth
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dev-secret-change-in-production}
+
+      # AI
+      LLM_PROVIDER: ${LLM_PROVIDER:-openrouter}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-google}
+      DEFAULT_MODEL: ${DEFAULT_MODEL:-deepseek/deepseek-chat:free}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-004}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-1536}
+
+      # S3 / Object storage
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-minioadmin}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_FORCE_PATH_STYLE: "true"
+      S3_BUCKET_DOCUMENTS: ${S3_BUCKET_DOCUMENTS:-documents}
+      S3_BUCKET_EXPORTS: ${S3_BUCKET_EXPORTS:-exports}
+      S3_BUCKET_ATTACHMENTS: ${S3_BUCKET_ATTACHMENTS:-attachments}
+
+      # Public app URL
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+
+      # Analytics (plausible — optional profile)
+      NEXT_PUBLIC_ANALYTICS_HOST: ${NEXT_PUBLIC_ANALYTICS_HOST:-http://localhost:8000}
+      NEXT_PUBLIC_ANALYTICS_SCRIPT_URL: ${NEXT_PUBLIC_ANALYTICS_SCRIPT_URL:-http://localhost:8000/js/script.js}
+
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('http').get('http://127.0.0.1:3000/api/health',(r)=>r.statusCode===200?process.exit(0):process.exit(1)).on('error',()=>process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    networks:
+      - rag-internal
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    # Tmpfs for transient cache — never hits the disk, never grows volumes
+    tmpfs:
+      - /tmp:size=100m,mode=1777
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  # ---------------------------------------------------------------------------
+  # Plausible Analytics v2 (Postgres-only, NO ClickHouse)
+  # Saves ~600-900 MB vs previous ClickHouse-backed setup.
+  # Profile: --profile analytics
+  # ---------------------------------------------------------------------------
+  plausible:
+    <<: *restart-unless-stopped
+    image: ghcr.io/plausible/community-edition:v2.1.4
+    container_name: rag-plausible
+    profiles: ["analytics"]
+    ports:
+      - "${PLAUSIBLE_PORT:-8000}:8000"
+    environment:
+      BASE_URL: ${PLAUSIBLE_BASE_URL:-http://localhost:8000}
+      SECRET_KEY_BASE: ${PLAUSIBLE_SECRET_KEY_BASE:-dev-secret-key-base-change-in-production-min-64-characters-long}
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@rag-db:5432/plausible
+      DISABLE_REGISTRATION: ${PLAUSIBLE_DISABLE_REGISTRATION:-false}
+      LOG_LEVEL: warn
+    command: sh -c "/entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/ || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - rag-internal
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  # ---------------------------------------------------------------------------
+  # Database Backup — scheduled pg_dump (opt-in via --profile backup)
+  # ---------------------------------------------------------------------------
+  backup:
+    <<: *restart-unless-stopped
+    image: postgres:16-alpine
+    container_name: rag-backup
+    profiles: ["backup"]
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGUSER: postgres
+      PGDATABASE: ragdb
+      PGHOST: rag-db
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - ./backups:/backups:rw
+    command: >
+      sh -c "
+        mkdir -p /backups &&
+        while true; do
+          STAMP=$$(date +%Y%m%d-%H%M%S) &&
+          pg_dump -h rag-db -U postgres ragdb | gzip > /backups/backup-$${STAMP}.sql.gz &&
+          find /backups -name 'backup-*.sql.gz' -mtime +$${BACKUP_RETENTION_DAYS} -delete &&
+          echo \"[backup] Completed at $$(date)\" &&
+          sleep 86400;
+        done
+      "
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - rag-internal
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 32M
+
+# =============================================================================
+# Named Volumes — all use the default local driver (no external dependency)
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+
+# =============================================================================
+# Networks — single isolated bridge; services are NOT exposed to host
+# unless a `ports:` mapping is declared explicitly above.
+# =============================================================================
+networks:
+  rag-internal:
+    driver: bridge
+    # Enable ICC (inter-container communication) but isolate from default bridge
+    internal: false
+    driver_opts:
+      com.docker.network.bridge.name: rag-br0

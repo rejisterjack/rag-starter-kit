@@ -268,8 +268,6 @@ export async function middleware(req: NextRequest) {
 // CSRF Token Generation and Validation
 // =============================================================================
 
-import { createHmac, timingSafeEqual } from 'node:crypto';
-
 /**
  * Validate CSRF token from request
  * Uses double-submit cookie pattern with HMAC validation for security
@@ -309,17 +307,32 @@ async function validateCsrfToken(req: NextRequest): Promise<boolean> {
       return false;
     }
 
-    const expectedSignature = createHmac('sha256', secret).update(token).digest('base64url');
+    // Web Crypto API HMAC SHA-256
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      enc.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    const signatureBufferRaw = await crypto.subtle.sign('HMAC', key, enc.encode(token));
+
+    // Convert to base64url
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(signatureBufferRaw)));
+    const expectedSignature = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
     // Timing-safe signature comparison
-    const signatureBuffer = Buffer.from(cookieSignature);
-    const expectedBuffer = Buffer.from(expectedSignature);
-
-    if (signatureBuffer.length !== expectedBuffer.length) {
+    if (cookieSignature.length !== expectedSignature.length) {
       return false;
     }
 
-    return timingSafeEqual(signatureBuffer, expectedBuffer);
+    let result = 0;
+    for (let i = 0; i < cookieSignature.length; i++) {
+      result |= cookieSignature.charCodeAt(i) ^ expectedSignature.charCodeAt(i);
+    }
+
+    return result === 0;
   } catch (error) {
     logger.warn('CSRF validation error', {
       error: error instanceof Error ? error.message : String(error),
