@@ -317,7 +317,7 @@ export async function parseYouTube(
       .join('\n');
 
     text = `# ${metadata?.title || `YouTube Video ${videoId}`}\n\n`;
-    if (metadata?.channelName) text += `Channel: ${metadata.channelName}\n`;
+    if (metadata?.channelTitle) text += `Channel: ${metadata.channelTitle}\n`;
     if (metadata?.duration) text += `Duration: ${metadata.duration}\n`;
     if (metadata?.description) {
       const shortDesc = metadata.description.slice(0, 500);
