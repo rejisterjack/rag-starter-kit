@@ -2,88 +2,122 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+Only the latest release receives security fixes. We recommend always running the most recent version.
+
+| Version | Supported |
+|---------|-----------|
+| 1.x (latest) | ✅ Yes |
+| < 1.0 | ❌ No |
+
+---
 
 ## Reporting a Vulnerability
 
-We take security seriously. If you discover a security vulnerability, please report it to us as soon as possible.
+**Please do not report security vulnerabilities in public GitHub issues.**
+
+If you discover a security vulnerability, report it privately so it can be assessed and patched before it's disclosed publicly.
 
 ### How to Report
 
-**Please do NOT report security vulnerabilities through public GitHub issues.**
+Open a [GitHub Security Advisory](https://github.com/rejisterjack/rag-starter-kit/security/advisories/new) — this is the preferred method. It creates a private discussion between you and the maintainers.
 
-Instead, please use GitHub's private vulnerability reporting:
-**[Report a vulnerability](https://github.com/rejisterjack/rag-starter-kit/security/advisories/new)**
-
-Or email: `security@rejisterjack.dev`
-
-Please include:
+Alternatively, email **rupam[at]rejisterjack[dot]dev** with:
 - A description of the vulnerability
-- Steps to reproduce the issue
-- Possible impact of the vulnerability
-- Any suggestions for fixing it (if you have them)
+- Steps to reproduce it
+- The potential impact
+- Any suggested fix (optional but appreciated)
 
 ### What to Expect
 
-- **Acknowledgment**: We will acknowledge receipt of your report within 48 hours
-- **Investigation**: We will investigate the issue and determine its impact
-- **Updates**: We will keep you updated on our progress
-- **Resolution**: Once fixed, we will notify you and publicly acknowledge your contribution (if desired)
+- **Acknowledgement** within 48 hours
+- **Initial assessment** within 5 business days
+- **Fix timeline** communicated once the severity is understood
+- **Credit** in the security advisory and changelog (unless you prefer to remain anonymous)
 
-### Security Measures in Place
+---
 
-This project implements the following security measures:
+## Security Model
 
-- **Authentication**: NextAuth.js v5 with secure session management
-- **Authorization**: Role-based access control (RBAC) for workspaces
-- **Data Isolation**: Row-level security with userId/workspaceId filtering
-- **Input Validation**: Zod schema validation on all inputs
-- **Rate Limiting**: Redis-based rate limiting (Upstash or Docker Redis)
-- **Audit Logging**: Comprehensive audit trail for sensitive operations
-- **Secure Storage**: Environment variables for secrets, never commit credentials
-- **TypeScript**: Strict type checking to prevent runtime errors
+### What This Project Handles
 
-### Best Practices for Users
+`rag-starter-kit` is a self-hosted application. When you deploy it, you own the infrastructure. This means:
 
-1. **Keep dependencies updated**: Run `pnpm audit` regularly
-2. **Use strong secrets**: Generate secure random strings for `NEXTAUTH_SECRET`
-3. **Enable HTTPS**: Always use HTTPS in production
-4. **Configure CORS properly**: Restrict origins in production
-5. **Monitor logs**: Check for suspicious activity
-6. **Use API keys**: Rotate keys regularly
+- **Your documents stay on your servers** — nothing is sent to third parties except the LLM API calls you configure (OpenRouter, Google Gemini, or whichever provider you choose)
+- **Authentication** is handled by NextAuth.js v5 — we don't implement our own auth cryptography
+- **Database access** is scoped by workspace — users cannot access other workspaces' documents or conversations
 
-## Security Features
+### What This Project Does NOT Handle
+
+- Physical security of your deployment infrastructure
+- Network-level security (firewalls, VPNs, DDoS protection)
+- Compliance certifications (SOC2, HIPAA, GDPR) — this is a self-hosted project; compliance is your responsibility based on your deployment
+
+---
+
+## Built-in Security Features
 
 ### Authentication & Authorization
-- JWT tokens with secure expiration
-- OAuth providers (GitHub, Google) with PKCE
-- Session invalidation on logout
-- Workspace-level permissions
+- **NextAuth.js v5** with OAuth (GitHub, Google) and credentials
+- **API key authentication** for programmatic access
+- **Role-based access control** at the workspace level
+- **Session management** with secure, HttpOnly cookies
 
-### Data Protection
-- Database connections use SSL/TLS
-- Sensitive data encrypted at rest (S3)
-- Vector embeddings don't contain raw text
-- Audit logs for compliance
+### Input & Data Validation
+- **Zod schemas** validate all API inputs — malformed requests are rejected before touching the database
+- **Prisma ORM** prevents SQL injection — no raw query strings with user input
+- **React's built-in escaping** prevents XSS in rendered output
+- **File type validation** on document uploads — only allowed MIME types are accepted
 
-### API Security
-- Rate limiting per user/IP
-- Input sanitization
-- SQL injection prevention (Prisma ORM)
-- XSS protection (React's built-in escaping)
-- CSRF protection (NextAuth.js)
+### Rate Limiting & Abuse Prevention
+- **Per-endpoint rate limiting** via Upstash Redis
+- **Progressive penalties** for repeated violations
+- **Audit logging** for authentication events, document uploads, and admin actions
 
-## Known Limitations
+### HTTP Security Headers
+- `Content-Security-Policy` — restricts resource loading
+- `Strict-Transport-Security` — enforces HTTPS
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: strict-origin-when-cross-origin`
 
-- File uploads are scanned client-side only (ClamAV integration is optional)
-- Rate limits depend on Redis availability
-- Document content is encrypted at rest using field-level encryption (ENCRYPTION_MASTER_KEY)
+---
 
-## Acknowledgments
+## Deployment Security Checklist
 
-We thank the following security researchers who have responsibly disclosed vulnerabilities:
+If you're deploying this to production, run through this before going live:
 
-- [Your name could be here!]
+**Environment Variables**
+- [ ] `NEXTAUTH_SECRET` is a cryptographically random 32+ character string (generate with `openssl rand -base64 32`)
+- [ ] Database credentials are strong and not the Docker defaults
+- [ ] MinIO credentials are changed from `minioadmin/minioadmin`
+- [ ] All API keys are scoped to the minimum required permissions
+
+**Infrastructure**
+- [ ] The app runs behind HTTPS (Vercel handles this automatically; self-hosted needs a reverse proxy with TLS)
+- [ ] The PostgreSQL port (5432) is not publicly exposed
+- [ ] The Redis port (6379) is not publicly exposed
+- [ ] The MinIO port (9000/9001) is not publicly exposed unless required
+
+**Authentication**
+- [ ] OAuth callback URLs are locked to your production domain
+- [ ] `NEXTAUTH_URL` matches your actual production URL exactly
+
+---
+
+## Responsible Disclosure
+
+We follow responsible disclosure. If you report a vulnerability:
+
+1. We will work with you to understand and reproduce the issue
+2. We will develop and test a fix privately
+3. We will release the fix and publish a security advisory simultaneously
+4. We will credit you in the advisory unless you prefer otherwise
+
+We ask that you:
+1. Give us reasonable time to fix the issue before public disclosure
+2. Not exploit the vulnerability beyond what's needed to demonstrate it
+3. Not access or modify data that isn't yours
+
+---
+
+*This policy was last updated May 2026.*
