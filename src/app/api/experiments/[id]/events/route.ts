@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 const VALID_EVENT_TYPES = ['impression', 'conversion', 'custom'] as const;
 type EventType = (typeof VALID_EVENT_TYPES)[number];
@@ -52,7 +53,10 @@ export async function POST(req: Request, { params }: RouteParams) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in track event request', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
@@ -105,7 +109,10 @@ export async function POST(req: Request, { params }: RouteParams) {
       },
       { status: 201 }
     );
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to track experiment event', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to track event' } },
       { status: 500 }

@@ -8,6 +8,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
+import { logger } from '@/lib/logger';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 const querySchema = z.object({
@@ -130,7 +131,10 @@ export async function GET(
         },
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to fetch webhook deliveries', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json({ error: 'Failed to fetch deliveries' }, { status: 500 });
   }
 }

@@ -42,6 +42,7 @@
 
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import { compare, hash } from 'bcryptjs';
+import { NextResponse } from 'next/server';
 import type { DefaultSession } from 'next-auth';
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
@@ -469,4 +470,34 @@ export async function requireAdmin() {
     throw new Error('Forbidden');
   }
   return session;
+}
+
+/**
+ * Wrap an API route handler with authentication.
+ * If the user is not authenticated, returns a 401 JSON response.
+ *
+ * @example
+ * export const GET = withApiAuth(async (req, session) => {
+ *   const userId = session.user.id;
+ *   // ... handler logic
+ *   return NextResponse.json({ data });
+ * });
+ */
+export function withApiAuth<T = unknown>(
+  handler: (
+    req: Request,
+    session: NonNullable<Awaited<ReturnType<typeof auth>>>,
+    context?: T
+  ) => Promise<NextResponse>
+): (req: Request, context?: T) => Promise<NextResponse> {
+  return async (req: Request, context?: T) => {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+        { status: 401 }
+      );
+    }
+    return handler(req, session, context);
+  };
 }

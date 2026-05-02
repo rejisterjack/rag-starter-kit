@@ -114,7 +114,7 @@ export function SSOConfiguration({
       await navigator.clipboard.writeText(text);
       setSuccess('Copied to clipboard');
       setTimeout(() => setSuccess(null), 2000);
-    } catch {
+    } catch (_error: unknown) {
       setError('Failed to copy');
     }
   }, []);
@@ -177,7 +177,7 @@ export function SSOConfiguration({
           setSuccess('Test completed - check the popup results');
         }
       }, 1000);
-    } catch {
+    } catch (_error: unknown) {
       setIsTesting(false);
       setError('Failed to open test window');
     }

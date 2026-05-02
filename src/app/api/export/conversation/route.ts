@@ -5,9 +5,10 @@
 
 import { NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import type { ExportCitation, ExportMessage } from '@/lib/export/types';
+import { logger } from '@/lib/logger';
 import type { Citation } from '@/lib/rag/citations';
 import { checkApiRateLimit, getRateLimitIdentifier } from '@/lib/security/rate-limiter';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
@@ -27,14 +28,8 @@ interface MessageItem {
   sources: unknown;
 }
 
-export async function POST(req: Request) {
+export const POST = withApiAuth(async (req, session) => {
   try {
-    // Authenticate
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const userId = session.user.id;
     const workspaceId = session.user.workspaceId;
 
@@ -54,7 +49,10 @@ export async function POST(req: Request) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in conversation export', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
@@ -209,10 +207,13 @@ export async function POST(req: Request) {
         'X-RateLimit-Remaining': String(rateLimitResult.remaining),
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to export conversation', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json({ error: 'Failed to export conversation' }, { status: 500 });
   }
-}
+});
 
 // Helper functions
 function generateMarkdown(
@@ -343,7 +344,10 @@ function parseSources(sources: unknown): SourceItem[] {
       if (Array.isArray(parsed)) {
         return parsed.filter(isSourceItem);
       }
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Failed to parse sources JSON', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       // Fall through to return empty array
     }
   } else if (Array.isArray(sources)) {

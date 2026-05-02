@@ -119,7 +119,10 @@ export async function getMetadata(key: string): Promise<Record<string, string> |
   try {
     const content = await readFile(metadataPath, 'utf-8');
     return JSON.parse(content);
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Failed to read local storage metadata', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }
@@ -155,8 +158,10 @@ export async function deleteFilesByPrefix(prefix: string): Promise<void> {
     // Try to remove the directory
     try {
       await rm(dirPath, { recursive: true, force: true });
-    } catch {
-      // Directory might not be empty or might not exist
+    } catch (error: unknown) {
+      logger.debug('Failed to remove directory during prefix cleanup', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
 
     logger.debug('Local files deleted by prefix', { prefix, count: files.length });

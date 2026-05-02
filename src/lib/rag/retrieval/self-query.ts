@@ -8,6 +8,7 @@
  */
 
 import { generateChatCompletion } from '@/lib/ai';
+import { logger } from '@/lib/logger';
 import type { RetrievalFilters, SelfQueryResult } from './types';
 
 // Message type for AI completions
@@ -116,8 +117,11 @@ export class SelfQueryTransformer {
       const result = this.parseResponse(text);
 
       return result;
-    } catch (_error) {
+    } catch (error: unknown) {
       // Return original query on failure
+      logger.debug('Self-query filter extraction failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return { query, filters: {} };
     }
   }

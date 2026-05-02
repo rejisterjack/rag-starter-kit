@@ -12,9 +12,10 @@
 
 import { NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { inngest } from '@/lib/inngest/client';
+import { logger } from '@/lib/logger';
 import {
   addRateLimitHeaders,
   checkApiRateLimit,
@@ -22,17 +23,8 @@ import {
 } from '@/lib/security/rate-limiter';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
-export async function POST(req: Request) {
+export const POST = withApiAuth(async (req, session) => {
   try {
-    // Step 1: Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const userId = session.user.id;
     const workspaceId = session.user.workspaceId;
 
@@ -66,7 +58,10 @@ export async function POST(req: Request) {
     let body: { documentId?: string };
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Failed to parse request body in retry endpoint', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
@@ -186,7 +181,10 @@ export async function POST(req: Request) {
     addRateLimitHeaders(response.headers, rateLimitResult);
 
     return response;
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to retry document ingestion', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         success: false,
@@ -198,4 +196,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+});

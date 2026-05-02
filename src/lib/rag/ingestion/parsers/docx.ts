@@ -4,6 +4,7 @@
  */
 
 import mammoth from 'mammoth';
+import { logger } from '@/lib/logger';
 
 export interface DOCXParagraph {
   text: string;
@@ -184,7 +185,10 @@ async function extractMetadata(buffer: Buffer): Promise<DOCXMetadata> {
       keywords: undefined,
       description: undefined,
     };
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('DOCX metadata extraction failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return {};
   }
 }

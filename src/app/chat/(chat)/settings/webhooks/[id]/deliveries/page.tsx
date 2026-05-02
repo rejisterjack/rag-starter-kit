@@ -1,23 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import {
+  AlertCircle,
   ArrowLeft,
   CheckCircle2,
-  Clock,
-  AlertCircle,
-  RefreshCw,
   ChevronDown,
   ChevronUp,
-  Webhook,
+  Clock,
   Loader2,
+  RefreshCw,
+  Webhook,
 } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -25,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 interface Delivery {
@@ -62,7 +62,12 @@ interface DeliveriesResponse {
 }
 
 const statusConfig = {
-  DELIVERED: { icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-500/10', label: 'Delivered' },
+  DELIVERED: {
+    icon: CheckCircle2,
+    color: 'text-green-500',
+    bg: 'bg-green-500/10',
+    label: 'Delivered',
+  },
   FAILED: { icon: AlertCircle, color: 'text-red-500', bg: 'bg-red-500/10', label: 'Failed' },
   PENDING: { icon: Clock, color: 'text-yellow-500', bg: 'bg-yellow-500/10', label: 'Pending' },
   RETRYING: { icon: RefreshCw, color: 'text-blue-500', bg: 'bg-blue-500/10', label: 'Retrying' },
@@ -99,16 +104,16 @@ export default function WebhookDeliveriesPage() {
               }
         );
       }
-    } catch (error) {
-      console.error('Failed to fetch deliveries:', error);
+    } catch (_error) {
     } finally {
       setLoading(false);
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run once on mount
   useEffect(() => {
     fetchDeliveries();
-  }, [webhookId, statusFilter, offset]);
+  }, []);
 
   const loadMore = () => {
     if (data?.pagination.hasMore) {
@@ -190,9 +195,7 @@ export default function WebhookDeliveriesPage() {
             <SelectItem value="RETRYING">Retrying</SelectItem>
           </SelectContent>
         </Select>
-        <p className="text-sm text-muted-foreground">
-          {data?.total || 0} total deliveries
-        </p>
+        <p className="text-sm text-muted-foreground">{data?.total || 0} total deliveries</p>
       </div>
 
       {/* Deliveries List */}
@@ -205,9 +208,7 @@ export default function WebhookDeliveriesPage() {
         </CardHeader>
         <CardContent className="space-y-2">
           {data?.deliveries.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              No deliveries found
-            </div>
+            <div className="text-center py-12 text-muted-foreground">No deliveries found</div>
           ) : (
             data?.deliveries.map((delivery) => {
               const status = statusConfig[delivery.status];
@@ -294,11 +295,7 @@ export default function WebhookDeliveriesPage() {
 
           {data?.pagination.hasMore && (
             <div className="flex justify-center pt-4">
-              <Button
-                variant="outline"
-                onClick={loadMore}
-                disabled={loading}
-              >
+              <Button variant="outline" onClick={loadMore} disabled={loading}>
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

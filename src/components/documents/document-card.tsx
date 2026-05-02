@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
 import { cn, formatDate, formatRelativeTime } from '@/lib/utils';
+import { IngestionProgress } from './ingestion-progress';
 
 export type DocumentStatus = 'pending' | 'processing' | 'completed' | 'error';
 
@@ -38,6 +39,7 @@ export interface Document {
   chunkCount?: number;
   createdAt: Date;
   errorMessage?: string;
+  workspaceId?: string;
 }
 
 interface DocumentCardProps {
@@ -203,6 +205,14 @@ export function DocumentCard({
           {/* Status and progress */}
           <div className="mt-2 space-y-2">
             <StatusBadge status={document.status} progress={document.progress} />
+
+            {(document.status === 'processing' || document.status === 'pending') && (
+              <IngestionProgress
+                documentId={document.id}
+                workspaceId={document.workspaceId}
+                initialStatus={document.status}
+              />
+            )}
 
             {document.status === 'processing' && document.progress !== undefined && (
               <Progress value={document.progress} className="h-1" />

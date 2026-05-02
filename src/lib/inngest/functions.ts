@@ -5,9 +5,12 @@
  */
 
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { ChunkingEngine } from '@/lib/rag/chunking';
 import { createEmbeddings } from '@/lib/rag/engine';
 import { scrapeURL } from '@/lib/rag/ingestion/parsers/url';
+import { isYouTubeUrl, parseYouTube } from '@/lib/rag/ingestion/parsers/youtube';
+import { checkDocumentLimit } from '@/lib/workspace/resource-limits';
 import { inngest } from './client';
 
 // =============================================================================
@@ -104,23 +107,85 @@ export const processDocumentJob = inngest.createFunction(
       return doc;
     });
 
+    // Step 2b: Re-check workspace document limit (guard against race conditions)
+    if (document.workspaceId) {
+      const docLimit = await step.run('check-doc-limit', async () => {
+        return checkDocumentLimit(document.workspaceId as string);
+      });
+
+      if (!docLimit.allowed) {
+        await step.run('fail-limit-exceeded', async () => {
+          await prisma.document.update({
+            where: { id: documentId },
+            data: {
+              status: 'FAILED',
+              metadata: {
+                error: docLimit.reason,
+                failedAt: new Date().toISOString(),
+              },
+            },
+          });
+
+          await prisma.ingestionJob.update({
+            where: { id: job.id },
+            data: {
+              status: 'FAILED',
+              error: docLimit.reason || 'Document limit exceeded',
+              completedAt: new Date(),
+            },
+          });
+        });
+
+        throw new Error(docLimit.reason || 'Document limit exceeded');
+      }
+    }
+
     // Parse document based on type
     const parsedContent = await step.run('parse-document', async () => {
       if (!document.content) {
-        if (document.contentType === 'HTML' && document.metadata) {
-          const metadata = document.metadata as Record<string, unknown>;
-          if (metadata.sourceUrl && typeof metadata.sourceUrl === 'string') {
-            const scraped = await scrapeURL(metadata.sourceUrl);
-            await prisma.document.update({
-              where: { id: documentId },
-              data: { content: scraped.text },
-            });
-            return {
-              text: scraped.text,
-              metadata: scraped.metadata,
-            };
-          }
+        const metadata = (document.metadata as Record<string, unknown>) || {};
+
+        // YouTube URL — extract transcript
+        if (
+          (document.contentType === 'VIDEO' || metadata.isYouTube) &&
+          metadata.sourceUrl &&
+          typeof metadata.sourceUrl === 'string' &&
+          isYouTubeUrl(metadata.sourceUrl)
+        ) {
+          const ytResult = await parseYouTube(metadata.sourceUrl);
+          await prisma.document.update({
+            where: { id: documentId },
+            data: { content: ytResult.text },
+          });
+          return {
+            text: ytResult.text,
+            metadata: {
+              videoId: ytResult.videoId,
+              title: ytResult.title,
+              channelName: ytResult.channelName,
+              duration: ytResult.duration,
+              captionCount: ytResult.captions.length,
+            },
+          };
         }
+
+        // HTML URL — scrape content
+        if (
+          document.contentType === 'HTML' &&
+          metadata.sourceUrl &&
+          typeof metadata.sourceUrl === 'string'
+        ) {
+          const scraped = await scrapeURL(metadata.sourceUrl);
+          await prisma.document.update({
+            where: { id: documentId },
+            data: { content: scraped.text },
+          });
+          return {
+            text: scraped.text,
+            metadata: scraped.metadata,
+          };
+        }
+
         throw new Error('Document has no content');
       }
 
@@ -137,12 +202,14 @@ export const processDocumentJob = inngest.createFunction(
     // Step 3: Create Chunks
     // FEATURE: Dynamic chunking strategy from workspace settings
     const chunks = await step.run('create-chunks', async () => {
-      const chunkSize =
+      const defaultChunkSize =
         document.contentType === 'PDF' ? 1200 : document.contentType === 'MD' ? 1500 : 1000;
-      const chunkOverlap = 200;
+      const defaultChunkOverlap = 200;
 
-      // Fetch workspace settings to determine chunking strategy
+      // Fetch workspace settings to determine chunking strategy and parameters
       let strategy: 'fixed' | 'semantic' | 'hierarchical' | 'late' = 'fixed';
+      let chunkSize = defaultChunkSize;
+      let chunkOverlap = defaultChunkOverlap;
 
       if (document.workspaceId) {
         try {
@@ -162,8 +229,30 @@ export const processDocumentJob = inngest.createFunction(
             ) {
               strategy = workspaceStrategy as 'fixed' | 'semantic' | 'hierarchical' | 'late';
             }
+
+            if (
+              typeof ragSettings?.chunkSize === 'number' &&
+              ragSettings.chunkSize >= 100 &&
+              ragSettings.chunkSize <= 4000
+            ) {
+              chunkSize = ragSettings.chunkSize;
+            }
+            if (
+              typeof ragSettings?.chunkOverlap === 'number' &&
+              ragSettings.chunkOverlap >= 0 &&
+              ragSettings.chunkOverlap <= 1000
+            ) {
+              chunkOverlap = ragSettings.chunkOverlap;
+            }
           }
-        } catch (_error) {}
+        } catch (error: unknown) {
+          // Fall back to defaults if workspace settings can't be read
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          logger.warn('Failed to read workspace chunking settings, using defaults', {
+            workspaceId: document.workspaceId,
+            error: message,
+          });
+        }
       }
 
       return ChunkingEngine.chunk(parsedContent.text, {

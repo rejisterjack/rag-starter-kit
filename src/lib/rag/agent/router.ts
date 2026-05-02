@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import { createProviderFromEnv } from '@/lib/ai/llm';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // Types
@@ -307,8 +308,11 @@ Respond with a JSON object containing:
       }
 
       throw new Error('No JSON found in response');
-    } catch (_error) {
+    } catch (error: unknown) {
       // Attempt heuristic classification as fallback
+      logger.debug('LLM query classification failed, using heuristic fallback', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return this.heuristicClassification(content);
     }
   }

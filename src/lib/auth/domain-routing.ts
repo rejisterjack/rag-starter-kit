@@ -62,7 +62,10 @@ export function extractDomain(email: string): string | null {
     if (!domain.includes('.') || domain.length < 4) return null;
 
     return domain;
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Email domain extraction failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }

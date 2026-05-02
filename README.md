@@ -32,12 +32,14 @@
 | Feature | Description |
 |---------|-------------|
 | 💬 **Streaming RAG** | Real-time token generation with context |
-| 📄 **Document Upload** | PDF, DOCX, TXT, Markdown support |
+| 📄 **Document Upload** | PDF, DOCX, TXT, Markdown, URL ingestion |
 | 🎙️ **Voice Features** | Speech-to-text & text-to-speech |
 | 👥 **Real-time Collaboration** | Multi-user workspaces with presence |
+| 🔌 **Webhook Ingestion** | POST a URL or document via webhook |
+| 🤖 **Agent Mode** | Tool-using AI agent (search, calculator, code) |
 | 🌙 **Dark/Light Mode** | Beautiful themes |
 | 📱 **PWA Support** | Install as native app |
-| 🆓 **100% Free AI** | OpenRouter + Google Gemini |
+| 🆓 **100% Free AI** | OpenRouter + Google Gemini (or Anthropic/Ollama) |
 
 </div>
 
@@ -47,7 +49,7 @@
 
 ### 🆓 100% FREE AI Setup
 Unlike other RAG solutions that require paid OpenAI API keys, this starter kit uses:
-- **🤖 Chat**: OpenRouter free models (DeepSeek, Mistral, Llama, Gemma)
+- **🤖 Chat**: OpenRouter free models (DeepSeek, Mistral, Llama, Gemma) — or bring your own Anthropic/OpenAI/Ollama key
 - **🔤 Embeddings**: Google Gemini free tier (1,500 req/day)
 - **💰 Cost**: $0 forever for development and light usage
 
@@ -139,7 +141,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 |----------|------------|
 | **Framework** | [Next.js 15](https://nextjs.org/) (App Router, RSC, Streaming) |
 | **UI** | [React 19](https://react.dev/), [Tailwind CSS 4](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/) |
-| **AI / RAG** | [Vercel AI SDK](https://sdk.vercel.ai/), LangChain.js, OpenRouter |
+| **AI / RAG** | [Vercel AI SDK](https://sdk.vercel.ai/), LangChain.js, OpenRouter, Anthropic Claude |
 | **Embeddings** | [Google Gemini](https://ai.google.dev/) (free tier) |
 | **Database** | [PostgreSQL 16](https://www.postgresql.org/) + [pgvector](https://github.com/pgvector/pgvector) |
 | **ORM** | [Prisma 7](https://www.prisma.io/) + `@prisma/adapter-pg` |

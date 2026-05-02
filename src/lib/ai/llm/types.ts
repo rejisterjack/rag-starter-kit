@@ -72,7 +72,25 @@ export interface OllamaConfig {
   defaultModel?: string;
 }
 
-export type LLMConfig = OpenAIConfig | OpenRouterConfig | OllamaConfig;
+export interface AnthropicConfig {
+  provider: 'anthropic';
+  apiKey?: string;
+  defaultModel?: string;
+  fallbackModels?: string[];
+}
+
+export interface FireworksConfig {
+  provider: 'fireworks';
+  apiKey?: string;
+  defaultModel?: string;
+}
+
+export type LLMConfig =
+  | OpenAIConfig
+  | OpenRouterConfig
+  | OllamaConfig
+  | AnthropicConfig
+  | FireworksConfig;
 
 // Error types
 export class LLMError extends Error {

@@ -726,9 +726,7 @@ export async function getStorageStats(): Promise<{
       if (estimate.usage) {
         estimatedSize = `${(estimate.usage / 1024 / 1024).toFixed(2)} MB`;
       }
-    } catch {
-      // Ignore
-    }
+    } catch (_error: unknown) {}
   }
 
   return {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { getApiKeyById, revokeApiKey, updateApiKey } from '@/lib/security/api-keys';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
@@ -12,16 +13,8 @@ interface RouteParams {
  * GET /api/api-keys/[id]?workspaceId=xxx
  * Get a single API key by ID
  */
-export async function GET(req: Request, { params }: RouteParams) {
+export const GET = withApiAuth(async (req, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const { id: keyId } = await params;
 
     // Get workspaceId from query params
@@ -75,35 +68,33 @@ export async function GET(req: Request, { params }: RouteParams) {
         },
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to get API key', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to get API key' } },
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * PATCH /api/api-keys/[id]
  * Update an API key (name and/or permissions)
  */
-export async function PATCH(req: Request, { params }: RouteParams) {
+export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const { id: keyId } = await params;
 
     // Parse and validate body
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in PATCH request', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
@@ -174,22 +165,14 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * DELETE /api/api-keys/[id]
  * Revoke an API key
  */
-export async function DELETE(_req: Request, { params }: RouteParams) {
+export const DELETE = withApiAuth(async (_req, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const { id: keyId } = await params;
 
     // Get the API key first to check workspace
@@ -237,13 +220,16 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       success: true,
       data: { message: 'API key revoked successfully' },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to revoke API key', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to revoke API key' } },
       { status: 500 }
     );
   }
-}
+});
 
 // =============================================================================
 // Validation

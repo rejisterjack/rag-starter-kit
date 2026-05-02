@@ -7,7 +7,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // url      = env("DATABASE_URL") // latest prisma doesnot requires url
 }
 
 // ============================================================================
@@ -116,6 +116,16 @@ model Workspace {
 
   // Settings stored as JSON
   settings    Json          @default("{}")
+
+  // Resource limits
+  maxDocuments   Int     @default(100)
+  maxStorageMb   Int     @default(1024)
+  maxChats       Int     @default(1000)
+  maxChatPerDay  Int     @default(50)
+
+  // Per-workspace LLM configuration
+  llmProvider    String? // 'openrouter' | 'openai' | 'anthropic' | 'ollama' | null (inherit from env)
+  llmModel       String? // specific model override
 
   // Relations
   ownerId     String
@@ -1094,41 +1104,41 @@ model Plan {
   name        String    @unique // 'free', 'pro', 'enterprise'
   displayName String
   description String?
-  
+
   // Pricing (in cents)
   priceMonth  Int       @default(0)
   priceYear   Int       @default(0)
-  
+
   // Features
   maxWorkspaces   Int   @default(1)
   maxDocuments    Int   @default(10)
   maxStorageBytes BigInt @default(1073741824) // 1GB
   maxMessages     Int   @default(100)
   maxApiCalls     Int   @default(1000)
-  
+
   // Feature flags
   features    Json      @default("{}")
-  
+
   // Stripe product ID
   stripeProductId     String?
   stripePriceMonthId  String?
   stripePriceYearId   String?
-  
+
   // Status
   isActive    Boolean   @default(true)
   sortOrder   Int       @default(0)
-  
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  
+
   subscriptions Subscription[]
-  
+
   @@map("plans")
 }
 
 model Subscription {
   id          String   @id @default(cuid())
-  
+
   // Relations
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1136,26 +1146,26 @@ model Subscription {
   plan        Plan     @relation(fields: [planId], references: [id])
   workspaceId String?  @unique
   workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
-  
+
   // Stripe
   stripeCustomerId       String?
   stripeSubscriptionId   String?
   stripePriceId          String?
-  
+
   // Billing cycle
   currentPeriodStart  DateTime
   currentPeriodEnd    DateTime
-  
+
   // Status
   status      SubscriptionStatus @default(ACTIVE)
   cancelAtPeriodEnd Boolean @default(false)
-  
+
   // Usage tracking
   usage       UsageLimit?
-  
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   @@index([userId])
   @@index([status])
   @@index([stripeSubscriptionId])
@@ -1172,57 +1182,57 @@ enum SubscriptionStatus {
 
 model UsageLimit {
   id              String   @id @default(cuid())
-  
+
   // Relation
   subscriptionId  String   @unique
   subscription    Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  
+
   // Current usage (resets based on billing cycle)
   workspacesUsed  Int      @default(0)
   documentsUsed   Int      @default(0)
   storageUsed     BigInt   @default(0)
   messagesUsed    Int      @default(0)
   apiCallsUsed    Int      @default(0)
-  
+
   // Tracking
   lastResetAt     DateTime @default(now())
-  
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  
+
   @@map("usage_limits")
 }
 
 model Invoice {
   id          String   @id @default(cuid())
-  
+
   // Relations
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   subscriptionId String?
-  
+
   // Stripe
   stripeInvoiceId     String? @unique
   stripePaymentIntentId String?
-  
+
   // Amount (in cents)
   amount      Int
   currency    String   @default("usd")
-  
+
   // Status
   status      InvoiceStatus @default(PENDING)
   paidAt      DateTime?
-  
+
   // Period
   periodStart DateTime
   periodEnd   DateTime
-  
+
   // PDF URL
   pdfUrl      String?
-  
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   @@index([userId])
   @@index([status])
   @@map("invoices")

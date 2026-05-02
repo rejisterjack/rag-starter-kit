@@ -8,7 +8,7 @@
 import { headers } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth';
+import { auth, withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
 import { logger } from '@/lib/logger';
 import { checkApiRateLimit } from '@/lib/security/rate-limiter';
@@ -134,8 +134,10 @@ export async function POST(
         createdAt: feedback.createdAt.toISOString(),
       },
     });
-  } catch (_error) {
-    logger.error('Failed to submit message feedback');
+  } catch (error: unknown) {
+    logger.error('Failed to submit message feedback', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
 
     return NextResponse.json(
       { error: 'Failed to submit feedback', code: 'INTERNAL_ERROR' },
@@ -148,136 +150,131 @@ export async function POST(
  * GET /api/messages/[id]/feedback
  * Get feedback for a message
  */
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse> {
-  try {
-    const { id: messageId } = await params;
+export const GET = withApiAuth(
+  async (
+    _req: NextRequest,
+    session,
+    { params }: { params: Promise<{ id: string }> }
+  ): Promise<NextResponse> => {
+    try {
+      const { id: messageId } = await params;
 
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+      // Verify message exists and user has access
+      const message = await prisma.message.findUnique({
+        where: { id: messageId },
+        include: {
+          chat: {
+            select: { userId: true },
+          },
+        },
+      });
+
+      if (!message) {
+        return NextResponse.json(
+          { error: 'Message not found', code: 'NOT_FOUND' },
+          { status: 404 }
+        );
+      }
+
+      // Only message owner or admin can view feedback
+      const isOwner = message.chat.userId === session.user.id;
+      const isAdmin = session.user.role === 'ADMIN';
+
+      if (!isOwner && !isAdmin) {
+        return NextResponse.json({ error: 'Access denied', code: 'FORBIDDEN' }, { status: 403 });
+      }
+
+      // Get feedback statistics
+      const feedbacks = await prisma.messageFeedback.findMany({
+        where: { messageId },
+        select: {
+          id: true,
+          rating: true,
+          comment: true,
+          categories: true,
+          createdAt: true,
+          userId: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const stats = {
+        total: feedbacks.length,
+        upvotes: feedbacks.filter((f: { rating: string }) => f.rating === 'UP').length,
+        downvotes: feedbacks.filter((f: { rating: string }) => f.rating === 'DOWN').length,
+      };
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          stats,
+          feedbacks: feedbacks.map(
+            (f: {
+              id: string;
+              rating: string;
+              comment: string | null;
+              categories: string[];
+              createdAt: Date;
+              userId: string | null;
+            }) => ({
+              id: f.id,
+              rating: f.rating,
+              comment: f.comment,
+              categories: f.categories,
+              createdAt: f.createdAt.toISOString(),
+              isOwn: f.userId === session.user.id,
+            })
+          ),
+        },
+      });
+    } catch (error: unknown) {
+      logger.error('Failed to get message feedback', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
+
       return NextResponse.json(
-        { error: 'Authentication required', code: 'UNAUTHORIZED' },
-        { status: 401 }
+        { error: 'Failed to get feedback', code: 'INTERNAL_ERROR' },
+        { status: 500 }
       );
     }
-
-    // Verify message exists and user has access
-    const message = await prisma.message.findUnique({
-      where: { id: messageId },
-      include: {
-        chat: {
-          select: { userId: true },
-        },
-      },
-    });
-
-    if (!message) {
-      return NextResponse.json({ error: 'Message not found', code: 'NOT_FOUND' }, { status: 404 });
-    }
-
-    // Only message owner or admin can view feedback
-    const isOwner = message.chat.userId === session.user.id;
-    const isAdmin = session.user.role === 'ADMIN';
-
-    if (!isOwner && !isAdmin) {
-      return NextResponse.json({ error: 'Access denied', code: 'FORBIDDEN' }, { status: 403 });
-    }
-
-    // Get feedback statistics
-    const feedbacks = await prisma.messageFeedback.findMany({
-      where: { messageId },
-      select: {
-        id: true,
-        rating: true,
-        comment: true,
-        categories: true,
-        createdAt: true,
-        userId: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const stats = {
-      total: feedbacks.length,
-      upvotes: feedbacks.filter((f: { rating: string }) => f.rating === 'UP').length,
-      downvotes: feedbacks.filter((f: { rating: string }) => f.rating === 'DOWN').length,
-    };
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        stats,
-        feedbacks: feedbacks.map(
-          (f: {
-            id: string;
-            rating: string;
-            comment: string | null;
-            categories: string[];
-            createdAt: Date;
-            userId: string | null;
-          }) => ({
-            id: f.id,
-            rating: f.rating,
-            comment: f.comment,
-            categories: f.categories,
-            createdAt: f.createdAt.toISOString(),
-            isOwn: f.userId === session.user.id,
-          })
-        ),
-      },
-    });
-  } catch (_error) {
-    logger.error('Failed to get message feedback');
-
-    return NextResponse.json(
-      { error: 'Failed to get feedback', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
   }
-}
+);
 
 /**
  * DELETE /api/messages/[id]/feedback
  * Remove feedback for a message
  */
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse> {
-  try {
-    const { id: messageId } = await params;
+export const DELETE = withApiAuth(
+  async (
+    _req: NextRequest,
+    session,
+    { params }: { params: Promise<{ id: string }> }
+  ): Promise<NextResponse> => {
+    try {
+      const { id: messageId } = await params;
 
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+      const userId = session.user.id;
+
+      // Delete the user's feedback for this message
+      await prisma.messageFeedback.deleteMany({
+        where: {
+          messageId,
+          userId,
+        },
+      });
+
+      logger.info('Message feedback deleted');
+
+      return NextResponse.json({ success: true });
+    } catch (error: unknown) {
+      logger.error('Failed to delete message feedback', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
+
       return NextResponse.json(
-        { error: 'Authentication required', code: 'UNAUTHORIZED' },
-        { status: 401 }
+        { error: 'Failed to delete feedback', code: 'INTERNAL_ERROR' },
+        { status: 500 }
       );
     }
-
-    const userId = session.user.id;
-
-    // Delete the user's feedback for this message
-    await prisma.messageFeedback.deleteMany({
-      where: {
-        messageId,
-        userId,
-      },
-    });
-
-    logger.info('Message feedback deleted');
-
-    return NextResponse.json({ success: true });
-  } catch (_error) {
-    logger.error('Failed to delete message feedback');
-
-    return NextResponse.json(
-      { error: 'Failed to delete feedback', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
   }
-}
+);

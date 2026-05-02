@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { canManageWorkspace } from '@/lib/workspace/permissions';
 
 interface RouteParams {
@@ -80,7 +81,10 @@ export async function POST(_req: Request, { params }: RouteParams) {
         },
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to start experiment', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to start experiment' } },
       { status: 500 }

@@ -5,6 +5,8 @@
  * Reduces API costs and improves response times.
  */
 
+import { logger } from '@/lib/logger';
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -109,7 +111,10 @@ export class EmbeddingCache {
 
       this.missCount++;
       return null;
-    } catch (_error) {
+    } catch (error: unknown) {
+      logger.error('Failed to get cached embedding', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       this.missCount++;
       return null;
     }
@@ -129,7 +134,11 @@ export class EmbeddingCache {
 
     try {
       await this.cache.set(key, value, ttlSeconds ?? this.config.defaultTtl);
-    } catch (_error) {}
+    } catch (error: unknown) {
+      logger.error('Failed to set embedding in cache', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   }
 
   /**
@@ -152,7 +161,10 @@ export class EmbeddingCache {
           results.set(text, null);
         }
       });
-    } catch (_error) {
+    } catch (error: unknown) {
+      logger.error('Failed to get batch embeddings from cache', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       texts.forEach((text) => {
         results.set(text, null);
       });
@@ -175,7 +187,11 @@ export class EmbeddingCache {
       entries.map(async (entry) => {
         try {
           await this.set(entry.text, model, entry.embedding, ttl);
-        } catch (_error) {}
+        } catch (error: unknown) {
+          logger.error('Failed to set batch embedding in cache', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
       })
     );
   }
@@ -272,11 +288,18 @@ export class SemanticCache {
 
             return cached.results;
           }
-        } catch {}
+        } catch (error: unknown) {
+          logger.error('Failed to parse cached semantic query entry', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
       }
 
       return null;
-    } catch (_error) {
+    } catch (error: unknown) {
+      logger.error('Failed to find similar cached query', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return null;
     }
   }
@@ -307,7 +330,11 @@ export class SemanticCache {
 
     try {
       await this.cache.set(key, value, ttlSeconds ?? this.config.defaultTtl);
-    } catch (_error) {}
+    } catch (error: unknown) {
+      logger.error('Failed to cache semantic query result', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   }
 
   /**

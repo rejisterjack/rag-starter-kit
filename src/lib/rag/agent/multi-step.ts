@@ -12,6 +12,7 @@
  */
 
 import { createProviderFromEnv } from '@/lib/ai/llm';
+import { logger } from '@/lib/logger';
 // import { z } from 'zod';
 import type { Message, Source } from '@/types';
 import type { Tool } from '../tools/types';
@@ -322,8 +323,11 @@ Rules:
           completionTokens: response.usage.completionTokens,
         },
       };
-    } catch (_error) {
+    } catch (error: unknown) {
       // Fallback: single step
+      logger.debug('Multi-step query decomposition failed, falling back to single step', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return {
         subQueries: [
           {
@@ -529,7 +533,11 @@ REASONING: [Your reasoning for how you synthesized the results]`;
       try {
         const data = JSON.parse(result.result);
         return String(data[property] ?? match);
-      } catch {
+      } catch (error: unknown) {
+        logger.debug('Failed to extract property from step result', {
+          property,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         return match;
       }
     });

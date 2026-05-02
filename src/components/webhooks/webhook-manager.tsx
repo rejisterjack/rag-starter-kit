@@ -87,7 +87,7 @@ export function WebhookManager({
       await onCreate(newWebhook);
       setNewWebhook({ name: '', url: '', events: [], isActive: true });
       toast.success('Webhook created');
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to create webhook');
     } finally {
       setIsCreating(false);

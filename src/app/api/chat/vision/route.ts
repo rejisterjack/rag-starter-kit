@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { ConversationMemory } from '@/lib/rag/memory';
 import { searchByImage, searchImagesByText } from '@/lib/rag/retrieval';
 import {
@@ -162,7 +163,11 @@ export async function POST(req: Request) {
             imageContext = buildImageContext(searchResults.images, searchResults.chunks);
           }
         }
-      } catch (_error) {}
+      } catch (error: unknown) {
+        logger.debug('Image context retrieval failed, continuing without image context', {
+          error: error instanceof Error ? error.message : 'Unknown',
+        });
+      }
     }
 
     // Step 5: Build system prompt and prepare messages

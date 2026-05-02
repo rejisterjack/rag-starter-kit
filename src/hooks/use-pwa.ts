@@ -445,9 +445,7 @@ export function useBackgroundSync(): {
       if (action) {
         try {
           await action();
-        } catch {
-          // Silently handle background sync action failures
-        }
+        } catch (_error: unknown) {}
       }
       setPendingCount(actionQueue.current.length);
     }
@@ -501,9 +499,7 @@ export function useBackgroundSync(): {
         if (registration.sync) {
           await registration.sync.register(tag);
         }
-      } catch {
-        // Silently handle sync registration failures
-      }
+      } catch (_error: unknown) {}
     },
     [isSupported]
   );

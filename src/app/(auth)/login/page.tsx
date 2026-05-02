@@ -95,7 +95,7 @@ export default function LoginPage(): React.ReactElement {
           const result: DomainLookupResult = await response.json();
           setSsoDetected(result);
         }
-      } catch (_error) {
+      } catch (_error: unknown) {
       } finally {
         setIsCheckingDomain(false);
       }
@@ -123,7 +123,7 @@ export default function LoginPage(): React.ReactElement {
         router.push(callbackUrl);
         router.refresh();
       }
-    } catch {
+    } catch (_error: unknown) {
       setLoginError('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);

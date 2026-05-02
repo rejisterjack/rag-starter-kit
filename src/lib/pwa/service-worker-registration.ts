@@ -225,7 +225,7 @@ export async function getRegistration(): Promise<ServiceWorkerRegistration | nul
 
   try {
     return await navigator.serviceWorker.ready;
-  } catch {
+  } catch (_error: unknown) {
     return null;
   }
 }
@@ -242,7 +242,7 @@ export async function unregisterServiceWorker(): Promise<boolean> {
     const registration = await navigator.serviceWorker.ready;
     const result = await registration.unregister();
     return result;
-  } catch (_error) {
+  } catch (_error: unknown) {
     return false;
   }
 }
@@ -279,7 +279,7 @@ export async function requestBackgroundSync(tag: string = 'sync-messages'): Prom
       registration as unknown as { sync: { register: (tag: string) => Promise<void> } }
     ).sync.register(tag);
     return true;
-  } catch (_error) {
+  } catch (_error: unknown) {
     return false;
   }
 }
@@ -302,7 +302,7 @@ export async function clearAllCaches(): Promise<boolean> {
       cacheNames.filter((name) => name.startsWith('rag-')).map((name) => caches.delete(name))
     );
     return true;
-  } catch (_error) {
+  } catch (_error: unknown) {
     return false;
   }
 }
@@ -333,7 +333,7 @@ export async function getCacheStats(): Promise<{
       cacheNames: ragCaches,
       estimatedSize,
     };
-  } catch (_error) {
+  } catch (_error: unknown) {
     return {
       totalCaches: 0,
       cacheNames: [],

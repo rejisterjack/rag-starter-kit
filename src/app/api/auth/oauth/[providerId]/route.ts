@@ -8,6 +8,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { generateAuthUrl, generateState, getOAuthProviderById } from '@/lib/auth/oauth/providers';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,7 +72,10 @@ export async function GET(
     });
 
     return response;
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to initiate OAuth flow', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json({ error: 'Failed to initiate OAuth flow' }, { status: 500 });
   }
 }

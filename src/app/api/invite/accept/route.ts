@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { acceptInvitation } from '@/lib/workspace/workspace';
@@ -9,22 +9,16 @@ import { acceptInvitation } from '@/lib/workspace/workspace';
  * POST /api/invite/accept
  * Accept a workspace invitation
  */
-export async function POST(req: Request) {
+export const POST = withApiAuth(async (req, session) => {
   try {
-    // Check authentication
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
     // Parse request body
     let body: { token?: string };
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Failed to parse request body for invite acceptance', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
     }
 
@@ -89,4 +83,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+});

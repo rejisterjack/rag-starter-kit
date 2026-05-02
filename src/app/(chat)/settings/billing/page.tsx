@@ -71,7 +71,7 @@ export default function BillingPage() {
           setUsage(subData.data.usage);
         }
       }
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to load billing information');
     } finally {
       setIsLoading(false);

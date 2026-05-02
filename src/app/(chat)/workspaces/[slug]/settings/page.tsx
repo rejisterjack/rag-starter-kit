@@ -106,7 +106,7 @@ export default function WorkspaceSettingsPage() {
         toast.error('Workspace not found');
         router.push('/chat');
       }
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to load workspace settings');
     } finally {
       setIsLoading(false);
@@ -152,7 +152,7 @@ export default function WorkspaceSettingsPage() {
       if (!ragResponse.ok) throw new Error('Failed to update RAG settings');
 
       toast.success('Settings saved successfully');
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to save settings');
     } finally {
       setIsSaving(false);
@@ -173,7 +173,7 @@ export default function WorkspaceSettingsPage() {
 
       toast.success('Workspace deleted');
       router.push('/chat');
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to delete workspace');
     }
   };

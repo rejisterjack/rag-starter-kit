@@ -85,7 +85,7 @@ export default function ChatPage(): React.ReactElement {
         }));
         setDocuments(formattedDocs);
       }
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to load documents');
     } finally {
       setIsLoadingDocs(false);
@@ -146,7 +146,7 @@ export default function ChatPage(): React.ReactElement {
             uploadedDocs.push(newDoc);
             toast.success(`Uploading ${file.name}...`);
           }
-        } catch (_error) {
+        } catch (_error: unknown) {
           toast.error(`Failed to upload ${file.name}`);
         }
       }
@@ -174,7 +174,7 @@ export default function ChatPage(): React.ReactElement {
 
       setDocuments((prev) => prev.filter((doc) => doc.id !== id));
       toast.success('Document deleted');
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to delete document');
     }
   }, []);
@@ -202,7 +202,7 @@ export default function ChatPage(): React.ReactElement {
 
         toast.success('Re-ingestion started');
         setTimeout(fetchDocuments, 1000);
-      } catch (_error) {
+      } catch (_error: unknown) {
         toast.error('Failed to re-ingest document');
         // Revert status
         fetchDocuments();
@@ -228,7 +228,7 @@ export default function ChatPage(): React.ReactElement {
       if (data.success) {
         setPreviewChunks(data.data.chunks || []);
       }
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to load document preview');
       setPreviewChunks([]);
     } finally {
@@ -254,7 +254,7 @@ export default function ChatPage(): React.ReactElement {
         // Clear messages by reloading the page with new chat ID
         window.location.href = `/chat?chatId=${data.data.chat.id}`;
       }
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to create new chat');
     }
   }, []);

@@ -4,6 +4,7 @@
  */
 
 import { Redis } from '@upstash/redis';
+import { logger } from '@/lib/logger';
 import type { CursorPosition, PresenceStatus, UserInfo } from './types';
 
 // =============================================================================
@@ -175,8 +176,10 @@ export async function heartbeat(userId: string): Promise<void> {
         const roomKey = getRoomKey(data.currentView.type, data.currentView.id);
         await redis.expire(roomKey, PRESENCE_TTL_SECONDS);
       }
-    } catch {
-      // Invalid data, will be cleaned up by TTL
+    } catch (error: unknown) {
+      logger.debug('Failed to extend presence TTL', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 }
@@ -195,7 +198,10 @@ export async function getUserPresence(userId: string): Promise<PresenceData | nu
 
   try {
     return JSON.parse(data) as PresenceData;
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Failed to parse presence data', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }
@@ -276,8 +282,10 @@ export async function setUserStatus(userId: string, status: PresenceStatus): Pro
       data.status = status;
       data.lastSeen = Date.now();
       await redis.setex(key, PRESENCE_TTL_SECONDS, JSON.stringify(data));
-    } catch {
-      // Invalid data
+    } catch (error: unknown) {
+      logger.debug('Failed to update presence status', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 }
@@ -384,8 +392,11 @@ export async function getTypingUsers(roomId: string): Promise<TypingState[]> {
       if (now - typingState.startedAt < TYPING_TTL_SECONDS * 1000) {
         users.push(typingState);
       }
-    } catch {
+    } catch (error: unknown) {
       // Invalid data, skip
+      logger.debug('Failed to parse typing state', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 
@@ -451,8 +462,11 @@ export async function getCursorsInRoom(roomId: string): Promise<CursorState[]> {
       if (now - cursorState.timestamp < CURSOR_TTL_SECONDS * 1000) {
         cursors.push(cursorState);
       }
-    } catch {
+    } catch (error: unknown) {
       // Invalid data, skip
+      logger.debug('Failed to parse cursor state', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 

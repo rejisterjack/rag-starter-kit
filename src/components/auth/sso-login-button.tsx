@@ -168,7 +168,7 @@ export function SSOLoginButton({
             onSSODetected?.(result);
           }
         }
-      } catch (_error) {}
+      } catch (_error: unknown) {}
     };
 
     const timeoutId = setTimeout(checkDomain, 300); // Debounce

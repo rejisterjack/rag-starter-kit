@@ -165,7 +165,7 @@ export class SpeechRecognitionService {
       this.recognition.start();
       this.isListening = true;
       return true;
-    } catch (_error) {
+    } catch (_error: unknown) {
       return false;
     }
   }
@@ -175,7 +175,7 @@ export class SpeechRecognitionService {
 
     try {
       this.recognition.stop();
-    } catch (_error) {}
+    } catch (_error: unknown) {}
   }
 
   abort(): void {
@@ -184,7 +184,7 @@ export class SpeechRecognitionService {
     try {
       this.recognition.abort();
       this.isListening = false;
-    } catch (_error) {}
+    } catch (_error: unknown) {}
   }
 
   on(event: SpeechRecognitionEventType, handler: EventHandler): () => void {

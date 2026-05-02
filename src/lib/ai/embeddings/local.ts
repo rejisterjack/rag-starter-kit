@@ -12,6 +12,7 @@
  */
 
 import { type FeatureExtractionPipeline, pipeline } from '@xenova/transformers';
+import { logger } from '@/lib/logger';
 import type { EmbeddingProvider } from './types';
 
 /**
@@ -165,7 +166,10 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
     try {
       await this.initialize();
       return this.pipeline !== null;
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Local embedding provider health check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return false;
     }
   }

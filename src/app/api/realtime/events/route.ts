@@ -8,6 +8,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { isRedisConfigured } from '@/lib/realtime/presence';
 import { getRateLimiter } from '@/lib/security/rate-limiter';
 
@@ -50,7 +51,10 @@ function startCleanupInterval(): void {
         try {
           // Close the connection gracefully
           client.controller.close();
-        } catch {
+        } catch (error: unknown) {
+          logger.debug('Failed to close stale SSE connection during cleanup', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
           // Connection may already be closed
         }
         sseClients.delete(clientId);
@@ -163,7 +167,10 @@ function broadcastToWorkspace(
       try {
         client.controller.enqueue(encoded);
         client.lastPing = Date.now();
-      } catch {
+      } catch (error: unknown) {
+        logger.debug('SSE client disconnected during workspace broadcast', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         // Client disconnected
         sseClients.delete(clientId);
       }
@@ -196,7 +203,10 @@ function broadcastToConversation(
       try {
         client.controller.enqueue(encoded);
         client.lastPing = Date.now();
-      } catch {
+      } catch (error: unknown) {
+        logger.debug('SSE client disconnected during conversation broadcast', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         // Client disconnected
         sseClients.delete(clientId);
       }
@@ -229,7 +239,10 @@ function broadcastToDocument(
       try {
         client.controller.enqueue(encoded);
         client.lastPing = Date.now();
-      } catch {
+      } catch (error: unknown) {
+        logger.debug('SSE client disconnected during document broadcast', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         // Client disconnected
         sseClients.delete(clientId);
       }
@@ -260,7 +273,10 @@ function sendToUser(
       try {
         client.controller.enqueue(encoded);
         client.lastPing = Date.now();
-      } catch {
+      } catch (error: unknown) {
+        logger.debug('SSE client disconnected during user send', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         // Client disconnected
         sseClients.delete(clientId);
       }
@@ -417,7 +433,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             };
             controller.enqueue(encodeSSEEvent(pingEvent));
             client.lastPing = Date.now();
-          } catch {
+          } catch (error: unknown) {
+            logger.debug('SSE ping failed, client disconnected', {
+              clientId,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
             // Client disconnected
             clearInterval(pingInterval);
             sseClients.delete(clientId);
@@ -514,7 +534,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         'X-Accel-Buffering': 'no', // Disable nginx buffering
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to establish SSE connection', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         success: false,
@@ -663,7 +686,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         clientCount,
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to broadcast event', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         success: false,

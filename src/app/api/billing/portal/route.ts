@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createBillingPortalSession, isStripeConfigured } from '@/lib/billing/stripe';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: Request) {
   try {
@@ -61,7 +62,10 @@ export async function POST(req: Request) {
       success: true,
       data: { url: portalUrl },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to create billing portal session', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to create portal session' } },
       { status: 500 }

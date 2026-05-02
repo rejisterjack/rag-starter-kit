@@ -215,7 +215,7 @@ export function AnalyticsDashboard() {
           ],
         });
       }
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to load analytics data');
       // Fall back to mock data
       setData(generateMockData(timeRange));

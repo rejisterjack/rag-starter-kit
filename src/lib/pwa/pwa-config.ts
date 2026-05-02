@@ -286,7 +286,7 @@ export async function getStorageEstimate(): Promise<{
       quota: estimate.quota || 0,
       usageDetails: (estimate as { usageDetails?: Record<string, number> }).usageDetails,
     };
-  } catch (_error) {
+  } catch (_error: unknown) {
     return null;
   }
 }

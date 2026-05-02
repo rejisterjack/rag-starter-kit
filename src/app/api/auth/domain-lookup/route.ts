@@ -8,6 +8,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { lookupDomainCached } from '@/lib/auth/domain-routing';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +31,10 @@ export async function GET(request: NextRequest): Promise<Response> {
     const result = await lookupDomainCached(email);
 
     return NextResponse.json(result);
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to lookup domain', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json({ error: 'Failed to lookup domain' }, { status: 500 });
   }
 }

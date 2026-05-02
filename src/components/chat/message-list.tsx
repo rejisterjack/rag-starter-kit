@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { AgentThinkingIndicator } from './agent-thinking-indicator';
 import { type Message, MessageItem } from './message-item';
 import { StreamingMessage } from './streaming-message';
+import { type ToolCall, ToolResultRenderer } from './tool-result-renderer';
 
 interface MessageListProps {
   messages: Message[];
@@ -23,6 +25,10 @@ interface MessageListProps {
   onCancelStreaming?: () => void;
   onRegenerate?: () => void;
   onFeedback?: (messageId: string, rating: 'up' | 'down') => void;
+  isAgentMode?: boolean;
+  agentThinking?: boolean;
+  agentSteps?: Array<{ label: string; status: 'pending' | 'active' | 'done' | 'error' }>;
+  currentAgentTool?: string;
   className?: string;
 }
 
@@ -39,6 +45,10 @@ export function MessageList({
   onCancelStreaming,
   onRegenerate,
   onFeedback,
+  isAgentMode = false,
+  agentThinking = false,
+  agentSteps,
+  currentAgentTool,
   className,
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -120,18 +130,45 @@ export function MessageList({
           {/* Messages */}
           <AnimatePresence mode="popLayout">
             {messages.map((message, index) => (
-              <MessageItem
-                key={message.id}
-                message={message}
-                onEdit={onEditMessage}
-                onDelete={onDeleteMessage}
-                onCitationClick={onCitationClick}
-                isLastMessage={index === messages.length - 1}
-                isStreaming={isStreaming}
-                onRegenerate={onRegenerate}
-                onFeedback={onFeedback}
-              />
+              <div key={message.id}>
+                <MessageItem
+                  message={message}
+                  onEdit={onEditMessage}
+                  onDelete={onDeleteMessage}
+                  onCitationClick={onCitationClick}
+                  isLastMessage={index === messages.length - 1}
+                  isStreaming={isStreaming}
+                  onRegenerate={onRegenerate}
+                  onFeedback={onFeedback}
+                />
+                {/* Render tool call results inline for agent assistant messages */}
+                {isAgentMode && message.role === 'assistant' && (
+                  <div className="mx-4 mt-1 mb-2">
+                    <ToolResultRenderer
+                      content={message.content}
+                      toolCalls={(message as Message & { toolCalls?: ToolCall[] }).toolCalls}
+                    />
+                  </div>
+                )}
+              </div>
             ))}
+
+            {/* Agent thinking indicator (shown during agent mode streaming) */}
+            {isAgentMode && isStreaming && agentThinking && (
+              <motion.div
+                key="agent-thinking"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: 0.3 }}
+              >
+                <AgentThinkingIndicator
+                  isThinking={true}
+                  steps={agentSteps}
+                  currentTool={currentAgentTool}
+                />
+              </motion.div>
+            )}
 
             {/* Streaming message chunk with aria-live for accessibility */}
             {isStreaming && (

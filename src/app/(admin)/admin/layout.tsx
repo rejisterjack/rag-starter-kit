@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { AdminNav } from '@/components/admin/admin-nav';
+import { ErrorBoundary } from '@/components/error/error-boundary';
 import { requireAdmin } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export const metadata: Metadata = {
   title: 'Admin | RAG Starter Kit',
@@ -15,7 +17,10 @@ interface AdminLayoutProps {
 export default async function AdminLayout({ children }: AdminLayoutProps) {
   try {
     await requireAdmin();
-  } catch {
+  } catch (error: unknown) {
+    logger.warn('Admin access denied, redirecting', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     redirect('/');
   }
 
@@ -42,7 +47,9 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Main Content Area */}
         <main className="flex-1 min-h-screen overflow-y-auto">
-          <div className="container mx-auto p-8 lg:p-12 max-w-7xl">{children}</div>
+          <ErrorBoundary>
+            <div className="container mx-auto p-8 lg:p-12 max-w-7xl">{children}</div>
+          </ErrorBoundary>
         </main>
       </div>
     </div>

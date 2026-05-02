@@ -2,6 +2,7 @@ import DOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
 import { z } from 'zod';
 
+import { logger } from '@/lib/logger';
 import type { DocumentType } from '@/types';
 
 // Initialize DOMPurify for server-side sanitization
@@ -410,6 +411,25 @@ const ALLOWED_MIME_TYPES: Record<DocumentType, string[]> = {
   TXT: ['text/plain'],
   MD: ['text/plain', 'text/markdown'],
   HTML: ['text/html', 'application/xhtml+xml'],
+  AUDIO: [
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/wav',
+    'audio/x-wav',
+    'audio/wave',
+    'audio/webm',
+    'audio/ogg',
+    'audio/mp4',
+    'audio/x-m4a',
+  ],
+  VIDEO: [
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+    'video/x-msvideo',
+    'video/x-matroska',
+    'video/ogg',
+  ],
 };
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -509,6 +529,11 @@ export function validateFileBytes(
     return { valid: true };
   }
 
+  // Audio/video files — allow through (validated by MIME type check above)
+  if (expectedMime.startsWith('audio/') || expectedMime.startsWith('video/')) {
+    return { valid: true };
+  }
+
   const magic = MAGIC_BYTES[expectedMime];
   if (!magic) {
     // Unknown file type, reject for security
@@ -559,7 +584,10 @@ export function isValidUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('URL validation failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }
@@ -581,7 +609,10 @@ export function sanitizeUrl(url: string): string | null {
     parsed.password = '';
 
     return parsed.toString();
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('URL sanitization failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }

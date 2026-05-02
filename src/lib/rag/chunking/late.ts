@@ -7,6 +7,7 @@
  * Reference: https://arxiv.org/abs/2409.04701
  */
 
+import { logger } from '@/lib/logger';
 import { countTokens, estimateTokenCount } from './tokens';
 import type { Chunk, Chunker, ChunkingOptions } from './types';
 import { ChunkingError } from './types';
@@ -151,8 +152,11 @@ export class LateChunker implements Chunker {
         }
 
         allChunks.push(...sectionChunks);
-      } catch (_error) {
+      } catch (error: unknown) {
         // Fallback: create chunks without embeddings
+        logger.debug('Late chunking with embeddings failed, using fallback', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         const fallbackChunks = this.createFallbackChunks(
           section.content,
           allChunks.length,

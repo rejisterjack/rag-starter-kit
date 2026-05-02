@@ -85,9 +85,10 @@ async function loadPlaywright(): Promise<PlaywrightModule | null> {
     const pw = (await import('playwright')) as PlaywrightModule;
     playwrightInstance = pw as unknown as PlaywrightModule;
     return playwrightInstance;
-  } catch {
-    // Playwright not installed
-    logger.warn('Playwright not installed. URL scraping will use fetch fallback.');
+  } catch (error: unknown) {
+    logger.warn('Playwright not installed. URL scraping will use fetch fallback.', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }
@@ -107,7 +108,11 @@ export async function scrapeURL(url: string, options: URLScrapeOptions = {}): Pr
   let parsedUrl: URL;
   try {
     parsedUrl = new URL(url);
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('URL parsing failed', {
+      url,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     throw new URLScraperError(`Invalid URL: ${url}`);
   }
 
@@ -414,7 +419,10 @@ export async function checkRobotsTxt(origin: string): Promise<RobotsTxt> {
     }
 
     return { allowed, crawlDelay, sitemap: sitemaps };
-  } catch {
+  } catch (error: unknown) {
+    logger.warn('Failed to parse robots.txt, defaulting to allowed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return { allowed: true }; // Default to allowed on error
   }
 }

@@ -57,9 +57,7 @@ export function ShareDialog({ chatId, chatTitle, className }: ShareDialogProps) 
         setIsShared(false);
         setShareUrl('');
       }
-    } catch {
-      // Ignore errors
-    }
+    } catch (_error: unknown) {}
   };
 
   const handleOpen = async () => {
@@ -103,9 +101,7 @@ export function ShareDialog({ chatId, chatTitle, className }: ShareDialogProps) 
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Ignore copy errors
-    }
+    } catch (_error: unknown) {}
   };
 
   return (

@@ -85,8 +85,10 @@ export async function GET(req: NextRequest) {
     let stateData: { userId: string; workspaceId: string; nonce: string };
     try {
       stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
-    } catch {
-      logger.error('Failed to parse state parameter');
+    } catch (error: unknown) {
+      logger.error('Failed to parse state parameter', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.redirect(
         `${appUrl}/settings/integrations?error=${encodeURIComponent('Invalid state format')}`
       );

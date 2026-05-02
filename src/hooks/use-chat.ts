@@ -11,6 +11,14 @@ export interface UseChatOptions {
   onFinish?: (message: Message) => void;
 }
 
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface UseChatReturn {
   messages: Message[];
   input: string;
@@ -27,6 +35,7 @@ export interface UseChatReturn {
   editMessage: (id: string, newContent: string) => void;
   loadMore: () => Promise<void>;
   hasMore: boolean;
+  fetchConversations: (limit?: number) => Promise<ConversationSummary[]>;
 }
 
 export function useChat(options: UseChatOptions = {}): UseChatReturn {
@@ -201,9 +210,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
                 onFinish?.(assistantMessage);
               }
-            } catch {
-              // Ignore parsing errors for non-JSON lines
-            }
+            } catch (_error: unknown) {}
           }
         }
       } catch (err) {
@@ -272,6 +279,18 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     [messages, sendMessage]
   );
 
+  const fetchConversations = useCallback(async (limit = 50): Promise<ConversationSummary[]> => {
+    try {
+      const response = await fetch(`/api/v1/chats?limit=${limit}`);
+      if (!response.ok) throw new Error('Failed to fetch conversations');
+
+      const data = await response.json();
+      return data.data as ConversationSummary[];
+    } catch (_err) {
+      return [];
+    }
+  }, []);
+
   return {
     messages,
     input,
@@ -288,5 +307,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     editMessage,
     loadMore,
     hasMore,
+    fetchConversations,
   };
 }

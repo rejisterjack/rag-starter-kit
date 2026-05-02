@@ -90,9 +90,7 @@ export function OfflineMessageComposer({
           ? parsed.filter((m) => m.conversationId === conversationId)
           : parsed;
         setPendingMessages(relevant);
-      } catch {
-        // Invalid stored data
-      }
+      } catch (_error: unknown) {}
     }
   }, [conversationId]);
 
@@ -122,7 +120,7 @@ export function OfflineMessageComposer({
     for (const message of messagesToSend) {
       try {
         await onSend?.(message.content, { conversationId: message.conversationId });
-      } catch {
+      } catch (_error: unknown) {
         failedMessages.push(message);
       }
     }
@@ -187,7 +185,7 @@ export function OfflineMessageComposer({
       setIsSending(true);
       try {
         await onSend?.(messageContent, { conversationId });
-      } catch {
+      } catch (_error: unknown) {
         // If send fails, queue for retry
         queueMessage(messageContent);
       } finally {
@@ -212,7 +210,7 @@ export function OfflineMessageComposer({
     setIsSending(true);
     try {
       await onSend(message.content, { conversationId: message.conversationId });
-    } catch {
+    } catch (_error: unknown) {
       // Re-queue if failed
       setPendingMessages((prev) => [...prev, message]);
     } finally {

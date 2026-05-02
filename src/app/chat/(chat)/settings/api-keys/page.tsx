@@ -174,7 +174,7 @@ export default function ApiKeysSettingsPage(): React.ReactElement {
       });
       setIsEditModalOpen(false);
       setEditingKey(null);
-    } catch (_error) {
+    } catch (_error: unknown) {
       // Error is handled by the hook
     } finally {
       setIsSubmitting(false);
@@ -190,7 +190,7 @@ export default function ApiKeysSettingsPage(): React.ReactElement {
       await revokeKey(revokingKeyId);
       setIsRevokeDialogOpen(false);
       setRevokingKeyId(null);
-    } catch (_error) {
+    } catch (_error: unknown) {
       // Error is handled by the hook
     } finally {
       setIsSubmitting(false);
@@ -216,7 +216,7 @@ export default function ApiKeysSettingsPage(): React.ReactElement {
     try {
       await navigator.clipboard.writeText(text);
       toast.success('Copied to clipboard');
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to copy');
     }
   }, []);

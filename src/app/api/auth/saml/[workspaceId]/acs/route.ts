@@ -20,6 +20,7 @@ import {
   validateEmailDomain,
 } from '@/lib/auth/saml/provider';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { createDefaultWorkspace } from '@/lib/workspace/workspace';
 
 export const dynamic = 'force-dynamic';
@@ -139,8 +140,10 @@ export async function POST(
         if (decoded.returnUrl) {
           redirectUrl = decoded.returnUrl;
         }
-      } catch {
-        // Invalid relay state, use default
+      } catch (error: unknown) {
+        logger.debug('Invalid SAML relay state, using default redirect', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
       }
     }
 
@@ -283,7 +286,10 @@ async function findOrCreateUser(
       userId: user.id,
       isNewUser,
     };
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to provision SAML user', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return {
       success: false,
       error: 'Failed to provision user',

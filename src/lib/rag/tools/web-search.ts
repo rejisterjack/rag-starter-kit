@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 import type { Source } from '@/types';
 import { createErrorResult, createSuccessResult, createTool } from './types';
 
@@ -169,8 +170,11 @@ export class DuckDuckGoProvider implements WebSearchProvider {
       const results = this.parseDuckDuckGoResults(html);
 
       return results.slice(0, maxResults);
-    } catch (_error) {
+    } catch (error: unknown) {
       // Fallback to instant answers API if HTML parsing fails
+      logger.debug('DuckDuckGo HTML search failed, falling back to instant answers', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return this.fetchInstantAnswers(query, maxResults);
     }
   }
@@ -284,7 +288,10 @@ export class DuckDuckGoProvider implements WebSearchProvider {
       }
 
       return results;
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('DuckDuckGo instant answer search failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return [];
     }
   }

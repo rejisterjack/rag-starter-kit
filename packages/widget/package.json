@@ -1,0 +1,50 @@
+{
+  "name": "@rejisterjack/rag-widget",
+  "version": "0.1.0",
+  "description": "Embeddable RAG chat widget for rag-starter-kit",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./embed": {
+      "import": "./dist/embed.mjs",
+      "require": "./dist/embed.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
+  },
+  "license": "MIT",
+  "keywords": [
+    "rag",
+    "chat",
+    "widget",
+    "embeddable",
+    "ai",
+    "chatbot"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rejisterjack/rag-starter-kit",
+    "directory": "packages/widget"
+  }
+}

@@ -15,7 +15,8 @@
 
 import { NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { searchByImage, searchImagesByText, searchMultiModal } from '@/lib/rag/retrieval';
 import {
   addRateLimitHeaders,
@@ -31,14 +32,8 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
  * POST /api/search/image
  * Search for similar images by uploading an image file
  */
-export async function POST(req: Request) {
+export const POST = withApiAuth(async (req, session) => {
   try {
-    // Step 1: Authenticate
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
-    }
-
     const userId = session.user.id;
     const workspaceId = session.user.workspaceId;
 
@@ -70,7 +65,10 @@ export async function POST(req: Request) {
     let formData: FormData;
     try {
       formData = await req.formData();
-    } catch (_error) {
+    } catch (error: unknown) {
+      logger.debug('Failed to parse form data for image search', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { error: 'Invalid form data', code: 'INVALID_BODY' },
         { status: 400 }
@@ -133,7 +131,10 @@ export async function POST(req: Request) {
         // Validate URL
         try {
           new URL(imageUrl);
-        } catch {
+        } catch (error: unknown) {
+          logger.debug('Invalid image URL provided for image search', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
           return NextResponse.json(
             { error: 'Invalid image URL', code: 'INVALID_URL' },
             { status: 400 }
@@ -277,20 +278,14 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * GET /api/search/image?text=query&topK=5
  * Search images by text query
  */
-export async function GET(req: Request) {
+export const GET = withApiAuth(async (req, session) => {
   try {
-    // Step 1: Authenticate
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
-    }
-
     const userId = session.user.id;
     const workspaceId = session.user.workspaceId;
 
@@ -413,4 +408,4 @@ export async function GET(req: Request) {
       { status: 500 }
     );
   }
-}
+});

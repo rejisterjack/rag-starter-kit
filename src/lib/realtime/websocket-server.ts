@@ -9,6 +9,7 @@ import { type Socket, Server as SocketIOServer } from 'socket.io';
 // Rate limiter imported dynamically when needed
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { validateApiKey } from '@/lib/security/api-keys';
 
 import {
@@ -127,7 +128,10 @@ export class WebSocketServer {
         } as UserInfo;
 
         next();
-      } catch (_error) {
+      } catch (error: unknown) {
+        logger.debug('WebSocket authentication failed', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         next(new Error('Authentication failed'));
       }
     });
@@ -269,7 +273,11 @@ export class WebSocketServer {
               conversationId,
             },
           });
-        } catch (_error) {
+        } catch (error: unknown) {
+          logger.debug('Failed to join room', {
+            roomId,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
           socket.emit(SocketEvent.ERROR, {
             code: 'JOIN_FAILED',
             message: 'Failed to join room',

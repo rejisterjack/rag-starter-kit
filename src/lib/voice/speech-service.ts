@@ -214,7 +214,7 @@ export class SpeechService {
       this.interimBuffer = '';
       this.recognition.start();
       return true;
-    } catch (_error) {
+    } catch (_error: unknown) {
       return false;
     }
   }
@@ -227,7 +227,7 @@ export class SpeechService {
 
     try {
       this.recognition.stop();
-    } catch (_error) {}
+    } catch (_error: unknown) {}
   }
 
   /**
@@ -240,7 +240,7 @@ export class SpeechService {
       this.recognition.abort();
       this.isListening = false;
       this.stopAudioMeter();
-    } catch (_error) {}
+    } catch (_error: unknown) {}
   }
 
   private handleRecognitionResult(event: SpeechRecognitionEvent): void {
@@ -490,7 +490,7 @@ export class SpeechService {
       this.audioLevelInterval = setInterval(() => {
         this.updateAudioLevel();
       }, 50);
-    } catch (_error) {}
+    } catch (_error: unknown) {}
   }
 
   private stopAudioMeter(): void {
@@ -632,7 +632,7 @@ export class SpeechService {
       handlers.forEach((handler) => {
         try {
           handler(data);
-        } catch (_error) {}
+        } catch (_error: unknown) {}
       });
     }
   }

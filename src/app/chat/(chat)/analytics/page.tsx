@@ -80,7 +80,7 @@ export default function AnalyticsPage(): React.ReactElement {
         };
         setSummary(summary);
       }
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to load analytics data');
     } finally {
       setIsLoading(false);

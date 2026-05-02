@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { type CreateApiKeyInput, createApiKey, getWorkspaceApiKeys } from '@/lib/security/api-keys';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
@@ -8,16 +9,8 @@ import { checkPermission, Permission } from '@/lib/workspace/permissions';
  * GET /api/api-keys?workspaceId=xxx
  * Get all API keys for a workspace
  */
-export async function GET(req: Request) {
+export const GET = withApiAuth(async (req, session) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     // Get workspaceId from query params
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get('workspaceId');
@@ -62,33 +55,31 @@ export async function GET(req: Request) {
         })),
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to get API keys', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to get API keys' } },
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST /api/api-keys
  * Create a new API key
  */
-export async function POST(req: Request) {
+export const POST = withApiAuth(async (req, session) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     // Parse and validate body
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Failed to parse request body for API key creation', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
@@ -141,12 +132,15 @@ export async function POST(req: Request) {
       );
     }
 
+    logger.error('Failed to create API key', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to create API key' } },
       { status: 500 }
     );
   }
-}
+});
 
 // =============================================================================
 // Validation

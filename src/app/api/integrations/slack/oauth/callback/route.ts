@@ -193,7 +193,10 @@ function extractUserIdFromState(state: string): string | null {
       return parts[1];
     }
     return null;
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Failed to extract userId from state parameter', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { canManageWorkspace } from '@/lib/workspace/permissions';
 
 // Valid experiment types and statuses
@@ -129,7 +130,10 @@ export async function GET(req: Request) {
         hasPrevPage: page > 1,
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to get experiments', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to get experiments' } },
       { status: 500 }
@@ -155,7 +159,10 @@ export async function POST(req: Request) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in create experiment request', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }

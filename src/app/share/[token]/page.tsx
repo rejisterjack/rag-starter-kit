@@ -70,7 +70,7 @@ export default function SharedChatPage() {
         }
 
         setData(result.data);
-      } catch {
+      } catch (_error: unknown) {
         setError('Failed to load shared chat');
       } finally {
         setLoading(false);

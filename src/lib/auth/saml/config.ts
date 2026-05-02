@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 
 // =============================================================================
 // SAML Configuration Types
@@ -361,7 +362,10 @@ export function isValidCertificate(_cert: string): boolean {
     // const decoded = Buffer.from(cleanCert, 'base64');
     // return decoded.length > 0 && cleanCert.length > 100;
     return false;
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Certificate validation failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }
@@ -381,7 +385,10 @@ export function getCertificateExpiry(_cert: string): Date | null {
     // In a real implementation, you'd use a library like @peculiar/x509 or node-forge
     // For now, return null to indicate we need proper parsing
     return null;
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Certificate expiry extraction failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }

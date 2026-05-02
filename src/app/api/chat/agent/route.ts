@@ -10,11 +10,17 @@
  * - Agent analytics tracking
  */
 
-import { openai } from '@ai-sdk/openai';
+import { createOpenAI, openai } from '@ai-sdk/openai';
 import { openrouter } from '@openrouter/ai-sdk-provider';
 import { type LanguageModel, streamText } from 'ai';
 import { NextResponse } from 'next/server';
 import { createOllama } from 'ollama-ai-provider';
+
+const fireworks = createOpenAI({
+  baseURL: 'https://api.fireworks.ai/inference/v1',
+  apiKey: process.env.FIREWORKS_API_KEY,
+});
+
 import { createProviderFromEnv, type LLMMessage } from '@/lib/ai/llm';
 import { type AgentAnalytics, createAgentAnalytics } from '@/lib/analytics/agent-analytics';
 import { MetricType, recordMetric } from '@/lib/analytics/rag-metrics';
@@ -22,6 +28,7 @@ import { trackTokenUsage } from '@/lib/analytics/token-tracking';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import {
   type AgentMemory,
   createAgentMemory,
@@ -68,17 +75,22 @@ const REACT_THRESHOLD = 0.6;
 const agentAnalytics = createAgentAnalytics();
 
 function getModel(modelName: string): LanguageModel {
-  // Check if it's an OpenRouter model (contains '/' or ends with ':free')
+  // Fireworks models (accounts/fireworks/models/...)
+  if (modelName.startsWith('accounts/fireworks/')) {
+    return fireworks(modelName) as unknown as LanguageModel;
+  }
+
+  // OpenRouter models (contains '/' or ends with ':free')
   if (modelName.includes('/') || modelName.endsWith(':free')) {
     return openrouter.chat(modelName) as unknown as LanguageModel;
   }
 
-  // Check if it's an OpenAI model
+  // OpenAI models
   if (modelName.startsWith('gpt-') || modelName.startsWith('text-')) {
     return openai(modelName) as unknown as LanguageModel;
   }
 
-  // Check if it's an Ollama model
+  // Ollama models
   const ollamaModels = ['llama3', 'mistral', 'phi3', 'gemma2', 'codellama', 'qwen'];
   if (ollamaModels.some((m) => modelName.toLowerCase().startsWith(m))) {
     const ollama = createOllama({
@@ -173,7 +185,10 @@ export async function POST(req: Request) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in agent chat request', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
       return NextResponse.json(
         { error: 'Invalid JSON body', code: 'INVALID_BODY' },
         { status: 400 }
@@ -955,6 +970,8 @@ async function handleReAct(
     analytics,
   } = params;
 
+  const MAX_ITERATIONS = Math.min(agentConfig.maxIterations, 10); // hard cap at 10
+
   // Build tool list based on enabled tools
   const tools = [];
   if (agentConfig.enabledTools.includes('calculator')) tools.push(calculatorTool);
@@ -968,14 +985,16 @@ async function handleReAct(
     try {
       const webSearch = createWebSearchTool(getDefaultWebSearchProvider());
       tools.push(webSearch);
-    } catch {
-      // Web search not configured
+    } catch (error: unknown) {
+      logger.debug('Web search tool not configured, skipping', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
     }
   }
 
   const agent = createReActAgent(tools, {
     model: config.model,
-    maxSteps: agentConfig.maxIterations,
+    maxSteps: MAX_ITERATIONS,
     enableReflection: agentConfig.enableReflection,
     earlyTermination: agentConfig.earlyTermination,
   });
@@ -983,6 +1002,9 @@ async function handleReAct(
   // Handle streaming reasoning if requested
   if (shouldStreamReasoning) {
     const encoder = new TextEncoder();
+    let toolsUsedCount = 0;
+    let iterationsCount = 0;
+
     const stream = new ReadableStream({
       async start(controller) {
         try {
@@ -994,13 +1016,26 @@ async function handleReAct(
           });
 
           for await (const event of streamResult) {
+            if (event.type === 'action') {
+              toolsUsedCount++;
+            }
+            iterationsCount++;
             const data = JSON.stringify(event);
             controller.enqueue(encoder.encode(`data: ${data}\n\n`));
           }
 
           controller.close();
         } catch (error) {
-          controller.error(error);
+          // Log error but send it as a stream event so the client can recover
+          const errorEvent = JSON.stringify({
+            type: 'error',
+            data: {
+              message: error instanceof Error ? error.message : 'Unknown error',
+              partialResults: true,
+            },
+          });
+          controller.enqueue(encoder.encode(`data: ${errorEvent}\n\n`));
+          controller.close();
         }
       },
     });
@@ -1010,17 +1045,70 @@ async function handleReAct(
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         Connection: 'keep-alive',
+        'X-Agent-Tools-Used': String(toolsUsedCount),
+        'X-Agent-Iterations': String(iterationsCount),
       },
     });
   }
 
-  // Standard execution
-  const result = await agent.execute(userMessage, {
-    workspaceId: workspaceId ?? '',
-    userId,
-    memory: agentMemory,
-    enablePlanning: agentConfig.enablePlanning,
-  });
+  // Standard execution with error recovery
+  let result: Awaited<ReturnType<typeof agent.execute>> | undefined;
+  const toolNamesUsed: string[] = [];
+
+  try {
+    result = await agent.execute(userMessage, {
+      workspaceId: workspaceId ?? '',
+      userId,
+      memory: agentMemory,
+      enablePlanning: agentConfig.enablePlanning,
+    });
+
+    // Collect tool names from completed steps
+    for (const step of result.steps) {
+      if (step.action && step.action !== 'final_answer') {
+        toolNamesUsed.push(step.action);
+      }
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('ReAct agent execution failed, returning partial results', {
+      error: errorMessage,
+      userId,
+      workspaceId,
+    });
+
+    // Return a partial result so the client can still display something
+    const memory = new ConversationMemory(prisma);
+    const partialAnswer = `I encountered an issue while processing your request: ${errorMessage}. Please try again or rephrase your question.`;
+
+    if (effectiveConversationId) {
+      await memory.addMessage(effectiveConversationId, { role: 'user', content: userMessage });
+      await memory.addMessage(effectiveConversationId, {
+        role: 'assistant',
+        content: partialAnswer,
+      });
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        data: {
+          content: partialAnswer,
+          strategy: 'react',
+          error: errorMessage,
+          iterations: 0,
+          terminated: true,
+          terminationReason: `Agent execution error: ${errorMessage}`,
+        },
+      },
+      {
+        headers: {
+          'X-Agent-Tools-Used': '0',
+          'X-Agent-Iterations': '0',
+        },
+      }
+    );
+  }
 
   const memory = new ConversationMemory(prisma);
 
@@ -1068,7 +1156,7 @@ async function handleReAct(
     timestamp: new Date(),
   });
 
-  return NextResponse.json({
+  const jsonResponse = NextResponse.json({
     success: true,
     data: {
       content: result.answer,
@@ -1083,6 +1171,12 @@ async function handleReAct(
       usage: { totalTokens: result.tokensUsed },
     },
   });
+
+  // Include agent execution metadata in response headers
+  jsonResponse.headers.set('X-Agent-Tools-Used', toolNamesUsed.join(','));
+  jsonResponse.headers.set('X-Agent-Iterations', String(result.iterations));
+
+  return jsonResponse;
 }
 
 async function handleClarification(
@@ -1179,7 +1273,10 @@ export async function GET(req: Request) {
       { error: 'Invalid action', validActions: ['stats', 'quality', 'realtime'] },
       { status: 400 }
     );
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to retrieve agent analytics', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
     return NextResponse.json({ error: 'Failed to retrieve analytics' }, { status: 500 });
   }
 }

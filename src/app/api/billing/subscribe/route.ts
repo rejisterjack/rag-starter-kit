@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createCustomer, createSubscription, isStripeConfigured } from '@/lib/billing/stripe';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/billing/subscribe
@@ -66,7 +67,10 @@ export async function GET() {
         usage: subscription.usage,
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to get subscription', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to get subscription' } },
       { status: 500 }
@@ -197,7 +201,10 @@ export async function POST(req: Request) {
         },
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to create subscription', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to create subscription' } },
       { status: 500 }

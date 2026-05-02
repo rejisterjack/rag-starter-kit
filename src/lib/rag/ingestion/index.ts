@@ -113,6 +113,32 @@ export async function parsePPTXBuffer(buffer: Buffer): Promise<string> {
 }
 
 /**
+ * Parse audio buffer to text via Whisper transcription
+ */
+export async function parseAudio(
+  buffer: Buffer,
+  mimeType: string,
+  filename: string
+): Promise<string> {
+  const { parseAudio: _parseAudio } = await import('./parsers/audio');
+  const result = await _parseAudio(buffer, mimeType, filename);
+  return result.text;
+}
+
+/**
+ * Parse video buffer to text via Whisper transcription
+ */
+export async function parseVideo(
+  buffer: Buffer,
+  mimeType: string,
+  filename: string
+): Promise<string> {
+  const { parseVideo: _parseVideo } = await import('./parsers/video');
+  const result = await _parseVideo(buffer, mimeType, filename);
+  return result.text;
+}
+
+/**
  * Detect document type from filename
  */
 export function detectDocumentType(filename: string): DocumentType {
@@ -132,6 +158,18 @@ export function detectDocumentType(filename: string): DocumentType {
       return 'HTML';
     case 'md':
       return 'MD';
+    case 'mp3':
+    case 'wav':
+    case 'ogg':
+    case 'm4a':
+    case 'flac':
+      return 'AUDIO';
+    case 'mp4':
+    case 'webm':
+    case 'mov':
+    case 'avi':
+    case 'mkv':
+      return 'VIDEO';
     default:
       return 'TXT';
   }

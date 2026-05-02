@@ -338,7 +338,8 @@ export function isValidUrl(url: string, protocols?: string[]): boolean {
       return protocols.includes(parsed.protocol.slice(0, -1));
     }
     return true;
-  } catch {
+  } catch (_error: unknown) {
+    // URL parsing failed - not a valid URL
     return false;
   }
 }

@@ -6,6 +6,7 @@
  */
 
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import type { Source } from '@/types';
 
 // ============================================================================
@@ -103,7 +104,11 @@ export async function trackRAGMetrics(event: RAGEvent): Promise<void> {
         },
       },
     });
-  } catch (_error) {}
+  } catch (error: unknown) {
+    logger.error('Failed to track RAG metrics', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 }
 
 /**
@@ -374,7 +379,12 @@ export async function recordMetric({
         timestamp: new Date(),
       },
     });
-  } catch (_error) {}
+  } catch (error: unknown) {
+    logger.error('Failed to record metric', {
+      type,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 }
 
 // ============================================================================

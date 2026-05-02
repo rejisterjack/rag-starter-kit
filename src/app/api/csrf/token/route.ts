@@ -10,6 +10,7 @@
 
 import { createHmac } from 'node:crypto';
 import { type NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 /**
  * Get the CSRF signing secret
@@ -74,7 +75,10 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
     });
 
     return response;
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to generate CSRF token', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         error: 'Failed to generate CSRF token',
@@ -165,7 +169,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({
       valid: isValid,
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('CSRF token validation failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         valid: false,

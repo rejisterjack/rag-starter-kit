@@ -557,7 +557,7 @@ export function useUpload(options: UseUploadOptions = {}) {
           if (status === 'processing' || status === 'pending') {
             setTimeout(poll, 2000);
           }
-        } catch {
+        } catch (_error: unknown) {
           // Retry on error
           setTimeout(poll, 5000);
         }

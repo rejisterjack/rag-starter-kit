@@ -7,6 +7,7 @@
  * - Simple keyword overlap scoring (baseline)
  */
 
+import { logger } from '@/lib/logger';
 import type { RerankConfig, RetrievedChunk } from './types';
 
 /**
@@ -101,8 +102,11 @@ export class CohereReranker implements Reranker {
         }))
         .slice(0, this.topN);
       return rerankedChunks;
-    } catch (_error) {
+    } catch (error: unknown) {
       // Return original chunks sorted by original score
+      logger.debug('Cohere reranking failed, using original scores', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return chunks.sort((a, b) => b.score - a.score);
     }
   }

@@ -3,6 +3,8 @@
  * Extracts text, metadata, and page-level content from PDF documents
  */
 
+import { logger } from '@/lib/logger';
+
 // pdf-parse is imported dynamically below
 
 export interface PDFPage {
@@ -211,7 +213,10 @@ function parsePDFDate(dateString: string): Date | undefined {
 
     const date = new Date(Date.UTC(year, month, day, hour, minute, second));
     return new Date(date.getTime() - offset);
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('PDF date parsing failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return undefined;
   }
 }

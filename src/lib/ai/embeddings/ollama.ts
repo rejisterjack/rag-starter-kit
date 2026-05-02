@@ -6,6 +6,7 @@
  * Good for cost-sensitive deployments and privacy.
  */
 
+import { logger } from '@/lib/logger';
 import { RetryableError, withRetry } from '@/lib/utils/retry';
 import {
   type BatchEmbeddingResult,
@@ -256,7 +257,10 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
 
       // Check if our model is available
       return models.some((m) => m.name.includes(this.config.model));
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Ollama model availability check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return false;
     }
   }

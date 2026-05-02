@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { canManageMembers } from '@/lib/workspace/permissions';
 import { inviteMember } from '@/lib/workspace/workspace';
 
@@ -14,16 +15,8 @@ interface RouteParams {
  * Get all members of a workspace with pagination
  * Query params: page (default: 1), limit (default: 20, max: 100)
  */
-export async function GET(req: Request, { params }: RouteParams) {
+export const GET = withApiAuth(async (req, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const { workspaceId } = await params;
 
     // Check if user has access to workspace
@@ -93,28 +86,23 @@ export async function GET(req: Request, { params }: RouteParams) {
         hasPrevPage: page > 1,
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to get members', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to get members' } },
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST /api/workspaces/[workspaceId]/members
  * Invite a new member to the workspace
  */
-export async function POST(req: Request, { params }: RouteParams) {
+export const POST = withApiAuth(async (req, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const { workspaceId } = await params;
 
     // Check if user can manage members
@@ -130,7 +118,10 @@ export async function POST(req: Request, { params }: RouteParams) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Failed to parse request body for member invite', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
@@ -172,13 +163,16 @@ export async function POST(req: Request, { params }: RouteParams) {
       },
       { status: 201 }
     );
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to invite member', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to invite member' } },
       { status: 500 }
     );
   }
-}
+});
 
 // =============================================================================
 // Validation

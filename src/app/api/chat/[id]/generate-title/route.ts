@@ -8,7 +8,7 @@
 import { openrouter } from '@openrouter/ai-sdk-provider';
 import { generateText } from 'ai';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
@@ -21,14 +21,8 @@ interface RouteParams {
 /**
  * Generate a concise title from the first user message
  */
-export async function POST(_req: Request, { params }: RouteParams) {
+export const POST = withApiAuth(async (_req: Request, session, { params }: RouteParams) => {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
-    }
-
     const userId = session.user.id;
     const { id: chatId } = await params;
 
@@ -121,4 +115,4 @@ Message: "${firstMessage.content.slice(0, 500)}"`;
       { status: 500 }
     );
   }
-}
+});

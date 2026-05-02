@@ -14,6 +14,7 @@ import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth, signOut } from '@/lib/auth';
 import { SamlError } from '@/lib/auth/saml/config';
 import { getWorkspaceSamlConfig, processLogoutResponse } from '@/lib/auth/saml/provider';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,7 +94,10 @@ export async function GET(
     }
 
     return NextResponse.json({ error: 'No SAMLRequest or SAMLResponse found' }, { status: 400 });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('SAML SLO GET handler failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json({ error: 'Single logout failed' }, { status: 500 });
   }
 }
@@ -171,7 +175,10 @@ async function handleLogoutRequest(
         'Cache-Control': 'no-store',
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to process SAML logout request', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     throw new SamlError('Failed to process logout request', 'SLO_FAILED');
   }
 }

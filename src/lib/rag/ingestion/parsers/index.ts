@@ -20,6 +20,14 @@ export {
   type OCRResult,
   PageSegmentationMode,
 } from '../ocr-config';
+// Audio Parser
+export {
+  type AudioParserResult,
+  isAudioExtension,
+  isAudioMimeType,
+  parseAudio,
+  SUPPORTED_AUDIO_MIME_TYPES,
+} from './audio';
 // DOCX Parser
 export {
   convertToMarkdown,
@@ -117,6 +125,15 @@ export {
   type URLScrapeOptions,
   URLScraperError,
 } from './url';
+// Video Parser
+export {
+  isVideoExtension,
+  isVideoMimeType,
+  parseVideo,
+  SUPPORTED_VIDEO_MIME_TYPES,
+  VideoParserError,
+  type VideoParserResult,
+} from './video';
 // XLSX Parser
 export {
   convertToMarkdown as convertXLSXToMarkdown,
@@ -132,3 +149,14 @@ export {
   type XLSXRow,
   type XLSXSheet,
 } from './xlsx';
+// YouTube Transcript Parser
+export {
+  extractVideoId,
+  fetchTranscript,
+  fetchVideoMetadata,
+  isYouTubeUrl,
+  parseYouTube,
+  YouTubeParserError,
+  type YouTubeTranscriptResult,
+  type YouTubeVideoMetadata,
+} from './youtube';

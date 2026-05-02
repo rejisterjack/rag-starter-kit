@@ -302,7 +302,10 @@ export function withValidation<T>(schema: ZodSchema<T>): MiddlewareFunction {
 
       // Add validated data to context
       return { validatedData: result.data };
-    } catch {
+    } catch (error: unknown) {
+      logger.error('Failed to parse request body for validation', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         {
           error: {

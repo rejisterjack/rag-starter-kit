@@ -29,8 +29,10 @@ function observeWebVitals(): void {
         }
       });
       observer.observe({ entryTypes: ['measure', 'navigation'] });
-    } catch {
-      // Not supported
+    } catch (error: unknown) {
+      logger.debug('PerformanceObserver not supported', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 }
@@ -48,8 +50,10 @@ function observeLongTasks(): void {
       }
     });
     observer.observe({ entryTypes: ['longtask'] });
-  } catch {
-    // Not supported
+  } catch (error: unknown) {
+    logger.debug('Long task observer not supported', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 }
 

@@ -6,6 +6,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
+import { logger } from '@/lib/logger';
 import type { UserInfo } from '@/lib/realtime/types';
 
 // =============================================================================
@@ -31,7 +32,10 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
       success: true,
       config: socketConfig,
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to get socket configuration', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         success: false,
@@ -115,7 +119,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           { status: 400 }
         );
     }
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Socket POST handler failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         success: false,

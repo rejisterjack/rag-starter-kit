@@ -44,13 +44,20 @@ interface IPReputation {
   lastViolation: number;
 }
 
+interface PipelineChain {
+  zremrangebyscore(): PipelineChain;
+  zcard(): PipelineChain;
+  zadd(): PipelineChain;
+  pexpire(): PipelineChain;
+  exec(): Promise<unknown[]>;
+}
+
 /** Minimal Redis interface needed for rate limiting */
 interface RateLimitRedis {
   get(key: string): Promise<string | null>;
   set(key: string, value: string, ...args: unknown[]): Promise<unknown>;
   del(key: string): Promise<number>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  pipeline(): any;
+  pipeline(): PipelineChain;
 }
 
 // =============================================================================
@@ -200,7 +207,7 @@ export async function checkIPRateLimit(req: Request): Promise<IPRateLimitResult>
       requiresCaptcha: reputation.violationCount >= 3,
       isBlocked: false,
     };
-  } catch {
+  } catch (_error: unknown) {
     // Fail open
     return {
       allowed: true,

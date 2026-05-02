@@ -113,9 +113,7 @@ function getAnalyticsConsent(): ConsentSettings {
     if (stored) {
       return JSON.parse(stored) as ConsentSettings;
     }
-  } catch {
-    // Ignore localStorage errors
-  }
+  } catch (_error: unknown) {}
 
   // Default: allow analytics in production, disable in dev
   return {
@@ -144,9 +142,7 @@ export function updateAnalyticsConsent(consent: Partial<ConsentSettings>): void 
         posthog.opt_out_capturing();
       }
     }
-  } catch {
-    // Ignore localStorage errors
-  }
+  } catch (_error: unknown) {}
 }
 
 /**

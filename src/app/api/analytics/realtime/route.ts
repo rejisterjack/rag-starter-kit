@@ -8,7 +8,8 @@
 import { NextResponse } from 'next/server';
 import { getRealtimeMetrics } from '@/lib/analytics/dashboard-service';
 import { logAuditEvent } from '@/lib/audit/audit-logger';
-import { auth } from '@/lib/auth';
+import { auth, withApiAuth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { checkApiRateLimit, getRateLimitIdentifier } from '@/lib/security/rate-limiter';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
@@ -129,7 +130,10 @@ export async function GET(req: Request) {
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ type: 'initial', data: initialData })}\n\n`)
           );
-        } catch (_error) {
+        } catch (_error: unknown) {
+          logger.error('Failed to fetch initial realtime data', {
+            error: _error instanceof Error ? _error.message : 'Unknown error',
+          });
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({ type: 'error', error: 'Failed to fetch initial data' })}\n\n`
@@ -144,7 +148,10 @@ export async function GET(req: Request) {
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ type: 'update', data: metrics })}\n\n`)
             );
-          } catch (_error) {
+          } catch (_error: unknown) {
+            logger.error('Failed to fetch realtime metrics in SSE interval', {
+              error: _error instanceof Error ? _error.message : 'Unknown error',
+            });
             controller.enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({ type: 'error', error: 'Failed to fetch data' })}\n\n`
@@ -194,16 +201,10 @@ export async function GET(req: Request) {
 // Standard GET for non-SSE requests (polling fallback)
 // =============================================================================
 
-export async function POST(req: Request) {
+export const POST = withApiAuth(async (req, session) => {
   const startTime = Date.now();
 
   try {
-    // Step 1: Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
-    }
-
     const userId = session.user.id;
     const userWorkspaceId = session.user.workspaceId;
 
@@ -234,7 +235,10 @@ export async function POST(req: Request) {
     let body: { workspaceId?: string } = {};
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('No JSON body provided for realtime analytics request', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       // No body provided, continue with defaults
     }
 
@@ -301,7 +305,7 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+});
 
 // =============================================================================
 // OPTIONS Handler (CORS)

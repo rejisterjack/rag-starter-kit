@@ -9,6 +9,7 @@
  * - Get API key: https://aistudio.google.com/app/apikey
  */
 
+import { logger } from '@/lib/logger';
 import { createGoogleProvider, GOOGLE_MODELS, GoogleEmbeddingProvider } from './google';
 import { createOllamaProvider, OllamaEmbeddingProvider } from './ollama';
 import { createOpenAIProvider, OpenAIEmbeddingProvider } from './openai';
@@ -155,7 +156,11 @@ export async function createProviderWithFallback(
     if (await primaryProvider.healthCheck?.()) {
       return primaryProvider;
     }
-  } catch (_error) {}
+  } catch (error: unknown) {
+    logger.error('Primary embedding provider failed, using fallback', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 
   return createEmbeddingProvider(fallback);
 }

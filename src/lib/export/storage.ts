@@ -9,6 +9,8 @@ import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promi
 import { join } from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 
+import { logger } from '@/lib/logger';
+
 import type { StorageConfig, StoredFile } from './types';
 
 // =============================================================================
@@ -104,7 +106,11 @@ export class ExportStorage {
         default:
           return this.getLocalFileInfo(key);
       }
-    } catch {
+    } catch (error: unknown) {
+      logger.error('Failed to get file info', {
+        key,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return null;
     }
   }
@@ -122,7 +128,11 @@ export class ExportStorage {
         default:
           return this.deleteLocal(key);
       }
-    } catch {
+    } catch (error: unknown) {
+      logger.error('Failed to delete file', {
+        key,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return false;
     }
   }
@@ -160,7 +170,10 @@ export class ExportStorage {
         default:
           return this.cleanupLocalExpired();
       }
-    } catch (_error) {
+    } catch (error: unknown) {
+      logger.error('Failed to cleanup expired files', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       result.errors++;
       return result;
     }
@@ -250,7 +263,11 @@ export class ExportStorage {
       await unlink(filePath);
       await unlink(metadataPath).catch(() => {}); // Ignore metadata delete errors
       return true;
-    } catch {
+    } catch (error: unknown) {
+      logger.error('Failed to delete local file', {
+        key,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return false;
     }
   }
@@ -279,7 +296,11 @@ export class ExportStorage {
           await this.deleteLocal(key);
           result.deleted++;
         }
-      } catch (_error) {
+      } catch (error: unknown) {
+        logger.error('Failed to process expired file during cleanup', {
+          file,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         result.errors++;
       }
     }

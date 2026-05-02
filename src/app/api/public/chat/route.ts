@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { logger } from '@/lib/logger';
 import { generateRAGResponse } from '@/lib/rag/engine';
 import { validateApiKey } from '@/lib/security/api-keys';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
@@ -98,7 +99,10 @@ export async function POST(req: Request) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Failed to parse request body for public chat', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         {
           success: false,

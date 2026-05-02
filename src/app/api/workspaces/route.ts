@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { validateCreateWorkspaceInput } from '@/lib/security/input-validator';
 import { checkApiRateLimit, getRateLimitIdentifier } from '@/lib/security/rate-limiter';
 import { createWorkspace, getUserWorkspaces } from '@/lib/workspace/workspace';
@@ -10,16 +11,8 @@ import { createWorkspace, getUserWorkspaces } from '@/lib/workspace/workspace';
  * Get all workspaces for the current user with pagination
  * Query params: page (default: 1), limit (default: 20, max: 100)
  */
-export async function GET(req: Request) {
+export const GET = withApiAuth(async (req, session) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     // Parse pagination params
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
@@ -61,28 +54,23 @@ export async function GET(req: Request) {
         hasPrevPage: page > 1,
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to get workspaces', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to get workspaces' } },
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST /api/workspaces
  * Create a new workspace
  */
-export async function POST(req: Request) {
+export const POST = withApiAuth(async (req, session) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     // Check rate limit
     const rateLimitIdentifier = getRateLimitIdentifier(req, { userId: session.user.id });
     const rateLimitResult = await checkApiRateLimit(rateLimitIdentifier, 'workspace', {
@@ -101,7 +89,10 @@ export async function POST(req: Request) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in workspace creation', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
@@ -153,4 +144,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+});

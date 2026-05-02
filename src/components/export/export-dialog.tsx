@@ -90,7 +90,7 @@ export function ExportDialog({
 
       toast.success('Export completed successfully');
       onOpenChange(false);
-    } catch {
+    } catch (_error: unknown) {
       toast.error('Failed to export conversation');
     } finally {
       setIsExporting(false);

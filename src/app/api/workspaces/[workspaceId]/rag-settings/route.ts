@@ -4,11 +4,17 @@
  * PUT /api/workspaces/[workspaceId]/rag-settings - Update RAG settings
  */
 
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
+import { logger } from '@/lib/logger';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
+import { getWorkspaceResourceUsage } from '@/lib/workspace/resource-limits';
+
+interface RouteParams {
+  params: Promise<{ workspaceId: string }>;
+}
 
 const ragSettingsSchema = z.object({
   chunkSize: z.number().min(100).max(4000).default(1000),
@@ -21,18 +27,13 @@ const ragSettingsSchema = z.object({
   rerankingEnabled: z.boolean().default(false),
   hybridSearchEnabled: z.boolean().default(true),
   chunkingStrategy: z.enum(['fixed', 'semantic', 'hierarchical', 'late']).default('fixed'),
+  // Per-workspace LLM configuration
+  llmProvider: z.enum(['openrouter', 'openai', 'anthropic', 'ollama']).nullable().optional(),
+  llmModel: z.string().max(200).nullable().optional(),
 });
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string }> }
-): Promise<NextResponse> {
+export const GET = withApiAuth(async (_req, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { workspaceId } = await params;
 
     // Check permissions
@@ -49,7 +50,7 @@ export async function GET(
     // Get workspace settings
     const workspace = await prisma.workspace.findUnique({
       where: { id: workspaceId },
-      select: { settings: true },
+      select: { settings: true, llmProvider: true, llmModel: true },
     });
 
     if (!workspace) {
@@ -60,25 +61,26 @@ export async function GET(
     const settings = workspace.settings as Record<string, unknown> | null;
     const ragSettings = settings?.rag || {};
 
+    // Get current resource usage
+    const resourceUsage = await getWorkspaceResourceUsage(workspaceId);
+
     return NextResponse.json({
       success: true,
       settings: ragSettings,
+      llmProvider: workspace.llmProvider,
+      llmModel: workspace.llmModel,
+      resourceUsage,
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to fetch RAG settings', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
   }
-}
+});
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string }> }
-): Promise<NextResponse> {
+export const PUT = withApiAuth(async (req, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { workspaceId } = await params;
 
     // Check permissions
@@ -119,20 +121,45 @@ export async function PUT(
     const currentSettings = (workspace.settings as Record<string, unknown>) || {};
     const updatedSettings = {
       ...currentSettings,
-      rag: ragSettings,
+      rag: {
+        chunkSize: ragSettings.chunkSize,
+        chunkOverlap: ragSettings.chunkOverlap,
+        topK: ragSettings.topK,
+        similarityThreshold: ragSettings.similarityThreshold,
+        temperature: ragSettings.temperature,
+        maxTokens: ragSettings.maxTokens,
+        embeddingModel: ragSettings.embeddingModel,
+        rerankingEnabled: ragSettings.rerankingEnabled,
+        hybridSearchEnabled: ragSettings.hybridSearchEnabled,
+        chunkingStrategy: ragSettings.chunkingStrategy,
+      },
     };
+
+    // Build update data including LLM overrides if provided
+    const updateData: Record<string, unknown> = { settings: updatedSettings };
+    if (ragSettings.llmProvider !== undefined) {
+      updateData.llmProvider = ragSettings.llmProvider;
+    }
+    if (ragSettings.llmModel !== undefined) {
+      updateData.llmModel = ragSettings.llmModel;
+    }
 
     // Update workspace
     await prisma.workspace.update({
       where: { id: workspaceId },
-      data: { settings: updatedSettings },
+      data: updateData,
     });
 
     return NextResponse.json({
       success: true,
-      settings: ragSettings,
+      settings: updatedSettings.rag,
+      llmProvider: ragSettings.llmProvider ?? null,
+      llmModel: ragSettings.llmModel ?? null,
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to update RAG settings', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
   }
-}
+});

@@ -227,8 +227,10 @@ class UpstashRateLimiter implements RateLimiterBackend {
 
       this.ratelimit = Ratelimit;
       this.redis = redis;
-    } catch {
-      logger.warn('Upstash not configured, falling back to Redis/ioredis');
+    } catch (error: unknown) {
+      logger.warn('Upstash not configured, falling back to Redis/ioredis', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 
@@ -391,8 +393,10 @@ export function getRedisClient(): unknown | null {
         maxRetriesPerRequest: 3,
       });
     }
-  } catch {
-    // Redis not available
+  } catch (error: unknown) {
+    logger.warn('Redis connection failed for rate limiter', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
   return null;
 }
@@ -410,8 +414,10 @@ export const redis = (() => {
         url: process.env.UPSTASH_REDIS_REST_URL,
         token: process.env.UPSTASH_REDIS_REST_TOKEN,
       });
-    } catch {
-      // Fall through to ioredis
+    } catch (error: unknown) {
+      logger.debug('Upstash Redis client creation failed, falling back to ioredis', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 
@@ -423,8 +429,10 @@ export const redis = (() => {
         retryStrategy: (times: number) => Math.min(times * 50, 2000),
         maxRetriesPerRequest: 3,
       });
-    } catch {
-      // Fall through to mock
+    } catch (error: unknown) {
+      logger.debug('ioredis connection failed, falling back to mock', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 

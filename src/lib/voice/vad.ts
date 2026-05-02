@@ -184,7 +184,7 @@ export class VoiceActivityDetector {
       this.startProcessingLoop();
 
       return true;
-    } catch (_error) {
+    } catch (_error: unknown) {
       this.cleanup();
       return false;
     }
@@ -442,7 +442,7 @@ export class VoiceActivityDetector {
       handlers.forEach((handler) => {
         try {
           handler(data);
-        } catch (_error) {}
+        } catch (_error: unknown) {}
       });
     }
   }
@@ -451,7 +451,7 @@ export class VoiceActivityDetector {
     this.stateChangeListeners.forEach((handler) => {
       try {
         handler({ ...this.state });
-      } catch (_error) {}
+      } catch (_error: unknown) {}
     });
   }
 

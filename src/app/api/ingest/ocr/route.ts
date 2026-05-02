@@ -16,6 +16,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import {
   isValidImage,
   OCRConfigBuilder,
@@ -352,7 +353,10 @@ export async function GET(_req: NextRequest) {
     if (available) {
       try {
         version = await getOCRVersion();
-      } catch {
+      } catch (error: unknown) {
+        logger.debug('Failed to get OCR version', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         // Version info not critical
       }
     }
@@ -402,7 +406,10 @@ async function fetchImageFromURL(url: string): Promise<FetchedImage> {
   let validatedUrl: URL;
   try {
     validatedUrl = new URL(url);
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Invalid URL provided for OCR image fetch', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     throw new Error('Invalid URL provided');
   }
 

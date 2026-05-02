@@ -78,7 +78,10 @@ export function verifyWebhookSignature(
     }
 
     return sigBuf.equals(expectedBuf);
-  } catch {
+  } catch (error: unknown) {
+    logger.error('Failed to verify webhook signature', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }

@@ -4,6 +4,7 @@
  */
 
 // import { Readable } from 'stream';
+import { logger } from '@/lib/logger';
 
 export interface TextLine {
   lineNumber: number;
@@ -56,8 +57,11 @@ export function parseText(buffer: Buffer, options: TextParseOptions = {}): Parse
   let text: string;
   try {
     text = buffer.toString(encoding as BufferEncoding);
-  } catch (_error) {
+  } catch (error: unknown) {
     // Fallback to utf-8 with replacement characters
+    logger.debug('Text encoding conversion failed, falling back to utf-8', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     text = buffer.toString('utf-8');
   }
 
@@ -188,7 +192,8 @@ export async function* parseTextStream(
     let text: string;
     try {
       text = chunk.toString(encoding as BufferEncoding);
-    } catch {
+    } catch (_error: unknown) {
+      // Fallback to utf-8 encoding
       text = chunk.toString('utf-8');
     }
 

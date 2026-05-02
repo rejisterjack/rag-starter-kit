@@ -15,6 +15,7 @@ import {
   type OAuthProfile,
 } from '@/lib/auth/oauth/providers';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { createDefaultWorkspace } from '@/lib/workspace/workspace';
 
 export const dynamic = 'force-dynamic';
@@ -242,7 +243,10 @@ async function findOrCreateUser(
       userId: user.id,
       isNewUser,
     };
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to provision OAuth user', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return {
       success: false,
       error: 'Failed to provision user',

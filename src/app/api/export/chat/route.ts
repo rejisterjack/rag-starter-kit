@@ -7,8 +7,9 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 // ExportFormat type used via zod schema validation
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
 import { ExportServiceError, getExportService } from '@/lib/export';
+import { logger } from '@/lib/logger';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // =============================================================================
@@ -34,14 +35,8 @@ const exportRequestSchema = z.object({
 // POST Handler
 // =============================================================================
 
-export async function POST(req: Request) {
+export const POST = withApiAuth(async (req, session) => {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
-    }
-
     const userId = session.user.id;
     const workspaceId = session.user.workspaceId;
 
@@ -49,7 +44,10 @@ export async function POST(req: Request) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in export chat request', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { error: 'Invalid JSON body', code: 'INVALID_BODY' },
         { status: 400 }
@@ -149,20 +147,14 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+});
 
 // =============================================================================
 // GET Handler - Get export job status
 // =============================================================================
 
-export async function GET(req: Request) {
+export const GET = withApiAuth(async (req, session) => {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
-    }
-
     const userId = session.user.id;
 
     // Get job ID from query params
@@ -204,7 +196,10 @@ export async function GET(req: Request) {
         error: job.error,
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to get export job status', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         error: 'Internal server error',
@@ -213,20 +208,14 @@ export async function GET(req: Request) {
       { status: 500 }
     );
   }
-}
+});
 
 // =============================================================================
 // DELETE Handler - Cancel export job
 // =============================================================================
 
-export async function DELETE(req: Request) {
+export const DELETE = withApiAuth(async (req, session) => {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
-    }
-
     const userId = session.user.id;
 
     // Get job ID from query params
@@ -267,7 +256,10 @@ export async function DELETE(req: Request) {
       success: true,
       data: { message: 'Export cancelled' },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to cancel export job', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         error: 'Internal server error',
@@ -276,4 +268,4 @@ export async function DELETE(req: Request) {
       { status: 500 }
     );
   }
-}
+});

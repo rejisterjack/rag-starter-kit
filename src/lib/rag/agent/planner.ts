@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import { createProviderFromEnv } from '@/lib/ai/llm';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // Types
@@ -237,8 +238,11 @@ Respond with a JSON object matching this structure:
       this.validateDependencies(plan);
 
       return plan;
-    } catch (_error) {
+    } catch (error: unknown) {
       // Fallback: create a simple sequential plan
+      logger.debug('LLM plan creation failed, using fallback plan', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return this.createFallbackPlan(goal);
     }
   }

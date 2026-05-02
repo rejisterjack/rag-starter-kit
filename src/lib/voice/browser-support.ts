@@ -278,9 +278,7 @@ export function checkBrowserSupport(): BrowserSupportInfo {
       // Check grammar list support
       grammarList = 'SpeechGrammarList' in window || 'webkitSpeechGrammarList' in window;
     }
-  } catch {
-    // Features not supported
-  }
+  } catch (_error: unknown) {}
 
   // Determine recommended fallback
   let recommendedFallback: 'web-api' | 'whisper-api' | 'none' = 'none';
@@ -343,7 +341,7 @@ export async function requestMicrophonePermission(): Promise<boolean> {
       track.stop();
     }
     return true;
-  } catch (_error) {
+  } catch (_error: unknown) {
     return false;
   }
 }
@@ -359,7 +357,7 @@ export async function getMicrophonePermissionStatus(): Promise<PermissionState |
   try {
     const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
     return result.state;
-  } catch {
+  } catch (_error: unknown) {
     return 'prompt';
   }
 }

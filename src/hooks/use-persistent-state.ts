@@ -62,7 +62,10 @@ function decryptData(encrypted: string, key: string): string {
       .split('')
       .map((char, i) => String.fromCharCode(char.charCodeAt(0) ^ key.charCodeAt(i % key.length)))
       .join('');
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Failed to decrypt persistent state data', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     throw new Error('Failed to decrypt data');
   }
 }

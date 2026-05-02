@@ -6,6 +6,8 @@
 
 import type { Socket } from 'socket.io-client';
 
+import { logger } from '@/lib/logger';
+
 import type {
   ConnectionOptions,
   CursorPosition,
@@ -407,7 +409,12 @@ export class RealtimeService {
       handlers.forEach((handler) => {
         try {
           handler(data);
-        } catch (_error) {}
+        } catch (error: unknown) {
+          logger.debug('Event handler threw an error', {
+            event,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
       });
     }
   }

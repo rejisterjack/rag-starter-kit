@@ -7,6 +7,7 @@
  */
 
 import { OpenAIEmbeddings } from '@langchain/openai';
+import { logger } from '@/lib/logger';
 import { RetryableError, withRetry } from '@/lib/utils/retry';
 import {
   type BatchEmbeddingResult,
@@ -229,7 +230,10 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
     try {
       await this.embedQuery('health check');
       return true;
-    } catch {
+    } catch (error: unknown) {
+      logger.error('OpenAI embedding health check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return false;
     }
   }

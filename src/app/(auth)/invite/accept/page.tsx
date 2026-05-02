@@ -70,7 +70,7 @@ function InviteAcceptContent(): React.ReactElement {
         setStatus('error');
         setError(data.error || 'Invalid or expired invitation.');
       }
-    } catch {
+    } catch (_error: unknown) {
       setStatus('error');
       setError('Failed to validate invitation. Please try again.');
     }
@@ -115,7 +115,7 @@ function InviteAcceptContent(): React.ReactElement {
         setStatus('error');
         setError(data.error || 'Failed to accept invitation.');
       }
-    } catch {
+    } catch (_error: unknown) {
       setStatus('error');
       setError('An error occurred. Please try again.');
     }

@@ -4,6 +4,7 @@
  */
 
 import { createProviderFromEnv } from '@/lib/ai/llm';
+import { logger } from '@/lib/logger';
 
 export interface QueryDecompressionOptions {
   maxHistoryMessages?: number;
@@ -108,8 +109,11 @@ Rules:
         requiresContext: true,
         confidence,
       };
-    } catch (_error) {
+    } catch (error: unknown) {
       // Return original on failure
+      logger.debug('Query decompression failed, returning original query', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return {
         originalQuery: query,
         expandedQuery: query,

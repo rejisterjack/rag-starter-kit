@@ -9,6 +9,7 @@ export { useApiKeys } from './use-api-keys';
 export { useConversationBranch } from './use-conversation-branch';
 // CSRF hook
 export { fetchWithCsrf, getCsrfToken, useCsrf } from './use-csrf';
+export { useIntersectionObserver } from './use-intersection-observer';
 // PostHog analytics hooks
 export {
   useAnalyticsGroups,
@@ -28,3 +29,5 @@ export { usePWA } from './use-pwa';
 // Voice hooks
 export { useSpeechRecognition } from './use-speech-recognition';
 export { useTextToSpeech } from './use-text-to-speech';
+// Landing page hooks
+export { useTypewriter } from './use-typewriter';

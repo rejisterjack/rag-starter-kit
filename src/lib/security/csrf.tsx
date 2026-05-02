@@ -13,6 +13,7 @@
 
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { type NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 // =============================================================================
 // Configuration
@@ -91,7 +92,10 @@ function validateHmacToken(token: string, cookieValue: string, sessionId: string
 
     if (expectedBuffer.length !== providedBuffer.length) return false;
     return timingSafeEqual(expectedBuffer, providedBuffer);
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('CSRF token validation failed in timing-safe comparison', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }
@@ -186,7 +190,10 @@ export async function validateCsrfToken(req: NextRequest): Promise<boolean> {
     const isValid = validateHmacToken(token, cookie.value, sessionId);
 
     return isValid;
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.debug('CSRF token verification failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }

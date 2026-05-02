@@ -73,7 +73,7 @@ export function SettingsPanel({
       if (!response.ok) {
         throw new Error('Failed to update workspace');
       }
-    } catch (_error) {
+    } catch (_error: unknown) {
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +93,7 @@ export function SettingsPanel({
       if (!response.ok) {
         throw new Error('Failed to update RAG settings');
       }
-    } catch (_error) {
+    } catch (_error: unknown) {
     } finally {
       setIsLoading(false);
     }

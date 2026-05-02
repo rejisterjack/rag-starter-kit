@@ -237,9 +237,7 @@ export class WakeWordDetector {
         this.recognition.stop();
         this.state.isListening = false;
         this.emitStateChange();
-      } catch {
-        // Ignore errors when stopping
-      }
+      } catch (_error: unknown) {}
     }
   }
 
@@ -397,7 +395,7 @@ export class WakeWordDetector {
         track.stop();
       }
       return true;
-    } catch (_error) {
+    } catch (_error: unknown) {
       return false;
     }
   }
@@ -454,9 +452,7 @@ export class WakeWordDetector {
           if (this.state.isListening && this.recognition) {
             try {
               this.recognition.start();
-            } catch {
-              // Ignore restart errors
-            }
+            } catch (_error: unknown) {}
           }
         }, 100);
       } else if (!this.options.continuous) {
@@ -502,7 +498,7 @@ export class WakeWordDetector {
       grammar.addFromString(grammarString, 1.0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (this.recognition as unknown as { grammars: unknown }).grammars = grammar;
-    } catch (_error) {}
+    } catch (_error: unknown) {}
   }
 
   private handleRecognitionResult(event: globalThis.SpeechRecognitionEvent): void {
@@ -611,7 +607,7 @@ export class WakeWordDetector {
       handlers.forEach((handler) => {
         try {
           handler(data);
-        } catch (_error) {}
+        } catch (_error: unknown) {}
       });
     }
   }
@@ -620,7 +616,7 @@ export class WakeWordDetector {
     this.stateChangeListeners.forEach((handler) => {
       try {
         handler({ ...this.state });
-      } catch (_error) {}
+      } catch (_error: unknown) {}
     });
   }
 
@@ -638,9 +634,7 @@ export class WakeWordDetector {
     if (this.recognition) {
       try {
         this.recognition.stop();
-      } catch {
-        // Ignore errors when stopping
-      }
+      } catch (_error: unknown) {}
       this.recognition = null;
     }
   }

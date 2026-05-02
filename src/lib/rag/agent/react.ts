@@ -11,6 +11,7 @@
  */
 
 import { createProviderFromEnv } from '@/lib/ai/llm';
+import { logger } from '@/lib/logger';
 import type { Message, Source } from '@/types';
 import type { Tool } from '../tools/types';
 import type { AgentMemory } from './memory';
@@ -522,8 +523,11 @@ export class ReActAgent {
       if (actionInputMatch) {
         try {
           actionInput = JSON.parse(actionInputMatch[1]);
-        } catch {
+        } catch (error: unknown) {
           // Try to parse as plain string
+          logger.debug('Failed to parse action input as JSON, using as plain string', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
           actionInput = { query: actionInputMatch[1].trim() };
         }
       }

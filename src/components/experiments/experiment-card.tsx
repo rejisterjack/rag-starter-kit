@@ -94,7 +94,7 @@ export function ExperimentCard({
     setIsLoading(true);
     try {
       await action();
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Action failed');
     } finally {
       setIsLoading(false);

@@ -125,7 +125,10 @@ export async function POST(req: Request) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in chat request', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
       return NextResponse.json(
         { error: 'Invalid JSON body', code: 'INVALID_BODY' },
         { status: 400 }
@@ -442,7 +445,10 @@ export async function PUT(req: Request) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in chat title generation', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
       return NextResponse.json(
         { error: 'Invalid JSON body', code: 'INVALID_BODY' },
         { status: 400 }
@@ -657,7 +663,10 @@ export async function PATCH(req: Request) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in chat update', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
       return NextResponse.json(
         { error: 'Invalid JSON body', code: 'INVALID_BODY' },
         { status: 400 }

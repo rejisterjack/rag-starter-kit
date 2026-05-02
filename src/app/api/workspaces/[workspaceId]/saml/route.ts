@@ -14,7 +14,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
 import {
   getSamlUrls,
   parseIdPMetadata,
@@ -27,24 +27,21 @@ import {
   upsertSamlConfig,
 } from '@/lib/auth/saml/provider';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { assertSafeUrl } from '@/lib/security/ssrf-protection';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
+
+interface RouteParams {
+  params: Promise<{ workspaceId: string }>;
+}
 
 // =============================================================================
 // GET - Retrieve SAML configuration
 // =============================================================================
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string }> }
-): Promise<Response> {
+export const GET = withApiAuth(async (_request, session, { params }: RouteParams) => {
   try {
     const { workspaceId } = await params;
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
 
     // Check permission to view settings
     const hasPermission = await checkPermission(
@@ -85,10 +82,13 @@ export async function GET(
       // Include certificate fingerprint for verification
       certificateFingerprint: generateCertFingerprint(config.certificate),
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to retrieve SAML configuration', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json({ error: 'Failed to retrieve SAML configuration' }, { status: 500 });
   }
-}
+});
 
 // =============================================================================
 // POST - Create or update SAML configuration
@@ -114,17 +114,9 @@ const CreateSamlConfigSchema = SamlConfigSchema.extend({
   }
 );
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string }> }
-): Promise<Response> {
+export const POST = withApiAuth(async (request, session, { params }: RouteParams) => {
   try {
     const { workspaceId } = await params;
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
 
     // Check admin permission
     const hasPermission = await checkPermission(
@@ -263,23 +255,15 @@ export async function POST(
 
     return NextResponse.json({ error: 'Failed to create SAML configuration' }, { status: 500 });
   }
-}
+});
 
 // =============================================================================
 // PUT - Update SAML configuration
 // =============================================================================
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string }> }
-): Promise<Response> {
+export const PUT = withApiAuth(async (request, session, { params }: RouteParams) => {
   try {
     const { workspaceId } = await params;
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
 
     const hasPermission = await checkPermission(
       session.user.id,
@@ -365,26 +349,21 @@ export async function PUT(
         active: updated.active,
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to update SAML configuration', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json({ error: 'Failed to update SAML configuration' }, { status: 500 });
   }
-}
+});
 
 // =============================================================================
 // DELETE - Remove SAML configuration
 // =============================================================================
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string }> }
-): Promise<Response> {
+export const DELETE = withApiAuth(async (_request, session, { params }: RouteParams) => {
   try {
     const { workspaceId } = await params;
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
 
     const hasPermission = await checkPermission(
       session.user.id,
@@ -423,10 +402,13 @@ export async function DELETE(
       success: true,
       message: 'SAML configuration removed',
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to delete SAML configuration', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json({ error: 'Failed to delete SAML configuration' }, { status: 500 });
   }
-}
+});
 
 // =============================================================================
 // Utilities
@@ -459,7 +441,10 @@ function generateCertFingerprint(cert: string): string {
 
     // Format as colon-separated hex
     return hash.digest('hex').toUpperCase().match(/.{2}/g)?.join(':') || '';
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Failed to generate certificate fingerprint', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return '';
   }
 }

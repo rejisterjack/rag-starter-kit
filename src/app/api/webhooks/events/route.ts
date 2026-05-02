@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { getAvailableWebhookEvents } from '@/lib/webhooks/delivery';
 
 /**
@@ -25,7 +26,10 @@ export async function GET() {
         events,
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to get webhook events', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to get webhook events' } },
       { status: 500 }

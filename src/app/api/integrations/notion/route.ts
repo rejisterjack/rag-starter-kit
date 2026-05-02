@@ -194,7 +194,10 @@ export async function POST(req: NextRequest) {
     let body: { pageId?: string; workspaceId?: string };
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Failed to parse request body for Notion page import', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { success: false, error: { code: 'INVALID_JSON', message: 'Invalid JSON body' } },
         { status: 400 }

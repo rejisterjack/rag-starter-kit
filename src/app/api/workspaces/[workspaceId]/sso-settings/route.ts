@@ -12,6 +12,7 @@ import { auth } from '@/lib/auth';
 import { invalidateDomainCache } from '@/lib/auth/domain-routing';
 import { WorkspaceSSOSettingsSchema } from '@/lib/auth/saml/config';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // =============================================================================
@@ -63,7 +64,10 @@ export async function GET(
       allowAccountLinking: settings.allowAccountLinking !== false,
       sessionDuration: (settings.sessionDuration as number) || 8,
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to retrieve SSO settings', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json({ error: 'Failed to retrieve SSO settings' }, { status: 500 });
   }
 }

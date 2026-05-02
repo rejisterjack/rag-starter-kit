@@ -58,6 +58,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getServerSession } from '@/lib/auth/session';
+import { logger } from '@/lib/logger';
 import { generateQueryEmbedding, searchSimilarChunks } from '@/lib/rag/retrieval';
 import type { RAGConfig } from '@/types';
 
@@ -125,7 +126,10 @@ export async function POST(request: NextRequest) {
         threshold: config.similarityThreshold,
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to perform search', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'SEARCH_ERROR', message: 'Failed to perform search' } },
       { status: 500 }

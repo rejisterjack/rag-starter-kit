@@ -4,6 +4,7 @@
  */
 
 import type { ComponentType } from 'react';
+import { logger } from '@/lib/logger';
 
 // Plugin hook handler types
 type ChatBeforeSendHandler = (message: string) => Promise<string> | string;
@@ -236,7 +237,11 @@ export class PluginManager {
         } else {
           result = await (handler as (arg: unknown) => unknown)(result);
         }
-      } catch (_error) {}
+      } catch (error: unknown) {
+        logger.debug('Plugin hook handler failed', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
     }
 
     return result as T;

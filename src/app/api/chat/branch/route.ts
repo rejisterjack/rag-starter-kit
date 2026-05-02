@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import {
   type EditMessageResult,
   editMessage,
@@ -43,7 +44,10 @@ export async function POST(req: Request) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in branch creation request', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
       return NextResponse.json(
         { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
@@ -232,7 +236,10 @@ export async function PATCH(req: Request) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in message edit request', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
       return NextResponse.json(
         { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
@@ -356,7 +363,10 @@ export async function PUT(req: Request) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in branch rename request', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
       return NextResponse.json(
         { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }

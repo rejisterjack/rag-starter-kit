@@ -386,8 +386,11 @@ export function decryptFields<T extends Record<string, unknown>>(
         if (encrypted.ciphertext && encrypted.iv && encrypted.authTag) {
           (result as Record<string, unknown>)[field] = decryptField(encrypted, entityId);
         }
-      } catch {
-        // Not an encrypted field, keep original value
+      } catch (error: unknown) {
+        logger.debug('Field is not encrypted, keeping original value', {
+          field,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
       }
     }
   }
@@ -493,7 +496,10 @@ export function isEncrypted(value: unknown): boolean {
       parsed.authTag &&
       typeof parsed.version === 'number'
     );
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Value is not an encrypted field', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }

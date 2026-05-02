@@ -5,6 +5,7 @@
 
 import { generateText, streamText } from 'ai';
 import { ollama } from 'ollama-ai-provider';
+import { logger } from '@/lib/logger';
 import {
   LLMError,
   type LLMMessage,
@@ -136,7 +137,10 @@ export class OllamaProvider implements LLMProvider {
         headers: { 'Content-Type': 'application/json' },
       });
       return response.ok;
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Ollama availability check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return false;
     }
   }

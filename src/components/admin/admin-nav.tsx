@@ -1,6 +1,15 @@
 'use client';
 
-import { BarChart3, LayoutDashboard, Shield, Users } from 'lucide-react';
+import {
+  BarChart3,
+  Building2,
+  FileText,
+  FlaskConical,
+  LayoutDashboard,
+  Shield,
+  Users,
+  Zap,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -18,6 +27,16 @@ const navItems: NavItem[] = [
     icon: <LayoutDashboard className="h-5 w-5" />,
   },
   {
+    href: '/admin/documents',
+    label: 'Documents',
+    icon: <FileText className="h-5 w-5" />,
+  },
+  {
+    href: '/admin/jobs',
+    label: 'Jobs',
+    icon: <Zap className="h-5 w-5" />,
+  },
+  {
     href: '/admin/audit-logs',
     label: 'Audit Logs',
     icon: <BarChart3 className="h-5 w-5" />,
@@ -26,6 +45,16 @@ const navItems: NavItem[] = [
     href: '/admin/sso',
     label: 'SSO Management',
     icon: <Shield className="h-5 w-5" />,
+  },
+  {
+    href: '/admin/evaluation',
+    label: 'Evaluation',
+    icon: <FlaskConical className="h-5 w-5" />,
+  },
+  {
+    href: '/admin/workspaces',
+    label: 'Workspaces',
+    icon: <Building2 className="h-5 w-5" />,
   },
 ];
 

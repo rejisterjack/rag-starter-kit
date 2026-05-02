@@ -182,7 +182,10 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
     try {
       await this.embedQuery('test');
       return true;
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Google embedding health check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return false;
     }
   }

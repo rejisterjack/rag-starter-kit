@@ -298,8 +298,10 @@ async function getIPReputation(ip: string): Promise<IPReputation> {
     if (data) {
       return JSON.parse(data);
     }
-  } catch {
-    // Ignore parse errors
+  } catch (error: unknown) {
+    logger.debug('Failed to parse IP reputation data', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 
   return {
@@ -408,7 +410,10 @@ export async function verifyCaptchaChallenge(
     }
 
     return isCorrect;
-  } catch {
+  } catch (error: unknown) {
+    logger.warn('CAPTCHA verification failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }

@@ -12,11 +12,17 @@
  *           type: integer
  *           default: 20
  *           maximum: 100
- *       - name: offset
+ *       - name: cursor
  *         in: query
  *         schema:
- *           type: integer
- *           default: 0
+ *           type: string
+ *           description: Cursor for next/previous page
+ *       - name: direction
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [forward, backward]
+ *           default: forward
  *       - name: status
  *         in: query
  *         schema:
@@ -25,21 +31,6 @@
  *     responses:
  *       200:
  *         description: List of documents
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Document'
- *                 pagination:
- *                   type: object
- *                   properties:
- *                     total: { type: integer }
- *                     limit: { type: integer }
- *                     offset: { type: integer }
  *       401:
  *         description: Unauthorized
  */
@@ -49,10 +40,17 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getServerSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db';
+import {
+  buildCursorQuery,
+  buildPaginationResult,
+  createPaginationHeaders,
+  parsePaginationParams,
+  validatePaginationParams,
+} from '@/lib/db/cursor-pagination';
 
 /**
  * GET /api/v1/documents
- * List documents with pagination and filtering
+ * List documents with cursor-based pagination and filtering
  */
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -63,7 +61,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Get workspace from API key or query param
   const workspace = await getServerSession();
   if (!workspace) {
     return NextResponse.json(
@@ -73,45 +70,66 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
-  const offset = parseInt(searchParams.get('offset') || '0', 10);
+  const paginationParams = parsePaginationParams(searchParams);
+  const validation = validatePaginationParams(paginationParams);
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: { code: 'BAD_REQUEST', message: validation.error } },
+      { status: 400 }
+    );
+  }
+
   const status = searchParams.get('status') as DocumentStatus | undefined;
+  const {
+    takeCount,
+    where: cursorWhere,
+    orderBy,
+  } = buildCursorQuery<{ id: string; updatedAt: Date }>(paginationParams, {
+    cursorField: 'updatedAt',
+  });
 
   const where = {
     workspaceId: workspace.id,
     ...(status && { status: status as DocumentStatus }),
+    ...cursorWhere,
   };
 
   const [documents, total] = await Promise.all([
     prisma.document.findMany({
       where,
-      orderBy: { updatedAt: 'desc' },
-      take: limit,
-      skip: offset,
+      orderBy,
+      take: takeCount,
       select: {
         id: true,
         name: true,
         contentType: true,
         status: true,
         size: true,
-        createdAt: true,
         updatedAt: true,
+        createdAt: true,
         metadata: true,
       },
     }),
-    prisma.document.count({ where }),
+    prisma.document.count({
+      where: { workspaceId: workspace.id, ...(status && { status: status as DocumentStatus }) },
+    }),
   ]);
 
-  return NextResponse.json({
-    data: documents.map((doc) => ({
-      ...doc,
-      size: Number(doc.size),
-    })),
-    pagination: {
-      total,
-      limit,
-      offset,
-      hasMore: offset + limit < total,
-    },
+  const result = buildPaginationResult(documents, paginationParams, {
+    cursorField: 'updatedAt',
+    totalCount: total,
   });
+
+  const headers = createPaginationHeaders(result);
+  return NextResponse.json(
+    {
+      data: result.items.map((doc) => ({
+        ...doc,
+        size: Number(doc.size),
+      })),
+      pagination: result.pagination,
+    },
+    { headers }
+  );
 }

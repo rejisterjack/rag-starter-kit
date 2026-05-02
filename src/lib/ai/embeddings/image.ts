@@ -13,6 +13,7 @@
 
 import { createHash } from 'node:crypto';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 // CLIP model configuration
 const CLIP_MODEL = 'Xenova/clip-vit-base-patch32';
@@ -47,7 +48,10 @@ async function loadCLIPModel() {
       AutoProcessor as unknown as { from_pretrained: (model: string) => Promise<unknown> }
     ).from_pretrained(CLIP_MODEL);
     return { model: clipModel, processor: clipProcessor };
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to load CLIP model for image embeddings', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     throw new Error('Failed to load CLIP model for image embeddings');
   }
 }
@@ -90,7 +94,11 @@ async function getCachedEmbedding(cacheKey: string): Promise<number[] | null> {
       embeddingCache.set(cacheKey, { embedding, timestamp: Date.now() });
       return embedding;
     }
-  } catch (_error) {}
+  } catch (error: unknown) {
+    logger.error('Failed to get cached embedding from database', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 
   return null;
 }
@@ -204,7 +212,10 @@ export async function generateImageEmbeddings(
       batch.map(async (buffer) => {
         try {
           return await generateImageEmbedding(buffer);
-        } catch (_error) {
+        } catch (error: unknown) {
+          logger.error('Failed to generate image embedding in batch', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
           return null;
         }
       })
@@ -313,7 +324,10 @@ export async function healthCheck(): Promise<boolean> {
   try {
     await loadCLIPModel();
     return true;
-  } catch {
+  } catch (error: unknown) {
+    logger.error('Image embedding health check failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }

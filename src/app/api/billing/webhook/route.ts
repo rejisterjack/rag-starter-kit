@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { constructWebhookEvent, stripe } from '@/lib/billing/stripe';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: Request) {
   try {
@@ -143,7 +144,10 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ received: true });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Stripe webhook processing failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
   }
 }

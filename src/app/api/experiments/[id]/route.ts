@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { canManageWorkspace } from '@/lib/workspace/permissions';
 
 interface ExperimentVariant {
@@ -88,7 +89,10 @@ export async function GET(_req: Request, { params }: RouteParams) {
         },
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to get experiment', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to get experiment' } },
       { status: 500 }
@@ -144,7 +148,10 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in update experiment request', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
@@ -211,7 +218,10 @@ export async function PATCH(req: Request, { params }: RouteParams) {
         },
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to update experiment', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to update experiment' } },
       { status: 500 }
@@ -264,7 +274,10 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       success: true,
       data: { message: 'Experiment deleted successfully' },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to delete experiment', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to delete experiment' } },
       { status: 500 }

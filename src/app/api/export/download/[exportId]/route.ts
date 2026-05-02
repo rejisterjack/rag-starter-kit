@@ -5,8 +5,9 @@
 
 import { NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
 import { formatFileSize, getExportService, getExportStorage } from '@/lib/export';
+import { logger } from '@/lib/logger';
 
 // =============================================================================
 // Route Parameters
@@ -20,14 +21,8 @@ interface RouteParams {
 // GET Handler
 // =============================================================================
 
-export async function GET(_req: Request, { params }: RouteParams) {
+export const GET = withApiAuth(async (_req: Request, session, { params }: RouteParams) => {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
-    }
-
     const userId = session.user.id;
     const { exportId } = await params;
 
@@ -128,20 +123,14 @@ export async function GET(_req: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});
 
 // =============================================================================
 // HEAD Handler - Check export availability without downloading
 // =============================================================================
 
-export async function HEAD(_req: Request, { params }: RouteParams) {
+export const HEAD = withApiAuth(async (_req: Request, session, { params }: RouteParams) => {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
-      return new NextResponse(null, { status: 401 });
-    }
-
     const userId = session.user.id;
     const { exportId } = await params;
 
@@ -183,7 +172,10 @@ export async function HEAD(_req: Request, { params }: RouteParams) {
     headers.set('X-Format', job.format);
 
     return new NextResponse(null, { headers });
-  } catch {
+  } catch (error: unknown) {
+    logger.error('Failed to check export availability', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return new NextResponse(null, { status: 500 });
   }
-}
+});

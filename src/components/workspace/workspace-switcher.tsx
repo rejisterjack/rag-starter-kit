@@ -52,9 +52,7 @@ export function WorkspaceSwitcher({
         router.refresh();
         setIsOpen(false);
       }
-    } catch (_error) {
-      // Failed to switch workspace - error is intentionally ignored
-    }
+    } catch (_error: unknown) {}
   };
 
   const handleCreateWorkspace = () => {

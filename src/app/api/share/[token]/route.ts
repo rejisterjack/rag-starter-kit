@@ -137,8 +137,10 @@ export async function GET(
         },
       },
     });
-  } catch (_error) {
-    logger.error('Failed to get shared chat');
+  } catch (error: unknown) {
+    logger.error('Failed to get shared chat', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
 
     return NextResponse.json(
       { error: 'Failed to get shared chat', code: 'INTERNAL_ERROR' },

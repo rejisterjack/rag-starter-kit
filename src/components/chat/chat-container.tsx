@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, Moon, PanelLeft, Plus, Settings, Sun } from 'lucide-react';
+import { History, Menu, Moon, PanelLeft, Plus, Settings, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type React from 'react';
 import { useCallback, useState } from 'react';
@@ -19,6 +19,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { Source } from './citations';
+import { ConversationHistoryPanel } from './conversation-history-panel';
 import { EmptyState } from './empty-state';
 import { MessageInput } from './message-input';
 import type { Message } from './message-item';
@@ -46,6 +47,8 @@ interface ChatContainerProps {
   onAgentModeToggle?: (enabled: boolean) => void;
   onRegenerate?: () => void;
   onFeedback?: (messageId: string, rating: 'up' | 'down') => void;
+  onSelectConversation?: (chatId: string) => void;
+  onDeleteConversation?: (chatId: string) => void;
   hasMore?: boolean;
   isLoading?: boolean;
   sidebar?: React.ReactNode;
@@ -71,6 +74,8 @@ export function ChatContainer({
   onAgentModeToggle,
   onRegenerate,
   onFeedback,
+  onSelectConversation,
+  onDeleteConversation,
   hasMore = false,
   isLoading = false,
   sidebar,
@@ -81,6 +86,7 @@ export function ChatContainer({
   const [isSourcesInlineCollapsed, setIsSourcesInlineCollapsed] = useState(true);
   const [, setSelectedSource] = useState<Source | null>(null);
   const [isAgentMode, setIsAgentMode] = useState(agentMode);
+  const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(false);
 
   const handleAgentModeToggle = useCallback(
     (enabled: boolean) => {
@@ -157,6 +163,23 @@ export function ChatContainer({
           </div>
 
           <div className="flex items-center gap-3">
+            {/* History button */}
+            <TooltipProvider delayDuration={0}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  'rounded-full h-8 w-8 transition-colors',
+                  isHistoryPanelOpen
+                    ? 'bg-primary/20 text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                )}
+                onClick={() => setIsHistoryPanelOpen(true)}
+              >
+                <History className="h-4 w-4" />
+              </Button>
+            </TooltipProvider>
+
             {onNewChat && (
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button
@@ -288,6 +311,8 @@ export function ChatContainer({
                       onCancelStreaming={onCancelStreaming}
                       onRegenerate={onRegenerate}
                       onFeedback={onFeedback}
+                      isAgentMode={isAgentMode}
+                      agentThinking={isAgentMode && isStreaming}
                     />
                   </motion.div>
                 ) : (
@@ -359,6 +384,16 @@ export function ChatContainer({
         isOpen={isSourcesPanelOpen}
         onClose={() => setIsSourcesPanelOpen(false)}
         onSourceClick={(source) => setSelectedSource(source)}
+      />
+
+      {/* Conversation History Panel */}
+      <ConversationHistoryPanel
+        currentChatId={chatId}
+        onSelectConversation={onSelectConversation || (() => {})}
+        onDeleteConversation={onDeleteConversation || (() => {})}
+        onNewChat={onNewChat || (() => {})}
+        isOpen={isHistoryPanelOpen}
+        onClose={() => setIsHistoryPanelOpen(false)}
       />
     </div>
   );

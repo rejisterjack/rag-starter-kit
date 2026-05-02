@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { canManageWorkspace } from '@/lib/workspace/permissions';
 
 interface RouteParams {
@@ -64,8 +65,10 @@ export async function POST(req: Request, { params }: RouteParams) {
       if (body && typeof body === 'object' && 'winnerVariantId' in body) {
         winnerVariantId = body.winnerVariantId;
       }
-    } catch {
-      // No body or invalid JSON is fine
+    } catch (error: unknown) {
+      logger.debug('No body or invalid JSON in complete experiment request', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
 
     // Validate winner variant if provided
@@ -108,7 +111,10 @@ export async function POST(req: Request, { params }: RouteParams) {
         },
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to complete experiment', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to complete experiment' } },
       { status: 500 }

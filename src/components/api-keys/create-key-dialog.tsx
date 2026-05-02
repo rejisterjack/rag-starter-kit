@@ -75,7 +75,7 @@ export function CreateKeyDialog({ open, onOpenChange, onCreate }: CreateKeyDialo
       setCreatedKey(result);
       setStep('result');
       toast.success('API key created successfully');
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to create API key');
     } finally {
       setIsSubmitting(false);

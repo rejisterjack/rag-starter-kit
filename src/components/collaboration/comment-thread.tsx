@@ -60,7 +60,7 @@ export function CommentThread({
       const mentions = extractMentions(newComment);
       await onAddComment(newComment, mentions);
       setNewComment('');
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to add comment');
     } finally {
       setIsSubmitting(false);
@@ -74,7 +74,7 @@ export function CommentThread({
       await onEditComment(commentId, editContent);
       setEditingId(null);
       setEditContent('');
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to edit comment');
     }
   };
@@ -84,7 +84,7 @@ export function CommentThread({
 
     try {
       await onDeleteComment(commentId);
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to delete comment');
     }
   };

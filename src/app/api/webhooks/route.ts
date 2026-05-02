@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { generateWebhookSecret } from '@/lib/webhooks/delivery';
@@ -45,7 +45,10 @@ function validateCreateWebhookInput(body: unknown): CreateWebhookInput {
     if (!['http:', 'https:'].includes(url.protocol)) {
       throw new Error('Invalid url: must use http or https protocol');
     }
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Invalid URL in webhook creation validation', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     throw new Error('Invalid url: must be a valid URL');
   }
 
@@ -82,16 +85,8 @@ function validateCreateWebhookInput(body: unknown): CreateWebhookInput {
  * Get all webhooks for the current workspace
  * Query params: workspaceId (required), page (default: 1), limit (default: 20, max: 100)
  */
-export async function GET(req: Request) {
+export const GET = withApiAuth(async (req, session) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     // Parse query params
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get('workspaceId');
@@ -176,7 +171,7 @@ export async function GET(req: Request) {
       { status: 500 }
     );
   }
-}
+});
 
 // ============================================================================
 // POST /api/webhooks
@@ -186,21 +181,16 @@ export async function GET(req: Request) {
  * POST /api/webhooks
  * Create a new webhook
  */
-export async function POST(req: Request) {
+export const POST = withApiAuth(async (req, session) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     // Parse and validate body
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in webhook creation', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
@@ -315,4 +305,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+});

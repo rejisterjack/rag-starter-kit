@@ -8,6 +8,7 @@
  */
 
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import type { Message } from '@/types';
 
 // ============================================================================
@@ -133,7 +134,10 @@ export class AgentMemory {
         createdAt: msg.createdAt,
         ...(msg.sources ? { sources: msg.sources as unknown as Message['sources'] } : {}),
       })) as Message[];
-    } catch (_error) {
+    } catch (error: unknown) {
+      logger.debug('Failed to load conversation history', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return [];
     }
   }
@@ -159,7 +163,11 @@ export class AgentMemory {
           content,
         },
       });
-    } catch (_error) {}
+    } catch (error: unknown) {
+      logger.debug('Failed to save message to conversation history', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   }
 
   /**

@@ -55,7 +55,7 @@ export function ApiKeyQuickCopy({
 
       // Reset after 2 seconds
       setTimeout(() => setIsCopied(false), 2000);
-    } catch (_error) {}
+    } catch (_error: unknown) {}
   }, [apiKey, onCopy]);
 
   return (
@@ -138,7 +138,7 @@ export function ApiKeyInlineCopy({
       onCopy?.();
 
       setTimeout(() => setIsCopied(false), 2000);
-    } catch (_error) {}
+    } catch (_error: unknown) {}
   }, [apiKey, onCopy]);
 
   return (

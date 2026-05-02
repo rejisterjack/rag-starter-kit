@@ -1,8 +1,11 @@
 import type { WebhookStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { inngest } from '@/lib/inngest/client';
 import { logger } from '@/lib/logger';
+import { verifyWebhookSignature } from '@/lib/webhooks/delivery';
+import { processWithIdempotency } from '@/lib/webhooks/idempotency';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // ============================================================================
@@ -48,7 +51,10 @@ function validateUpdateWebhookInput(body: unknown): UpdateWebhookInput {
       if (!['http:', 'https:'].includes(url.protocol)) {
         throw new Error('Invalid url: must use http or https protocol');
       }
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid URL in webhook update validation', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw new Error('Invalid url: must be a valid URL');
     }
 
@@ -89,16 +95,8 @@ function validateUpdateWebhookInput(body: unknown): UpdateWebhookInput {
  * GET /api/webhooks/[id]
  * Get a specific webhook
  */
-export async function GET(_req: Request, { params }: RouteParams) {
+export const GET = withApiAuth(async (_req: Request, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const { id } = await params;
 
     // Get the webhook
@@ -155,6 +153,229 @@ export async function GET(_req: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
+});
+
+// ============================================================================
+// POST /api/webhooks/[id] — Ingest document via webhook
+// ============================================================================
+
+/**
+ * POST /api/webhooks/[id]
+ * Ingest a document through the webhook endpoint.
+ *
+ * Supports two payload formats:
+ * 1. `{ "url": "https://example.com/doc.pdf" }` — fetch and ingest from URL
+ * 2. `{ "content": "text content", "title": "Document Title" }` — ingest raw text
+ *
+ * Security:
+ * - Verifies HMAC-SHA256 signature via x-webhook-signature header
+ * - Uses idempotency to prevent duplicate processing
+ */
+export async function POST(req: Request, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+
+    // 1. Read the webhook config from the database
+    const webhook = await prisma.webhook.findUnique({
+      where: { id },
+    });
+
+    if (!webhook) {
+      return NextResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Webhook not found' } },
+        { status: 404 }
+      );
+    }
+
+    if (webhook.status !== 'ACTIVE') {
+      return NextResponse.json(
+        { error: { code: 'WEBHOOK_PAUSED', message: 'This webhook is not active' } },
+        { status: 400 }
+      );
+    }
+
+    // 2. Read raw body and verify signature
+    const rawBody = await req.text();
+    const signatureHeader = req.headers.get('x-webhook-signature');
+
+    if (!signatureHeader) {
+      return NextResponse.json(
+        { error: { code: 'MISSING_SIGNATURE', message: 'x-webhook-signature header is required' } },
+        { status: 401 }
+      );
+    }
+
+    const isValid = verifyWebhookSignature(rawBody, signatureHeader, webhook.secret);
+    if (!isValid) {
+      logger.warn('Webhook signature verification failed', { webhookId: id });
+      return NextResponse.json(
+        { error: { code: 'INVALID_SIGNATURE', message: 'Signature verification failed' } },
+        { status: 401 }
+      );
+    }
+
+    // 3. Parse the payload
+    let payload: Record<string, unknown>;
+    try {
+      payload = JSON.parse(rawBody) as Record<string, unknown>;
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON in webhook ingestion payload', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return NextResponse.json(
+        { error: { code: 'INVALID_JSON', message: 'Request body must be valid JSON' } },
+        { status: 400 }
+      );
+    }
+
+    // Determine ingestion mode
+    const isUrlMode = typeof payload.url === 'string' && payload.url.length > 0;
+    const isContentMode = typeof payload.content === 'string' && payload.content.length > 0;
+
+    if (!isUrlMode && !isContentMode) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'INVALID_PAYLOAD',
+            message: 'Payload must contain either a "url" field or a "content" field',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // Use an idempotency key from the header, or derive from payload hash
+    const eventId =
+      req.headers.get('x-webhook-id') ||
+      `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+
+    // 4-6. Process with idempotency
+    const result = await processWithIdempotency(
+      webhook.id,
+      'document.ingest',
+      eventId,
+      async () => {
+        // Determine document fields based on mode
+        let docName: string;
+        let contentType: string;
+        let contentValue: string | null;
+        let sourceUrl: string | undefined;
+        let docSize: number;
+
+        if (isUrlMode) {
+          // URL mode — content will be fetched during ingestion
+          const url = payload.url as string;
+          try {
+            const parsed = new URL(url);
+            if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+              throw new Error('Invalid protocol');
+            }
+          } catch (error: unknown) {
+            logger.debug('Invalid URL in webhook payload', {
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
+            throw new Error('Invalid URL provided in payload');
+          }
+          docName = (payload.title as string) || new URL(url).hostname + new URL(url).pathname;
+          contentType = 'HTML';
+          contentValue = null;
+          sourceUrl = url;
+          docSize = 0;
+        } else {
+          // Raw text content mode
+          docName = (payload.title as string) || 'Webhook Document';
+          contentType = 'TXT';
+          contentValue = payload.content as string;
+          docSize = Buffer.byteLength(contentValue, 'utf-8');
+        }
+
+        // 4. Create document record
+        const document = await prisma.document.create({
+          data: {
+            name: docName,
+            contentType,
+            size: docSize,
+            status: 'PENDING',
+            userId: webhook.createdById,
+            workspaceId: webhook.workspaceId,
+            content: contentValue,
+            sourceUrl: sourceUrl,
+            metadata: {
+              source: 'webhook',
+              webhookId: webhook.id,
+              ...(sourceUrl && { sourceUrl }),
+              uploadedAt: new Date().toISOString(),
+            },
+          },
+        });
+
+        // 5. Trigger background ingestion
+        await inngest.send({
+          name: 'document/ingest',
+          data: {
+            documentId: document.id,
+            userId: webhook.createdById,
+          },
+        });
+
+        // Update webhook last triggered timestamp
+        await prisma.webhook.update({
+          where: { id: webhook.id },
+          data: { lastTriggeredAt: new Date() },
+        });
+
+        logger.info('Document created via webhook', {
+          documentId: document.id,
+          webhookId: webhook.id,
+          mode: isUrlMode ? 'url' : 'content',
+        });
+
+        return { success: true, documentId: document.id };
+      },
+      {
+        onDuplicate: (previousResponse) => {
+          // Return the cached response for duplicates
+          if (previousResponse?.body) {
+            try {
+              return JSON.parse(previousResponse.body) as { success: boolean; documentId: string };
+            } catch (error: unknown) {
+              logger.debug('Failed to parse duplicate webhook response', {
+                error: error instanceof Error ? error.message : 'Unknown error',
+              });
+            }
+          }
+          return { success: true, documentId: null, deduplicated: true };
+        },
+      }
+    );
+
+    // 7. Return success response
+    return NextResponse.json(result);
+  } catch (error) {
+    // Handle idempotency errors gracefully
+    if (error instanceof Error && error.message === 'Event already processed') {
+      return NextResponse.json(
+        { success: true, message: 'Event already processed' },
+        { status: 200 }
+      );
+    }
+
+    const message = error instanceof Error ? error.message : 'Unknown error';
+
+    // Distinguish validation errors from internal errors
+    if (message === 'Invalid URL provided in payload' || message.startsWith('Invalid')) {
+      return NextResponse.json({ error: { code: 'VALIDATION_ERROR', message } }, { status: 400 });
+    }
+
+    logger.error('Webhook ingestion failed', {
+      error: message,
+    });
+
+    return NextResponse.json(
+      { error: { code: 'INTERNAL_ERROR', message: 'Webhook ingestion failed' } },
+      { status: 500 }
+    );
+  }
 }
 
 // ============================================================================
@@ -165,16 +386,8 @@ export async function GET(_req: Request, { params }: RouteParams) {
  * PATCH /api/webhooks/[id]
  * Update a webhook
  */
-export async function PATCH(req: Request, { params }: RouteParams) {
+export const PATCH = withApiAuth(async (req: Request, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const { id } = await params;
 
     // Get the webhook to check workspace
@@ -207,7 +420,10 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Invalid JSON body in webhook update', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
@@ -304,7 +520,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});
 
 // ============================================================================
 // DELETE /api/webhooks/[id]
@@ -314,16 +530,8 @@ export async function PATCH(req: Request, { params }: RouteParams) {
  * DELETE /api/webhooks/[id]
  * Delete a webhook
  */
-export async function DELETE(_req: Request, { params }: RouteParams) {
+export const DELETE = withApiAuth(async (_req: Request, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const { id } = await params;
 
     // Get the webhook to check workspace
@@ -377,4 +585,4 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});

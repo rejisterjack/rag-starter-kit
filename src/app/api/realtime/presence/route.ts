@@ -8,6 +8,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import {
   getUserPresence,
   getUsersInRoom,
@@ -273,7 +274,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           { status: 400 }
         );
     }
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to update presence', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         success: false,
@@ -368,7 +372,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       },
       { status: 400 }
     );
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to get presence data', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         success: false,
@@ -421,7 +428,10 @@ export async function DELETE(_req: NextRequest): Promise<NextResponse> {
         timestamp: Date.now(),
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to remove presence', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         success: false,

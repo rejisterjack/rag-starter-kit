@@ -6,6 +6,7 @@
  */
 
 import { type NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 import {
   extractClientIP,
   generateCaptchaChallenge,
@@ -26,7 +27,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       challengeId: challenge.challengeId,
       question: challenge.question,
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to generate CAPTCHA', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         success: false,
@@ -76,7 +80,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         { status: 400 }
       );
     }
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('CAPTCHA verification failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         success: false,

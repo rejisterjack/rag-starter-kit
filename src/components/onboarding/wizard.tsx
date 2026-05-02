@@ -138,7 +138,7 @@ export function OnboardingWizard({ user: _user }: OnboardingWizardProps) {
       setUploadedDocument(true);
       toast.success('Document uploaded successfully!');
       setStep(3);
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Failed to upload document');
     } finally {
       setIsLoading(false);

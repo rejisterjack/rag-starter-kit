@@ -89,7 +89,7 @@ export function MemberList({
       }
 
       onUpdate?.();
-    } catch (_error) {
+    } catch (_error: unknown) {
     } finally {
       setIsLoading(null);
     }
@@ -111,7 +111,7 @@ export function MemberList({
       }
 
       onUpdate?.();
-    } catch (_error) {
+    } catch (_error: unknown) {
     } finally {
       setIsLoading(null);
     }

@@ -99,7 +99,10 @@ export function verifyWebhookSignature(
     const sigBuf = Buffer.from(signature);
     const expectedBuf = Buffer.from(expected);
     return sigBuf.length === expectedBuf.length && sigBuf.equals(expectedBuf);
-  } catch {
+  } catch (error: unknown) {
+    logger.error('Failed to verify webhook signature', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }

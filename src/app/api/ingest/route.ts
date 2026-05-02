@@ -16,17 +16,21 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { inngest } from '@/lib/inngest/client';
+import { logger } from '@/lib/logger';
 import {
+  parseAudio,
   parseDOCX,
   parseHTML,
   parsePDF,
   parsePPTXBuffer,
   parseText,
+  parseVideo,
   parseXLSXBuffer,
 } from '@/lib/rag/ingestion';
+import { isYouTubeUrl } from '@/lib/rag/ingestion/parsers/youtube';
 import { validateFile, validateFileBytes } from '@/lib/security/input-validator';
 import {
   addRateLimitHeaders,
@@ -35,6 +39,7 @@ import {
 } from '@/lib/security/rate-limiter';
 import { virusScanner } from '@/lib/security/virus-scanner';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
+import { checkDocumentLimit, checkStorageLimit } from '@/lib/workspace/resource-limits';
 
 // Maximum file size: 50MB
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -46,19 +51,10 @@ const ENABLE_VIRUS_SCAN = process.env.ENABLE_VIRUS_SCAN === 'true';
 // POST /api/ingest - Upload Document
 // =============================================================================
 
-export async function POST(req: NextRequest) {
+export const POST = withApiAuth(async (req: NextRequest, session) => {
   const startTime = Date.now();
 
   try {
-    // Step 1: Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const userId = session.user.id;
 
     // Step 2: Check rate limit
@@ -90,11 +86,94 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Step 3: Parse multipart form data
+    // Step 3: Parse multipart form data (support both FormData and JSON body)
     let formData: FormData;
+    const contentTypeHeader = req.headers.get('content-type') || '';
+
+    if (contentTypeHeader.includes('application/json')) {
+      // JSON body support for URL-based ingestion: { "url": "..." }
+      let jsonBody: Record<string, unknown>;
+      try {
+        jsonBody = (await req.json()) as Record<string, unknown>;
+      } catch (error: unknown) {
+        logger.debug('Failed to parse JSON body', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+        return NextResponse.json(
+          { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
+          { status: 400 }
+        );
+      }
+
+      const jsonUrl = jsonBody.url as string | undefined;
+      const jsonContent = jsonBody.content as string | undefined;
+      const jsonTitle = jsonBody.title as string | undefined;
+      const jsonWorkspaceId = (jsonBody.workspaceId as string) || session.user.workspaceId;
+
+      if (jsonUrl) {
+        // Validate workspace access
+        if (jsonWorkspaceId) {
+          const hasAccess = await checkPermission(
+            userId,
+            jsonWorkspaceId,
+            Permission.WRITE_DOCUMENTS
+          );
+          if (!hasAccess) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: { code: 'FORBIDDEN', message: 'Access denied to workspace' },
+              },
+              { status: 403 }
+            );
+          }
+        }
+        return handleURLIngestion(jsonUrl, userId, jsonWorkspaceId, startTime, rateLimitResult);
+      }
+
+      if (jsonContent) {
+        // Ingest raw text content via JSON
+        if (jsonWorkspaceId) {
+          const hasAccess = await checkPermission(
+            userId,
+            jsonWorkspaceId,
+            Permission.WRITE_DOCUMENTS
+          );
+          if (!hasAccess) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: { code: 'FORBIDDEN', message: 'Access denied to workspace' },
+              },
+              { status: 403 }
+            );
+          }
+        }
+        return handleRawContentIngestion(
+          jsonContent,
+          jsonTitle || 'Uploaded Document',
+          userId,
+          jsonWorkspaceId,
+          startTime,
+          rateLimitResult
+        );
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: 'NO_CONTENT', message: 'JSON body must contain "url" or "content" field' },
+        },
+        { status: 400 }
+      );
+    }
+
     try {
       formData = await req.formData();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Failed to parse form data', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { success: false, error: { code: 'INVALID_FORM', message: 'Invalid form data' } },
         { status: 400 }
@@ -126,6 +205,15 @@ export async function POST(req: NextRequest) {
           { status: 403 }
         );
       }
+
+      // Step 5b: Check workspace resource limits
+      const docLimit = await checkDocumentLimit(workspaceId);
+      if (!docLimit.allowed) {
+        return NextResponse.json(
+          { success: false, error: { code: 'LIMIT_EXCEEDED', message: docLimit.reason } },
+          { status: 403 }
+        );
+      }
     }
 
     // Step 6: Handle URL ingestion
@@ -154,7 +242,7 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * Handle file upload ingestion
@@ -178,6 +266,17 @@ async function handleFileIngestion(
       },
       { status: 413 }
     );
+  }
+
+  // Step 1b: Check workspace storage limit
+  if (workspaceId) {
+    const storageLimit = await checkStorageLimit(workspaceId, file.size);
+    if (!storageLimit.allowed) {
+      return NextResponse.json(
+        { success: false, error: { code: 'LIMIT_EXCEEDED', message: storageLimit.reason } },
+        { status: 403 }
+      );
+    }
   }
 
   // Step 2: Validate file type
@@ -301,6 +400,18 @@ async function handleFileIngestion(
       case 'HTML': {
         content = await parseHTML(buffer);
         metadata = { source: 'html' };
+        break;
+      }
+
+      case 'AUDIO': {
+        content = await parseAudio(buffer, file.type, file.name);
+        metadata = { source: 'audio', mimeType: file.type };
+        break;
+      }
+
+      case 'VIDEO': {
+        content = await parseVideo(buffer, file.type, file.name);
+        metadata = { source: 'video', mimeType: file.type };
         break;
       }
 
@@ -485,7 +596,10 @@ async function handleURLIngestion(
         );
       }
     }
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Invalid URL provided for ingestion', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         success: false,
@@ -500,10 +614,16 @@ async function handleURLIngestion(
 
   // Create document record (content will be fetched in background)
   // FIXED: userId should always be the actual user who uploaded the document
+
+  // Check if this is a YouTube URL for special handling
+  const isYT = isYouTubeUrl(url);
+  const docContentType = isYT ? 'VIDEO' : 'HTML';
+  const docName = isYT ? `YouTube: ${url}` : validatedUrl.hostname + validatedUrl.pathname;
+
   const document = await prisma.document.create({
     data: {
-      name: validatedUrl.hostname + validatedUrl.pathname,
-      contentType: 'HTML',
+      name: docName,
+      contentType: docContentType,
       size: 0,
       status: 'PENDING',
       userId: userId, // Always use the actual user's ID
@@ -511,6 +631,7 @@ async function handleURLIngestion(
       metadata: {
         sourceUrl: url,
         domain: validatedUrl.hostname,
+        isYouTube: isYT,
         uploadedBy: userId,
         uploadedAt: new Date().toISOString(),
       },
@@ -535,7 +656,7 @@ async function handleURLIngestion(
     metadata: {
       documentId: document.id,
       sourceUrl: url,
-      type: 'URL',
+      type: isYT ? 'YOUTUBE' : 'URL',
     },
   });
 
@@ -546,12 +667,14 @@ async function handleURLIngestion(
         document: {
           id: document.id,
           name: document.name,
-          type: 'HTML',
+          type: docContentType,
           url: url,
           status: 'pending',
           createdAt: document.createdAt.toISOString(),
         },
-        message: 'URL queued for scraping and processing',
+        message: isYT
+          ? 'YouTube video queued for transcript extraction'
+          : 'URL queued for scraping and processing',
         processingTimeMs: Date.now() - startTime,
       },
     },
@@ -566,17 +689,8 @@ async function handleURLIngestion(
 // GET /api/ingest?id=:id - Check Processing Status
 // =============================================================================
 
-export async function GET(req: NextRequest) {
+export const GET = withApiAuth(async (req: NextRequest, session) => {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const userId = session.user.id;
 
     // Parse query parameters
@@ -687,23 +801,14 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // =============================================================================
 // DELETE /api/ingest?id=:id - Cancel Processing / Delete Document
 // =============================================================================
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = withApiAuth(async (req: NextRequest, session) => {
   try {
-    // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const userId = session.user.id;
 
     // Parse query parameters
@@ -814,7 +919,7 @@ export async function DELETE(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // =============================================================================
 // Helper Functions
@@ -878,4 +983,130 @@ async function scanFileForViruses(file: File): Promise<VirusScanResult> {
   }
 
   return { clean: true };
+}
+
+/**
+ * Handle raw text content ingestion (via JSON body)
+ */
+async function handleRawContentIngestion(
+  content: string,
+  title: string,
+  userId: string,
+  workspaceId: string | undefined,
+  startTime: number,
+  rateLimitResult: { success: boolean; limit: number; remaining: number; reset: number }
+) {
+  const docSize = Buffer.byteLength(content, 'utf-8');
+
+  if (docSize > MAX_FILE_SIZE) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'CONTENT_TOO_LARGE',
+          message: `Content size (${formatBytes(docSize)}) exceeds 50MB limit`,
+        },
+      },
+      { status: 413 }
+    );
+  }
+
+  // Check workspace storage limit
+  if (workspaceId) {
+    const storageLimit = await checkStorageLimit(workspaceId, docSize);
+    if (!storageLimit.allowed) {
+      return NextResponse.json(
+        { success: false, error: { code: 'LIMIT_EXCEEDED', message: storageLimit.reason } },
+        { status: 403 }
+      );
+    }
+  }
+
+  // Check for duplicate content
+  const contentHash = await hashContent(content.slice(0, 1000));
+  const existingDoc = await prisma.document.findFirst({
+    where: {
+      userId,
+      metadata: {
+        path: ['contentHash'],
+        equals: contentHash,
+      },
+    },
+  });
+
+  if (existingDoc) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'DUPLICATE_CONTENT',
+          message: 'A document with similar content already exists',
+          details: { existingDocumentId: existingDoc.id },
+        },
+      },
+      { status: 409 }
+    );
+  }
+
+  // Create document record
+  const document = await prisma.document.create({
+    data: {
+      name: title,
+      contentType: 'TXT',
+      size: docSize,
+      status: 'PENDING',
+      userId,
+      workspaceId: workspaceId || null,
+      content,
+      metadata: {
+        source: 'raw_content',
+        contentHash,
+        uploadedBy: userId,
+        uploadedAt: new Date().toISOString(),
+      },
+    },
+  });
+
+  // Queue for background processing
+  await inngest.send({
+    name: 'document/ingest',
+    data: {
+      documentId: document.id,
+      userId,
+    },
+  });
+
+  // Audit log
+  await logAuditEvent({
+    event: AuditEvent.DOCUMENT_UPLOADED,
+    userId,
+    workspaceId,
+    metadata: {
+      documentId: document.id,
+      type: 'RAW_CONTENT',
+      size: docSize,
+    },
+  });
+
+  const response = NextResponse.json(
+    {
+      success: true,
+      data: {
+        document: {
+          id: document.id,
+          name: document.name,
+          type: 'TXT',
+          size: docSize,
+          status: 'pending',
+          createdAt: document.createdAt.toISOString(),
+        },
+        message: 'Document queued for processing',
+        processingTimeMs: Date.now() - startTime,
+      },
+    },
+    { status: 201 }
+  );
+
+  addRateLimitHeaders(response.headers, rateLimitResult);
+  return response;
 }

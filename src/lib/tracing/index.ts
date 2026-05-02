@@ -124,9 +124,15 @@ export const tracing = {
       span.setAttribute('rag.duration_ms', duration);
 
       // Calculate average similarity score if available
-      if (result.length > 0 && 'similarity' in (result[0] as any)) {
+      interface RetrievalResult {
+        similarity?: number;
+        [key: string]: unknown;
+      }
+
+      if (result.length > 0 && 'similarity' in (result[0] as RetrievalResult)) {
         const avgSimilarity =
-          result.reduce((sum: number, r: any) => sum + (r.similarity ?? 0), 0) / result.length;
+          result.reduce((sum: number, r: RetrievalResult) => sum + (r.similarity ?? 0), 0) /
+          result.length;
         span.setAttribute('rag.avg_similarity', avgSimilarity);
       }
 

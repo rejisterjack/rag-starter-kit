@@ -323,9 +323,7 @@ export function useRealtimeEventsSSE(
             const data = JSON.parse(event.data) as RealtimeEvent;
             setEvents((prev) => [...prev.slice(-49), data]);
             onEvent?.(data);
-          } catch {
-            // Silently ignore parsing errors for malformed SSE events
-          }
+          } catch (_error: unknown) {}
         };
 
         es.onerror = () => {

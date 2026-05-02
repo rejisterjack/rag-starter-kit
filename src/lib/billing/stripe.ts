@@ -10,6 +10,7 @@
 
 import Stripe from 'stripe';
 import { env } from '@/lib/env';
+import { logger } from '@/lib/logger';
 
 // Initialize Stripe client
 export const stripe = env.STRIPE_SECRET_KEY
@@ -38,7 +39,10 @@ export async function createCustomer(email: string, name?: string): Promise<stri
       name,
     });
     return customer.id;
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to create Stripe customer', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }
@@ -91,7 +95,11 @@ export async function cancelSubscription(
       await stripe.subscriptions.cancel(subscriptionId);
     }
     return true;
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to cancel Stripe subscription', {
+      subscriptionId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }
@@ -104,7 +112,11 @@ export async function getSubscription(subscriptionId: string): Promise<Stripe.Su
 
   try {
     return await stripe.subscriptions.retrieve(subscriptionId);
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to retrieve Stripe subscription', {
+      subscriptionId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }
@@ -124,7 +136,11 @@ export async function createBillingPortalSession(
       return_url: returnUrl,
     });
     return session.url;
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to create Stripe billing portal session', {
+      customerId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }

@@ -7,6 +7,7 @@
 
 import sharp from 'sharp';
 import { createWorker, type OEM, PSM } from 'tesseract.js';
+import { logger } from '@/lib/logger';
 import type {
   OCRConfiguration,
   OCROptions,
@@ -171,7 +172,10 @@ export async function isValidImage(buffer: Buffer): Promise<boolean> {
   try {
     const metadata = await sharp(buffer).metadata();
     return !!metadata.format;
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Image validation failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }
@@ -183,7 +187,10 @@ export async function detectImageFormat(buffer: Buffer): Promise<string | null> 
   try {
     const metadata = await sharp(buffer).metadata();
     return metadata.format || null;
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Image format detection failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }
@@ -478,7 +485,10 @@ export function isOCRAvailable(): boolean {
     // Try to require tesseract.js
     require.resolve('tesseract.js');
     return true;
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('tesseract.js not available', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }
@@ -490,7 +500,10 @@ export function isPDF2PicAvailable(): boolean {
   try {
     require.resolve('pdf2pic');
     return true;
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('pdf2pic not available', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }

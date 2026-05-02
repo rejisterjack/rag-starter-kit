@@ -7,7 +7,8 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import {
   addRateLimitHeaders,
   checkApiRateLimit,
@@ -52,16 +53,10 @@ const transcriptionSchema = z.object({
 // POST Handler
 // =============================================================================
 
-export async function POST(req: NextRequest) {
+export const POST = withApiAuth(async (req: NextRequest, session) => {
   const startTime = Date.now();
 
   try {
-    // Step 1: Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
-    }
-
     const userId = session.user.id;
     const workspaceId = session.user.workspaceId;
 
@@ -93,7 +88,10 @@ export async function POST(req: NextRequest) {
     let formData: FormData;
     try {
       formData = await req.formData();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Failed to parse form data for voice transcription', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { error: 'Invalid form data', code: 'INVALID_BODY' },
         { status: 400 }
@@ -240,7 +238,7 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // =============================================================================
 // GET Handler - Get supported formats and languages

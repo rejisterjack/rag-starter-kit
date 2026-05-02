@@ -69,7 +69,7 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
 
       const data = await response.json();
       setResults(data.results);
-    } catch (_error) {
+    } catch (_error: unknown) {
       toast.error('Search failed');
     } finally {
       setIsLoading(false);

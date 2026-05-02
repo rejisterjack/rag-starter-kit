@@ -8,6 +8,8 @@
 import type { DocumentChunk } from '@prisma/client';
 import { Prisma, type PrismaClient } from '@prisma/client';
 
+import { logger } from '@/lib/logger';
+
 // Type for transaction client
 type PrismaTransactionClient = Omit<
   PrismaClient,
@@ -188,7 +190,10 @@ async function insertBatch(
   // Fallback to individual inserts if unnest fails
   try {
     await client.$executeRaw(query);
-  } catch {
+  } catch (error: unknown) {
+    logger.error('Batch insert via unnest failed, falling back to individual inserts', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     // Fallback: insert one by one
     for (const chunk of values) {
       await client.$executeRaw`
@@ -358,7 +363,10 @@ export async function batchDeleteChunks(
         where: { id: { in: batch } },
       });
       successCount += result.count;
-    } catch {
+    } catch (error: unknown) {
+      logger.error('Failed to delete batch of chunks', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       failureCount += batch.length;
     }
   }

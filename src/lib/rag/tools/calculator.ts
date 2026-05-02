@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 import { createErrorResult, createSuccessResult, createTool } from './types';
 
 // ============================================================================
@@ -316,7 +317,13 @@ export async function calculate(expression: string, precision?: number): Promise
 export async function convert(value: number, from: string, to: string): Promise<number | null> {
   try {
     return convertUnits(value, from, to);
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('Unit conversion failed', {
+      value,
+      from,
+      to,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }

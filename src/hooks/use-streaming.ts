@@ -113,10 +113,7 @@ export function useStreaming(options: UseStreamingOptions = {}): UseStreamingRet
                   onFinish?.(accumulatedContentRef.current, accumulatedSourcesRef.current);
                   break;
               }
-            } catch {
-              // Ignore lines that aren't valid JSON
-              // These might be SSE comments or keep-alive messages
-            }
+            } catch (_error: unknown) {}
           }
         }
       } catch (err) {
@@ -209,7 +206,7 @@ export function parseSSEData(line: string): { type: string; data: unknown } | nu
 
   try {
     return { type: 'data', data: JSON.parse(data) };
-  } catch {
+  } catch (_error: unknown) {
     return { type: 'raw', data };
   }
 }

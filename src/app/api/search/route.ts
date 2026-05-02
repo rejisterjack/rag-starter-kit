@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 const VALID_TYPES = ['chat', 'document', 'message', 'workspace'] as const;
 type SearchType = (typeof VALID_TYPES)[number];
@@ -246,7 +247,10 @@ export async function GET(req: Request) {
         dateTo,
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Search failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json({ error: 'Search failed' }, { status: 500 });
   }
 }

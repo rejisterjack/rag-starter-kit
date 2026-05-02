@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { canManageWorkspace } from '@/lib/workspace/permissions';
 import { deleteWorkspace, getWorkspaceById, updateWorkspace } from '@/lib/workspace/workspace';
 
@@ -13,16 +14,8 @@ interface RouteParams {
  * GET /api/workspaces/[workspaceId]
  * Get a specific workspace
  */
-export async function GET(_req: Request, { params }: RouteParams) {
+export const GET = withApiAuth(async (_req, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const { workspaceId } = await params;
 
     // Check if user has access to workspace
@@ -78,28 +71,23 @@ export async function GET(_req: Request, { params }: RouteParams) {
         currentUserRole: membership.role,
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to get workspace', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to get workspace' } },
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * PATCH /api/workspaces/[workspaceId]
  * Update a workspace
  */
-export async function PATCH(req: Request, { params }: RouteParams) {
+export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const { workspaceId } = await params;
 
     // Check if user can manage workspace
@@ -115,7 +103,10 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Failed to parse request body for workspace update', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
@@ -153,28 +144,23 @@ export async function PATCH(req: Request, { params }: RouteParams) {
         },
       },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to update workspace', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to update workspace' } },
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * DELETE /api/workspaces/[workspaceId]
  * Delete a workspace
  */
-export async function DELETE(_req: Request, { params }: RouteParams) {
+export const DELETE = withApiAuth(async (_req, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const { workspaceId } = await params;
 
     try {
@@ -193,13 +179,16 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       success: true,
       data: { message: 'Workspace deleted successfully' },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to delete workspace', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to delete workspace' } },
       { status: 500 }
     );
   }
-}
+});
 
 // =============================================================================
 // Validation

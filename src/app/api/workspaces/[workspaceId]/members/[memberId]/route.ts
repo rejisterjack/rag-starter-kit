@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 
-import { auth } from '@/lib/auth';
+import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { canManageMembers } from '@/lib/workspace/permissions';
 import { removeMember, updateMemberRole } from '@/lib/workspace/workspace';
 
@@ -13,16 +14,8 @@ interface RouteParams {
  * PATCH /api/workspaces/[workspaceId]/members/[memberId]
  * Update a member's role
  */
-export async function PATCH(req: Request, { params }: RouteParams) {
+export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const { workspaceId, memberId } = await params;
 
     // Check if user can manage members
@@ -38,7 +31,10 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error: unknown) {
+      logger.debug('Failed to parse request body for member update', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return NextResponse.json(
         { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
@@ -85,28 +81,23 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       success: true,
       data: { message: 'Member role updated successfully' },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to update member', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to update member' } },
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * DELETE /api/workspaces/[workspaceId]/members/[memberId]
  * Remove a member from the workspace
  */
-export async function DELETE(_req: Request, { params }: RouteParams) {
+export const DELETE = withApiAuth(async (_req, session, { params }: RouteParams) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-
     const { workspaceId, memberId } = await params;
 
     // Check if user can manage members
@@ -152,10 +143,13 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       success: true,
       data: { message: 'Member removed successfully' },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to remove member', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to remove member' } },
       { status: 500 }
     );
   }
-}
+});

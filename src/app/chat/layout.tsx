@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import type React from 'react';
+import { ErrorBoundary } from '@/components/error/error-boundary';
 
 interface ChatLayoutProps {
   children: React.ReactNode;
@@ -12,5 +13,9 @@ export const metadata: Metadata = {
 };
 
 export default function ChatLayout({ children }: ChatLayoutProps): React.ReactElement {
-  return <div className="h-screen overflow-hidden">{children}</div>;
+  return (
+    <ErrorBoundary>
+      <div className="h-screen overflow-hidden">{children}</div>
+    </ErrorBoundary>
+  );
 }

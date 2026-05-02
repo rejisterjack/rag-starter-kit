@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
@@ -40,7 +41,10 @@ export async function GET() {
       success: true,
       data: { plans: formattedPlans },
     });
-  } catch (_error) {
+  } catch (error: unknown) {
+    logger.error('Failed to fetch billing plans', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch plans' } },
       { status: 500 }

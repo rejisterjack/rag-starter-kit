@@ -161,7 +161,12 @@ function isIpInCidr(ip: string, cidr: string): boolean {
     const ipNum = ipToNumber(ip);
     const { start, end } = parseCidr(cidr);
     return ipNum >= start && ipNum <= end;
-  } catch {
+  } catch (error: unknown) {
+    logger.debug('SSRF IP CIDR check failed', {
+      ip,
+      cidr,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }
@@ -246,7 +251,7 @@ export async function validateUrl(urlString: string): Promise<SSRFValidationResu
   let url: URL;
   try {
     url = new URL(urlString);
-  } catch {
+  } catch (_error: unknown) {
     return { allowed: false, reason: 'Invalid URL format' };
   }
 
@@ -324,7 +329,7 @@ export function validateUrlSync(urlString: string): SSRFValidationResult {
   let url: URL;
   try {
     url = new URL(urlString);
-  } catch {
+  } catch (_error: unknown) {
     return { allowed: false, reason: 'Invalid URL format' };
   }
 
@@ -459,7 +464,7 @@ export async function checkUrl(urlString: string): Promise<{
   try {
     url = new URL(urlString);
     checks.validUrl = true;
-  } catch {
+  } catch (_error: unknown) {
     return { allowed: false, reason: 'Invalid URL format', checks };
   }
 
@@ -501,9 +506,12 @@ export async function checkUrl(urlString: string): Promise<{
         checks,
       };
     }
-  } catch {
+  } catch (error: unknown) {
     // Resolution failure - we'll allow it but log a warning
-    logger.warn('Could not resolve hostname for SSRF check', { hostname });
+    logger.warn('Could not resolve hostname for SSRF check', {
+      hostname,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 
   return { allowed: true, checks };
