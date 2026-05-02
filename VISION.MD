@@ -1,6 +1,6 @@
 # rag-starter-kit — Product Vision
 
-> *This document defines what we are building, why it exists, who it's for, and what success looks like. When in doubt about a feature, a decision, or a direction — come back here.*
+> *This document defines what we are building, why it exists, who it's for, and how it gets used. When in doubt about a feature, a decision, or a direction — come back here.*
 
 ---
 
@@ -19,6 +19,8 @@ The ecosystem is almost entirely Python. LangChain, LlamaIndex, Haystack, RAGFlo
 The tutorials show you how to build a RAG chatbot. None of them show you how to run one.
 
 And then there's the cost problem. Almost every RAG tutorial assumes you're paying for OpenAI. For a developer learning, experimenting, or building a side project — that's a real barrier. Most people give up before they've shipped anything.
+
+So developers either abandon the idea, hire someone who knows Python, or spend three to four weeks stitching together a production-ready system from scratch. None of those are good options.
 
 ---
 
@@ -40,7 +42,7 @@ The core stays open source forever. Developers who want to self-host own it comp
 
 **TypeScript-first, production-ready, self-hostable, and free to run.**
 
-This is the combination no other open-source RAG project offers:
+This is the combination no other open-source RAG project currently offers:
 
 **1. TypeScript all the way down.**
 Most RAG tools are Python. This is one of the very few production-grade RAG systems built entirely in the TypeScript/Node.js ecosystem. Next.js 15, React 19, LangChain.js, Prisma, Inngest — no context switching, no Python services, no mixed-language complexity.
@@ -64,11 +66,15 @@ Multi-user workspaces, typing indicators, presence tracking, WebSocket/SSE — n
 
 **Primary: The TypeScript/Node.js developer building a product.**
 
-Someone working in Next.js, NestJS, or Node.js who needs to add AI chat capabilities to their product or build a standalone AI assistant. They know React, they know TypeScript, they don't want to learn Python infra to ship a chatbot — and they don't want to pay OpenAI before they've even shipped an MVP.
+Someone working in Next.js, NestJS, or Node.js who needs to add AI chat capabilities to their product or build a standalone AI assistant. They know React, they know TypeScript, they don't want to learn Python infra to ship a chatbot — and they don't want to pay for AI APIs before they've even shipped an MVP.
 
 **Secondary: The developer who wants to learn how production RAG works.**
 
-Someone studying AI engineering who wants a real codebase — not a Jupyter notebook, not a 200-line tutorial. They want to see how Inngest handles background document ingestion, how pgvector stores embeddings, how streaming SSE works end to end, how auth, analytics, and rate limiting fit into an AI product. And they want to run all of it for free while they learn.
+Someone studying AI engineering who wants a real codebase — not a Jupyter notebook, not a 200-line tutorial. They want to see how Inngest handles background document ingestion, how pgvector stores embeddings, how streaming SSE works end to end, how auth, analytics, and rate limiting fit together in a real AI product. And they want to run all of it for free while they learn.
+
+**Tertiary: The freelancer or agency building AI products for clients.**
+
+Someone who gets a client request for an AI chatbot and needs a production-ready foundation — not a proof of concept. They clone it, customise it for the client's use case, train it on the client's documents, and deploy. What would otherwise take weeks of infrastructure work takes a day.
 
 ---
 
@@ -78,6 +84,32 @@ Someone studying AI engineering who wants a real codebase — not a Jupyter note
 - Non-technical users looking for a no-code chatbot builder
 - Anyone who just wants to use an AI chatbot — use ChatGPT
 - Enterprise teams needing vendor SLAs and compliance documentation out of the box
+
+---
+
+## How People Actually Use It
+
+### The freelancer / agency scenario
+
+A client asks a freelancer to build an AI chatbot trained on their company documentation. Without this project, the freelancer either says no or spends weeks building infrastructure. With `rag-starter-kit`, they clone it, upload the client's docs, configure two free API keys, and deploy to Vercel. The client has a working, production-grade chatbot. The work that would have taken three weeks takes a weekend.
+
+### The SaaS founder scenario
+
+A founder running a SaaS product is drowning in support tickets — most of them asking questions already answered in the documentation. They clone this project, index their entire docs and help articles, and watch a large portion of support questions get answered automatically. Their support load drops. Their team focuses on real problems. They spent one day deploying this instead of weeks building it.
+
+### The internal tool scenario
+
+A company has years of knowledge scattered across Google Drive, Confluence, and internal docs. New employees can't find anything. Someone technical on the team clones this project, indexes all their documents, and suddenly the entire company's knowledge is searchable through a chat interface. Questions like "what's our refund policy" or "how do we onboard a new client" get answered instantly.
+
+### The learning scenario
+
+A developer wants to break into AI engineering but finds most resources are Python-based or too shallow. They clone this project and spend a couple of weekends reading the code — understanding how Inngest queues document ingestion jobs, how pgvector stores and retrieves embeddings, how SSE streams tokens to the UI in real time. They understand production RAG from a real codebase, not a tutorial. And they ran all of it for free.
+
+---
+
+## How It's Deployed
+
+Developers clone the repository, configure their environment variables, and deploy to their own infrastructure — Vercel, Railway, a VPS, or their own server. They own the code completely. Their documents never leave their infrastructure. There is no central server, no account to create, no data sent anywhere except the LLM API calls they configure themselves.
 
 ---
 
@@ -102,68 +134,83 @@ Someone studying AI engineering who wants a real codebase — not a Jupyter note
 - PWA support
 
 ### Near-Term (Next 3 Months)
-- **Admin dashboard** — upload documents, view ingestion status, manage knowledge bases, see usage stats
-- **Multi-LLM switching** — Anthropic Claude and Ollama support, in addition to OpenRouter
+- **Admin dashboard** — upload documents, view ingestion status, manage knowledge bases, see usage stats, without touching the database
+- **Multi-LLM switching** — Anthropic Claude and Ollama support alongside OpenRouter, switchable via a single env var
 - **Ingestion progress UI** — real-time progress as large documents are processed
 - **Duplicate detection** — don't re-ingest a file that's already indexed
-- **Configurable retrieval** — chunk size, overlap, top-k, similarity threshold all via env vars
+- **Configurable retrieval** — chunk size, overlap, top-k, similarity threshold all via env vars with no code changes
 
 ### Medium-Term (3–6 Months)
 - **Embeddable chat widget** — a `<script>` tag that adds the chatbot to any website
-- **Webhook ingestion** — POST a URL, the system fetches, parses, and indexes it
-- **Evaluation tooling** — retrieval accuracy scoring so developers can measure RAG quality
+- **Webhook ingestion** — POST a URL, the system fetches, parses, and indexes it automatically
+- **Evaluation tooling** — retrieval accuracy scoring so developers can measure whether RAG quality is improving
 - **Multi-tenancy** — multiple isolated knowledge bases from a single deployment
+- **Conversation history** — persistent chat history per user across sessions
 
 ### Long-Term (6+ Months)
 - **Connector ecosystem** — Notion, GitHub, Google Drive, Confluence, Slack
-- **Agent mode** — tools: search the web, query a database, call an API
+- **Agent mode** — give the chatbot tools: search the web, query a database, call an API
 - **Multi-modal ingestion** — images, audio files, YouTube transcripts
-- **npm widget package** — `@rejisterjack/rag-widget` for embedding anywhere
+- **npm widget package** — `@rejisterjack/rag-widget` published to npm for embedding anywhere
 
 ---
 
 ## What We Are NOT Building
 
-- **A no-code platform.** Code-first, always.
-- **A managed SaaS product.** No billing, no subscriptions.
-- **A Python implementation.** TypeScript-first is a feature, not a limitation.
+These are explicit non-goals. When a feature request falls into one of these categories, this document is the answer.
+
+- **A no-code platform.** Code-first, always. If someone can't read TypeScript, this isn't for them.
+- **A managed SaaS product.** This is a self-hosted, open-source project.
+- **A Python implementation.** TypeScript-first is a feature, not a limitation. We don't maintain parallel codebases.
 - **A general-purpose AI framework.** We build one thing well. We are not competing with LangChain.
-- **Kubernetes or enterprise ops tooling.** Out of scope for now.
+- **Kubernetes or enterprise ops tooling.** Out of scope.
 
 ---
 
 ## Design Principles
 
 **1. Production-first, not demo-first.**
-Every feature gets built the way it would ship in a real product.
+Every feature gets built the way it would ship in a real product. If something wouldn't survive in production, it doesn't go in.
 
 **2. Free by default.**
-The default configuration should cost the developer nothing. Paid tiers are opt-in, not required.
+The default configuration costs the developer nothing. Paid AI providers are opt-in, not required.
 
 **3. TypeScript all the way down.**
-No Python, no shell script hacks, no mixed-language workarounds.
+No Python, no shell script hacks, no mixed-language workarounds. If it can't be done in TypeScript, we find a TypeScript way to do it.
 
 **4. Zero-config start, full-config depth.**
-Running it locally should take under 10 minutes. Customizing every parameter should be possible without touching core logic.
+Running it locally should take under 10 minutes. Customising every parameter should be possible without touching core logic.
 
 **5. Observability from day one.**
-PostHog, Plausible, audit logging, and rate limiting are not afterthoughts.
+PostHog, Plausible, audit logging, and rate limiting are not afterthoughts. Developers deploying this should know what's happening in their system.
 
 **6. The README is a product.**
-A developer landing on this repo should be able to understand it, run it, and start customizing it — within 30 minutes.
+A developer landing on this repo should be able to understand it, run it, and start customising it — within 30 minutes.
 
 **7. Slow, meaningful commits over fast, breaking ones.**
-One solid feature every few weeks beats ten half-finished ones.
+One solid feature every few weeks beats ten half-finished ones. Quality over velocity.
 
 ---
 
 ## What Success Looks Like
 
-**3 months:** 200+ GitHub stars, flagship article published, admin dashboard shipped, zero broken links or placeholders in the repo.
+**3 months:**
+- Zero broken links or placeholder text anywhere in the repo
+- A working live demo deployed and linked from the README
+- Admin dashboard and multi-LLM switching shipped
+- One deep-dive technical article published and ranking on Google
+- 200+ GitHub stars from organic traffic
 
-**6 months:** 500+ GitHub stars, developers forking it for real products, embeddable widget shipped, listed in at least one "awesome-selfhosted" or "awesome-llm" curated list.
+**6 months:**
+- 500+ GitHub stars
+- Developers forking it and building real products on top of it
+- The embeddable widget shipped and used on at least one external site
+- Listed in at least one "awesome-selfhosted" or "awesome-llm" curated list
 
-**12 months:** The go-to reference implementation for TypeScript RAG systems — the way `create-t3-app` is for the T3 stack. Used in interviews and portfolios by other developers who learned from it.
+**12 months:**
+- The go-to reference implementation for TypeScript RAG systems — the way `create-t3-app` is for the T3 stack
+- Used in job interviews and portfolios by other developers who learned from it
+- A maintainable, well-documented open-source project that represents professional-grade engineering
 
 ---
 
