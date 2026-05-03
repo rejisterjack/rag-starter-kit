@@ -53,7 +53,7 @@ export default function ChatPage(): React.ReactElement {
   const [isLoadingDocs, setIsLoadingDocs] = useState(true);
   const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined);
   const [agentMode, setAgentMode] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('inclusionai/ling-2.6-1t:free');
+  const [selectedModel, setSelectedModel] = useState('arcee-ai/trinity-large-preview:free');
   const [chatTitle, setChatTitle] = useState('New Chat');
 
   const {

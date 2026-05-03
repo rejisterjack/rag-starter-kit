@@ -65,7 +65,7 @@ export function ChatContainer({
   sources,
   isStreaming,
   streamingContent,
-  selectedModel = 'inclusionai/ling-2.6-1t:free',
+  selectedModel = 'arcee-ai/trinity-large-preview:free',
   chatId,
   chatTitle,
   agentMode = false,

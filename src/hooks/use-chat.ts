@@ -282,7 +282,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           };
           if (providerKeys.openrouter) headers['x-key-openrouter'] = providerKeys.openrouter;
           if (providerKeys.fireworks) headers['x-key-fireworks'] = providerKeys.fireworks;
-          if (providerKeys.gemini) headers['x-key-gemini'] = providerKeys.gemini;
 
           const effectiveChatId = chatIdOverride || conversationIdRef.current;
 
@@ -294,7 +293,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
               messages: [{ role: 'user', content: trimmedContent }],
               conversationId: effectiveChatId,
               config: {
-                model: modelRef.current || 'meta-llama/llama-3.3-70b-instruct:free',
+                model: modelRef.current || 'arcee-ai/trinity-large-preview:free',
               },
               stream: true,
             }),
@@ -352,7 +351,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           const reader = response.body?.getReader();
           if (!reader) {
             throw new Error(
-              'Server returned an empty response. Check that your AI provider API key (OpenRouter, Gemini) is configured.'
+              'Server returned an empty response. Check that your AI provider API key (OpenRouter, Fireworks) is configured.'
             );
           }
 

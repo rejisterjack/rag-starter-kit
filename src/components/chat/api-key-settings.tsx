@@ -28,7 +28,7 @@ export function ApiKeySettings(): React.ReactElement {
   };
 
   const handleRemove = (providerId: string) => {
-    remove(providerId as 'openrouter' | 'fireworks' | 'gemini');
+    remove(providerId as 'openrouter' | 'fireworks');
   };
 
   return (

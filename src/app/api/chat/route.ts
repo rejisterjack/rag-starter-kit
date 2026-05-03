@@ -10,7 +10,6 @@
  * - Audit logging
  */
 
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { generateText, type LanguageModel, streamText } from 'ai';
@@ -49,7 +48,7 @@ const defaultConfig: RAGConfig = {
   similarityThreshold: 0.7,
   temperature: 0.7,
   maxTokens: 2000,
-  model: 'inclusionai/ling-2.6-1t:free',
+  model: 'arcee-ai/trinity-large-preview:free',
   embeddingModel: 'text-embedding-004',
 };
 
@@ -58,11 +57,12 @@ const defaultConfig: RAGConfig = {
  * IMPLEMENTED: Fallback logic tries each model in order until one succeeds
  */
 const MODEL_FALLBACK_CHAIN = [
-  'inclusionai/ling-2.6-1t:free',
-  'liquid/lfm-2.5-1.2b-instruct:free',
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'google/gemma-3-12b-it:free',
+  'arcee-ai/trinity-large-preview:free',
+  'stepfun/step-3.5-flash:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
   'qwen/qwen3-coder:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'liquid/lfm-2.5-1.2b-instruct:free',
 ];
 
 // =============================================================================
@@ -132,7 +132,6 @@ export async function POST(req: Request) {
     const customKeys = {
       openrouter: req.headers.get('x-key-openrouter') || undefined,
       fireworks: req.headers.get('x-key-fireworks') || undefined,
-      gemini: req.headers.get('x-key-gemini') || undefined,
     };
 
     // Step 5: Parse and validate request body
@@ -843,7 +842,7 @@ export async function PATCH(req: Request) {
  */
 function getModel(
   modelName: string,
-  customKeys?: { openrouter?: string; fireworks?: string; gemini?: string }
+  customKeys?: { openrouter?: string; fireworks?: string }
 ): LanguageModel {
   // Fireworks AI models (prefixed with "accounts/fireworks/")
   if (modelName.startsWith('accounts/fireworks/')) {
@@ -856,18 +855,6 @@ function getModel(
       apiKey: fireworksKey,
     });
     return fireworks(modelName) as unknown as LanguageModel;
-  }
-
-  // Google Gemini models (prefixed with "gemini-")
-  if (modelName.startsWith('gemini-')) {
-    const geminiKey = customKeys?.gemini || process.env.GOOGLE_API_KEY;
-    if (!geminiKey) {
-      throw new Error(
-        'Google Gemini API key required. Set GOOGLE_API_KEY or provide your own key.'
-      );
-    }
-    const gemini = createGoogleGenerativeAI({ apiKey: geminiKey });
-    return gemini(modelName) as unknown as LanguageModel;
   }
 
   // OpenRouter models (contains '/' or ends with ':free') - default
@@ -890,7 +877,7 @@ async function generateWithFallback(
     temperature: number;
     maxTokens: number;
     primaryModel: string;
-    customKeys?: { openrouter?: string; fireworks?: string; gemini?: string };
+    customKeys?: { openrouter?: string; fireworks?: string };
   }
 ): Promise<{
   text: string;
@@ -965,7 +952,7 @@ async function maybeGenerateTitle(
   userMessage: string,
   assistantResponse: string,
   modelName: string,
-  customKeys?: { openrouter?: string; fireworks?: string; gemini?: string }
+  customKeys?: { openrouter?: string; fireworks?: string }
 ): Promise<void> {
   try {
     // Check if chat has default title
