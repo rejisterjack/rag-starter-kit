@@ -84,7 +84,7 @@ function getEdgeRedis(): RateLimitRedis {
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     try {
       // Upstash Redis is Edge-compatible (uses REST API)
-      const { Redis } = require('@upstash/redis');
+      const { Redis } = require(/* webpackIgnore: true */ '@upstash/redis');
       return new Redis({
         url: process.env.UPSTASH_REDIS_REST_URL,
         token: process.env.UPSTASH_REDIS_REST_TOKEN,

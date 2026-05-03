@@ -141,64 +141,180 @@ export async function middleware(req: NextRequest) {
   const { nextUrl } = req;
   const { pathname } = nextUrl;
 
-  // Generate or propagate request ID for tracing
-  const requestId = req.headers.get('X-Request-ID') ?? crypto.randomUUID();
+  try {
+    // Generate or propagate request ID for tracing
+    const requestId = req.headers.get('X-Request-ID') ?? crypto.randomUUID();
 
-  // Generate CSP nonce early so it can be passed through request headers
-  const nonceBytes = new Uint8Array(16);
-  crypto.getRandomValues(nonceBytes);
-  const cspNonce = btoa(String.fromCharCode(...nonceBytes));
+    // Generate CSP nonce early so it can be passed through request headers
+    const nonceBytes = new Uint8Array(16);
+    crypto.getRandomValues(nonceBytes);
+    const cspNonce = btoa(String.fromCharCode(...nonceBytes));
 
-  // Get token from session
-  const token = await getToken({ req, secret: env.NEXTAUTH_SECRET });
-  const isLoggedIn = !!token;
-  const user = token ? { id: token.sub, role: token.role, workspaceId: token.workspaceId } : null;
+    // Get token from session
+    const token = await getToken({ req, secret: env.NEXTAUTH_SECRET });
+    const isLoggedIn = !!token;
+    const user = token ? { id: token.sub, role: token.role, workspaceId: token.workspaceId } : null;
 
-  // Create a request-scoped logger
-  const requestLogger = logger.child({
-    requestId,
-    userId: user?.id,
-    path: pathname,
-  });
-
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    const corsHeaders = getCorsHeaders(req);
-    const response = new NextResponse(null, {
-      status: 204,
-      headers: corsHeaders,
+    // Create a request-scoped logger
+    const requestLogger = logger.child({
+      requestId,
+      userId: user?.id,
+      path: pathname,
     });
-    return withRequestId(response, requestId);
-  }
 
-  // CSRF Protection for state-changing API requests
-  const requiresCsrf = CSRF_PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
-  if (requiresCsrf && !SAFE_METHODS.includes(req.method)) {
-    const csrfValid = await validateCsrfToken(req);
-    if (!csrfValid) {
-      requestLogger.warn('CSRF validation failed', { pathname });
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
       const corsHeaders = getCorsHeaders(req);
-      const response = NextResponse.json(
-        { error: 'Invalid CSRF token', code: 'CSRF_INVALID' },
-        { status: 403, headers: corsHeaders }
-      );
+      const response = new NextResponse(null, {
+        status: 204,
+        headers: corsHeaders,
+      });
       return withRequestId(response, requestId);
     }
-  }
 
-  // Check if route is public
-  const isPublicRoute = PUBLIC_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`)
-  );
+    // CSRF Protection for state-changing API requests
+    const requiresCsrf = CSRF_PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
+    if (requiresCsrf && !SAFE_METHODS.includes(req.method)) {
+      const csrfValid = await validateCsrfToken(req);
+      if (!csrfValid) {
+        requestLogger.warn('CSRF validation failed', { pathname });
+        const corsHeaders = getCorsHeaders(req);
+        const response = NextResponse.json(
+          { error: 'Invalid CSRF token', code: 'CSRF_INVALID' },
+          { status: 403, headers: corsHeaders }
+        );
+        return withRequestId(response, requestId);
+      }
+    }
 
-  // Allow public routes
-  if (isPublicRoute) {
-    const publicHeaders = new Headers(req.headers);
-    publicHeaders.set('x-request-id', requestId);
-    publicHeaders.set('x-nonce', cspNonce);
+    // Check if route is public
+    const isPublicRoute = PUBLIC_ROUTES.some(
+      (route) => pathname === route || pathname.startsWith(`${route}/`)
+    );
 
+    // Allow public routes
+    if (isPublicRoute) {
+      const publicHeaders = new Headers(req.headers);
+      publicHeaders.set('x-request-id', requestId);
+      publicHeaders.set('x-nonce', cspNonce);
+
+      const response = NextResponse.next({
+        request: { headers: publicHeaders },
+      });
+
+      // Add security headers
+      addSecurityHeaders(response, requestId, cspNonce);
+
+      // Add CORS headers for API routes
+      if (pathname.startsWith('/api/')) {
+        const corsHeaders = getCorsHeaders(req);
+        Object.entries(corsHeaders).forEach(([key, value]) => {
+          response.headers.set(key, value);
+        });
+      }
+
+      return withRequestId(response, requestId);
+    }
+
+    // Check for API key authentication
+    const apiKey = req.headers.get('X-API-Key');
+    if (apiKey && pathname.startsWith('/api/')) {
+      // API key validation will be handled by the route handler
+      // We just pass through here and let the route handle it
+      const response = NextResponse.next();
+      addSecurityHeaders(response, requestId, cspNonce);
+      return withRequestId(response, requestId);
+    }
+
+    // Check if route requires authentication
+    // Note: Route groups like (chat) are not part of the URL path
+    const requiresAuth =
+      PROTECTED_API_ROUTES.some((route) => pathname.startsWith(route)) ||
+      pathname.startsWith('/chat');
+
+    // IP-based rate limiting for unauthenticated API requests
+    if (!isLoggedIn && pathname.startsWith('/api/')) {
+      const { checkIPRateLimit } = await import('@/lib/security/ip-rate-limiter-edge');
+      const ipResult = await checkIPRateLimit(req);
+
+      if (!ipResult.allowed) {
+        const corsHeaders = getCorsHeaders(req);
+        const response = NextResponse.json(
+          {
+            error: 'Rate limit exceeded',
+            code: 'RATE_LIMIT',
+            requiresCaptcha: ipResult.requiresCaptcha,
+            isBlocked: ipResult.isBlocked,
+            resetAt: new Date(ipResult.resetTime).toISOString(),
+          },
+          {
+            status: 429,
+            headers: {
+              ...corsHeaders,
+              'Retry-After': Math.ceil((ipResult.resetTime - Date.now()) / 1000).toString(),
+            },
+          }
+        );
+
+        return withRequestId(response, requestId);
+      }
+    }
+
+    // Redirect unauthenticated users to login
+    if (!isLoggedIn && requiresAuth) {
+      // For API routes, return 401
+      if (pathname.startsWith('/api/')) {
+        const corsHeaders = getCorsHeaders(req);
+        const response = NextResponse.json(
+          { error: 'Unauthorized', code: 'UNAUTHORIZED' },
+          { status: 401, headers: corsHeaders }
+        );
+        return withRequestId(response, requestId);
+      }
+
+      // For page routes, redirect to login (preserve query params in callbackUrl)
+      const loginUrl = new URL('/login', nextUrl);
+      const callbackUrl = nextUrl.search ? `${pathname}${nextUrl.search}` : pathname;
+      loginUrl.searchParams.set('callbackUrl', callbackUrl);
+      const response = NextResponse.redirect(loginUrl);
+      return withRequestId(response, requestId);
+    }
+
+    // Check admin routes
+    const isAdminRoute = ADMIN_ROUTES.some((route) => pathname.startsWith(route));
+    if (isAdminRoute && user?.role !== 'ADMIN') {
+      if (pathname.startsWith('/api/')) {
+        const corsHeaders = getCorsHeaders(req);
+        const response = NextResponse.json(
+          { error: 'Forbidden', code: 'FORBIDDEN' },
+          { status: 403, headers: corsHeaders }
+        );
+        return withRequestId(response, requestId);
+      }
+      const response = NextResponse.redirect(new URL('/', nextUrl));
+      return withRequestId(response, requestId);
+    }
+
+    // Add user info to headers for server components
+    const requestHeaders = new Headers(req.headers);
+
+    // Set the request ID on headers for downstream use
+    requestHeaders.set('x-request-id', requestId);
+    requestHeaders.set('x-nonce', cspNonce);
+
+    if (isLoggedIn && user) {
+      requestHeaders.set('x-user-id', user.id as string);
+      requestHeaders.set('x-user-role', (user.role as string) ?? 'USER');
+      if (user.workspaceId) {
+        requestHeaders.set('x-workspace-id', user.workspaceId as string);
+      }
+    }
+
+    // Continue to the route
     const response = NextResponse.next({
-      request: { headers: publicHeaders },
+      request: {
+        headers: requestHeaders,
+      },
     });
 
     // Add security headers
@@ -213,121 +329,11 @@ export async function middleware(req: NextRequest) {
     }
 
     return withRequestId(response, requestId);
+  } catch (error) {
+    // If middleware crashes, log and continue without blocking the request
+    console.error('Middleware error:', error instanceof Error ? error.message : String(error));
+    return NextResponse.next();
   }
-
-  // Check for API key authentication
-  const apiKey = req.headers.get('X-API-Key');
-  if (apiKey && pathname.startsWith('/api/')) {
-    // API key validation will be handled by the route handler
-    // We just pass through here and let the route handle it
-    const response = NextResponse.next();
-    addSecurityHeaders(response, requestId, cspNonce);
-    return withRequestId(response, requestId);
-  }
-
-  // Check if route requires authentication
-  // Note: Route groups like (chat) are not part of the URL path
-  const requiresAuth =
-    PROTECTED_API_ROUTES.some((route) => pathname.startsWith(route)) ||
-    pathname.startsWith('/chat');
-
-  // IP-based rate limiting for unauthenticated API requests
-  if (!isLoggedIn && pathname.startsWith('/api/')) {
-    const { checkIPRateLimit } = await import('@/lib/security/ip-rate-limiter-edge');
-    const ipResult = await checkIPRateLimit(req);
-
-    if (!ipResult.allowed) {
-      const corsHeaders = getCorsHeaders(req);
-      const response = NextResponse.json(
-        {
-          error: 'Rate limit exceeded',
-          code: 'RATE_LIMIT',
-          requiresCaptcha: ipResult.requiresCaptcha,
-          isBlocked: ipResult.isBlocked,
-          resetAt: new Date(ipResult.resetTime).toISOString(),
-        },
-        {
-          status: 429,
-          headers: {
-            ...corsHeaders,
-            'Retry-After': Math.ceil((ipResult.resetTime - Date.now()) / 1000).toString(),
-          },
-        }
-      );
-
-      return withRequestId(response, requestId);
-    }
-  }
-
-  // Redirect unauthenticated users to login
-  if (!isLoggedIn && requiresAuth) {
-    // For API routes, return 401
-    if (pathname.startsWith('/api/')) {
-      const corsHeaders = getCorsHeaders(req);
-      const response = NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401, headers: corsHeaders }
-      );
-      return withRequestId(response, requestId);
-    }
-
-    // For page routes, redirect to login (preserve query params in callbackUrl)
-    const loginUrl = new URL('/login', nextUrl);
-    const callbackUrl = nextUrl.search ? `${pathname}${nextUrl.search}` : pathname;
-    loginUrl.searchParams.set('callbackUrl', callbackUrl);
-    const response = NextResponse.redirect(loginUrl);
-    return withRequestId(response, requestId);
-  }
-
-  // Check admin routes
-  const isAdminRoute = ADMIN_ROUTES.some((route) => pathname.startsWith(route));
-  if (isAdminRoute && user?.role !== 'ADMIN') {
-    if (pathname.startsWith('/api/')) {
-      const corsHeaders = getCorsHeaders(req);
-      const response = NextResponse.json(
-        { error: 'Forbidden', code: 'FORBIDDEN' },
-        { status: 403, headers: corsHeaders }
-      );
-      return withRequestId(response, requestId);
-    }
-    const response = NextResponse.redirect(new URL('/', nextUrl));
-    return withRequestId(response, requestId);
-  }
-
-  // Add user info to headers for server components
-  const requestHeaders = new Headers(req.headers);
-
-  // Set the request ID on headers for downstream use
-  requestHeaders.set('x-request-id', requestId);
-  requestHeaders.set('x-nonce', cspNonce);
-
-  if (isLoggedIn && user) {
-    requestHeaders.set('x-user-id', user.id as string);
-    requestHeaders.set('x-user-role', (user.role as string) ?? 'USER');
-    if (user.workspaceId) {
-      requestHeaders.set('x-workspace-id', user.workspaceId as string);
-    }
-  }
-
-  // Continue to the route
-  const response = NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
-
-  // Add security headers
-  addSecurityHeaders(response, requestId, cspNonce);
-
-  // Add CORS headers for API routes
-  if (pathname.startsWith('/api/')) {
-    const corsHeaders = getCorsHeaders(req);
-    Object.entries(corsHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-  }
-
-  return withRequestId(response, requestId);
 }
 
 // =============================================================================
