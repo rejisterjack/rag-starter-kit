@@ -5,7 +5,11 @@
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    const { initTracing } = await import('./src/lib/tracing');
-    initTracing();
+    try {
+      const { initTracing } = await import('./src/lib/tracing');
+      initTracing();
+    } catch (error) {
+      console.error('Instrumentation failed:', error instanceof Error ? error.message : String(error));
+    }
   }
 }

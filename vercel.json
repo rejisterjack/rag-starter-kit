@@ -11,7 +11,7 @@
     }
   },
   "env": {
-    "NEXTAUTH_URL": "${VERCEL_URL}"
+    "NEXTAUTH_URL": "https://${VERCEL_URL}"
   },
   "headers": [
     {
