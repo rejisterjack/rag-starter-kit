@@ -1,8 +1,66 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { env } from '@/lib/env';
-import { logger } from '@/lib/logger';
+
+// =============================================================================
+// Edge-Compatible Logger (Pino is Node.js-only and crashes Edge Runtime)
+// =============================================================================
+
+interface LogContext {
+  [key: string]: unknown;
+  userId?: string;
+  requestId?: string;
+  workspaceId?: string;
+}
+
+class EdgeLogger {
+  private context: LogContext;
+
+  constructor(context: LogContext = {}) {
+    this.context = context;
+  }
+
+  private fmt(msg: string, ctx?: LogContext): string {
+    const merged = { ...this.context, ...ctx, msg };
+    return JSON.stringify(merged);
+  }
+
+  debug(msg: string, ctx?: LogContext): void {
+    if (process.env.LOG_LEVEL === 'debug') console.debug(this.fmt(msg, ctx));
+  }
+
+  info(msg: string, ctx?: LogContext): void {
+    console.info(this.fmt(msg, ctx));
+  }
+
+  warn(msg: string, ctx?: LogContext): void {
+    console.warn(this.fmt(msg, ctx));
+  }
+
+  error(msg: string, ctx?: LogContext): void {
+    console.error(this.fmt(msg, ctx));
+  }
+
+  child(ctx: LogContext): EdgeLogger {
+    return new EdgeLogger({ ...this.context, ...ctx });
+  }
+}
+
+const logger = new EdgeLogger();
+
+// =============================================================================
+// Edge-Safe Env Access (avoid importing @/lib/env which uses Zod + validates
+// DATABASE_URL etc. — not all env vars are available in Edge Runtime)
+// =============================================================================
+
+const env = {
+  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ?? '',
+  NEXTAUTH_URL: process.env.NEXTAUTH_URL ?? '',
+  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS ?? '',
+  NODE_ENV: process.env.NODE_ENV ?? 'development',
+  CSP_CONNECT_SRC: process.env.CSP_CONNECT_SRC ?? '',
+  NEXT_PUBLIC_ANALYTICS_HOST: process.env.NEXT_PUBLIC_ANALYTICS_HOST ?? '',
+} as const;
 
 // =============================================================================
 // Route Configuration
