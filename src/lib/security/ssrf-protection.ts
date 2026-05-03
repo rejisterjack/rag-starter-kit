@@ -85,9 +85,6 @@ const DEFAULT_CONFIG: SSRFConfig = {
     'kubernetes.default',
     'kubernetes.default.svc',
     'kubernetes.default.svc.cluster.local',
-    // Docker
-    'host.docker.internal',
-    'gateway.docker.internal',
   ],
   allowedSchemes: ['http', 'https'],
   maxRedirects: 5,

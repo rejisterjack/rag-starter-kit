@@ -45,10 +45,10 @@ interface IPReputation {
 }
 
 interface PipelineChain {
-  zremrangebyscore(): PipelineChain;
-  zcard(): PipelineChain;
-  zadd(): PipelineChain;
-  pexpire(): PipelineChain;
+  zremrangebyscore(key: string, min: number | string, max: number | string): PipelineChain;
+  zcard(key: string): PipelineChain;
+  zadd(key: string, score: number, member: string): PipelineChain;
+  pexpire(key: string, ms: number): PipelineChain;
   exec(): Promise<unknown[]>;
 }
 
@@ -68,18 +68,31 @@ const mockRedis: RateLimitRedis = {
   get: async () => null,
   set: async () => 'OK',
   del: async () => 0,
-  pipeline: () => ({
-    zremrangebyscore: () => ({
-      zcard: () => ({ zadd: () => ({ pexpire: () => ({ exec: async () => [] }) }) }),
-    }),
-    zcard: () => ({ zadd: () => ({ pexpire: () => ({ exec: async () => [] }) }) }),
-    zadd: () => ({ pexpire: () => ({ exec: async () => [] }) }),
-    pexpire: () => ({ exec: async () => [] }),
-    exec: async () => [],
-  }),
+  pipeline: () => {
+    const chain: PipelineChain = {
+      zremrangebyscore: () => chain,
+      zcard: () => chain,
+      zadd: () => chain,
+      pexpire: () => chain,
+      exec: async () => [],
+    };
+    return chain;
+  },
 };
 
 function getEdgeRedis(): RateLimitRedis {
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    try {
+      // Upstash Redis is Edge-compatible (uses REST API)
+      const { Redis } = require('@upstash/redis');
+      return new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      }) as unknown as RateLimitRedis;
+    } catch {
+      return mockRedis;
+    }
+  }
   return mockRedis;
 }
 
@@ -176,7 +189,7 @@ export async function checkIPRateLimit(req: Request): Promise<IPRateLimitResult>
     pipeline.pexpire(rateKey, cfg.windowMs);
 
     const results = await pipeline.exec();
-    const currentCount = (results?.[1]?.[1] as number) || 0;
+    const currentCount = (results?.[1] as number | undefined) ?? 0;
 
     const allowed = currentCount < adjustedLimit;
     const remaining = Math.max(0, adjustedLimit - currentCount - 1);

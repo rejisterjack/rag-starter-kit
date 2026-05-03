@@ -5,9 +5,9 @@
  * Supports Identity Provider (IdP) initiated and Service Provider (SP) initiated SSO.
  */
 
-import type { Prisma } from '@prisma/client';
 // Import samlify
 import * as saml from 'samlify';
+import type { Prisma } from '@/generated/prisma/client';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import {

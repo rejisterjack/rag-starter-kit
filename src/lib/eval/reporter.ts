@@ -4,7 +4,7 @@
  * Formats EvalReport into JSON, Markdown, or terminal-friendly tables.
  */
 
-import type { AnswerMetrics, EvalReport, RetrievalMetrics } from './types';
+import type { EvalReport } from './types';
 
 // =============================================================================
 // Helpers
@@ -16,14 +16,6 @@ function pct(value: number): string {
 
 function ms(value: number): string {
   return `${value.toFixed(0)}ms`;
-}
-
-function _formatRetrievalRow(m: RetrievalMetrics): string {
-  return `${pct(m.precision)}  ${pct(m.recall)}  ${pct(m.f1)}  ${pct(m.mrr)}  ${pct(m.ndcg)}`;
-}
-
-function _formatAnswerRow(m: AnswerMetrics): string {
-  return `${pct(m.faithfulness)}  ${pct(m.answerRelevance)}  ${pct(m.completeness)}`;
 }
 
 // =============================================================================

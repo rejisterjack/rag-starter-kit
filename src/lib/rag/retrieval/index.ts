@@ -143,8 +143,13 @@ export async function retrieveSources(
   config: Partial<RAGConfig> = {}
 ): Promise<Source[]> {
   return tracing.retrieveSources(query, config.topK ?? 5, async () => {
-    // Generate query embedding
-    const queryEmbedding = await generateQueryEmbedding(query);
+    // Generate query embedding — if this fails (bad API key, quota), skip retrieval
+    let queryEmbedding: number[];
+    try {
+      queryEmbedding = await generateQueryEmbedding(query);
+    } catch {
+      return [];
+    }
 
     // Check semantic cache first
     const cachedResults = await semanticCache.findSimilar(query, queryEmbedding);
@@ -153,7 +158,12 @@ export async function retrieveSources(
     }
 
     // Search for similar chunks
-    const results = await searchSimilarChunks(queryEmbedding, userId, config);
+    let results: VectorSearchResult[];
+    try {
+      results = await searchSimilarChunks(queryEmbedding, userId, config);
+    } catch {
+      return [];
+    }
 
     // Map to Source type
     const sources = results.map((result) => ({

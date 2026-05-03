@@ -70,10 +70,8 @@ export class ExportStorage {
     );
 
     switch (this.config.type) {
-      case 's3':
-        return this.storeS3(key, filename, buffer, options.mimeType, expiresAt);
-      case 'r2':
-        return this.storeR2(key, filename, buffer, options.mimeType, expiresAt);
+      case 'cloudinary':
+        return this.storeCloudinary(key, filename, buffer, options.mimeType, expiresAt);
       default:
         return this.storeLocal(key, filename, buffer, options.mimeType, expiresAt);
     }
@@ -84,10 +82,8 @@ export class ExportStorage {
    */
   async retrieveFile(key: string): Promise<Buffer> {
     switch (this.config.type) {
-      case 's3':
-        return this.retrieveS3(key);
-      case 'r2':
-        return this.retrieveR2(key);
+      case 'cloudinary':
+        return this.retrieveCloudinary(key);
       default:
         return this.retrieveLocal(key);
     }
@@ -99,10 +95,8 @@ export class ExportStorage {
   async getFileInfo(key: string): Promise<StoredFile | null> {
     try {
       switch (this.config.type) {
-        case 's3':
-          return this.getS3FileInfo(key);
-        case 'r2':
-          return this.getR2FileInfo(key);
+        case 'cloudinary':
+          return this.getCloudinaryFileInfo(key);
         default:
           return this.getLocalFileInfo(key);
       }
@@ -121,10 +115,8 @@ export class ExportStorage {
   async deleteFile(key: string): Promise<boolean> {
     try {
       switch (this.config.type) {
-        case 's3':
-          return this.deleteS3(key);
-        case 'r2':
-          return this.deleteR2(key);
+        case 'cloudinary':
+          return this.deleteCloudinary(key);
         default:
           return this.deleteLocal(key);
       }
@@ -140,17 +132,14 @@ export class ExportStorage {
   /**
    * Generate a download URL
    */
-  async getDownloadUrl(key: string, expiryMinutes = 60): Promise<string | null> {
+  async getDownloadUrl(key: string, _expiryMinutes = 60): Promise<string | null> {
     const fileInfo = await this.getFileInfo(key);
     if (!fileInfo) return null;
 
     switch (this.config.type) {
-      case 's3':
-        return this.getS3DownloadUrl(key, expiryMinutes);
-      case 'r2':
-        return this.getR2DownloadUrl(key, expiryMinutes);
+      case 'cloudinary':
+        return this.getCloudinaryDownloadUrl(key);
       default:
-        // For local storage, return a relative path that can be served
         return `/api/export/download/${key}`;
     }
   }
@@ -163,10 +152,8 @@ export class ExportStorage {
 
     try {
       switch (this.config.type) {
-        case 's3':
-          return this.cleanupS3Expired();
-        case 'r2':
-          return this.cleanupR2Expired();
+        case 'cloudinary':
+          return this.cleanupCloudinaryExpired();
         default:
           return this.cleanupLocalExpired();
       }
@@ -309,70 +296,59 @@ export class ExportStorage {
   }
 
   // =============================================================================
-  // S3 Storage Implementation (Placeholder)
+  // Cloudinary Storage Implementation
   // =============================================================================
 
-  private async storeS3(
+  private async storeCloudinary(
     key: string,
     filename: string,
     buffer: Buffer,
     mimeType: string,
     expiresAt: Date
   ): Promise<StoredFile> {
-    return this.storeLocal(key, filename, buffer, mimeType, expiresAt);
+    const { uploadFile } = await import('@/lib/storage/cloudinary-storage');
+    const storageKey = `exports/${key}/${filename}`;
+    const result = await uploadFile(storageKey, buffer, {
+      contentType: mimeType,
+      metadata: { exportKey: key, expiresAt: expiresAt.toISOString() },
+    });
+
+    return {
+      key,
+      path: result.url,
+      size: buffer.length,
+      mimeType,
+      createdAt: new Date(),
+      expiresAt,
+      url: result.url,
+    };
   }
 
-  private async retrieveS3(key: string): Promise<Buffer> {
-    return this.retrieveLocal(key);
+  private async retrieveCloudinary(key: string): Promise<Buffer> {
+    const { getFile } = await import('@/lib/storage/cloudinary-storage');
+    return getFile(`exports/${key}`);
   }
 
-  private async getS3FileInfo(key: string): Promise<StoredFile | null> {
-    return this.getLocalFileInfo(key);
-  }
-
-  private async deleteS3(key: string): Promise<boolean> {
-    return this.deleteLocal(key);
-  }
-
-  private async getS3DownloadUrl(_key: string, _expiryMinutes: number): Promise<string | null> {
+  private async getCloudinaryFileInfo(_key: string): Promise<StoredFile | null> {
     return null;
   }
 
-  private async cleanupS3Expired(): Promise<{ deleted: number; errors: number }> {
-    return { deleted: 0, errors: 0 };
+  private async deleteCloudinary(key: string): Promise<boolean> {
+    try {
+      const { deleteFile } = await import('@/lib/storage/cloudinary-storage');
+      await deleteFile(`exports/${key}`);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
-  // =============================================================================
-  // R2 Storage Implementation (Placeholder)
-  // =============================================================================
-
-  private async storeR2(
-    key: string,
-    filename: string,
-    buffer: Buffer,
-    mimeType: string,
-    expiresAt: Date
-  ): Promise<StoredFile> {
-    return this.storeLocal(key, filename, buffer, mimeType, expiresAt);
+  private async getCloudinaryDownloadUrl(key: string): Promise<string | null> {
+    const { getPresignedUrl } = await import('@/lib/storage/cloudinary-storage');
+    return getPresignedUrl(`exports/${key}`);
   }
 
-  private async retrieveR2(key: string): Promise<Buffer> {
-    return this.retrieveLocal(key);
-  }
-
-  private async getR2FileInfo(key: string): Promise<StoredFile | null> {
-    return this.getLocalFileInfo(key);
-  }
-
-  private async deleteR2(key: string): Promise<boolean> {
-    return this.deleteLocal(key);
-  }
-
-  private async getR2DownloadUrl(_key: string, _expiryMinutes: number): Promise<string | null> {
-    return null;
-  }
-
-  private async cleanupR2Expired(): Promise<{ deleted: number; errors: number }> {
+  private async cleanupCloudinaryExpired(): Promise<{ deleted: number; errors: number }> {
     return { deleted: 0, errors: 0 };
   }
 

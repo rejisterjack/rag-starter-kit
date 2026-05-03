@@ -62,7 +62,7 @@ Sensitive fields use AES-256-GCM encryption with envelope encryption pattern.
 ### Encryption at Rest
 
 - PostgreSQL with TLS
-- MinIO/S3 with server-side encryption
+- Cloudinary with server-side encryption
 - Redis with TLS
 
 ## CSRF Protection

@@ -4,7 +4,12 @@
  * Sample workspaces for testing multi-tenancy and collaboration features.
  */
 
-import type { MemberStatus, Workspace, WorkspaceMember, WorkspaceRole } from '@prisma/client';
+import type {
+  MemberStatus,
+  Workspace,
+  WorkspaceMember,
+  WorkspaceRole,
+} from '@/generated/prisma/client';
 
 // =============================================================================
 // Workspace Types

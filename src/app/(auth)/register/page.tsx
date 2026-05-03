@@ -22,10 +22,15 @@ const registerSchema = z
     email: z.string().email('Please enter a valid email address'),
     password: z
       .string()
-      .min(8, 'Password must be at least 8 characters')
-      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .min(12, 'Password must be at least 12 characters')
+      .max(128, 'Password must not exceed 128 characters')
       .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-      .regex(/\d/, 'Password must contain at least one number'),
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .regex(/\d/, 'Password must contain at least one number')
+      .regex(
+        /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/,
+        'Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;\'":",.<>/?)'
+      ),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -83,7 +88,13 @@ export default function RegisterPage(): React.ReactElement {
       });
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error?.message || 'Failed to create account');
+      if (!response.ok) {
+        const msg =
+          typeof result.error?.message === 'string'
+            ? result.error.message
+            : 'Failed to create account';
+        throw new Error(msg);
+      }
 
       const signInResult = await signIn('credentials', {
         email: data.email,
@@ -123,30 +134,22 @@ export default function RegisterPage(): React.ReactElement {
         </motion.div>
       )}
 
-      {/* OAuth buttons - temporarily disabled */}
+      {/* OAuth buttons */}
       <motion.div variants={itemVariants} className="space-y-3">
         <Button
           variant="outline"
-          disabled
-          className="w-full bg-background/30 border-white/5 opacity-50 cursor-not-allowed"
-          title="GitHub signup temporarily unavailable"
+          className="w-full interactive"
+          onClick={() => signIn('github', { callbackUrl: '/' })}
         >
           <Github className="mr-2 h-4 w-4" />
           Sign up with GitHub
-          <span className="ml-2 text-xs text-muted-foreground">(unavailable)</span>
         </Button>
         <Button
           variant="outline"
-          disabled
-          className="w-full bg-background/30 border-white/5 opacity-50 cursor-not-allowed"
-          title="Google signup temporarily unavailable"
+          className="w-full interactive"
+          onClick={() => signIn('google', { callbackUrl: '/' })}
         >
-          <svg
-            className="mr-2 h-4 w-4 opacity-60"
-            viewBox="0 0 24 24"
-            role="img"
-            aria-label="Google logo"
-          >
+          <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" role="img" aria-label="Google logo">
             <title>Google</title>
             <path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -166,7 +169,6 @@ export default function RegisterPage(): React.ReactElement {
             />
           </svg>
           Sign up with Google
-          <span className="ml-2 text-xs text-muted-foreground">(unavailable)</span>
         </Button>
       </motion.div>
 
@@ -238,7 +240,7 @@ export default function RegisterPage(): React.ReactElement {
               <p className="text-sm text-red-500">{errors.password.message}</p>
             ) : (
               <p className="text-xs text-muted-foreground/80 px-1">
-                At least 8 items, mixed case & numbers
+                At least 12 characters, upper and lower case, a number, and a special character
               </p>
             )}
           </div>

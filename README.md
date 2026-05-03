@@ -14,7 +14,6 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 [![CI](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/ci.yml?label=CI&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
-[![Docker Build](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/docker-build.yml?label=Docker&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![E2E Tests](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/e2e.yml?label=E2E&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![Lighthouse](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/lighthouse.yml?label=Lighthouse&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![All Contributors](https://img.shields.io/github/all-contributors/rejisterjack/rag-starter-kit?color=ee8449&style=flat-square)](#contributors)
@@ -115,7 +114,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 <details>
 <summary><b>📊 Monitoring & Analytics</b></summary>
 
-- **Plausible Analytics** - Privacy-focused, self-hosted in Docker
+- **Plausible Analytics** - Privacy-focused
 - **PostHog** - Product analytics (optional)
 - **Audit logging** - Security event tracking
 - **Rate limiting** - Redis-based with per-endpoint config
@@ -146,12 +145,12 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 | **Database** | [PostgreSQL 16](https://www.postgresql.org/) + [pgvector](https://github.com/pgvector/pgvector) |
 | **ORM** | [Prisma 7](https://www.prisma.io/) + `@prisma/adapter-pg` |
 | **Auth** | [NextAuth.js v5](https://authjs.dev/) (Auth.js) |
-| **Storage** | [MinIO](https://min.io/) (S3-compatible) / AWS S3 / Cloudflare R2 |
+| **Storage** | [Cloudinary](https://cloudinary.com/) |
 | **Background Jobs** | [Inngest](https://www.inngest.com/) |
 | **State** | [TanStack Query](https://tanstack.com/query) + [Zustand](https://github.com/pmndrs/zustand) |
 | **Testing** | [Vitest](https://vitest.dev/) + [Playwright](https://playwright.dev/) |
 | **Analytics** | [Plausible](https://plausible.io/) (self-hosted) + [PostHog](https://posthog.com/) (optional) |
-| **DevOps** | [Docker](https://docker.com/), [Docker Compose](https://docs.docker.com/compose/) |
+| **DevOps** | [Vercel](https://vercel.com/) |
 | **Linting** | [Biome](https://biomejs.dev/) |
 
 ---
@@ -161,9 +160,8 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 ### Prerequisites
 
 - **Node.js 20+** and **pnpm 9+**
-- **Docker & Docker Compose** (recommended)
 
-### Option A — Docker (Recommended, 2 minutes)
+### Quick Start
 
 ```bash
 # 1. Clone repository
@@ -178,22 +176,21 @@ cd rag-starter-kit
 cp .env.example .env
 # Edit .env with your API keys
 
-# 4. Start all services (PostgreSQL, Redis, MinIO, Inngest, Next.js)
-docker compose up
+# 4. Install dependencies and start dev server
+pnpm install
+pnpm dev
 
-# 5. Open http://localhost:3000 🎉
+# 5. Open http://localhost:3000
 ```
 
-**Services started:**
+**Services used:**
 
 | Service | URL | Notes |
 |---------|-----|-------|
 | Next.js app | http://localhost:3000 | Main application |
 | Inngest Dashboard | http://localhost:8288 | Background jobs |
-| MinIO Console | http://localhost:9001 | S3 storage (minioadmin/minioadmin) |
-| Plausible Analytics | http://localhost:8000 | `--profile analytics` only |
 
-### Option B — One-Click Deploy
+### One-Click Deploy
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/rejisterjack/rag-starter-kit)
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/rag-starter-kit)
@@ -213,7 +210,6 @@ docker compose up
 | **Real-time Collab** | ✅ Built-in | ❌ No | ❌ No | Manual |
 | **PWA Support** | ✅ Built-in | ❌ No | ❌ No | Manual |
 | **Voice Features** | ✅ Built-in | ❌ No | ❌ No | Manual |
-| **Docker** | ✅ Complete | ⚠️ Partial | ❌ No | Manual |
 | **TypeScript** | ✅ Strict | ⚠️ Loose | ⚠️ Loose | Depends |
 
 ---
@@ -224,11 +220,11 @@ docker compose up
 
 ```mermaid
 graph TB
-    User([User]) -->|Upload Document| S3[MinIO S3]
+    User([User]) -->|Upload Document| Cloudinary[Cloudinary]
     User -->|Chat Query| Next[Next.js 15 App]
 
     subgraph "Background Processing"
-        S3 -->|Trigger| Inngest[Inngest Jobs]
+        Cloudinary -->|Trigger| Inngest[Inngest Jobs]
         Inngest -->|Extract Text| OCR[OCR/Text Extraction]
         OCR -->|Chunk| Chunker[Text Chunking]
         Chunker -->|Embed| Google[Google Gemini Embeddings]
@@ -258,7 +254,7 @@ graph TB
 | **AI/ML** | Vercel AI SDK, OpenRouter, Gemini | LLM inference, embeddings |
 | **RAG** | LangChain, custom pipeline | Document processing, retrieval |
 | **Data** | PostgreSQL, pgvector, Redis | Persistent storage, caching |
-| **Storage** | MinIO/S3 | Document files |
+| **Storage** | Cloudinary | Document files |
 | **Queue** | Inngest | Background job processing |
 | **Real-time** | Socket.io | WebSocket connections |
 
@@ -285,8 +281,8 @@ cp .env.example .env
 
 # 3. Edit .env with your keys
 
-# 4. Start the stack
-docker compose up
+# 4. Start the dev server
+pnpm dev
 ```
 
 ### Required (FREE)
@@ -326,7 +322,6 @@ rag-starter-kit/
 │   └── hooks/              # Custom React hooks
 ├── prisma/                 # Database schema & migrations
 ├── tests/                  # Unit, integration, E2E tests
-├── docker-compose.yml      # Unified Docker stack (all services)
 └── .github/workflows/      # CI/CD pipelines
 ```
 
@@ -342,7 +337,7 @@ git clone https://github.com/YOUR_USERNAME/rag-starter-kit.git
 cd rag-starter-kit && pnpm install
 cp .env.example .env
 # Edit .env with your API keys
-docker compose up
+pnpm dev
 ```
 
 See [Contributors](./CONTRIBUTORS.md) for our community!
@@ -355,11 +350,11 @@ See [Contributors](./CONTRIBUTORS.md) for our community!
 
 | Issue | Solution |
 |-------|----------|
-| **Docker fails to start** | Check if ports 3000, 5432, 6379 are free: `lsof -i :3000` |
+| **Port in use** | Check if port 3000 is free: `lsof -i :3000` |
 | **Prisma generate fails** | Run `pnpm prisma generate` manually |
 | **Embedding errors** | Verify `GOOGLE_API_KEY` is valid and has quota remaining |
 | **LLM timeout** | Check OpenRouter status or switch models in settings |
-| **Upload fails** | Ensure MinIO is running: `docker compose ps minio` |
+| **Upload fails** | Verify Cloudinary credentials in your `.env` file |
 | **WebSocket not connecting** | Check `NEXT_PUBLIC_APP_URL` matches your browser URL |
 
 ### 🤖 Model Selection Guide
@@ -406,7 +401,7 @@ Key metrics tracked:
 | `MAX_TOKENS` | 2000 | LLM response limit |
 
 For production with high traffic:
-1. Enable Redis caching: `REDIS_URL=redis://localhost:6379`
+1. Enable Redis caching: `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
 2. Use connection pooling for database
 3. Enable CDN for static assets
 4. Consider dedicated embedding service

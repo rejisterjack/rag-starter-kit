@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: rag-starter-kit
-  labels:
-    app.kubernetes.io/name: rag-starter-kit
-    app.kubernetes.io/part-of: rag-starter-kit

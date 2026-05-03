@@ -4,7 +4,7 @@
  * Sample chunks for testing chunking strategies and RAG retrieval.
  */
 
-import type { DocumentChunk } from '@prisma/client';
+import type { DocumentChunk } from '@/generated/prisma/client';
 
 // =============================================================================
 // Chunk Type Extensions

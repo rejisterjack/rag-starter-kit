@@ -1,13 +1,11 @@
 /**
  * Rate Limiter
  *
- * Supports multiple Redis backends:
+ * Supports:
  * - Upstash Redis (for serverless/production)
- * - ioredis (for Docker/self-hosted)
- * - Disabled (for local dev without Redis)
+ * - In-memory (for local dev without Redis)
  */
 
-import type Redis from 'ioredis';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { logger } from '@/lib/logger';
 
@@ -17,7 +15,7 @@ import { logger } from '@/lib/logger';
 
 export interface RateLimitConfig {
   limit: number;
-  windowMs: number; // milliseconds
+  windowMs: number;
   prefix?: string;
 }
 
@@ -29,51 +27,26 @@ export interface RateLimitResult {
 }
 
 export const rateLimits = {
-  // Chat endpoints
-  chat: { limit: 50, windowMs: 60 * 60 * 1000, prefix: 'chat' }, // 50/hour
+  chat: { limit: 50, windowMs: 60 * 60 * 1000, prefix: 'chat' },
   chatStream: { limit: 50, windowMs: 60 * 60 * 1000, prefix: 'chat_stream' },
-
-  // Ingestion endpoints
-  ingest: { limit: 10, windowMs: 60 * 60 * 1000, prefix: 'ingest' }, // 10/hour
+  ingest: { limit: 10, windowMs: 60 * 60 * 1000, prefix: 'ingest' },
   ingestUrl: { limit: 20, windowMs: 60 * 60 * 1000, prefix: 'ingest_url' },
-  ocr: { limit: 30, windowMs: 60 * 60 * 1000, prefix: 'ocr' }, // 30/hour
-
-  // API endpoints
-  api: { limit: 100, windowMs: 60 * 1000, prefix: 'api' }, // 100/min
+  ocr: { limit: 30, windowMs: 60 * 60 * 1000, prefix: 'ocr' },
+  api: { limit: 100, windowMs: 60 * 1000, prefix: 'api' },
   apiKey: { limit: 1000, windowMs: 60 * 1000, prefix: 'api_key' },
-
-  // Authentication endpoints
-  login: { limit: 5, windowMs: 5 * 60 * 1000, prefix: 'login' }, // 5/5min
-  register: { limit: 3, windowMs: 60 * 60 * 1000, prefix: 'register' }, // 3/hour
+  login: { limit: 5, windowMs: 5 * 60 * 1000, prefix: 'login' },
+  register: { limit: 3, windowMs: 60 * 60 * 1000, prefix: 'register' },
   passwordReset: { limit: 3, windowMs: 60 * 60 * 1000, prefix: 'password_reset' },
-
-  // Workspace endpoints
   workspace: { limit: 50, windowMs: 60 * 1000, prefix: 'workspace' },
-
-  // Document endpoints
   documents: { limit: 30, windowMs: 60 * 1000, prefix: 'documents' },
-
-  // Admin endpoints
   admin: { limit: 100, windowMs: 60 * 1000, prefix: 'admin' },
-
-  // Voice endpoints
   voice: { limit: 30, windowMs: 60 * 60 * 1000, prefix: 'voice' },
-
-  // Agent endpoints
   agent: { limit: 50, windowMs: 60 * 60 * 1000, prefix: 'agent' },
-
-  // Export endpoints
   export: { limit: 10, windowMs: 60 * 60 * 1000, prefix: 'export' },
-
-  // Search endpoints
-  search: { limit: 100, windowMs: 60 * 1000, prefix: 'search' }, // 100/min
-
-  // Feedback endpoints
-  feedback: { limit: 30, windowMs: 60 * 1000, prefix: 'feedback' }, // 30/min
-
-  // Share endpoints
-  share: { limit: 20, windowMs: 60 * 1000, prefix: 'share' }, // 20/min
-  share_view: { limit: 60, windowMs: 60 * 1000, prefix: 'share_view' }, // 60/min
+  search: { limit: 100, windowMs: 60 * 1000, prefix: 'search' },
+  feedback: { limit: 30, windowMs: 60 * 1000, prefix: 'feedback' },
+  share: { limit: 20, windowMs: 60 * 1000, prefix: 'share' },
+  share_view: { limit: 60, windowMs: 60 * 1000, prefix: 'share_view' },
 } as const;
 
 export type RateLimitType = keyof typeof rateLimits;
@@ -100,7 +73,6 @@ class InMemoryRateLimiter implements RateLimiterBackend {
     const record = this.storage.get(key);
 
     if (!record || record.resetTime < now) {
-      // New window
       const resetTime = now + config.windowMs;
       this.storage.set(key, { count: 1, resetTime });
       return {
@@ -131,89 +103,13 @@ class InMemoryRateLimiter implements RateLimiterBackend {
 }
 
 // =============================================================================
-// Redis Rate Limiter (ioredis)
-// =============================================================================
-
-class RedisRateLimiter implements RateLimiterBackend {
-  private redis: Redis | null = null;
-  private connected = false;
-
-  constructor(redisUrl: string) {
-    // Lazy load ioredis
-    const Redis = require('ioredis');
-    this.redis = new Redis(redisUrl, {
-      retryStrategy: (times: number) => Math.min(times * 50, 2000),
-      maxRetriesPerRequest: 3,
-    });
-
-    // biome-ignore lint/style/noNonNullAssertion: Assigned in constructor above
-    this.redis!.on('connect', () => {
-      this.connected = true;
-      logger.info('Redis rate limiter connected');
-    });
-
-    // biome-ignore lint/style/noNonNullAssertion: Assigned in constructor above
-    this.redis!.on('error', (err: Error) => {
-      this.connected = false;
-      logger.warn('Redis connection error', { error: err.message });
-    });
-  }
-
-  async checkLimit(identifier: string, config: RateLimitConfig): Promise<RateLimitResult> {
-    if (!this.redis || !this.connected) {
-      // Fallback to in-memory if Redis is down
-      logger.warn('Redis unavailable, using in-memory rate limit');
-      return inMemoryLimiter.checkLimit(identifier, config);
-    }
-
-    const key = `ratelimit:${config.prefix}:${identifier}`;
-    const windowMs = config.windowMs;
-    const now = Date.now();
-    const windowStart = now - windowMs;
-
-    try {
-      // Use Redis sorted set for sliding window
-      const multi = this.redis.multi();
-
-      // Remove old entries outside the window
-      multi.zremrangebyscore(key, 0, windowStart);
-
-      // Count current entries
-      multi.zcard(key);
-
-      // Add current request
-      multi.zadd(key, now, `${now}-${Math.random()}`);
-
-      // Set expiry on the key
-      multi.pexpire(key, windowMs);
-
-      const results = await multi.exec();
-      const count = (results?.[1]?.[1] as number) || 0;
-
-      const remaining = Math.max(0, config.limit - count - 1);
-      const reset = now + windowMs;
-
-      return {
-        success: count < config.limit,
-        limit: config.limit,
-        remaining,
-        reset,
-      };
-    } catch (error) {
-      logger.error('Redis rate limit error', { error: String(error) });
-      // Fallback to in-memory on error
-      return inMemoryLimiter.checkLimit(identifier, config);
-    }
-  }
-}
-
-// =============================================================================
 // Upstash Rate Limiter (for serverless)
 // =============================================================================
 
 class UpstashRateLimiter implements RateLimiterBackend {
   private ratelimit: unknown = null;
   private limits = new Map<string, unknown>();
+  private redis: unknown = null;
 
   constructor() {
     try {
@@ -228,54 +124,59 @@ class UpstashRateLimiter implements RateLimiterBackend {
       this.ratelimit = Ratelimit;
       this.redis = redis;
     } catch (error: unknown) {
-      logger.warn('Upstash not configured, falling back to Redis/ioredis', {
+      logger.warn('Upstash not configured, falling back to in-memory', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
-
-  private redis: unknown;
 
   async checkLimit(identifier: string, config: RateLimitConfig): Promise<RateLimitResult> {
     if (!this.ratelimit || !this.redis) {
       return inMemoryLimiter.checkLimit(identifier, config);
     }
 
-    const key = `${config.prefix}:${config.limit}:${config.windowMs}`;
+    try {
+      const key = `${config.prefix}:${config.limit}:${config.windowMs}`;
 
-    if (!this.limits.has(key)) {
-      const Ratelimit = this.ratelimit as new (config: unknown) => unknown;
-      const ratelimitModule = this.ratelimit as {
-        slidingWindow: (limit: number, window: string) => unknown;
+      if (!this.limits.has(key)) {
+        const Ratelimit = this.ratelimit as new (config: unknown) => unknown;
+        const ratelimitModule = this.ratelimit as {
+          slidingWindow: (limit: number, window: string) => unknown;
+        };
+        const limiter = new Ratelimit({
+          redis: this.redis,
+          limiter: ratelimitModule.slidingWindow(
+            config.limit,
+            this.msToWindowString(config.windowMs)
+          ),
+          analytics: true,
+          prefix: `ratelimit:${config.prefix}`,
+        });
+        this.limits.set(key, limiter);
+      }
+
+      const limiter = this.limits.get(key);
+      if (!limiter) {
+        return inMemoryLimiter.checkLimit(identifier, config);
+      }
+      const result = await (
+        limiter as {
+          limit: (id: string) => Promise<{ success: boolean; remaining: number; reset: number }>;
+        }
+      ).limit(identifier);
+
+      return {
+        success: result.success,
+        limit: config.limit,
+        remaining: result.remaining,
+        reset: result.reset,
       };
-      const limiter = new Ratelimit({
-        redis: this.redis,
-        limiter: ratelimitModule.slidingWindow(
-          config.limit,
-          this.msToWindowString(config.windowMs)
-        ),
-        analytics: true,
-        prefix: `ratelimit:${config.prefix}`,
+    } catch (err) {
+      logger.warn('Upstash rate limit check failed, falling back to in-memory', {
+        error: err instanceof Error ? err.message : String(err),
       });
-      this.limits.set(key, limiter);
-    }
-
-    const limiter = this.limits.get(key);
-    if (!limiter) {
       return inMemoryLimiter.checkLimit(identifier, config);
     }
-    const result = await (
-      limiter as {
-        limit: (id: string) => Promise<{ success: boolean; remaining: number; reset: number }>;
-      }
-    ).limit(identifier);
-
-    return {
-      success: result.success,
-      limit: config.limit,
-      remaining: result.remaining,
-      reset: result.reset,
-    };
   }
 
   private msToWindowString(ms: number): `${number} ${'s' | 'm' | 'h' | 'd'}` {
@@ -301,15 +202,11 @@ export function getRateLimiter(): RateLimiterBackend {
     return rateLimiterBackend;
   }
 
-  // Priority: Upstash -> Redis (ioredis) -> In-Memory
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     logger.info('Using Upstash Redis for rate limiting');
     rateLimiterBackend = new UpstashRateLimiter();
-  } else if (process.env.REDIS_URL) {
-    logger.info('Using Redis (ioredis) for rate limiting');
-    rateLimiterBackend = new RedisRateLimiter(process.env.REDIS_URL);
   } else {
-    logger.info('Using in-memory rate limiting (configure REDIS_URL for production)');
+    logger.info('Using in-memory rate limiting (configure Upstash for production)');
     rateLimiterBackend = inMemoryLimiter;
   }
 
@@ -336,7 +233,6 @@ export async function checkApiRateLimit(
 ): Promise<RateLimitResult> {
   const result = await checkRateLimit(identifier, type);
 
-  // Log rate limit violations
   if (!result.success && metadata?.userId) {
     await logAuditEvent({
       event: AuditEvent.RATE_LIMIT_HIT,
@@ -358,12 +254,10 @@ export function getRateLimitIdentifier(
   req: Request,
   context?: { userId?: string; workspaceId?: string }
 ): string {
-  // Use user ID if authenticated, otherwise use IP
   if (context?.userId) {
     return `user:${context.userId}`;
   }
 
-  // Get IP from request headers
   const forwarded = req.headers.get('x-forwarded-for');
   const ip = forwarded ? forwarded.split(',')[0] : req.headers.get('x-real-ip') || 'unknown';
 
@@ -377,87 +271,9 @@ export function addRateLimitHeaders(headers: Headers, result: RateLimitResult): 
 }
 
 // =============================================================================
-// Redis Client Export
+// Redis Client Export (shared Upstash instance)
 // =============================================================================
 
-/**
- * Get Redis client for other security modules
- * Returns null if Redis is not configured
- */
-export function getRedisClient(): unknown | null {
-  try {
-    if (process.env.REDIS_URL) {
-      const { Redis } = require('ioredis');
-      return new Redis(process.env.REDIS_URL, {
-        retryStrategy: (times: number) => Math.min(times * 50, 2000),
-        maxRetriesPerRequest: 3,
-      });
-    }
-  } catch (error: unknown) {
-    logger.warn('Redis connection failed for rate limiter', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-  return null;
-}
+import { getRedis } from '@/lib/redis';
 
-/**
- * Shared Redis instance for security modules
- * Uses Upstash if available, otherwise ioredis
- */
-export const redis = (() => {
-  // Try Upstash first
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    try {
-      const { Redis } = require('@upstash/redis');
-      return new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      });
-    } catch (error: unknown) {
-      logger.debug('Upstash Redis client creation failed, falling back to ioredis', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  }
-
-  // Try ioredis
-  if (process.env.REDIS_URL) {
-    try {
-      const { Redis } = require('ioredis');
-      return new Redis(process.env.REDIS_URL, {
-        retryStrategy: (times: number) => Math.min(times * 50, 2000),
-        maxRetriesPerRequest: 3,
-      });
-    } catch (error: unknown) {
-      logger.debug('ioredis connection failed, falling back to mock', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  }
-
-  // Mock Redis for development without Redis
-  return {
-    get: async () => null,
-    set: async () => 'OK',
-    del: async () => 0,
-    keys: async () => [],
-    pipeline: () => ({
-      zremrangebyscore: () => ({
-        zcard: () => ({ zadd: () => ({ pexpire: () => ({ exec: async () => [] }) }) }),
-      }),
-      zcard: () => ({ zadd: () => ({ pexpire: () => ({ exec: async () => [] }) }) }),
-      zadd: () => ({ pexpire: () => ({ exec: async () => [] }) }),
-      exec: async () => [],
-    }),
-    zremrangebyscore: async () => 0,
-    zcard: async () => 0,
-    zadd: async () => 0,
-    pexpire: async () => 1,
-    ttl: async () => -2,
-    multi: () => ({
-      del: () => ({ exec: async () => [] }),
-      exec: async () => [],
-    }),
-  } as unknown as Redis;
-})();
+export const redis = getRedis();

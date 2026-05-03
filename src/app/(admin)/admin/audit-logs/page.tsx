@@ -1,6 +1,5 @@
 'use client';
 
-import { AuditEvent, AuditSeverity } from '@prisma/client';
 import { Download, Filter, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { AuditLogResult } from '@/lib/audit/audit-logger';
+import { AuditEvent, AuditSeverity } from '@/types/audit';
 
 // =============================================================================
 // Types

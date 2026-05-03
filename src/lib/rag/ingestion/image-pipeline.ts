@@ -5,7 +5,7 @@
  * Supports:
  * - PDF image extraction
  * - Image embedding generation using CLIP
- * - MinIO/S3 storage
+ * - Cloudinary storage
  * - Caption generation using vision-language models
  */
 
@@ -13,9 +13,6 @@ import { createHash } from 'node:crypto';
 import { generateImageEmbedding } from '@/lib/ai/embeddings/image';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
-
-// Storage configuration
-const STORAGE_BUCKET = process.env.S3_BUCKET_NAME || 'rag-images';
 
 /**
  * Image metadata extracted from documents
@@ -120,7 +117,7 @@ export async function extractImagesFromPDF(pdfBuffer: Buffer): Promise<Extracted
 }
 
 /**
- * Upload image to MinIO/S3 storage
+ * Upload image to Cloudinary storage
  *
  * @param buffer - Image buffer
  * @param filename - Filename for the image
@@ -133,12 +130,15 @@ export async function uploadImageToStorage(
   documentId: string
 ): Promise<{ storageKey: string; storageUrl: string }> {
   try {
-    // Check if S3/MinIO is configured (supports both S3_* and legacy AWS_* env vars)
-    const s3AccessKeyId = process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
-    const s3SecretAccessKey = process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+    const USE_CLOUDINARY =
+      !!process.env.CLOUDINARY_URL ||
+      !!(
+        process.env.CLOUDINARY_CLOUD_NAME &&
+        process.env.CLOUDINARY_API_KEY &&
+        process.env.CLOUDINARY_API_SECRET
+      );
 
-    if (!process.env.S3_ENDPOINT && !s3AccessKeyId) {
-      // Fallback: Store locally or return data URL for development
+    if (!USE_CLOUDINARY) {
       const base64 = buffer.toString('base64');
       return {
         storageKey: `local/${documentId}/${filename}`,
@@ -146,55 +146,25 @@ export async function uploadImageToStorage(
       };
     }
 
-    // Dynamic import AWS SDK
-    const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
-    const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
-
-    const s3Client = new S3Client({
-      endpoint: process.env.S3_ENDPOINT,
-      region: process.env.S3_REGION || process.env.AWS_REGION || 'us-east-1',
-      credentials: {
-        accessKeyId: s3AccessKeyId || '',
-        secretAccessKey: s3SecretAccessKey || '',
-      },
-      forcePathStyle: true, // Required for MinIO
-    });
+    const { uploadFile } = await import('@/lib/storage/cloudinary-storage');
 
     const storageKey = `documents/${documentId}/${Date.now()}_${filename}`;
+    const result = await uploadFile(storageKey, buffer, {
+      contentType: 'image/png',
+      resourceType: 'image',
+      metadata: {
+        documentId,
+        originalName: filename,
+      },
+    });
 
-    // Upload to S3/MinIO
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: STORAGE_BUCKET,
-        Key: storageKey,
-        Body: buffer,
-        ContentType: 'image/png',
-        Metadata: {
-          documentId,
-          originalName: filename,
-        },
-      })
-    );
-
-    // Generate presigned URL for access
-    const { GetObjectCommand } = await import('@aws-sdk/client-s3');
-    const storageUrl = await getSignedUrl(
-      s3Client,
-      new GetObjectCommand({
-        Bucket: STORAGE_BUCKET,
-        Key: storageKey,
-      }),
-      { expiresIn: 86400 * 7 } // 7 days
-    );
-
-    return { storageKey, storageUrl };
+    return { storageKey, storageUrl: result.url };
   } catch (error) {
     logger.warn('Image upload to storage failed, using fallback', {
       documentId,
       filename,
       error: error instanceof Error ? error.message : String(error),
     });
-    // Fallback to data URL
     const base64 = buffer.toString('base64');
     return {
       storageKey: `fallback/${documentId}/${filename}`,
@@ -580,42 +550,20 @@ export async function getDocumentImages(documentId: string): Promise<ProcessedIm
  * @param documentId - Document ID
  */
 export async function deleteDocumentImages(documentId: string): Promise<void> {
-  // Get all images for the document
-  const images = await prisma.documentImage.findMany({
-    where: { documentId },
-    select: { id: true, storageKey: true },
-  });
+  const USE_CLOUDINARY =
+    !!process.env.CLOUDINARY_URL ||
+    !!(
+      process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_SECRET
+    );
 
-  // Delete from S3/MinIO if configured (supports both S3_* and legacy AWS_* env vars)
-  const s3AccessKeyId = process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
-  const s3SecretAccessKey = process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
-
-  if (process.env.S3_ENDPOINT || s3AccessKeyId) {
+  if (USE_CLOUDINARY) {
     try {
-      const { S3Client, DeleteObjectCommand } = await import('@aws-sdk/client-s3');
-
-      const s3Client = new S3Client({
-        endpoint: process.env.S3_ENDPOINT,
-        region: process.env.S3_REGION || process.env.AWS_REGION || 'us-east-1',
-        credentials: {
-          accessKeyId: s3AccessKeyId || '',
-          secretAccessKey: s3SecretAccessKey || '',
-        },
-        forcePathStyle: true,
-      });
-
-      await Promise.all(
-        images.map((img) =>
-          s3Client.send(
-            new DeleteObjectCommand({
-              Bucket: STORAGE_BUCKET,
-              Key: img.storageKey,
-            })
-          )
-        )
-      );
+      const { deleteDocumentFiles } = await import('@/lib/storage/cloudinary-storage');
+      await deleteDocumentFiles(documentId);
     } catch (error) {
-      logger.warn('Failed to delete images from S3 storage', {
+      logger.warn('Failed to delete images from Cloudinary', {
         documentId,
         error: error instanceof Error ? error.message : String(error),
       });

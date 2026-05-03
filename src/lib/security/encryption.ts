@@ -11,7 +11,7 @@
  * - Rotated periodically
  */
 
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from 'node:crypto';
 import { logger } from '@/lib/logger';
 
 // Encryption configuration
@@ -39,8 +39,12 @@ export function encrypt(plaintext: string): string {
   const masterKey = process.env.ENCRYPTION_MASTER_KEY;
 
   if (!masterKey) {
-    logger.warn('ENCRYPTION_MASTER_KEY not set, storing data unencrypted');
-    // Return plaintext with a marker to indicate it's unencrypted
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'ENCRYPTION_MASTER_KEY is required in production. Set it in your environment to encrypt sensitive data.'
+      );
+    }
+    logger.warn('ENCRYPTION_MASTER_KEY not set, storing data unencrypted (development only)');
     return `unencrypted:${plaintext}`;
   }
 
@@ -159,8 +163,7 @@ export function isEncrypted(data: string | null | undefined): boolean {
  * Hash a value using SHA-256 (for one-way hashing like API keys)
  */
 export function hashValue(value: string): string {
-  const crypto = require('node:crypto');
-  return crypto.createHash('sha256').update(value).digest('hex');
+  return createHash('sha256').update(value).digest('hex');
 }
 
 /**

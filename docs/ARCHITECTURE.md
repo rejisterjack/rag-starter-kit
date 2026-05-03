@@ -38,7 +38,7 @@ graph TB
     subgraph Data["Data Layer"]
         Postgres[("PostgreSQL + pgvector")]
         Redis[("Redis")]
-        MinIO[("MinIO / S3")]
+        Cloudinary[("Cloudinary")]
     end
 
     Browser --> CDN
@@ -61,8 +61,8 @@ graph TB
     Chat --> Postgres
     Auth --> Redis
     RAG --> Redis
-    Ingest --> MinIO
-    Export --> MinIO
+    Ingest --> Cloudinary
+    Export --> Cloudinary
 ```
 
 ## RAG Pipeline Architecture
@@ -230,7 +230,7 @@ graph TB
             PG[("PostgreSQL Primary")]
             PGRep[("PostgreSQL Replica")]
             RedisCluster[("Redis Cluster")]
-            S3[("S3 / MinIO")]
+            Cloudinary[("Cloudinary")]
         end
         
         subgraph Workers["Background Workers"]
@@ -248,7 +248,7 @@ graph TB
     
     PG --> PGRep
     App1 --> RedisCluster
-    App1 --> S3
+    App1 --> Cloudinary
     App1 --> Inngest
 ```
 
@@ -288,7 +288,7 @@ graph TD
 | Backend | Next.js API Routes, tRPC |
 | Database | PostgreSQL 16 + pgvector |
 | Cache | Redis |
-| Storage | MinIO / S3 |
+| Storage | Cloudinary |
 | AI | Vercel AI SDK, OpenRouter |
 | Auth | NextAuth v5 |
 | Queue | Inngest |

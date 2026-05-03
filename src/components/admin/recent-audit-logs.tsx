@@ -1,8 +1,8 @@
 'use client';
 
-import type { AuditEvent, AuditSeverity } from '@prisma/client';
 import { motion, type Variants } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
+import type { AuditEvent, AuditSeverity } from '@/generated/prisma/client';
 import type { AuditLogResult } from '@/lib/audit/audit-logger';
 
 interface RecentAuditLogsProps {

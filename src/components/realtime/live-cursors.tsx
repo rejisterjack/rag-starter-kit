@@ -6,7 +6,7 @@
 
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { CursorPosition, UserInfo } from '@/lib/realtime/types';
@@ -38,6 +38,8 @@ interface CursorProps {
   labelPosition?: 'top' | 'bottom' | 'left' | 'right';
   smoothFactor?: number;
 }
+
+import { motion } from 'framer-motion';
 
 // =============================================================================
 // Helper Functions
@@ -79,45 +81,9 @@ function generateCursorColor(userId: string): string {
 // Individual Cursor Component with Smooth Animation
 // =============================================================================
 
-const Cursor: React.FC<CursorProps> = ({
-  cursor,
-  showLabel = true,
-  labelPosition = 'top',
-  smoothFactor = 0.15,
-}) => {
+const Cursor: React.FC<CursorProps> = ({ cursor, showLabel = true, labelPosition = 'top' }) => {
   const { user, position } = cursor;
   const color = useMemo(() => generateCursorColor(user.id), [user.id]);
-
-  // Smooth position using refs for animation
-  const currentPos = useRef({ x: position.x, y: position.y });
-  const targetPos = useRef({ x: position.x, y: position.y });
-  const animationFrame = useRef<number>(undefined);
-  const [renderPos, setRenderPos] = useState({ x: position.x, y: position.y });
-
-  // Update target position when cursor changes
-  useEffect(() => {
-    targetPos.current = { x: position.x, y: position.y };
-  }, [position.x, position.y]);
-
-  // Smooth animation loop
-  useEffect(() => {
-    const animate = () => {
-      // Lerp towards target position
-      currentPos.current.x += (targetPos.current.x - currentPos.current.x) * smoothFactor;
-      currentPos.current.y += (targetPos.current.y - currentPos.current.y) * smoothFactor;
-
-      setRenderPos({ ...currentPos.current });
-      animationFrame.current = requestAnimationFrame(animate);
-    };
-
-    animationFrame.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationFrame.current) {
-        cancelAnimationFrame(animationFrame.current);
-      }
-    };
-  }, [smoothFactor]);
 
   const labelOffsetClasses = {
     top: '-translate-x-1/2 -translate-y-full -mt-1',
@@ -148,66 +114,75 @@ const Cursor: React.FC<CursorProps> = ({
   );
 
   return (
-    <div
-      className="absolute pointer-events-none transition-opacity duration-200"
+    <motion.div
+      className="absolute pointer-events-none z-50"
+      initial={{ x: position.x, y: position.y }}
+      animate={{ x: position.x, y: position.y }}
+      transition={{
+        type: 'spring',
+        damping: 30,
+        mass: 0.5,
+        stiffness: 400,
+      }}
       style={{
-        left: renderPos.x,
-        top: renderPos.y,
-        transform: 'translate(2px, 2px)',
-        zIndex: 50,
+        left: 0,
+        top: 0,
+        transformOrigin: 'top left',
       }}
     >
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="relative">
-              {cursorSvg}
+      <div style={{ transform: 'translate(2px, 2px)' }}>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="relative">
+                {cursorSvg}
 
-              {showLabel && (
-                <div
-                  className={cn(
-                    'absolute left-0 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium text-white shadow-sm',
-                    'transition-opacity duration-200',
-                    labelOffsetClasses[labelPosition]
-                  )}
-                  style={{ backgroundColor: color }}
-                >
-                  <div className="flex items-center gap-1">
-                    <Avatar className="h-3.5 w-3.5 border border-white/50">
-                      <AvatarImage src={user.image || undefined} />
-                      <AvatarFallback className="text-[8px] bg-transparent">
-                        {getInitials(user.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate max-w-[80px]">{user.name}</span>
+                {showLabel && (
+                  <div
+                    className={cn(
+                      'absolute left-0 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium text-white shadow-sm',
+                      'transition-opacity duration-200',
+                      labelOffsetClasses[labelPosition]
+                    )}
+                    style={{ backgroundColor: color }}
+                  >
+                    <div className="flex items-center gap-1">
+                      <Avatar className="h-3.5 w-3.5 border border-white/50">
+                        <AvatarImage src={user.image || undefined} />
+                        <AvatarFallback className="text-[8px] bg-transparent">
+                          {getInitials(user.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate max-w-[80px]">{user.name}</span>
+                    </div>
                   </div>
-                </div>
+                )}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p className="text-sm font-medium">{user.name}</p>
+              {position.elementId && (
+                <p className="text-xs text-muted-foreground">Editing: {position.elementId}</p>
               )}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="top">
-            <p className="text-sm font-medium">{user.name}</p>
-            {position.elementId && (
-              <p className="text-xs text-muted-foreground">Editing: {position.elementId}</p>
-            )}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
-      {/* Selection highlight */}
-      {position.selection && (
-        <div
-          className="absolute rounded-sm opacity-20 pointer-events-none"
-          style={{
-            backgroundColor: color,
-            left: 0,
-            top: 20,
-            width: 100,
-            height: 20,
-          }}
-        />
-      )}
-    </div>
+        {/* Selection highlight */}
+        {position.selection && (
+          <div
+            className="absolute rounded-sm opacity-20 pointer-events-none"
+            style={{
+              backgroundColor: color,
+              left: 0,
+              top: 20,
+              width: 100,
+              height: 20,
+            }}
+          />
+        )}
+      </div>
+    </motion.div>
   );
 };
 

@@ -50,33 +50,6 @@
 }
 
 :root {
-  /* High contrast, clean light mode (macOS light) */
-  --background: 0 0% 98%;
-  --foreground: 240 10% 4%;
-  --card: 0 0% 100% / 0.7;
-  --card-foreground: 240 10% 4%;
-  --popover: 0 0% 100% / 0.7;
-  --popover-foreground: 240 10% 4%;
-  --primary: 220 100% 50%; /* iOS Blue */
-  --primary-foreground: 0 0% 100%;
-  --secondary: 240 5% 94%;
-  --secondary-foreground: 240 6% 10%;
-  --muted: 240 5% 94%;
-  --muted-foreground: 240 4% 46%;
-  --accent: 220 100% 95%;
-  --accent-foreground: 220 100% 50%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 240 6% 90% / 0.5;
-  --input: 240 6% 90% / 0.5;
-  --ring: 220 100% 50%;
-  --glass: 0 0% 100% / 0.6;
-  --glass-border: 0 0% 100% / 0.8;
-  --glass-highlight: 0 0% 100% / 0.4;
-  --radius: 1rem;
-}
-
-.dark {
   /* Deep, vibrant dark mode (visionOS dark) */
   --background: 240 10% 2%;
   --foreground: 0 0% 98%;
@@ -100,6 +73,7 @@
   --glass: 240 5% 10% / 0.4;
   --glass-border: 0 0% 100% / 0.15;
   --glass-highlight: 0 0% 100% / 0.05;
+  --radius: 1rem;
 }
 
 @layer base {
@@ -196,6 +170,29 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(320 100% 70%));
+  }
+
+  /* Hover Spotlight Effect utility */
+  .hover-spotlight {
+    position: relative;
+    overflow: hidden;
+  }
+  .hover-spotlight::before {
+    content: '';
+    position: absolute;
+    top: var(--mouse-y, 0);
+    left: var(--mouse-x, 0);
+    transform: translate(-50%, -50%);
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, hsl(var(--primary) / 0.15) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .hover-spotlight:hover::before {
+    opacity: 1;
   }
 
   .scrollbar-thin {

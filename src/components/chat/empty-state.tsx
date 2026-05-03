@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 interface EmptyStateProps {
   onSuggestionClick?: (suggestion: string) => void;
   onUploadClick?: () => void;
+  onFilesDrop?: (files: File[]) => void;
   className?: string;
 }
 
@@ -25,26 +26,39 @@ const QUICK_ACTIONS = [
     icon: FileText,
     label: 'Upload PDF',
     description: 'Add documents to your knowledge base',
+    action: 'upload' as const,
   },
   {
     icon: MessageSquare,
     label: 'Start Chat',
     description: 'Ask questions about your documents',
+    message: 'What can you help me with?',
   },
   {
     icon: Zap,
     label: 'Quick Summary',
     description: 'Get a summary of all documents',
+    message: 'Summarize my uploaded documents',
   },
 ];
 
-export function EmptyState({ onSuggestionClick, onUploadClick, className }: EmptyStateProps) {
+export function EmptyState({
+  onSuggestionClick,
+  onUploadClick,
+  onFilesDrop,
+  className,
+}: EmptyStateProps) {
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      onUploadClick?.();
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length > 0) {
+        onFilesDrop?.(files);
+      } else {
+        onUploadClick?.();
+      }
     },
-    [onUploadClick]
+    [onUploadClick, onFilesDrop]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -77,9 +91,11 @@ export function EmptyState({ onSuggestionClick, onUploadClick, className }: Empt
               key={action.label}
               className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-sm"
               onClick={() =>
-                action.label === 'Upload PDF'
+                action.action === 'upload'
                   ? onUploadClick?.()
-                  : onSuggestionClick?.(action.label)
+                  : action.message
+                    ? onSuggestionClick?.(action.message)
+                    : undefined
               }
             >
               <CardContent className="flex flex-col items-center p-4 text-center">
@@ -96,7 +112,7 @@ export function EmptyState({ onSuggestionClick, onUploadClick, className }: Empt
         {/* Upload zone */}
         <button
           type="button"
-          className="mb-8 w-full rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/30 p-8 transition-colors hover:border-primary/50 hover:bg-muted/50"
+          className="mb-8 w-full rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/30 p-8 transition-colors hover:border-primary/50 hover:bg-muted/50 cursor-pointer"
           onClick={onUploadClick}
         >
           <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />

@@ -55,6 +55,7 @@ next-env.d.ts
 # Prisma
 prisma/*.db
 prisma/*.db-journal
+src/generated/
 
 # Logs
 logs
@@ -68,9 +69,6 @@ logs
 tmp
 temp
 *.tmp
-
-# Docker volumes
-docker/data
 
 # Playwright
 /test-results/

@@ -64,13 +64,13 @@ export function calculateNDCG(retrieved: string[], relevant: string[], k?: numbe
   const relevanceScores = retrieved.slice(0, cutoff).map((id) => (relevantSet.has(id) ? 1 : 0));
 
   // DCG
-  const dcg = relevanceScores.reduce((sum, score, i) => {
+  const dcg = relevanceScores.reduce((sum: number, score: number, i: number) => {
     return sum + score / Math.log2(i + 2); // log2(rank+1), rank is 1-indexed so i+2
   }, 0);
 
   // Ideal DCG: sort by relevance (all 1s first, then 0s)
   const idealScores = [...relevanceScores].sort((a, b) => b - a);
-  const idcg = idealScores.reduce((sum, score, i) => {
+  const idcg = idealScores.reduce((sum: number, score: number, i: number) => {
     return sum + score / Math.log2(i + 2);
   }, 0);
 

@@ -62,6 +62,15 @@ import { createDefaultWorkspace, getUserWorkspaces } from '@/lib/workspace/works
 // Type Extensions
 // =============================================================================
 
+export interface AuthSession {
+  user: {
+    id: string;
+    role: string;
+    workspaceId?: string;
+    workspaceRole?: string;
+  } & DefaultSession['user'];
+}
+
 declare module 'next-auth' {
   interface Session {
     user: {
@@ -483,21 +492,20 @@ export async function requireAdmin() {
  *   return NextResponse.json({ data });
  * });
  */
-export function withApiAuth<T = unknown>(
-  handler: (
-    req: Request,
-    session: NonNullable<Awaited<ReturnType<typeof auth>>>,
-    context?: T
-  ) => Promise<NextResponse>
-): (req: Request, context?: T) => Promise<NextResponse> {
-  return async (req: Request, context?: T) => {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
-    }
-    return handler(req, session, context);
-  };
+export function withApiAuth<TReq extends Request = Request, TContext = unknown>(
+  handler: (req: TReq, session: AuthSession, context: TContext) => Promise<NextResponse>
+): (req: TReq, context: TContext) => Promise<NextResponse> {
+  function wrapper(req: TReq, context: TContext): Promise<NextResponse> {
+    return (async () => {
+      const session = await auth();
+      if (!session?.user?.id) {
+        return NextResponse.json(
+          { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+          { status: 401 }
+        );
+      }
+      return handler(req, session as AuthSession, context);
+    })();
+  }
+  return wrapper;
 }

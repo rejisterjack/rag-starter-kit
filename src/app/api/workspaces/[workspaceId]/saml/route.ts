@@ -11,7 +11,7 @@
  * - DELETE: Remove SAML configuration
  */
 
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { withApiAuth } from '@/lib/auth';
@@ -414,7 +414,7 @@ export const DELETE = withApiAuth(async (_request, session, { params }: RoutePar
 // Utilities
 // =============================================================================
 
-function getBaseUrl(request: NextRequest): string {
+function getBaseUrl(request: Request): string {
   const host = request.headers.get('host');
   const protocol = request.headers.get('x-forwarded-proto') || 'https';
   return `${protocol}://${host}`;

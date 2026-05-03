@@ -21,23 +21,20 @@ export {
   type TimeSeriesPoint,
   type UsageStats,
 } from './dashboard-service';
-// PostHog Analytics
+// Plausible Analytics (server-side)
 export {
-  // Core functions
   aliasUser,
-  flushPostHog,
-  getPostHogClient,
+  flushAnalytics,
   identifyUser,
   setGroupProperties,
-  shutdownPostHog,
-  // Convenience tracking objects
+  shutdownAnalytics,
   trackAuth,
   trackChat,
   trackDocument,
   trackEvent,
   trackFeature,
   trackRAG,
-} from './posthog';
+} from './plausible-server';
 // RAG Metrics
 export {
   type DateRange,

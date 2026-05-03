@@ -14,7 +14,7 @@
 
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { logger } from '@/lib/logger';
-import { redis } from '@/lib/security/rate-limiter';
+import { redis } from '@/lib/redis';
 
 // =============================================================================
 // Configuration

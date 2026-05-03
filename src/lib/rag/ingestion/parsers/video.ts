@@ -108,7 +108,7 @@ export async function parseVideo(
     formData.append('model', 'whisper-1');
     formData.append('response_format', 'verbose_json');
 
-    const blob = new Blob([buffer], { type: mimeType });
+    const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
     formData.append('file', blob, videoFilename);
 
     const response = await fetch(`${apiBase}/audio/transcriptions`, {

@@ -162,29 +162,6 @@ interface ThemeColors {
   scrollThumb: string;
 }
 
-const LIGHT_THEME: ThemeColors = {
-  bg: '#ffffff',
-  bgSecondary: '#f9fafb',
-  bgBubble: '#6366f1',
-  text: '#111827',
-  textSecondary: '#374151',
-  textMuted: '#9ca3af',
-  border: '#e5e7eb',
-  inputBg: '#f9fafb',
-  inputBorder: '#d1d5db',
-  inputFocusBorder: '#6366f1',
-  userBubble: '#6366f1',
-  userBubbleText: '#ffffff',
-  assistantBubble: '#f3f4f6',
-  assistantBubbleText: '#1f2937',
-  buttonBg: '#6366f1',
-  buttonText: '#ffffff',
-  buttonHover: '#4f46e5',
-  shadow: '0 4px 24px rgba(0, 0, 0, 0.12)',
-  headerBg: '#6366f1',
-  scrollThumb: '#d1d5db',
-};
-
 const DARK_THEME: ThemeColors = {
   bg: '#1f2937',
   bgSecondary: '#111827',
@@ -208,23 +185,8 @@ const DARK_THEME: ThemeColors = {
   scrollThumb: '#4b5563',
 };
 
-function useThemeColors(theme: 'light' | 'dark' | 'auto'): ThemeColors {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    if (theme === 'auto') {
-      const mql = window.matchMedia('(prefers-color-scheme: dark)');
-      setIsDark(mql.matches);
-
-      const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
-      mql.addEventListener('change', handler);
-      return () => mql.removeEventListener('change', handler);
-    } else {
-      setIsDark(theme === 'dark');
-    }
-  }, [theme]);
-
-  return isDark ? DARK_THEME : LIGHT_THEME;
+function useThemeColors(_theme: 'light' | 'dark' | 'auto'): ThemeColors {
+  return DARK_THEME;
 }
 
 // =============================================================================

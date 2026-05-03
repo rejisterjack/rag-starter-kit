@@ -22,7 +22,7 @@ type Story = StoryObj<typeof meta>;
  * Interactive wrapper for the ModelPicker.
  */
 function ModelPickerDemo(props: { disabled?: boolean }) {
-  const [model, setModel] = useState('deepseek/deepseek-chat:free');
+  const [model, setModel] = useState('meta-llama/llama-3.3-70b-instruct:free');
   return <ModelPicker selectedModel={model} onModelChange={setModel} disabled={props.disabled} />;
 }
 

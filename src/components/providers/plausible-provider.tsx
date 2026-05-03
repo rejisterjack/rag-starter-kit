@@ -3,14 +3,12 @@
 /**
  * Plausible Analytics Provider
  *
- * Lightweight, privacy-focused analytics that runs self-hosted in Docker.
- * Alternative to PostHog for development and simple use cases.
+ * Lightweight, privacy-focused analytics via Plausible Cloud.
  *
  * Features:
  * - No cookies required
  * - Privacy-focused (GDPR compliant)
  * - Lightweight script
- * - Self-hosted (data stays with you)
  */
 
 import { usePathname, useSearchParams } from 'next/navigation';

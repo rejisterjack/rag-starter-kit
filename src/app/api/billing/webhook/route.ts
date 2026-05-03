@@ -39,7 +39,7 @@ export async function POST(req: Request) {
 
     switch (event.type) {
       case 'checkout.session.completed': {
-        const _session = event.data.object;
+        // event.data.object is the checkout session
         break;
       }
 

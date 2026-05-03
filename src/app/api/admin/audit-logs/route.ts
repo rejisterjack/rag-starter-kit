@@ -1,5 +1,5 @@
-import { AuditEvent, AuditSeverity } from '@prisma/client';
 import { NextResponse } from 'next/server';
+import { AuditEvent, AuditSeverity } from '@/generated/prisma/client';
 import { getAuditLogs } from '@/lib/audit/audit-logger';
 import { requireAdmin } from '@/lib/auth';
 

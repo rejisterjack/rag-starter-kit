@@ -65,7 +65,7 @@ const defaultConfig: RAGConfig = {
   similarityThreshold: 0.7,
   temperature: 0.7,
   maxTokens: 2000,
-  model: 'deepseek/deepseek-chat:free',
+  model: 'meta-llama/llama-3.3-70b-instruct:free',
   embeddingModel: 'text-embedding-004',
 };
 
@@ -804,7 +804,16 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
   } = params;
 
   const { retrieveSources } = await import('@/lib/rag/retrieval');
-  const sources = await retrieveSources(userMessage, userId, config);
+  let sources: Awaited<ReturnType<typeof retrieveSources>> = [];
+  try {
+    sources = await retrieveSources(userMessage, userId, config);
+  } catch (err) {
+    // Continue without RAG context if retrieval fails
+    const { logger } = await import('@/lib/logger');
+    logger.warn('Source retrieval failed in agent, continuing without RAG context', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   const citationHandler = new CitationHandler();
   const chunks = sourcesToChunks(sources);

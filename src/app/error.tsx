@@ -1,5 +1,6 @@
 'use client';
 
+import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,9 @@ interface ErrorProps {
 
 // biome-ignore lint/suspicious/noShadowRestrictedNames: Next.js error page convention
 export default function Error({ error, reset }: ErrorProps): React.ReactElement {
-  useEffect(() => {}, []);
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">

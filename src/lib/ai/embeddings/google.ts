@@ -19,7 +19,7 @@ import { google } from '@ai-sdk/google';
 import { embed, embedMany } from 'ai';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
-import { redis } from '@/lib/security/rate-limiter';
+import { redis } from '@/lib/redis';
 import type { EmbeddingProvider } from './types';
 
 /**

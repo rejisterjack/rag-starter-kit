@@ -308,7 +308,6 @@ export async function parseYouTube(
   // Build full text from captions
   let text: string;
   if (captions.length > 0) {
-    const _fullText = captions.map((c) => c.text).join(' ');
     const formattedCaptions = captions
       .map((c) => {
         const timestamp = formatTimestamp(c.start);

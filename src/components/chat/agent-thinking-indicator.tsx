@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 // ============================================================================
 
 export interface AgentThinkingStep {
+  id?: string;
   label: string;
   status: 'pending' | 'active' | 'done' | 'error';
 }
@@ -67,10 +68,10 @@ function ThinkingDots() {
 
 function getDefaultSteps(): AgentThinkingStep[] {
   return [
-    { label: 'Analyzing query', status: 'pending' },
-    { label: 'Searching documents', status: 'pending' },
-    { label: 'Running tool', status: 'pending' },
-    { label: 'Formulating answer', status: 'pending' },
+    { id: 'analyze', label: 'Analyzing query', status: 'pending' },
+    { id: 'search', label: 'Searching documents', status: 'pending' },
+    { id: 'tool', label: 'Running tool', status: 'pending' },
+    { id: 'answer', label: 'Formulating answer', status: 'pending' },
   ];
 }
 
@@ -190,9 +191,9 @@ export function AgentThinkingIndicator({
                     className="overflow-hidden"
                   >
                     <ul className="mt-2 space-y-1.5">
-                      {steps.map((step) => (
+                      {steps.map((step, idx) => (
                         <motion.li
-                          key={step.id}
+                          key={step.id ?? idx}
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.05 }}

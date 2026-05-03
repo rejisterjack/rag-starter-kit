@@ -3,7 +3,7 @@
  * Provides offline support, caching, and background sync
  */
 
-const CACHE_NAME = 'rag-starter-kit-v1';
+const CACHE_NAME = 'rag-starter-kit-v2';
 const STATIC_CACHE = `${CACHE_NAME}-static`;
 const DYNAMIC_CACHE = `${CACHE_NAME}-dynamic`;
 const API_CACHE = `${CACHE_NAME}-api`;

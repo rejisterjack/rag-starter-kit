@@ -35,7 +35,7 @@ export const OPENROUTER_FREE_MODELS = {
   LLAMA_3_2_3B: 'meta-llama/llama-3.2-3b-instruct:free',
 
   // DeepSeek - Strong reasoning
-  DEEPSEEK_CHAT: 'deepseek/deepseek-chat:free',
+  DEEPSEEK_CHAT: 'meta-llama/llama-3.3-70b-instruct:free',
 
   // Nous Research - Very capable but slower
   HERMES_405B: 'nousresearch/hermes-3-llama-3.1-405b:free',

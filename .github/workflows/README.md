@@ -36,26 +36,6 @@ Full E2E testing with Playwright:
 - Test report artifacts (30-day retention)
 - Can target specific deployment URLs
 
-### docker-build.yml - Docker Image Build
-**Triggers**: Push to `main`, Tags (v*), PRs affecting Docker files, Manual dispatch
-
-Multi-stage Docker build and push:
-- Builds multi-platform images (linux/amd64, linux/arm64)
-- Pushes to GitHub Container Registry (ghcr.io)
-- Tags: SHA, branch, semver, and `latest`
-- Docker layer caching with GitHub Actions cache
-
-**Jobs**:
-- **build-and-push**: Builds and pushes Docker image with Buildx
-- **scan**: Trivy container vulnerability scanning with SARIF upload
-- **test-image**: Tests the built image with health checks
-
-**Features**:
-- Multi-architecture support
-- Build secrets for secure build-time variables
-- Vulnerability scanning with Trivy
-- Image testing with health check validation
-
 ### deploy-production.yml - Deploy to Production
 **Triggers**: Release published, Manual workflow dispatch
 
@@ -110,7 +90,6 @@ Configure these in GitHub repository settings (Settings → Secrets and variable
 | `DATABASE_URL_NON_POOLING` | Non-pooling database URL | Migrations |
 | `E2E_TEST_USER_EMAIL` | Test user email for E2E | E2E Tests |
 | `E2E_TEST_USER_PASSWORD` | Test user password for E2E | E2E Tests |
-| `NEXTAUTH_SECRET` | NextAuth secret for builds | Docker builds |
 | `GITLEAKS_LICENSE` | GitLeaks license (optional) | Secret scanning |
 
 ## Environment Setup
@@ -128,12 +107,6 @@ vercel link
 cat .vercel/project.json
 ```
 
-### GitHub Container Registry
-
-Images are automatically pushed to `ghcr.io/{owner}/{repo}`:
-- Tags: `latest`, `sha-{short}`, semver tags
-- Multi-platform: linux/amd64, linux/arm64
-
 ## Workflow Dependencies
 
 ```
@@ -146,11 +119,6 @@ ci.yml (on PR/push)
 
 e2e.yml (on PR/manual)
     └── e2e (with PostgreSQL service)
-
-docker-build.yml (on push/tags)
-    ├── build-and-push
-    ├── scan (needs: build-and-push)
-    └── test-image (needs: build-and-push)
 
 deploy-production.yml (on release)
     ├── pre-deploy-checks
@@ -183,7 +151,6 @@ Add these to commit messages to skip workflows:
 2. **Monitor the security-scan workflow** for new vulnerabilities
 3. **Use environment protection rules** for production deployments
 4. **Keep secrets rotated** regularly
-5. **Review Docker image tags** before deploying to production
 
 ## Troubleshooting
 
@@ -201,11 +168,6 @@ Add these to commit messages to skip workflows:
 - Check `DATABASE_URL` is set correctly
 - Ensure database is accessible from CI runners
 - Review migration logs for specific errors
-
-### Docker build fails
-- Verify Dockerfile syntax
-- Check build secrets are properly configured
-- Ensure multi-platform builds have sufficient runner resources
 
 ### Security scan failures
 - Review SARIF results in GitHub Security tab

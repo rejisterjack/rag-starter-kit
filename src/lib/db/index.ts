@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 export { type PrismaClient, prisma } from './client';
 
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@/generated/prisma/client';
 import type { Chat, Document, DocumentChunk, IngestionJob, Message } from '@/types';
 import { prisma } from './client';
 

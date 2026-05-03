@@ -164,6 +164,14 @@ export default async function RootLayout({
         {/* Splash screen images for iOS */}
         <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png" />
 
+        {/* KaTeX CSS for LaTeX math rendering */}
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+          integrity="sha384-nB0miv6/jRmo5OUTIL0mKZsUQSA/1kzMuoHIOXPb6BjSiW4zuv9mqSTJBGdQsGN"
+          crossOrigin="anonymous"
+        />
+
         {/* Prefetch offline page */}
         <link rel="prefetch" href="/offline" />
       </head>

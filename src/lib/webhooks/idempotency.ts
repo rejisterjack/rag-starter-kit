@@ -6,7 +6,7 @@
  */
 
 import { logger } from '@/lib/logger';
-import { redis } from '@/lib/security/rate-limiter';
+import { redis } from '@/lib/redis';
 
 // ============================================================================
 // Types
@@ -89,7 +89,7 @@ export async function checkIdempotencyKey(key: string): Promise<{
       return { processed: false };
     }
 
-    const data = JSON.parse(stored);
+    const data = JSON.parse(stored as string);
 
     return {
       processed: data.processed || false,
@@ -133,7 +133,7 @@ export async function storeIdempotencyKey(
       processed: data.processed ?? false,
     };
 
-    await redis.set(`${IDEMPOTENCY_KEY_PREFIX}${key}`, JSON.stringify(storeData), 'EX', ttl);
+    await redis.set(`${IDEMPOTENCY_KEY_PREFIX}${key}`, JSON.stringify(storeData), { ex: ttl });
 
     return true;
   } catch (error) {
@@ -164,8 +164,11 @@ export async function markIdempotencyKeyProcessed(
       return false;
     }
 
-    const data = JSON.parse(existing);
+    const data = JSON.parse(existing as string);
 
+    // Re-read TTL and set with same expiry
+    const ttlResult = await redis.ttl(`${IDEMPOTENCY_KEY_PREFIX}${key}`);
+    const ttlValue = typeof ttlResult === 'number' && ttlResult > 0 ? ttlResult : 3600;
     await redis.set(
       `${IDEMPOTENCY_KEY_PREFIX}${key}`,
       JSON.stringify({
@@ -175,7 +178,7 @@ export async function markIdempotencyKeyProcessed(
         responseBody: response.body,
         processedAt: new Date().toISOString(),
       }),
-      'KEEPTTL' // Keep the existing TTL
+      { ex: ttlValue }
     );
 
     return true;
@@ -326,7 +329,7 @@ export class IdempotencyError extends Error {
 export async function cleanupIdempotencyKeys(pattern?: string): Promise<number> {
   try {
     const matchPattern = pattern || `${IDEMPOTENCY_KEY_PREFIX}*`;
-    const keys = await redis.keys(matchPattern);
+    const keys = (await redis.keys(matchPattern)) as string[];
 
     if (keys.length === 0) {
       return 0;

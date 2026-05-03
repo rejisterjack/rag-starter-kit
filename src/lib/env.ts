@@ -27,21 +27,15 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   PORT: z.coerce.number().default(3000),
 
-  // Redis configuration (optional)
-  REDIS_URL: z.string().optional(),
+  // Redis configuration (optional — Upstash for production, in-memory fallback for dev)
   UPSTASH_REDIS_REST_URL: z.string().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 
-  // Storage configuration (optional)
-  S3_ENDPOINT: z.string().optional(),
-  S3_BUCKET_NAME: z.string().optional(),
-  S3_BUCKET_DOCUMENTS: z.string().optional(),
-  S3_BUCKET_EXPORTS: z.string().optional(),
-  S3_BUCKET_ATTACHMENTS: z.string().optional(),
-  S3_ACCESS_KEY_ID: z.string().optional(),
-  S3_SECRET_ACCESS_KEY: z.string().optional(),
-  AWS_REGION: z.string().optional(),
-  S3_REGION: z.string().optional(),
+  // Storage configuration (Cloudinary for production, local filesystem fallback for dev)
+  CLOUDINARY_URL: z.string().optional(),
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
 
   // CORS configuration
   ALLOWED_ORIGINS: z.string().optional(),
@@ -59,9 +53,13 @@ const envSchema = z.object({
   // Ollama configuration
   OLLAMA_BASE_URL: z.string().optional(),
 
-  // PostHog analytics
-  NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
-  NEXT_PUBLIC_POSTHOG_HOST: z.string().optional(),
+  // Plausible analytics
+  NEXT_PUBLIC_ANALYTICS_HOST: z.string().optional(),
+  NEXT_PUBLIC_ANALYTICS_SCRIPT_URL: z.string().optional(),
+
+  // Email (Resend for production, console fallback for dev)
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
 
   // Google embedding quota
   GOOGLE_EMBED_DAILY_LIMIT: z.coerce.number().default(1400),

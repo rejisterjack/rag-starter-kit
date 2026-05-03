@@ -21,10 +21,9 @@ const techStack: Tech[] = [
   { name: 'OpenRouter', category: 'LLM', color: '#FF6600' },
   { name: 'Google Gemini', category: 'Embeddings', color: '#4285F4' },
   { name: 'Inngest', category: 'Queues', color: '#E4462D' },
-  { name: 'MinIO', category: 'Storage', color: '#C72C48' },
+  { name: 'Cloudinary', category: 'Storage', color: '#3448C5' },
   { name: 'NextAuth.js', category: 'Auth', color: '#3B82F6' },
   { name: 'Upstash Redis', category: 'Cache', color: '#DC382D' },
-  { name: 'PostHog', category: 'Analytics', color: '#F54E00' },
   { name: 'Plausible', category: 'Analytics', color: '#5850EC' },
   { name: 'Socket.io', category: 'Real-time', color: '#010101' },
   { name: 'Vitest', category: 'Testing', color: '#6E9F18' },
@@ -32,7 +31,7 @@ const techStack: Tech[] = [
   { name: 'Framer Motion', category: 'Motion', color: '#0055FF' },
   { name: 'shadcn/ui', category: 'UI', color: '#000000' },
   { name: 'Biome', category: 'Lint', color: '#60A5FA' },
-  { name: 'Docker', category: 'DevOps', color: '#2496ED' },
+  { name: 'Vercel', category: 'Deploy', color: '#000000' },
 ];
 
 const duplicatedTechStack = [...techStack, ...techStack];

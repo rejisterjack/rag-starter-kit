@@ -289,6 +289,7 @@ export function CsrfTokenScript({ nonce }: CsrfTokenScriptProps): React.ReactEle
   return (
     <script
       nonce={nonce}
+      suppressHydrationWarning
       // biome-ignore lint/security/noDangerouslySetInnerHtml: CSRF token initialization script requires inline execution
       dangerouslySetInnerHTML={{
         __html: `

@@ -194,17 +194,8 @@ export interface WordTemplateData {
 // =============================================================================
 
 export interface StorageConfig {
-  type: 'local' | 's3' | 'r2';
+  type: 'local' | 'cloudinary';
   localPath?: string;
-  s3Bucket?: string;
-  s3Region?: string;
-  s3AccessKey?: string;
-  s3SecretKey?: string;
-  s3Endpoint?: string;
-  r2AccountId?: string;
-  r2Bucket?: string;
-  r2AccessKey?: string;
-  r2SecretKey?: string;
 }
 
 export interface StoredFile {

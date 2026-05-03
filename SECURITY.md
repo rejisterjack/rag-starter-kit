@@ -88,15 +88,13 @@ If you're deploying this to production, run through this before going live:
 
 **Environment Variables**
 - [ ] `NEXTAUTH_SECRET` is a cryptographically random 32+ character string (generate with `openssl rand -base64 32`)
-- [ ] Database credentials are strong and not the Docker defaults
-- [ ] MinIO credentials are changed from `minioadmin/minioadmin`
+- [ ] Database credentials are strong and not the defaults
 - [ ] All API keys are scoped to the minimum required permissions
 
 **Infrastructure**
 - [ ] The app runs behind HTTPS (Vercel handles this automatically; self-hosted needs a reverse proxy with TLS)
 - [ ] The PostgreSQL port (5432) is not publicly exposed
 - [ ] The Redis port (6379) is not publicly exposed
-- [ ] The MinIO port (9000/9001) is not publicly exposed unless required
 
 **Authentication**
 - [ ] OAuth callback URLs are locked to your production domain

@@ -4,8 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider } from 'next-themes';
 import { type ReactNode, useState } from 'react';
+import { Toaster } from 'sonner';
 import { PlausibleProvider } from './providers/plausible-provider';
-import { PostHogProvider } from './providers/posthog-provider';
 
 /**
  * Props for the Providers component
@@ -16,7 +16,7 @@ interface ProvidersProps {
 
 /**
  * Root providers component that wraps the application with all necessary context providers
- * Includes: React Query, Theme Provider, PostHog Analytics
+ * Includes: React Query, Theme Provider, Plausible Analytics
  */
 export function Providers({ children }: ProvidersProps): React.ReactElement {
   // Ensure QueryClient is only created once per component lifecycle
@@ -41,13 +41,12 @@ export function Providers({ children }: ProvidersProps): React.ReactElement {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="dark"
+          forcedTheme="dark"
           disableTransitionOnChange={false}
         >
-          <PostHogProvider>
-            <PlausibleProvider>{children}</PlausibleProvider>
-          </PostHogProvider>
+          <PlausibleProvider>{children}</PlausibleProvider>
+          <Toaster richColors closeButton />
         </ThemeProvider>
       </QueryClientProvider>
     </SessionProvider>

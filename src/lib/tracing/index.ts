@@ -6,51 +6,62 @@
  * - RAG retrieval
  * - LLM generation
  * - Database queries
+ *
+ * Disabled by default. Set OTEL_EXPORTER_OTLP_ENDPOINT to enable.
  */
 
 import { type Span, SpanStatusCode, type Tracer, trace } from '@opentelemetry/api';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { Resource } from '@opentelemetry/resources';
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 
-// Initialize OpenTelemetry SDK
-let sdk: NodeSDK | null = null;
+// Initialize OpenTelemetry SDK lazily — only when explicitly enabled
+let sdk: import('@opentelemetry/sdk-node').NodeSDK | null = null;
 
 export function initTracing(): void {
   if (sdk) return;
-  if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT === 'false') {
-    return;
-  }
+  if (!process.env.OTEL_EXPORTER_OTLP_ENDPOINT) return;
 
-  const exporter = new OTLPTraceExporter({
-    url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
-    headers: process.env.OTEL_EXPORTER_OTLP_HEADERS
-      ? Object.fromEntries(
-          process.env.OTEL_EXPORTER_OTLP_HEADERS.split(',').map(
-            (h) => h.split('=') as [string, string]
-          )
-        )
-      : undefined,
-  });
+  Promise.all([
+    import('@opentelemetry/auto-instrumentations-node'),
+    import('@opentelemetry/exporter-trace-otlp-http'),
+    import('@opentelemetry/resources'),
+    import('@opentelemetry/sdk-node'),
+    import('@opentelemetry/semantic-conventions'),
+  ]).then(
+    ([
+      { getNodeAutoInstrumentations },
+      { OTLPTraceExporter },
+      { Resource },
+      { NodeSDK: NodeSDKClass },
+      { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION },
+    ]) => {
+      const exporter = new OTLPTraceExporter({
+        url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+        headers: process.env.OTEL_EXPORTER_OTLP_HEADERS
+          ? Object.fromEntries(
+              process.env.OTEL_EXPORTER_OTLP_HEADERS.split(',').map(
+                (h) => h.split('=') as [string, string]
+              )
+            )
+          : undefined,
+      });
 
-  sdk = new NodeSDK({
-    traceExporter: exporter,
-    instrumentations: [
-      getNodeAutoInstrumentations({
-        '@opentelemetry/instrumentation-fs': { enabled: false },
-        '@opentelemetry/instrumentation-net': { enabled: false },
-      }),
-    ],
-    resource: new Resource({
-      [ATTR_SERVICE_NAME]: process.env.OTEL_SERVICE_NAME || 'rag-starter-kit',
-      [ATTR_SERVICE_VERSION]: process.env.OTEL_SERVICE_VERSION || '1.0.0',
-      'deployment.environment': process.env.NODE_ENV || 'development',
-    }),
-  });
+      sdk = new NodeSDKClass({
+        traceExporter: exporter,
+        instrumentations: [
+          getNodeAutoInstrumentations({
+            '@opentelemetry/instrumentation-fs': { enabled: false },
+            '@opentelemetry/instrumentation-net': { enabled: false },
+          }),
+        ],
+        resource: new Resource({
+          [ATTR_SERVICE_NAME]: process.env.OTEL_SERVICE_NAME || 'rag-starter-kit',
+          [ATTR_SERVICE_VERSION]: process.env.OTEL_SERVICE_VERSION || '1.0.0',
+          'deployment.environment': process.env.NODE_ENV || 'development',
+        }),
+      });
 
-  sdk.start();
+      sdk.start();
+    }
+  );
 }
 
 export function shutdownTracing(): Promise<void> {
@@ -124,15 +135,18 @@ export const tracing = {
       span.setAttribute('rag.duration_ms', duration);
 
       // Calculate average similarity score if available
-      interface RetrievalResult {
-        similarity?: number;
-        [key: string]: unknown;
-      }
-
-      if (result.length > 0 && 'similarity' in (result[0] as RetrievalResult)) {
+      if (
+        result.length > 0 &&
+        typeof result[0] === 'object' &&
+        result[0] !== null &&
+        'similarity' in result[0]
+      ) {
+        const typedResults = result as Array<{ similarity?: number }>;
         const avgSimilarity =
-          result.reduce((sum: number, r: RetrievalResult) => sum + (r.similarity ?? 0), 0) /
-          result.length;
+          typedResults.reduce(
+            (sum: number, r: { similarity?: number }) => sum + (r.similarity ?? 0),
+            0
+          ) / typedResults.length;
         span.setAttribute('rag.avg_similarity', avgSimilarity);
       }
 

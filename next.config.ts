@@ -4,7 +4,7 @@ import type { Header } from "next/dist/lib/load-custom-routes";
 import { withSentryConfig } from '@sentry/nextjs';
 
 const nextConfig: NextConfig = {
-	output: "standalone",
+	// output: "standalone",
 	experimental: {
 		// Partial Prerendering - improves TTFB by streaming static shell
 		// Requires Next.js 15+ canary version - disabled for stability
@@ -26,6 +26,19 @@ const nextConfig: NextConfig = {
 		],
 	},
 	webpack: (config, { isServer }): webpack.Configuration => {
+		// Suppress "Serializing big strings impacts deserialization performance" warnings.
+		// Prisma generated files (up to 268KB) trigger this because webpack's
+		// PackFileCacheStrategy logs a warning when serializing strings > ~128KB.
+		// This is purely informational — gzip compression on the filesystem cache
+		// already mitigates the deserialization cost. The warning is safe to suppress.
+		config.infrastructureLogging = {
+			...config.infrastructureLogging,
+			level: 'error',
+		};
+		if (config.cache && typeof config.cache === 'object' && 'type' in config.cache && config.cache.type === 'filesystem') {
+			config.cache.compression = 'gzip';
+		}
+
 		// Exclude playwright from client-side bundle
 		if (!isServer) {
 			config.resolve.fallback = {
@@ -47,10 +60,19 @@ const nextConfig: NextConfig = {
 			/^pg-native/,
 		);
 
+		// thread-stream (used by pino) spawns worker threads via dynamic require("lib/worker.js")
+		// which breaks under webpack bundling with output: "standalone"
+		if (isServer) {
+			config.externals.push(/^thread-stream/);
+		}
+
 		// Prevent pg from trying to load optional native bindings
+		// Resolve optional OTEL peer deps to false to suppress "Module not found" warnings
 		config.resolve.alias = {
 			...config.resolve.alias,
 			'pg-native': false,
+			'@opentelemetry/exporter-jaeger': false,
+			'@opentelemetry/winston-transport': false,
 		};
 
 		return config;

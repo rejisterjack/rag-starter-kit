@@ -56,12 +56,8 @@ body:
       label: Environment
       description: How are you running the application?
       options:
-        - Docker (Development)
-        - Docker (Production)
-        - Local Node.js
+        - Local Development (pnpm dev)
         - Vercel
-        - Railway
-        - Render
         - Other
     validations:
       required: true

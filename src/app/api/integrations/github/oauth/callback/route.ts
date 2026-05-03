@@ -18,6 +18,7 @@ import { logger } from '@/lib/logger';
 // =============================================================================
 
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token';
+const GITHUB_SCOPES = ['repo', 'user:email', 'read:org'];
 
 function getGitHubOAuthConfig() {
   const clientId = process.env.GITHUB_CLIENT_ID;

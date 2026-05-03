@@ -5,8 +5,8 @@
  * Optimized for high-throughput scenarios.
  */
 
-import type { DocumentChunk } from '@prisma/client';
-import { Prisma, type PrismaClient } from '@prisma/client';
+import type { DocumentChunk } from '@/generated/prisma/client';
+import { Prisma, type PrismaClient } from '@/generated/prisma/client';
 
 import { logger } from '@/lib/logger';
 

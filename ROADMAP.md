@@ -27,10 +27,10 @@ This phase is not about new features. It's about making the project credible to 
 | 0.1 | Replace `[Your Name]` placeholder in README | 📋 Planned | Critical — recruiters and developers see this first |
 | 0.2 | Add a working live demo link | 📋 Planned | Deploy to Vercel, get a real URL, put it front and center |
 | 0.3 | Record a 30-second GIF of the chatbot working | 📋 Planned | Embed in README — one GIF is worth 500 words of description |
-| 0.4 | Add GitHub repo topics | 📋 Planned | `rag` `langchain` `nextjs` `typescript` `pgvector` `self-hosted` `chatbot` `llm` `openai` `docker` `inngest` `voice-ai` |
+| 0.4 | Add GitHub repo topics | 📋 Planned | `rag` `langchain` `nextjs` `typescript` `pgvector` `self-hosted` `chatbot` `llm` `openai` `inngest` `voice-ai` |
 | 0.5 | Write a proper `CONTRIBUTING.md` | 📋 Planned | How to run locally, how to submit a PR, coding conventions |
 | 0.6 | Add `VISION.md` and `ROADMAP.md` to the repo root | 📋 Planned | These documents |
-| 0.7 | Verify Docker local dev works end-to-end on a clean machine | 📋 Planned | Should work with a single `docker compose up` |
+| 0.7 | Verify local dev works end-to-end on a clean machine | 📋 Planned | Should work with a single `pnpm dev` |
 | 0.8 | Fix any broken environment variable documentation | 📋 Planned | Every `.env` key must be documented in `.env.example` with a comment |
 | 0.9 | Add a proper LICENSE file | 📋 Planned | MIT license, your name |
 
@@ -48,7 +48,7 @@ The best open-source projects are effortless to start. This phase is entirely ab
 |---|------|--------|-------|
 | 1.1.1 | Rewrite README with clear hero section | 📋 Planned | What it is, who it's for, live demo link, GIF — all above the fold |
 | 1.1.2 | Add architecture diagram | 📋 Planned | One diagram showing how documents → pgvector → LLM → streaming response |
-| 1.1.3 | Add "Quick Start" section (5 steps, under 10 mins) | 📋 Planned | Clone → install → env vars → docker up → open localhost |
+| 1.1.3 | Add "Quick Start" section (5 steps, under 10 mins) | 📋 Planned | Clone → install → env vars → pnpm dev → open localhost |
 | 1.1.4 | Add "How It Works" section | 📋 Planned | Explain the RAG pipeline: ingest, embed, retrieve, generate |
 | 1.1.5 | Add "Tech Stack" section with rationale | 📋 Planned | Why Next.js, why pgvector, why Inngest — not just a list |
 | 1.1.6 | Add "Deployment" section for Vercel + Railway + self-host | 📋 Planned | Three paths, each with clear steps |
@@ -57,9 +57,9 @@ The best open-source projects are effortless to start. This phase is entirely ab
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1.2.1 | Single-command local setup via `docker compose up` | 📋 Planned | Postgres + pgvector + the app — zero manual steps |
+| 1.2.1 | Single-command local setup via `pnpm dev` | 📋 Planned | Postgres + pgvector + the app — zero manual steps |
 | 1.2.2 | Seed script with sample documents | 📋 Planned | Run once, have a working chatbot with real data to test against |
-| 1.2.3 | Hot reload working in Docker | 📋 Planned | Developer changes code, sees it update — no container rebuild |
+| 1.2.3 | Hot reload working locally | 📋 Planned | Developer changes code, sees it update — instant feedback |
 | 1.2.4 | Local LLM support via Ollama | 📋 Planned | Develop offline without spending OpenAI credits |
 
 ### 1.3 Configuration

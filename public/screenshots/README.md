@@ -43,10 +43,10 @@ screenshots/
 - [ ] Workspace management
 
 ### Technical Features
-- [ ] Docker deployment
+- [ ] Vercel deployment
 - [ ] Prisma Studio database view
 - [ ] Inngest dashboard
-- [ ] MinIO console
+- [ ] Cloudinary media library
 
 ## 🎥 Demo Videos
 

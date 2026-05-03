@@ -35,7 +35,6 @@ For larger changes (new features, architectural decisions, breaking changes) —
 
 - **Node.js 20+**
 - **pnpm 9+** — install with `npm install -g pnpm`
-- **Docker & Docker Compose** — required to run Postgres, Redis, and MinIO locally
 
 ### Steps
 
@@ -54,19 +53,19 @@ cp .env.example .env
 # - OpenRouter (free): https://openrouter.ai/keys
 # - Google AI Studio (free): https://aistudio.google.com/app/apikey
 
-# 5. Start all services
-docker compose up
+# 5. Start the dev server
+pnpm dev
 
 # 6. Open http://localhost:3000
 ```
 
-The Docker stack starts: Next.js app, PostgreSQL + pgvector, Redis, MinIO, and the Inngest dev server. Everything runs locally — no external services needed beyond the two free API keys.
+The dev server starts the Next.js app with all connected managed services (PostgreSQL, Redis, Cloudinary, Inngest). Everything runs locally — no external services needed beyond the two free API keys.
 
 ### Verify Everything Works
 
 ```bash
 pnpm test          # Unit tests should pass
-pnpm test:e2e      # E2E tests (requires the Docker stack running)
+pnpm test:e2e      # E2E tests (requires the dev server running)
 ```
 
 If either of these fails on a clean clone, that's a bug — please open an issue.
@@ -89,7 +88,6 @@ rag-starter-kit/
 │   └── hooks/              # Custom React hooks
 ├── prisma/                 # Database schema and migrations
 ├── tests/                  # Vitest unit tests and Playwright E2E tests
-├── docker-compose.yml      # Full local development stack
 └── .github/workflows/      # CI/CD pipelines
 ```
 
@@ -258,7 +256,7 @@ Unit tests live alongside the code they test: `src/lib/rag/chunker.ts` → `src/
 ### E2E Tests (Playwright)
 
 ```bash
-pnpm test:e2e              # Run all E2E tests (requires Docker stack)
+pnpm test:e2e              # Run all E2E tests (requires dev server)
 pnpm test:e2e --ui         # Open Playwright UI
 ```
 
@@ -267,7 +265,7 @@ E2E tests live in `tests/e2e/`. They test full user flows — document upload, c
 ### What Needs Tests
 
 - **New utility functions** — unit test every public function
-- **New API routes** — integration test with a real database (use the test Docker setup)
+- **New API routes** — integration test with a real database
 - **New UI flows** — E2E test the happy path at minimum
 - **Bug fixes** — add a test that would have caught the bug
 

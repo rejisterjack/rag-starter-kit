@@ -1,4 +1,4 @@
-import { AuditEvent, AuditSeverity, type Prisma } from '@prisma/client';
+import { AuditEvent, AuditSeverity, type Prisma } from '@/generated/prisma/client';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 

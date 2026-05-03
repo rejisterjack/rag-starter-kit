@@ -1,10 +1,10 @@
 /**
- * Real-time Service
+ * Real-time Service (Ably)
  * High-level service for managing real-time connections, presence, and broadcasts
- * Abstracts WebSocket and SSE implementations
+ * Uses Ably for serverless-compatible WebSocket connections on Vercel
  */
 
-import type { Socket } from 'socket.io-client';
+import type * as Ably from 'ably';
 
 import { logger } from '@/lib/logger';
 
@@ -17,24 +17,18 @@ import type {
   RealtimeMessage,
   RoomMember,
   TypingEvent,
-  UserInfo,
 } from './types';
-import { DEFAULT_REALTIME_CONFIG, SocketEvent } from './types';
+import { DEFAULT_REALTIME_CONFIG, PresenceStatus, SocketEvent } from './types';
 
 // =============================================================================
 // Realtime Service Class
 // =============================================================================
 
 export class RealtimeService {
-  private socket: Socket | null = null;
-  private eventSource: EventSource | null = null;
+  private client: Ably.Realtime | null = null;
+  private channels = new Map<string, Ably.RealtimeChannel>();
   private config: RealtimeClientConfig;
-  private reconnectTimer: NodeJS.Timeout | null = null;
-  private reconnectAttempts = 0;
-  private isConnecting = false;
   private connectionOptions: ConnectionOptions | null = null;
-  private presenceInterval: NodeJS.Timeout | null = null;
-  private heartbeatInterval: NodeJS.Timeout | null = null;
 
   // Event handlers
   private eventHandlers = new Map<string, Set<(data: unknown) => void>>();
@@ -55,125 +49,80 @@ export class RealtimeService {
   // ===========================================================================
 
   async connect(options: ConnectionOptions): Promise<void> {
-    if (this.isConnecting || this.isConnected()) {
-      return;
-    }
-
-    this.isConnecting = true;
     this.connectionOptions = options;
 
-    try {
-      // Try WebSocket first
-      await this.connectWebSocket(options);
-    } catch (error) {
-      // Fall back to SSE if enabled
-      if (this.config.fallbackToSSE) {
-        await this.connectSSE(options);
-      } else {
-        throw error;
-      }
-    } finally {
-      this.isConnecting = false;
-    }
-  }
+    // Dynamic import to avoid bundling Ably in server components
+    const { Realtime } = await import('ably');
 
-  private async connectWebSocket(options: ConnectionOptions): Promise<void> {
-    const { io } = await import('socket.io-client');
-
-    const url = this.config.url || window.location.origin;
-
-    this.socket = io(url, {
-      path: '/api/socket/io',
-      auth: {
-        token: options.authToken,
+    this.client = new Realtime({
+      authUrl: '/api/realtime/auth',
+      authMethod: 'POST' as const,
+      authParams: {
+        userId: options.userId,
+        workspaceId: options.workspaceId || '',
       },
-      reconnection: this.config.reconnection,
-      reconnectionAttempts: this.config.reconnectionAttempts,
-      reconnectionDelay: this.config.reconnectionDelay,
-      reconnectionDelayMax: this.config.reconnectionDelayMax,
-      timeout: this.config.timeout,
-      transports: this.config.transports,
+      disconnectedRetryTimeout: this.config.reconnectionDelay || 1000,
     });
 
     return new Promise((resolve, reject) => {
-      if (!this.socket) {
-        reject(new Error('Socket initialization failed'));
+      if (!this.client) {
+        reject(new Error('Ably client initialization failed'));
         return;
       }
 
       const timeout = setTimeout(() => {
         reject(new Error('Connection timeout'));
-      }, this.config.timeout);
+      }, this.config.timeout || 20000);
 
-      this.socket.on(SocketEvent.CONNECT, () => {
+      const onConnected = () => {
         clearTimeout(timeout);
-        this.reconnectAttempts = 0;
-        this.setupSocketHandlers();
-        this.startHeartbeat();
+        this.setupConnectionHandlers();
         this.emit('connected', { timestamp: Date.now() });
         resolve();
-      });
+      };
 
-      this.socket.on(SocketEvent.CONNECT_ERROR, (error: Error) => {
-        clearTimeout(timeout);
-        reject(error);
-      });
+      const onError = (stateChange: Ably.ConnectionStateChange) => {
+        if (stateChange.reason) {
+          clearTimeout(timeout);
+          reject(new Error(stateChange.reason.message || 'Connection failed'));
+        }
+      };
+
+      this.client.connection.on('connected', onConnected);
+      this.client.connection.once('failed', onError);
+      this.client.connection.once('disconnected', onError);
     });
   }
 
-  private async connectSSE(options: ConnectionOptions): Promise<void> {
-    const params = new URLSearchParams({
-      userId: options.userId,
-      ...(options.workspaceId && { workspaceId: options.workspaceId }),
-      ...(options.conversationId && { conversationId: options.conversationId }),
+  private setupConnectionHandlers(): void {
+    if (!this.client) return;
+
+    this.client.connection.on('disconnected', (stateChange) => {
+      this.emit('disconnected', {
+        reason: stateChange.reason?.message || 'disconnected',
+        timestamp: Date.now(),
+      });
     });
 
-    const url = `/api/realtime/events?${params}`;
-
-    this.eventSource = new EventSource(url);
-
-    return new Promise((resolve, reject) => {
-      if (!this.eventSource) {
-        reject(new Error('EventSource initialization failed'));
-        return;
-      }
-
-      const timeout = setTimeout(() => {
-        reject(new Error('SSE connection timeout'));
-      }, this.config.timeout);
-
-      this.eventSource.onopen = () => {
-        clearTimeout(timeout);
-        this.reconnectAttempts = 0;
-        this.setupSSEHandlers();
-        this.emit('connected', { timestamp: Date.now(), transport: 'sse' });
-        resolve();
-      };
-
-      this.eventSource.onerror = (error) => {
-        clearTimeout(timeout);
-        reject(error);
-      };
+    this.client.connection.on('failed', (stateChange) => {
+      this.emit('error', {
+        error: stateChange.reason?.message || 'Connection failed',
+        timestamp: Date.now(),
+      });
     });
   }
 
   disconnect(): void {
-    this.stopHeartbeat();
-    this.stopPresenceUpdates();
+    if (this.client) {
+      for (const channel of this.channels.values()) {
+        channel.presence.leave();
+        channel.off();
+      }
+      this.channels.clear();
 
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-    }
-
-    if (this.eventSource) {
-      this.eventSource.close();
-      this.eventSource = null;
-    }
-
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
+      this.client.connection.off();
+      this.client.close();
+      this.client = null;
     }
 
     this.presenceUsers.clear();
@@ -184,52 +133,76 @@ export class RealtimeService {
   }
 
   isConnected(): boolean {
-    return !!(
-      this.socket?.connected ||
-      (this.eventSource && this.eventSource.readyState === EventSource.OPEN)
-    );
+    return this.client?.connection.state === 'connected';
   }
 
   // ===========================================================================
-  // Room Management
+  // Channel Management (replaces Socket.io rooms)
   // ===========================================================================
 
-  async joinRoom(roomId: string, type: 'workspace' | 'conversation' | 'private'): Promise<void> {
+  private getChannel(roomId: string): Ably.RealtimeChannel {
+    if (!this.client) throw new Error('Not connected');
+
+    if (!this.channels.has(roomId)) {
+      const channel = this.client.channels.get(roomId);
+      this.channels.set(roomId, channel);
+    }
+
+    return this.channels.get(roomId)!;
+  }
+
+  async joinRoom(roomId: string, _type: 'workspace' | 'conversation' | 'private'): Promise<void> {
     if (!this.isConnected()) {
       throw new Error('Not connected');
     }
 
     this.currentRoomId = roomId;
+    const channel = this.getChannel(roomId);
 
-    if (this.socket) {
-      this.socket.emit(SocketEvent.JOIN_ROOM, {
-        roomId,
-        type,
-        workspaceId: this.connectionOptions?.workspaceId,
-        conversationId: this.connectionOptions?.conversationId,
-      });
+    // Enter presence
+    await channel.presence.enterClient(this.connectionOptions?.userId || 'anonymous', {
+      userId: this.connectionOptions?.userId,
+      workspaceId: this.connectionOptions?.workspaceId,
+    });
+
+    // Subscribe to events on this channel
+    this.setupChannelHandlers(channel, roomId);
+
+    // Get existing members
+    const presentMembers = await channel.presence.get();
+    for (const member of presentMembers) {
+      const data = member.data as Record<string, string> | undefined;
+      const userId = data?.userId || member.clientId;
+      if (userId) {
+        this.presenceUsers.set(userId, {
+          socketId: member.id,
+          user: { id: userId, name: userId, email: '' },
+          joinedAt: new Date(member.timestamp),
+          isTyping: false,
+          lastActivity: new Date(member.timestamp),
+        });
+      }
     }
 
-    // Start presence updates
-    this.startPresenceUpdates();
+    this.emit('roomJoined', {
+      roomId,
+      members: Array.from(this.presenceUsers.values()),
+    });
   }
 
   leaveRoom(roomId: string): void {
-    if (this.socket) {
-      this.socket.emit(SocketEvent.LEAVE_ROOM, { roomId });
+    const channel = this.channels.get(roomId);
+    if (channel) {
+      channel.presence.leave();
+      channel.off();
+      this.channels.delete(roomId);
     }
 
     if (this.currentRoomId === roomId) {
       this.currentRoomId = null;
-      this.stopPresenceUpdates();
     }
 
-    // Clear room-specific data
-    for (const [key, value] of this.presenceUsers.entries()) {
-      if (value.socketId) {
-        this.presenceUsers.delete(key);
-      }
-    }
+    this.presenceUsers.clear();
   }
 
   // ===========================================================================
@@ -237,15 +210,23 @@ export class RealtimeService {
   // ===========================================================================
 
   startTyping(roomId: string): void {
-    if (this.socket) {
-      this.socket.emit(SocketEvent.TYPING_START, { roomId });
-    }
+    const channel = this.getChannel(roomId);
+    channel.publish(SocketEvent.TYPING_START, {
+      roomId,
+      userId: this.connectionOptions?.userId,
+      isTyping: true,
+      timestamp: Date.now(),
+    });
   }
 
   stopTyping(roomId: string): void {
-    if (this.socket) {
-      this.socket.emit(SocketEvent.TYPING_STOP, { roomId });
-    }
+    const channel = this.getChannel(roomId);
+    channel.publish(SocketEvent.TYPING_STOP, {
+      roomId,
+      userId: this.connectionOptions?.userId,
+      isTyping: false,
+      timestamp: Date.now(),
+    });
   }
 
   broadcastTyping(roomId: string, isTyping: boolean): void {
@@ -261,7 +242,6 @@ export class RealtimeService {
     const active: TypingEvent[] = [];
 
     for (const event of this.typingUsers.values()) {
-      // Only show typing if within last 6 seconds
       if (now - event.timestamp < 6000 && event.isTyping) {
         active.push(event);
       }
@@ -275,9 +255,13 @@ export class RealtimeService {
   // ===========================================================================
 
   updateCursor(roomId: string, position: CursorPosition): void {
-    if (!this.socket) return;
-
-    this.socket.emit(SocketEvent.CURSOR_MOVE, { roomId, position });
+    const channel = this.getChannel(roomId);
+    channel.publish(SocketEvent.CURSOR_MOVE, {
+      roomId,
+      userId: this.connectionOptions?.userId,
+      position,
+      timestamp: Date.now(),
+    });
   }
 
   broadcastCursor(roomId: string, x: number, y: number, elementId?: string): void {
@@ -289,14 +273,13 @@ export class RealtimeService {
   // ===========================================================================
 
   sendMessage(roomId: string, content: string, parentId?: string): void {
-    if (!this.socket) {
-      throw new Error('WebSocket required for sending messages');
-    }
-
-    this.socket.emit(SocketEvent.MESSAGE_SEND, {
+    const channel = this.getChannel(roomId);
+    channel.publish(SocketEvent.MESSAGE_SEND, {
       roomId,
       content,
       parentId,
+      userId: this.connectionOptions?.userId,
+      timestamp: Date.now(),
     });
   }
 
@@ -305,21 +288,23 @@ export class RealtimeService {
   }
 
   editMessage(roomId: string, messageId: string, content: string): void {
-    if (!this.socket) return;
-
-    this.socket.emit(SocketEvent.MESSAGE_EDIT, {
+    const channel = this.getChannel(roomId);
+    channel.publish(SocketEvent.MESSAGE_EDIT, {
       roomId,
       messageId,
       content,
+      userId: this.connectionOptions?.userId,
+      timestamp: Date.now(),
     });
   }
 
   deleteMessage(roomId: string, messageId: string): void {
-    if (!this.socket) return;
-
-    this.socket.emit(SocketEvent.MESSAGE_DELETE, {
+    const channel = this.getChannel(roomId);
+    channel.publish(SocketEvent.MESSAGE_DELETE, {
       roomId,
       messageId,
+      userId: this.connectionOptions?.userId,
+      timestamp: Date.now(),
     });
   }
 
@@ -327,36 +312,12 @@ export class RealtimeService {
   // Presence
   // ===========================================================================
 
-  private startPresenceUpdates(): void {
-    if (this.presenceInterval) return;
-
-    // Send presence heartbeat every 30 seconds
-    this.presenceInterval = setInterval(() => {
-      if (this.currentRoomId && this.socket) {
-        this.socket.emit('presence_ping', {
-          roomId: this.currentRoomId,
-          timestamp: Date.now(),
-        });
-      }
-    }, 30000);
-  }
-
-  private stopPresenceUpdates(): void {
-    if (this.presenceInterval) {
-      clearInterval(this.presenceInterval);
-      this.presenceInterval = null;
-    }
-  }
-
   getOnlineUsers(): RoomMember[] {
     return Array.from(this.presenceUsers.values());
   }
 
   isUserOnline(userId: string): boolean {
-    for (const member of this.presenceUsers.values()) {
-      if (member.user.id === userId) return true;
-    }
-    return false;
+    return this.presenceUsers.has(userId);
   }
 
   // ===========================================================================
@@ -364,15 +325,13 @@ export class RealtimeService {
   // ===========================================================================
 
   notifyUser(userId: string, notification: Omit<NotificationEvent, 'id' | 'timestamp'>): void {
-    if (!this.socket) return;
+    if (!this.client) return;
 
-    this.socket.emit(SocketEvent.NOTIFY_USER, {
-      targetUserId: userId,
-      notification: {
-        ...notification,
-        id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        timestamp: Date.now(),
-      },
+    const channel = this.client.channels.get(`notifications:${userId}`);
+    channel.publish(SocketEvent.NOTIFY_USER, {
+      ...notification,
+      id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+      timestamp: Date.now(),
     });
   }
 
@@ -390,7 +349,6 @@ export class RealtimeService {
     const wrappedHandler = handler as (data: unknown) => void;
     handlers.add(wrappedHandler);
 
-    // Return unsubscribe function
     return () => {
       handlers.delete(wrappedHandler);
     };
@@ -406,7 +364,7 @@ export class RealtimeService {
   private emit(event: string, data: unknown): void {
     const handlers = this.eventHandlers.get(event);
     if (handlers) {
-      handlers.forEach((handler) => {
+      for (const handler of handlers) {
         try {
           handler(data);
         } catch (error: unknown) {
@@ -415,192 +373,122 @@ export class RealtimeService {
             error: error instanceof Error ? error.message : 'Unknown error',
           });
         }
-      });
+      }
     }
   }
 
   // ===========================================================================
-  // Socket Event Handlers
+  // Ably Channel Event Handlers
   // ===========================================================================
 
-  private setupSocketHandlers(): void {
-    if (!this.socket) return;
+  private setupChannelHandlers(channel: Ably.RealtimeChannel, roomId: string): void {
+    const userId = this.connectionOptions?.userId || '';
 
-    this.socket.on(SocketEvent.DISCONNECT, (reason: string) => {
-      this.emit('disconnected', { reason, timestamp: Date.now() });
+    // Typing events
+    channel.subscribe(SocketEvent.TYPING_START, (message: Ably.Message) => {
+      const data = message.data as { userId?: string; isTyping?: boolean; timestamp?: number };
+      if (!data.userId || data.userId === userId) return;
 
-      // Attempt reconnection if not manually disconnected
-      if (reason !== 'io client disconnect') {
-        this.scheduleReconnect();
-      }
-    });
-
-    this.socket.on(SocketEvent.CONNECT_ERROR, (error: Error) => {
-      this.emit('error', { error: error.message, timestamp: Date.now() });
-      this.scheduleReconnect();
-    });
-
-    this.socket.on(SocketEvent.ROOM_JOINED, (data: { roomId: string; members: RoomMember[] }) => {
-      // Update presence users
-      for (const member of data.members) {
-        this.presenceUsers.set(member.user.id, member as RoomMember);
-      }
-      this.emit('roomJoined', data);
-    });
-
-    this.socket.on(SocketEvent.USER_TYPING, (data: TypingEvent) => {
-      if (data.isTyping) {
-        this.typingUsers.set(data.user.id, data);
-      } else {
-        this.typingUsers.delete(data.user.id);
-      }
-      this.emit('typing', data);
-    });
-
-    this.socket.on(
-      SocketEvent.CURSOR_UPDATE,
-      (data: { user: UserInfo; position: CursorPosition; timestamp: number }) => {
-        this.emit('cursor', data);
-      }
-    );
-
-    this.socket.on(SocketEvent.MESSAGE_RECEIVE, (data: RealtimeMessage) => {
-      this.emit('message', data);
-    });
-
-    this.socket.on(
-      SocketEvent.MESSAGE_EDIT,
-      (data: { messageId: string; content: string; userId: string; timestamp: number }) => {
-        this.emit('messageEdit', data);
-      }
-    );
-
-    this.socket.on(
-      SocketEvent.MESSAGE_DELETE,
-      (data: { messageId: string; userId: string; timestamp: number }) => {
-        this.emit('messageDelete', data);
-      }
-    );
-
-    this.socket.on(SocketEvent.PRESENCE_JOIN, (data: PresenceEvent) => {
-      const member: RoomMember = {
-        socketId: '', // Unknown for remote users
-        user: data.user,
-        joinedAt: new Date(data.timestamp),
-        isTyping: false,
-        lastActivity: new Date(data.timestamp),
+      const event: TypingEvent = {
+        user: { id: data.userId, name: data.userId, email: '' },
+        roomId,
+        isTyping: true,
+        timestamp: data.timestamp || Date.now(),
       };
-      this.presenceUsers.set(data.user.id, member);
-      this.emit('presenceJoin', data);
+      this.typingUsers.set(data.userId, event);
+      this.emit('typing', event);
     });
 
-    this.socket.on(SocketEvent.PRESENCE_LEAVE, (data: PresenceEvent) => {
-      this.presenceUsers.delete(data.user.id);
-      this.typingUsers.delete(data.user.id);
-      this.emit('presenceLeave', data);
-    });
+    channel.subscribe(SocketEvent.TYPING_STOP, (message: Ably.Message) => {
+      const data = message.data as { userId?: string };
+      if (!data.userId) return;
 
-    this.socket.on(SocketEvent.NOTIFICATION, (data: NotificationEvent) => {
-      this.emit('notification', data);
-    });
-
-    this.socket.on(SocketEvent.ERROR, (data: { code: string; message: string }) => {
-      this.emit('error', data);
-    });
-
-    this.socket.on(SocketEvent.RATE_LIMITED, (data: { event: string; retryAfter: number }) => {
-      this.emit('rateLimited', data);
-    });
-  }
-
-  // ===========================================================================
-  // SSE Event Handlers
-  // ===========================================================================
-
-  private setupSSEHandlers(): void {
-    if (!this.eventSource) return;
-
-    this.eventSource.addEventListener('message', (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
-      this.emit('message', data);
-    });
-
-    this.eventSource.addEventListener('typing', (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
-      this.emit('typing', data);
-    });
-
-    this.eventSource.addEventListener('presence', (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
-      this.emit('presence', data);
-    });
-
-    this.eventSource.addEventListener('cursor', (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
-      this.emit('cursor', data);
-    });
-
-    this.eventSource.addEventListener('notification', (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
-      this.emit('notification', data);
-    });
-
-    this.eventSource.addEventListener('ping', () => {
-      // Keep connection alive
-    });
-
-    this.eventSource.onerror = (error) => {
-      this.emit('error', { error, timestamp: Date.now() });
-      this.scheduleReconnect();
-    };
-  }
-
-  // ===========================================================================
-  // Heartbeat & Reconnection
-  // ===========================================================================
-
-  private startHeartbeat(): void {
-    if (this.heartbeatInterval) return;
-
-    this.heartbeatInterval = setInterval(() => {
-      if (this.socket?.connected) {
-        this.socket.emit('ping', { timestamp: Date.now() });
-      }
-    }, 25000);
-  }
-
-  private stopHeartbeat(): void {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
-    }
-  }
-
-  private scheduleReconnect(): void {
-    if (this.reconnectTimer || !this.config.reconnection) return;
-
-    if (this.reconnectAttempts >= (this.config.reconnectionAttempts || 5)) {
-      this.emit('error', {
-        message: 'Max reconnection attempts reached',
+      this.typingUsers.delete(data.userId);
+      this.emit('typing', {
+        user: { id: data.userId, name: data.userId, email: '' },
+        roomId,
+        isTyping: false,
         timestamp: Date.now(),
       });
-      return;
-    }
+    });
 
-    this.reconnectAttempts++;
-    const delay = Math.min(
-      (this.config.reconnectionDelay || 1000) * 2 ** (this.reconnectAttempts - 1),
-      this.config.reconnectionDelayMax || 5000
-    );
+    // Cursor events
+    channel.subscribe(SocketEvent.CURSOR_MOVE, (message: Ably.Message) => {
+      const data = message.data as {
+        userId?: string;
+        position: CursorPosition;
+        timestamp: number;
+      };
+      if (!data.userId || data.userId === userId) return;
 
-    this.reconnectTimer = setTimeout(() => {
-      this.reconnectTimer = null;
-      if (this.connectionOptions) {
-        this.connect(this.connectionOptions).catch(() => {
-          // Reconnection failed, will retry
-        });
-      }
-    }, delay);
+      this.emit('cursor', {
+        user: { id: data.userId, name: data.userId, email: '' },
+        position: data.position,
+        timestamp: data.timestamp,
+      });
+    });
+
+    // Message events
+    channel.subscribe(SocketEvent.MESSAGE_SEND, (message: Ably.Message) => {
+      const data = message.data as RealtimeMessage;
+      this.emit('message', data);
+    });
+
+    channel.subscribe(SocketEvent.MESSAGE_EDIT, (message: Ably.Message) => {
+      const data = message.data as {
+        messageId: string;
+        content: string;
+        userId: string;
+        timestamp: number;
+      };
+      this.emit('messageEdit', data);
+    });
+
+    channel.subscribe(SocketEvent.MESSAGE_DELETE, (message: Ably.Message) => {
+      const data = message.data as { messageId: string; userId: string; timestamp: number };
+      this.emit('messageDelete', data);
+    });
+
+    // Presence events via Ably
+    channel.presence.subscribe('enter', (member: Ably.PresenceMessage) => {
+      const data = member.data as Record<string, string> | undefined;
+      const memberId = data?.userId || member.clientId;
+      if (!memberId) return;
+
+      const presenceEvent: PresenceEvent = {
+        user: { id: memberId, name: memberId, email: '' },
+        roomId,
+        status: PresenceStatus.ONLINE,
+        timestamp: Date.now(),
+      };
+
+      this.presenceUsers.set(memberId, {
+        socketId: member.id,
+        user: presenceEvent.user,
+        joinedAt: new Date(),
+        isTyping: false,
+        lastActivity: new Date(),
+      });
+
+      this.emit('presenceJoin', presenceEvent);
+    });
+
+    channel.presence.subscribe('leave', (member: Ably.PresenceMessage) => {
+      const data = member.data as Record<string, string> | undefined;
+      const memberId = data?.userId || member.clientId;
+      if (!memberId) return;
+
+      const presenceEvent: PresenceEvent = {
+        user: { id: memberId, name: memberId, email: '' },
+        roomId,
+        status: PresenceStatus.OFFLINE,
+        timestamp: Date.now(),
+      };
+
+      this.presenceUsers.delete(memberId);
+      this.typingUsers.delete(memberId);
+      this.emit('presenceLeave', presenceEvent);
+    });
   }
 }
 

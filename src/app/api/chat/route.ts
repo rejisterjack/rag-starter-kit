@@ -10,6 +10,9 @@
  * - Audit logging
  */
 
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { generateText, type LanguageModel, streamText } from 'ai';
 import { NextResponse } from 'next/server';
 import type { LLMMessage } from '@/lib/ai/llm';
@@ -22,7 +25,11 @@ import { CitationHandler, sourcesToChunks } from '@/lib/rag/citations';
 import { ConversationMemory } from '@/lib/rag/memory';
 import { retrieveSources } from '@/lib/rag/retrieval';
 import { estimateMessageTokens } from '@/lib/rag/token-budget';
-import { validateChatInput } from '@/lib/security/input-validator';
+import {
+  chatCreateSchema,
+  chatUpdateSchema,
+  validateChatInput,
+} from '@/lib/security/input-validator';
 import {
   addRateLimitHeaders,
   checkApiRateLimit,
@@ -42,7 +49,7 @@ const defaultConfig: RAGConfig = {
   similarityThreshold: 0.7,
   temperature: 0.7,
   maxTokens: 2000,
-  model: 'deepseek/deepseek-chat:free',
+  model: 'inclusionai/ling-2.6-1t:free',
   embeddingModel: 'text-embedding-004',
 };
 
@@ -51,11 +58,11 @@ const defaultConfig: RAGConfig = {
  * IMPLEMENTED: Fallback logic tries each model in order until one succeeds
  */
 const MODEL_FALLBACK_CHAIN = [
-  'deepseek/deepseek-chat:free',
-  'mistralai/mistral-7b-instruct:free',
-  'meta-llama/llama-3.1-8b-instruct:free',
-  'google/gemma-2-9b-it:free',
-  'qwen/qwen-2.5-7b-instruct:free',
+  'inclusionai/ling-2.6-1t:free',
+  'liquid/lfm-2.5-1.2b-instruct:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'google/gemma-3-12b-it:free',
+  'qwen/qwen3-coder:free',
 ];
 
 // =============================================================================
@@ -121,7 +128,14 @@ export async function POST(req: Request) {
       }
     }
 
-    // Step 4: Parse and validate request body
+    // Step 4: Extract custom provider keys from headers
+    const customKeys = {
+      openrouter: req.headers.get('x-key-openrouter') || undefined,
+      fireworks: req.headers.get('x-key-fireworks') || undefined,
+      gemini: req.headers.get('x-key-gemini') || undefined,
+    };
+
+    // Step 5: Parse and validate request body
     let body: unknown;
     try {
       body = await req.json();
@@ -135,7 +149,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Step 5: Validate input
+    // Step 6: Validate input
     let validatedInput: ReturnType<typeof validateChatInput>;
     try {
       validatedInput = validateChatInput(body);
@@ -160,7 +174,7 @@ export async function POST(req: Request) {
     const effectiveConversationId = conversationId ?? chatId;
     const userMessage = messages[messages.length - 1].content;
 
-    // Step 6: Get conversation history
+    // Step 7: Get conversation history
     const memory = new ConversationMemory(prisma);
     let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
@@ -186,27 +200,34 @@ export async function POST(req: Request) {
         }));
     }
 
-    // Step 7: Retrieve relevant sources
-    const sources = await retrieveSources(userMessage, userId, config);
+    // Step 8: Retrieve relevant sources (graceful fallback if embedding/vector search fails)
+    let sources: Awaited<ReturnType<typeof retrieveSources>> = [];
+    try {
+      sources = await retrieveSources(userMessage, userId, config);
+    } catch (err) {
+      logger.warn('Source retrieval failed, continuing without RAG context', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
 
-    // Step 8: Build context with citations
+    // Step 9: Build context with citations
     const citationHandler = new CitationHandler();
     const chunks = sourcesToChunks(sources);
     const { context, citationMap } = citationHandler.formatContextWithCitations(chunks);
 
-    // Step 9: Build system prompt
+    // Step 10: Build system prompt
     const systemPrompt = buildSystemPromptWithContext(context, {
       style: config.temperature < 0.5 ? 'concise' : 'balanced',
     });
 
-    // Step 10: Prepare messages for LLM
+    // Step 11: Prepare messages for LLM
     const llmMessages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
       ...history,
       { role: 'user', content: userMessage },
     ];
 
-    // Step 10b: Estimate token usage for budget tracking
+    // Step 11b: Estimate token usage for budget tracking
     const estimatedTokens = estimateMessageTokens(llmMessages);
     if (estimatedTokens > config.maxTokens * 2) {
       return NextResponse.json(
@@ -219,7 +240,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Step 11: Save user message to database
+    // Step 12: Save user message to database
     if (effectiveConversationId) {
       await memory.addMessage(effectiveConversationId, {
         role: 'user',
@@ -227,7 +248,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Step 12: Log chat message
+    // Step 13: Log chat message
     await logAuditEvent({
       event: AuditEvent.CHAT_MESSAGE_SENT,
       userId,
@@ -242,31 +263,61 @@ export async function POST(req: Request) {
     });
 
     if (shouldStream) {
-      // Streaming response
+      // Streaming response — probe models first, then stream with a working one
+      const modelsToTry = [config.model, ...MODEL_FALLBACK_CHAIN.filter((m) => m !== config.model)];
+
+      let usedModel = config.model;
+      let probeOk = false;
+
+      // Quick probe: generate 1 token to verify the model responds before committing to a stream
+      for (const modelName of modelsToTry) {
+        try {
+          await generateText({
+            model: getModel(modelName, customKeys),
+            messages: [{ role: 'user', content: userMessage.slice(0, 100) }],
+            maxTokens: 1,
+          });
+          usedModel = modelName;
+          probeOk = true;
+          break;
+        } catch (err) {
+          logger.warn(`Model ${modelName} probe failed, trying next`, {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      if (!probeOk) {
+        return NextResponse.json(
+          {
+            error: 'All AI models are currently unavailable. Please try again in a moment.',
+            code: 'MODEL_UNAVAILABLE',
+          },
+          { status: 503 }
+        );
+      }
+
       const result = streamText({
-        model: getModel(config.model),
+        model: getModel(usedModel, customKeys),
         messages: llmMessages,
         temperature: config.temperature,
         maxTokens: config.maxTokens,
         onFinish: async (completion) => {
-          // Save assistant response to database
           if (effectiveConversationId) {
             await memory.addMessage(effectiveConversationId, {
               role: 'assistant',
               content: completion.text,
             });
 
-            // Generate title if this is the first exchange
             await maybeGenerateTitle(
               effectiveConversationId,
               userMessage,
               completion.text,
-              config.model
+              usedModel,
+              customKeys
             );
           }
 
-          // Log token usage
-          // FIXED: Use correct field names from LanguageModelUsage (promptTokens/completionTokens)
           if (completion.usage) {
             await prisma.apiUsage.create({
               data: {
@@ -297,7 +348,7 @@ export async function POST(req: Request) {
       const response = result.toTextStreamResponse({
         headers: {
           'X-Message-Sources': JSON.stringify(sourcesMetadata),
-          'X-Model-Used': config.model,
+          'X-Model-Used': usedModel,
         },
       });
 
@@ -311,6 +362,7 @@ export async function POST(req: Request) {
         temperature: config.temperature,
         maxTokens: config.maxTokens,
         primaryModel: config.model,
+        customKeys,
       });
 
       // Extract citations
@@ -345,7 +397,8 @@ export async function POST(req: Request) {
           effectiveConversationId,
           userMessage,
           response.text,
-          response.model
+          response.model,
+          customKeys
         );
       }
 
@@ -417,6 +470,31 @@ export async function PUT(req: Request) {
     const userId = session.user.id;
     const workspaceId = session.user.workspaceId;
 
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!dbUser) {
+      return NextResponse.json(
+        {
+          error: 'Your session is out of date. Please sign in again.',
+          code: 'USER_NOT_FOUND',
+        },
+        { status: 401 }
+      );
+    }
+
+    // JWT can retain a workspaceId after DB reset or workspace deletion; Prisma would
+    // reject the FK on chat create. Only attach workspace the user still belongs to.
+    let resolvedWorkspaceId: string | null = null;
+    if (workspaceId) {
+      const membership = await prisma.workspaceMember.findFirst({
+        where: { userId, workspaceId },
+        select: { workspaceId: true },
+      });
+      resolvedWorkspaceId = membership?.workspaceId ?? null;
+    }
+
     // Check rate limit for chat creation
     const rateLimitIdentifier = getRateLimitIdentifier(req, { userId, workspaceId });
     const rateLimitResult = await checkApiRateLimit(rateLimitIdentifier, 'chat', {
@@ -455,7 +533,14 @@ export async function PUT(req: Request) {
       );
     }
 
-    const { title, model } = body as { title?: string; model?: string };
+    const parsed = chatCreateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid input', code: 'VALIDATION_ERROR', details: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+    const { title, model } = parsed.data;
 
     // Create chat
     const chat = await prisma.chat.create({
@@ -463,7 +548,7 @@ export async function PUT(req: Request) {
         title: title || 'New Chat',
         model: model || defaultConfig.model,
         userId,
-        workspaceId: workspaceId || null,
+        workspaceId: resolvedWorkspaceId,
       },
     });
 
@@ -471,7 +556,7 @@ export async function PUT(req: Request) {
     await logAuditEvent({
       event: AuditEvent.CHAT_CREATED,
       userId,
-      workspaceId: workspaceId ?? undefined,
+      workspaceId: resolvedWorkspaceId ?? undefined,
       metadata: { chatId: chat.id, title: chat.title },
     });
 
@@ -492,11 +577,17 @@ export async function PUT(req: Request) {
 
     return response;
   } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
     logger.warn('Failed to create chat', {
-      error: error instanceof Error ? error.message : String(error),
+      error: errMsg,
     });
+    const isDev = process.env.NODE_ENV === 'development';
     return NextResponse.json(
-      { error: 'Failed to create chat', code: 'INTERNAL_ERROR' },
+      {
+        error: 'Failed to create chat',
+        code: 'INTERNAL_ERROR',
+        ...(isDev && { details: errMsg }),
+      },
       { status: 500 }
     );
   }
@@ -673,7 +764,14 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const { chatId, title, model } = body as { chatId?: string; title?: string; model?: string };
+    const parsed = chatUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid input', code: 'VALIDATION_ERROR', details: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+    const { chatId, title, model } = parsed.data;
 
     if (!chatId) {
       return NextResponse.json(
@@ -740,35 +838,46 @@ export async function PATCH(req: Request) {
 // Helper Functions
 // =============================================================================
 
-import { openai } from '@ai-sdk/openai';
-import { openrouter } from '@openrouter/ai-sdk-provider';
-import { createOllama } from 'ollama-ai-provider';
-
 /**
- * Get the appropriate model based on configuration
+ * Get the appropriate model based on model name and optional custom API keys
  */
-function getModel(modelName: string): LanguageModel {
-  // Check if it's an OpenRouter model (contains '/' or ends with ':free')
-  if (modelName.includes('/') || modelName.endsWith(':free')) {
+function getModel(
+  modelName: string,
+  customKeys?: { openrouter?: string; fireworks?: string; gemini?: string }
+): LanguageModel {
+  // Fireworks AI models (prefixed with "accounts/fireworks/")
+  if (modelName.startsWith('accounts/fireworks/')) {
+    const fireworksKey = customKeys?.fireworks || process.env.FIREWORKS_API_KEY;
+    if (!fireworksKey) {
+      throw new Error('Fireworks API key required. Set FIREWORKS_API_KEY or provide your own key.');
+    }
+    const fireworks = createOpenAI({
+      baseURL: 'https://api.fireworks.ai/inference/v1',
+      apiKey: fireworksKey,
+    });
+    return fireworks(modelName) as unknown as LanguageModel;
+  }
+
+  // Google Gemini models (prefixed with "gemini-")
+  if (modelName.startsWith('gemini-')) {
+    const geminiKey = customKeys?.gemini || process.env.GOOGLE_API_KEY;
+    if (!geminiKey) {
+      throw new Error(
+        'Google Gemini API key required. Set GOOGLE_API_KEY or provide your own key.'
+      );
+    }
+    const gemini = createGoogleGenerativeAI({ apiKey: geminiKey });
+    return gemini(modelName) as unknown as LanguageModel;
+  }
+
+  // OpenRouter models (contains '/' or ends with ':free') - default
+  const openrouterKey = customKeys?.openrouter || process.env.OPENROUTER_API_KEY;
+  if (openrouterKey) {
+    const openrouter = createOpenRouter({ apiKey: openrouterKey });
     return openrouter.chat(modelName) as unknown as LanguageModel;
   }
 
-  // Check if it's an OpenAI model
-  if (modelName.startsWith('gpt-') || modelName.startsWith('text-')) {
-    return openai(modelName) as unknown as LanguageModel;
-  }
-
-  // Check if it's an Ollama model
-  const ollamaModels = ['llama3', 'mistral', 'phi3', 'gemma2', 'codellama', 'qwen'];
-  if (ollamaModels.some((m) => modelName.toLowerCase().startsWith(m))) {
-    const ollama = createOllama({
-      baseURL: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434/api',
-    });
-    return ollama(modelName) as unknown as LanguageModel;
-  }
-
-  // Default to OpenRouter for unknown models (more likely to work with free models)
-  return openrouter.chat(modelName) as unknown as LanguageModel;
+  throw new Error(`No API key available for model: ${modelName}`);
 }
 
 /**
@@ -777,7 +886,12 @@ function getModel(modelName: string): LanguageModel {
  */
 async function generateWithFallback(
   messages: LLMMessage[],
-  options: { temperature: number; maxTokens: number; primaryModel: string }
+  options: {
+    temperature: number;
+    maxTokens: number;
+    primaryModel: string;
+    customKeys?: { openrouter?: string; fireworks?: string; gemini?: string };
+  }
 ): Promise<{
   text: string;
   model: string;
@@ -793,7 +907,7 @@ async function generateWithFallback(
   for (const modelName of modelsToTry) {
     try {
       const result = await generateText({
-        model: getModel(modelName),
+        model: getModel(modelName, options.customKeys),
         messages,
         temperature: options.temperature,
         maxTokens: options.maxTokens,
@@ -850,7 +964,8 @@ async function maybeGenerateTitle(
   chatId: string,
   userMessage: string,
   assistantResponse: string,
-  modelName: string
+  modelName: string,
+  customKeys?: { openrouter?: string; fireworks?: string; gemini?: string }
 ): Promise<void> {
   try {
     // Check if chat has default title
@@ -867,7 +982,7 @@ async function maybeGenerateTitle(
     const titleModel = modelName.includes(':') ? 'mistralai/mistral-7b-instruct:free' : modelName;
 
     const { text: title } = await generateText({
-      model: getModel(titleModel),
+      model: getModel(titleModel, customKeys),
       messages: [
         {
           role: 'system',

@@ -2,12 +2,12 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  // url      = env("DATABASE_URL") // latest prisma doesnot requires url
 }
 
 // ============================================================================
@@ -341,7 +341,7 @@ model DocumentImage {
   height      Int?
 
   // Storage
-  storageKey  String     // MinIO/S3 key
+  storageKey  String     // Cloudinary public ID
   storageUrl  String     // Public URL
 
   // OCR / Caption

@@ -35,8 +35,8 @@
  *         description: Unauthorized
  */
 
-import type { DocumentStatus } from '@prisma/client';
 import { type NextRequest, NextResponse } from 'next/server';
+import type { DocumentStatus } from '@/generated/prisma/client';
 import { auth } from '@/lib/auth';
 import { getServerSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db';

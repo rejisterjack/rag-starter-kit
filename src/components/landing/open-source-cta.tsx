@@ -48,85 +48,102 @@ const contributionWays = [
 
 export function OpenSourceCTA(): React.ReactElement {
   return (
-    <section className="py-24 lg:py-32 bg-muted/20">
+    <section className="py-24 lg:py-32 relative overflow-hidden">
+      {/* Background ambient light */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,hsl(var(--primary)/0.05),transparent_50%)] pointer-events-none" />
+
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Main CTA Card */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-3xl bg-primary p-8 sm:p-12 lg:p-16 text-center mb-16"
+          initial={{ opacity: 0, y: 40, scale: 0.95 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, margin: '-100px' }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#0a0a0a]/80 backdrop-blur-3xl p-8 sm:p-16 lg:p-20 text-center mb-24 shadow-[0_0_80px_-20px_rgba(0,0,0,0.5)]"
         >
-          {/* Background decoration */}
-          <div className="absolute inset-0 -z-0 pointer-events-none">
+          {/* Animated Background Gradients inside the card */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
             <motion.div
-              className="absolute top-0 left-0 w-[400px] h-[400px] rounded-full"
+              className="absolute top-[-50%] left-[-10%] w-[80%] h-[150%] rounded-full opacity-30"
               style={{
-                background: 'radial-gradient(circle, rgba(255,255,255,0.12), transparent 70%)',
-                filter: 'blur(60px)',
+                background: 'radial-gradient(circle, hsl(var(--primary)), transparent 60%)',
+                filter: 'blur(80px)',
               }}
               animate={{
-                x: [0, 30, -20, 0],
-                y: [0, -20, 30, 0],
+                transform: [
+                  'translate(0%, 0%) rotate(0deg)',
+                  'translate(5%, 5%) rotate(5deg)',
+                  'translate(0%, 0%) rotate(0deg)',
+                ],
               }}
-              transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+              transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
             />
             <motion.div
-              className="absolute bottom-0 right-0 w-[300px] h-[300px] rounded-full"
+              className="absolute bottom-[-50%] right-[-10%] w-[70%] h-[130%] rounded-full opacity-20"
               style={{
-                background: 'radial-gradient(circle, rgba(200,100,255,0.15), transparent 70%)',
-                filter: 'blur(60px)',
+                background: 'radial-gradient(circle, hsl(320 100% 60%), transparent 60%)',
+                filter: 'blur(100px)',
               }}
               animate={{
-                x: [0, -20, 20, 0],
-                y: [0, 20, -10, 0],
+                transform: [
+                  'translate(0%, 0%) rotate(0deg)',
+                  'translate(-5%, -5%) rotate(-5deg)',
+                  'translate(0%, 0%) rotate(0deg)',
+                ],
               }}
-              transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut', delay: -4 }}
+              transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut', delay: -5 }}
             />
+            <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay" />
           </div>
 
           <div className="relative z-10">
             <motion.div
-              initial={{ scale: 0.9 }}
-              whileInView={{ scale: 1 }}
+              initial={{ scale: 0.9, opacity: 0 }}
+              whileInView={{ scale: 1, opacity: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4 }}
-              className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white/90 mb-6"
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary mb-8 shadow-[0_0_20px_hsl(var(--primary)/0.2)]"
             >
-              <Heart className="h-4 w-4 text-red-300" />
+              <Heart className="h-4 w-4 text-red-400 animate-pulse" />
               <span>MIT Licensed — Free Forever</span>
             </motion.div>
 
-            <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl mb-4">
-              Built by Developers, <br className="hidden sm:block" />
-              <span className="text-white/80">for Developers</span>
+            <h2 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-7xl mb-6 leading-tight">
+              Built by Developers,
+              <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white/60 to-white/30">
+                for Developers
+              </span>
             </h2>
 
-            <p className="text-lg text-white/70 max-w-2xl mx-auto mb-10">
+            <p className="text-lg sm:text-xl text-white/60 max-w-2xl mx-auto mb-12 leading-relaxed">
               This is not a SaaS. There is no pricing page. No vendor lock-in. No central server.
               Clone it, own it, deploy it. Your data never leaves your infrastructure.
             </p>
 
             {/* GitHub Stats */}
-            <GitHubStats />
+            <div className="flex justify-center mb-12">
+              <div className="glass-panel border-white/10 bg-white/5 inline-block rounded-2xl p-2 shadow-2xl">
+                <GitHubStats />
+              </div>
+            </div>
 
             {/* Deploy buttons */}
-            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-5 mb-12">
               <Button
                 asChild
                 size="lg"
-                variant="secondary"
-                className="h-14 px-8 text-base rounded-full hover:scale-105 transition-transform duration-300"
+                className="group relative h-14 px-8 text-base rounded-full bg-primary text-primary-foreground hover:scale-105 transition-all duration-300 shadow-[0_0_40px_-10px_hsl(var(--primary))] overflow-hidden interactive"
               >
                 <Link
                   href="https://github.com/rejisterjack/rag-starter-kit"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
+                  <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent)] -translate-x-[150%] group-hover:animate-[shimmer_1.5s_infinite]" />
                   <Github className="mr-2 h-5 w-5" />
                   Clone on GitHub
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </Button>
 
@@ -134,22 +151,22 @@ export function OpenSourceCTA(): React.ReactElement {
                 asChild
                 size="lg"
                 variant="outline"
-                className="h-14 px-8 text-base rounded-full bg-transparent border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all duration-300"
+                className="group h-14 px-8 text-base rounded-full glass-light border-white/10 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300 interactive"
               >
                 <Link href="/chat">
-                  <ExternalLink className="mr-2 h-5 w-5" />
+                  <ExternalLink className="mr-2 h-5 w-5 text-white/70 group-hover:text-white transition-colors" />
                   Try the Demo
                 </Link>
               </Button>
             </div>
 
             {/* Deploy badges */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-4">
               <Link
                 href="https://vercel.com/new/clone?repository-url=https://github.com/rejisterjack/rag-starter-kit"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm text-white/80 hover:bg-white/20 transition-colors"
+                className="group inline-flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-300 interactive"
               >
                 <svg
                   className="h-4 w-4"
@@ -166,7 +183,7 @@ export function OpenSourceCTA(): React.ReactElement {
                 href="https://railway.app/template/rag-starter-kit"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm text-white/80 hover:bg-white/20 transition-colors"
+                className="group inline-flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-300 interactive"
               >
                 <svg
                   className="h-4 w-4"
@@ -183,7 +200,7 @@ export function OpenSourceCTA(): React.ReactElement {
                 href="https://render.com/deploy?repo=https://github.com/rejisterjack/rag-starter-kit"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm text-white/80 hover:bg-white/20 transition-colors"
+                className="group inline-flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-300 interactive"
               >
                 <svg
                   className="h-4 w-4"
@@ -202,39 +219,42 @@ export function OpenSourceCTA(): React.ReactElement {
 
         {/* Contribution ways */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="relative z-10"
         >
-          <h3 className="text-xl font-semibold text-foreground text-center mb-8">
-            How to Get Involved
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="text-center mb-12">
+            <h3 className="text-3xl font-bold text-foreground">
+              How to <span className="text-gradient">Get Involved</span>
+            </h3>
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {contributionWays.map((way, index) => (
               <motion.div
                 key={way.title}
-                className="glass-panel rounded-xl p-5 hover:bg-primary/5 transition-colors group"
-                initial={{ opacity: 0, y: 20 }}
+                className="group glass-heavy rounded-2xl p-6 border border-border/50 hover:border-primary/40 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_15px_30px_-10px_rgba(0,0,0,0.3)] interactive cursor-default"
+                initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.08 }}
+                transition={{ duration: 0.6, delay: index * 0.1, ease: [0.16, 1, 0.3, 1] }}
               >
-                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                  <way.icon className="h-5 w-5" />
+                <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground group-hover:scale-110 transition-all duration-300 shadow-inner">
+                  <way.icon className="h-6 w-6" />
                 </div>
-                <h4 className="text-sm font-semibold text-foreground mb-1.5">{way.title}</h4>
-                <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+                <h4 className="text-lg font-bold text-foreground mb-2">{way.title}</h4>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-6">
                   {way.description}
                 </p>
                 <Link
                   href={way.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary group/link"
                 >
                   {way.action}
-                  <ArrowRight className="h-3 w-3" />
+                  <ArrowRight className="h-4 w-4 group-hover/link:translate-x-1 transition-transform" />
                 </Link>
               </motion.div>
             ))}

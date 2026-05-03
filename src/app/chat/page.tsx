@@ -33,6 +33,15 @@ interface DocumentChunk {
   section?: string;
 }
 
+/**
+ * Read chatId from the browser URL — safe for SSR (returns undefined)
+ */
+function getUrlChatId(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('chatId') || undefined;
+}
+
 export default function ChatPage(): React.ReactElement {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [sources, setSources] = useState<Source[]>([]);
@@ -42,8 +51,10 @@ export default function ChatPage(): React.ReactElement {
   const [, setIsLoadingPreview] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isLoadingDocs, setIsLoadingDocs] = useState(true);
-  const [currentChatId, setCurrentChatId] = useState<string | undefined>();
+  const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined);
   const [agentMode, setAgentMode] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('inclusionai/ling-2.6-1t:free');
+  const [chatTitle, setChatTitle] = useState('New Chat');
 
   const {
     messages,
@@ -52,47 +63,52 @@ export default function ChatPage(): React.ReactElement {
     streamingContent,
     sendMessage,
     stop,
+    reload,
     deleteMessage,
     editMessage,
     hasMore,
     loadMore,
+    loadMessages,
+    sources: chatSources,
+    clearMessages,
   } = useChat({
     conversationId: currentChatId,
     agentMode,
-    onError: (error) => {
-      toast.error(error.message || 'An error occurred');
-    },
-    onFinish: (message) => {
-      // Update sources when message finishes
-      if (message.sources) {
-        setSources(message.sources);
-      }
-    },
+    model: selectedModel,
   });
+
+  // On mount: if we have a chatId from the URL, set it and load messages
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional mount-only effect
+  useEffect(() => {
+    const chatId = getUrlChatId();
+    if (chatId) {
+      setCurrentChatId(chatId);
+      loadMessages(chatId);
+    }
+  }, []);
+
+  // Merge sources
+  const effectiveSources = chatSources.length > 0 ? chatSources : sources;
 
   const fetchDocuments = useCallback(async () => {
     try {
       const response = await fetch('/api/documents');
-      if (!response.ok) {
-        throw new Error('Failed to fetch documents');
-      }
+      if (!response.ok) throw new Error('Failed to fetch documents');
       const data = await response.json();
       if (data.success) {
-        // Convert API documents to component documents
         const formattedDocs: Document[] = data.data.documents.map((doc: ApiDocument) => ({
           ...doc,
           createdAt: new Date(doc.createdAt),
         }));
         setDocuments(formattedDocs);
       }
-    } catch (_error: unknown) {
-      toast.error('Failed to load documents');
+    } catch {
+      // Silent fail on document fetch
     } finally {
       setIsLoadingDocs(false);
     }
   }, []);
 
-  // Fetch documents on mount
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
@@ -107,24 +123,45 @@ export default function ChatPage(): React.ReactElement {
         fetchDocuments();
       }
     }, 3000);
-
     return () => clearInterval(interval);
   }, [documents, fetchDocuments]);
+
+  const createChat = useCallback(async (): Promise<string | null> => {
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'New Chat', model: selectedModel }),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        success?: boolean;
+        data?: { chat?: { id?: string } };
+        error?: string;
+        details?: string;
+      };
+      if (!response.ok) {
+        const msg = data.details || data.error || `Could not create chat (${response.status})`;
+        toast.error(msg);
+        return null;
+      }
+      if (data.success && data.data?.chat?.id) return data.data.chat.id;
+      toast.error(data.error || 'Failed to create new chat');
+      return null;
+    } catch {
+      toast.error('Failed to create new chat');
+      return null;
+    }
+  }, [selectedModel]);
 
   const handleUpload = useCallback(
     async (files: File[]) => {
       const uploadedDocs: Document[] = [];
-
       for (const file of files) {
         const formData = new FormData();
         formData.append('file', file);
-
         try {
-          const response = await fetch('/api/ingest', {
-            method: 'POST',
-            body: formData,
-          });
-
+          const response = await fetch('/api/ingest', { method: 'POST', body: formData });
           if (!response.ok) {
             const error = await response.json();
             toast.error(
@@ -132,31 +169,26 @@ export default function ChatPage(): React.ReactElement {
             );
             continue;
           }
-
           const data = await response.json();
           if (data.success) {
-            const newDoc: Document = {
+            uploadedDocs.push({
               id: data.data.document.id,
               name: data.data.document.name,
               type: file.type || 'application/octet-stream',
               size: file.size,
               status: 'pending',
               createdAt: new Date(),
-            };
-            uploadedDocs.push(newDoc);
+            });
             toast.success(`Uploading ${file.name}...`);
           }
-        } catch (_error: unknown) {
+        } catch {
           toast.error(`Failed to upload ${file.name}`);
         }
       }
-
       if (uploadedDocs.length > 0) {
         setDocuments((prev) => [...uploadedDocs, ...prev]);
-        // Start polling for status
         setTimeout(fetchDocuments, 1000);
       }
-
       setIsUploadOpen(false);
     },
     [fetchDocuments]
@@ -164,71 +196,49 @@ export default function ChatPage(): React.ReactElement {
 
   const handleDeleteDocument = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`/api/documents?id=${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete document');
-      }
-
+      const response = await fetch(`/api/documents?id=${id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to delete');
       setDocuments((prev) => prev.filter((doc) => doc.id !== id));
       toast.success('Document deleted');
-    } catch (_error: unknown) {
+    } catch {
       toast.error('Failed to delete document');
     }
   }, []);
 
   const handleReingest = useCallback(
     async (id: string) => {
-      // Update UI to show processing state
       setDocuments((prev) =>
         prev.map((doc) =>
           doc.id === id ? { ...doc, status: 'processing' as const, progress: 0 } : doc
         )
       );
-
-      // Trigger re-ingestion via the ingest API
       try {
         const response = await fetch('/api/ingest/retry', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ documentId: id }),
         });
-
-        if (!response.ok) {
-          throw new Error('Failed to re-ingest document');
-        }
-
+        if (!response.ok) throw new Error('Failed to re-ingest');
         toast.success('Re-ingestion started');
         setTimeout(fetchDocuments, 1000);
-      } catch (_error: unknown) {
+      } catch {
         toast.error('Failed to re-ingest document');
-        // Revert status
         fetchDocuments();
       }
     },
-    [
-      // Revert status
-      fetchDocuments,
-    ]
+    [fetchDocuments]
   );
 
   const handlePreview = useCallback(async (document: Document) => {
     setPreviewDocument(document);
     setIsPreviewOpen(true);
     setIsLoadingPreview(true);
-
     try {
       const response = await fetch(`/api/documents/${document.id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch document details');
-      }
+      if (!response.ok) throw new Error('Failed to fetch');
       const data = await response.json();
-      if (data.success) {
-        setPreviewChunks(data.data.chunks || []);
-      }
-    } catch (_error: unknown) {
+      if (data.success) setPreviewChunks(data.data.chunks || []);
+    } catch {
       toast.error('Failed to load document preview');
       setPreviewChunks([]);
     } finally {
@@ -237,39 +247,85 @@ export default function ChatPage(): React.ReactElement {
   }, []);
 
   const handleNewChat = useCallback(async () => {
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: 'New Chat' }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create chat');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setCurrentChatId(data.data.chat.id);
-        // Clear messages by reloading the page with new chat ID
-        window.location.href = `/chat?chatId=${data.data.chat.id}`;
-      }
-    } catch (_error: unknown) {
-      toast.error('Failed to create new chat');
+    const newChatId = await createChat();
+    if (newChatId) {
+      // Clear state FIRST so the effect won't race with stale messages
+      clearMessages();
+      setCurrentChatId(newChatId);
+      setChatTitle('New Chat');
+      setSources([]);
+      window.history.replaceState(null, '', `/chat?chatId=${newChatId}`);
     }
-  }, []);
+  }, [createChat, clearMessages]);
 
   const handleSendMessage = useCallback(
     async (content: string, files?: File[]) => {
-      // If files are provided, upload them first
       if (files && files.length > 0) {
         await handleUpload(files);
       }
 
-      await sendMessage(content, files);
+      let chatId = currentChatId;
+
+      // Auto-create a chat if none exists
+      if (!chatId) {
+        const newChatId = await createChat();
+        if (newChatId) {
+          chatId = newChatId;
+          // Clear stale state before setting new ID, then set ID.
+          // This order ensures the useChat effect runs and clears
+          // BEFORE sendMessage adds the optimistic user message.
+          clearMessages();
+          setCurrentChatId(newChatId);
+          window.history.replaceState(null, '', `/chat?chatId=${newChatId}`);
+          // Yield to let React process the state updates and effects
+          // before sendMessage adds the optimistic message
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        } else {
+          toast.error('Failed to start chat. Please try again.');
+          return;
+        }
+      }
+
+      // Pass chatId directly to avoid stale ref race condition
+      await sendMessage(content, undefined, chatId);
     },
-    [sendMessage, handleUpload]
+    [sendMessage, handleUpload, currentChatId, createChat, clearMessages]
   );
+
+  const handleSelectConversation = useCallback(
+    (chatId: string) => {
+      clearMessages();
+      setCurrentChatId(chatId);
+      window.history.replaceState(null, '', `/chat?chatId=${chatId}`);
+      // Direct call — no useEffect needed
+      loadMessages(chatId);
+    },
+    [loadMessages, clearMessages]
+  );
+
+  const handleDeleteConversation = useCallback(
+    (chatId: string) => {
+      if (chatId === currentChatId) {
+        clearMessages();
+        setCurrentChatId(undefined);
+        setChatTitle('New Chat');
+        window.history.replaceState(null, '', '/chat');
+      }
+    },
+    [currentChatId, clearMessages]
+  );
+
+  const handleFeedback = useCallback(async (messageId: string, rating: 'up' | 'down') => {
+    try {
+      await fetch(`/api/messages/${messageId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating }),
+      });
+    } catch {
+      // Non-critical
+    }
+  }, []);
 
   const sidebar = (
     <DocumentList
@@ -287,23 +343,32 @@ export default function ChatPage(): React.ReactElement {
     <>
       <ChatContainer
         messages={messages}
-        sources={sources}
+        sources={effectiveSources}
         isStreaming={isStreaming}
         streamingContent={streamingContent}
         agentMode={agentMode}
+        selectedModel={selectedModel}
+        chatId={currentChatId}
+        chatTitle={chatTitle}
+        onModelChange={setSelectedModel}
         onSendMessage={handleSendMessage}
         onCancelStreaming={stop}
         onLoadMore={loadMore}
         onEditMessage={editMessage}
         onDeleteMessage={deleteMessage}
         onNewChat={handleNewChat}
+        onUploadClick={() => setIsUploadOpen(true)}
+        onFilesDrop={handleUpload}
         onAgentModeToggle={setAgentMode}
+        onRegenerate={reload}
+        onFeedback={handleFeedback}
+        onSelectConversation={handleSelectConversation}
+        onDeleteConversation={handleDeleteConversation}
         hasMore={hasMore}
         isLoading={isLoading}
         sidebar={sidebar}
       />
 
-      {/* Upload Dialog */}
       <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
@@ -315,17 +380,11 @@ export default function ChatPage(): React.ReactElement {
               try {
                 const formData = new FormData();
                 formData.append('url', url);
-
-                const response = await fetch('/api/ingest', {
-                  method: 'POST',
-                  body: formData,
-                });
-
+                const response = await fetch('/api/ingest', { method: 'POST', body: formData });
                 if (!response.ok) {
                   const error = await response.json();
                   throw new Error(error.error?.message || 'Failed to ingest URL');
                 }
-
                 toast.success('URL queued for processing');
                 setTimeout(fetchDocuments, 1000);
                 setIsUploadOpen(false);
@@ -337,7 +396,6 @@ export default function ChatPage(): React.ReactElement {
         </DialogContent>
       </Dialog>
 
-      {/* Document Preview Dialog */}
       <DocumentPreview
         document={previewDocument}
         isOpen={isPreviewOpen}

@@ -9,7 +9,7 @@
 
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { logger } from '@/lib/logger';
-import { redis } from './rate-limiter';
+import { redis } from '@/lib/redis';
 
 // =============================================================================
 // Configuration
@@ -151,7 +151,7 @@ export async function checkIPRateLimit(
     const blockExpiry = await redis.get(blockKey);
 
     if (blockExpiry) {
-      const expiryTime = parseInt(blockExpiry, 10);
+      const expiryTime = parseInt(blockExpiry as string, 10);
       if (now < expiryTime) {
         return {
           allowed: false,
@@ -176,27 +176,17 @@ export async function checkIPRateLimit(
 
     const adjustedLimit = Math.floor(cfg.maxRequests / penaltyMultiplier);
 
-    // Check rate limit using Redis
+    // Check rate limit using Redis sorted set for sliding window
     const rateKey = `${IP_RATE_LIMIT_PREFIX}${ip}`;
     const windowStart = now - cfg.windowMs;
 
-    // Use Redis sorted set for sliding window
-    const pipeline = redis.pipeline();
-
-    // Remove old entries
-    pipeline.zremrangebyscore(rateKey, 0, windowStart);
-
-    // Count current entries
-    pipeline.zcard(rateKey);
-
-    // Add current request
-    pipeline.zadd(rateKey, now, `${now}-${Math.random().toString(36).substring(2)}`);
-
-    // Set expiry
-    pipeline.pexpire(rateKey, cfg.windowMs);
-
-    const results = await pipeline.exec();
-    const currentCount = (results?.[1]?.[1] as number) || 0;
+    await redis.zremrangebyscore(rateKey, 0, windowStart);
+    const currentCount = await redis.zcard(rateKey);
+    await redis.zadd(rateKey, {
+      score: now,
+      member: `${now}-${Math.random().toString(36).substring(2)}`,
+    });
+    await redis.pexpire(rateKey, cfg.windowMs);
 
     const allowed = currentCount < adjustedLimit;
     const remaining = Math.max(0, adjustedLimit - currentCount - 1);
@@ -263,12 +253,9 @@ async function recordIPViolation(ip: string, req: Request): Promise<void> {
     const cfg = DEFAULT_CONFIG;
     if (reputation.violationCount >= cfg.blockThreshold) {
       const blockKey = `${IP_RATE_LIMIT_PREFIX}block:${ip}`;
-      await redis.set(
-        blockKey,
-        (Date.now() + cfg.blockDurationMs).toString(),
-        'PX',
-        cfg.blockDurationMs
-      );
+      await redis.set(blockKey, (Date.now() + cfg.blockDurationMs).toString(), {
+        px: cfg.blockDurationMs,
+      });
 
       logger.warn('IP blocked due to rate limit violations', {
         ip,
@@ -296,7 +283,7 @@ async function getIPReputation(ip: string): Promise<IPReputation> {
     const data = await redis.get(`${IP_REPUTATION_PREFIX}${ip}`);
 
     if (data) {
-      return JSON.parse(data);
+      return JSON.parse(data as string);
     }
   } catch (error: unknown) {
     logger.debug('Failed to parse IP reputation data', {
@@ -319,7 +306,7 @@ async function getIPReputation(ip: string): Promise<IPReputation> {
 async function saveIPReputation(ip: string, reputation: IPReputation): Promise<void> {
   // Expire reputation after 24 hours of no violations
   const ttl = 24 * 60 * 60; // 24 hours in seconds
-  await redis.set(`${IP_REPUTATION_PREFIX}${ip}`, JSON.stringify(reputation), 'EX', ttl);
+  await redis.set(`${IP_REPUTATION_PREFIX}${ip}`, JSON.stringify(reputation), { ex: ttl });
 }
 
 /**
@@ -367,7 +354,7 @@ export async function generateCaptchaChallenge(ip: string): Promise<{
   };
 
   // Store challenge with 5 minute expiry
-  await redis.set(`${IP_CHALLENGE_PREFIX}${challengeId}`, JSON.stringify(challenge), 'EX', 300);
+  await redis.set(`${IP_CHALLENGE_PREFIX}${challengeId}`, JSON.stringify(challenge), { ex: 300 });
 
   return {
     challengeId,
@@ -390,7 +377,7 @@ export async function verifyCaptchaChallenge(
       return false;
     }
 
-    const challenge = JSON.parse(data);
+    const challenge = JSON.parse(data as string);
 
     // Verify IP matches
     if (challenge.ip !== ip) {
@@ -438,10 +425,9 @@ export async function cleanupIPRateLimits(): Promise<{
     let rateLimitsRemoved = 0;
     let reputationsRemoved = 0;
 
-    // Check each rate limit key for expiration
-    for (const key of rateLimitKeys) {
+    for (const key of rateLimitKeys as string[]) {
       const ttl = await redis.ttl(key);
-      if (ttl < 0) {
+      if (typeof ttl === 'number' && ttl < 0) {
         await redis.del(key);
         rateLimitsRemoved++;
       }
@@ -449,10 +435,10 @@ export async function cleanupIPRateLimits(): Promise<{
 
     // Clean up old reputation entries
     const now = Date.now();
-    for (const key of reputationKeys) {
+    for (const key of reputationKeys as string[]) {
       const data = await redis.get(key);
       if (data) {
-        const reputation: IPReputation = JSON.parse(data);
+        const reputation: IPReputation = JSON.parse(data as string);
         // Remove if no violations in last 7 days
         if (now - reputation.lastViolation > 7 * 24 * 60 * 60 * 1000) {
           await redis.del(key);

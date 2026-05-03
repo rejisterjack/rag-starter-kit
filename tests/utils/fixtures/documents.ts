@@ -4,7 +4,7 @@
  * Sample documents for testing document processing, ingestion, and RAG pipeline.
  */
 
-import type { Document, DocumentStatus } from '@prisma/client';
+import type { Document, DocumentStatus } from '@/generated/prisma/client';
 
 // =============================================================================
 // Document Type Extensions

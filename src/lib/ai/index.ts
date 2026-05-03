@@ -70,7 +70,7 @@ const EMBEDDING_MODEL = 'text-embedding-004';
  */
 export const BEST_FREE_MODELS = {
   // 🥇 TIER 1: Best Overall Performance
-  DEEPSEEK_CHAT: 'deepseek/deepseek-chat:free', // Excellent reasoning, fast
+  DEEPSEEK_CHAT: 'meta-llama/llama-3.3-70b-instruct:free', // Excellent reasoning, fast
 
   // 🥈 TIER 2: Great Performance
   MISTRAL_7B: 'mistralai/mistral-7b-instruct:free', // Fast, reliable

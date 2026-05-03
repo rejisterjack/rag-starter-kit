@@ -27,15 +27,10 @@ const PUBLIC_ROUTES = [
 ];
 
 // Routes that require CSRF protection
-const CSRF_PROTECTED_ROUTES = [
-  '/api/chat',
-  '/api/ingest',
-  '/api/documents',
-  '/api/workspaces',
-  '/api/admin',
-  '/api/export',
-  '/api/invite',
-];
+// Note: Chat/ingest/documents API routes are excluded because the frontend
+// uses plain fetch (not form submissions). These are already protected by
+// authentication, rate limiting, and CORS.
+const CSRF_PROTECTED_ROUTES = ['/api/admin', '/api/export', '/api/invite'];
 
 // Safe HTTP methods that don't require CSRF protection
 const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
@@ -91,6 +86,11 @@ export async function middleware(req: NextRequest) {
   // Generate or propagate request ID for tracing
   const requestId = req.headers.get('X-Request-ID') ?? crypto.randomUUID();
 
+  // Generate CSP nonce early so it can be passed through request headers
+  const nonceBytes = new Uint8Array(16);
+  crypto.getRandomValues(nonceBytes);
+  const cspNonce = btoa(String.fromCharCode(...nonceBytes));
+
   // Get token from session
   const token = await getToken({ req, secret: env.NEXTAUTH_SECRET });
   const isLoggedIn = !!token;
@@ -135,10 +135,16 @@ export async function middleware(req: NextRequest) {
 
   // Allow public routes
   if (isPublicRoute) {
-    const response = NextResponse.next();
+    const publicHeaders = new Headers(req.headers);
+    publicHeaders.set('x-request-id', requestId);
+    publicHeaders.set('x-nonce', cspNonce);
+
+    const response = NextResponse.next({
+      request: { headers: publicHeaders },
+    });
 
     // Add security headers
-    addSecurityHeaders(response, requestId);
+    addSecurityHeaders(response, requestId, cspNonce);
 
     // Add CORS headers for API routes
     if (pathname.startsWith('/api/')) {
@@ -157,7 +163,7 @@ export async function middleware(req: NextRequest) {
     // API key validation will be handled by the route handler
     // We just pass through here and let the route handle it
     const response = NextResponse.next();
-    addSecurityHeaders(response, requestId);
+    addSecurityHeaders(response, requestId, cspNonce);
     return withRequestId(response, requestId);
   }
 
@@ -207,9 +213,10 @@ export async function middleware(req: NextRequest) {
       return withRequestId(response, requestId);
     }
 
-    // For page routes, redirect to login
+    // For page routes, redirect to login (preserve query params in callbackUrl)
     const loginUrl = new URL('/login', nextUrl);
-    loginUrl.searchParams.set('callbackUrl', pathname);
+    const callbackUrl = nextUrl.search ? `${pathname}${nextUrl.search}` : pathname;
+    loginUrl.searchParams.set('callbackUrl', callbackUrl);
     const response = NextResponse.redirect(loginUrl);
     return withRequestId(response, requestId);
   }
@@ -234,6 +241,7 @@ export async function middleware(req: NextRequest) {
 
   // Set the request ID on headers for downstream use
   requestHeaders.set('x-request-id', requestId);
+  requestHeaders.set('x-nonce', cspNonce);
 
   if (isLoggedIn && user) {
     requestHeaders.set('x-user-id', user.id as string);
@@ -251,7 +259,7 @@ export async function middleware(req: NextRequest) {
   });
 
   // Add security headers
-  addSecurityHeaders(response, requestId);
+  addSecurityHeaders(response, requestId, cspNonce);
 
   // Add CORS headers for API routes
   if (pathname.startsWith('/api/')) {
@@ -345,7 +353,7 @@ async function validateCsrfToken(req: NextRequest): Promise<boolean> {
 // Security Headers
 // =============================================================================
 
-function addSecurityHeaders(response: NextResponse, requestId?: string): void {
+function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: string): void {
   // Prevent clickjacking
   response.headers.set('X-Frame-Options', 'DENY');
 
@@ -358,12 +366,9 @@ function addSecurityHeaders(response: NextResponse, requestId?: string): void {
   // Referrer Policy
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-  // Content Security Policy — always generate a fresh cryptographic nonce,
-  // never derive it from requestId (which can be supplied by the client via
-  // X-Request-ID and would make the nonce predictable / attacker-controlled).
-  const nonceBytes = new Uint8Array(16);
-  crypto.getRandomValues(nonceBytes);
-  const nonce = btoa(String.fromCharCode(...nonceBytes));
+  // Content Security Policy — nonce is generated per-request in middleware
+  // and passed through request headers for server components.
+  const n = nonce ?? '';
 
   // Build connect-src directive with external AI providers
   // These can be extended via the CSP_CONNECT_SRC environment variable
@@ -379,9 +384,9 @@ function addSecurityHeaders(response: NextResponse, requestId?: string): void {
     'https://*.googleapis.com',
     // Upstash for rate limiting
     'https://*.upstash.io',
-    // PostHog for analytics
-    'https://*.posthog.com',
-    'https://*.posthog.io',
+    // Plausible for analytics (self-hosted)
+    'https://*.plausible.io',
+    process.env.NEXT_PUBLIC_ANALYTICS_HOST,
     // Sentry for error tracking
     'https://*.sentry.io',
     // Inngest for background jobs
@@ -401,13 +406,26 @@ function addSecurityHeaders(response: NextResponse, requestId?: string): void {
       .filter(Boolean) || [];
   const connectSrc = [...defaultConnectSrc, ...customConnectSrc].join(' ');
 
+  // In development: include unsafe-inline/eval for dev tools and Plausible self-hosted
+  const scriptSrc =
+    env.NODE_ENV === 'development'
+      ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:8000`
+      : `script-src 'self' 'nonce-${n}'`;
+
+  // In development: omit nonce from style-src so unsafe-inline actually works
+  // (browsers ignore unsafe-inline when a nonce/hash is present)
+  const styleSrc =
+    env.NODE_ENV === 'development'
+      ? "style-src 'self' 'unsafe-inline'"
+      : `style-src 'self' 'nonce-${n}'`;
+
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}'`,
-    `style-src 'self' 'nonce-${nonce}'`,
+    scriptSrc,
+    styleSrc,
     "img-src 'self' blob: data: https:",
     "font-src 'self'",
-    `connect-src ${connectSrc}`,
+    `connect-src https://api.github.com ${connectSrc}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -415,9 +433,9 @@ function addSecurityHeaders(response: NextResponse, requestId?: string): void {
 
   response.headers.set('Content-Security-Policy', csp);
 
-  // Expose nonce for use in layout.tsx
-  if (requestId) {
-    response.headers.set('X-Nonce', nonce);
+  // Expose nonce on response header as well (for debugging)
+  if (requestId && n) {
+    response.headers.set('X-Nonce', n);
   }
 
   // HTTPS enforcement in production

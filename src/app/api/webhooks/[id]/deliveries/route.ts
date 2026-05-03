@@ -3,9 +3,9 @@
  * GET /api/webhooks/[id]/deliveries - Get delivery logs for a webhook
  */
 
-import type { DeliveryStatus } from '@prisma/client';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import type { DeliveryStatus } from '@/generated/prisma/client';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
 import { logger } from '@/lib/logger';

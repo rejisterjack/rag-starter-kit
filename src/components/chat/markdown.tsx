@@ -3,7 +3,9 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
+import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import { cn } from '@/lib/utils';
 import { CitationLink } from './citations';
 import { CodeBlock } from './code-block';
@@ -20,15 +22,14 @@ const CITATION_REGEX = /\[(\d+)\]/g;
 export function Markdown({ content, className, onCitationClick }: MarkdownProps) {
   // Pre-process content to handle citations
   const processedContent = React.useMemo(() => {
-    // Replace citation patterns with a special marker that we can handle in rendering
     return content;
   }, [content]);
 
   return (
     <div className={cn('prose prose-sm dark:prose-invert max-w-none', className)}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight]}
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeHighlight, rehypeKatex]}
         components={{
           // Custom code block rendering
           code({ className, children, ...props }) {

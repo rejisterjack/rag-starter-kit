@@ -1,5 +1,5 @@
-import type { WebhookStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
+import type { WebhookStatus } from '@/generated/prisma/client';
 import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { inngest } from '@/lib/inngest/client';

@@ -258,15 +258,12 @@ export enum SSEEventType {
 // =============================================================================
 
 export interface RealtimeClientConfig {
-  url?: string;
   autoConnect?: boolean;
   reconnection?: boolean;
   reconnectionAttempts?: number;
   reconnectionDelay?: number;
   reconnectionDelayMax?: number;
   timeout?: number;
-  transports?: ('websocket' | 'polling')[];
-  fallbackToSSE?: boolean;
 }
 
 export const DEFAULT_REALTIME_CONFIG: RealtimeClientConfig = {
@@ -276,36 +273,4 @@ export const DEFAULT_REALTIME_CONFIG: RealtimeClientConfig = {
   reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
   timeout: 20000,
-  transports: ['websocket', 'polling'],
-  fallbackToSSE: true,
-};
-
-// =============================================================================
-// Server Configuration
-// =============================================================================
-
-export interface RealtimeServerConfig {
-  corsOrigin: string | string[];
-  pingTimeout: number;
-  pingInterval: number;
-  maxClientsPerRoom: number;
-  rateLimit: RateLimitConfig;
-  enablePresence: boolean;
-  enableCursors: boolean;
-  enableTyping: boolean;
-}
-
-export const DEFAULT_SERVER_CONFIG: RealtimeServerConfig = {
-  corsOrigin: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-  pingTimeout: 60000,
-  pingInterval: 25000,
-  maxClientsPerRoom: 50,
-  rateLimit: {
-    maxEventsPerSecond: 10,
-    burstSize: 20,
-    cooldownMs: 1000,
-  },
-  enablePresence: true,
-  enableCursors: true,
-  enableTyping: true,
 };

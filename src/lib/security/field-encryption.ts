@@ -26,8 +26,7 @@ const KEY_LENGTH = 32;
 // KMS Configuration
 const KMS_PROVIDER = process.env.KMS_PROVIDER as 'aws' | 'azure' | 'gcp' | 'local' | undefined;
 const AWS_KMS_KEY_ID = process.env.AWS_KMS_KEY_ID;
-const AWS_REGION =
-  process.env.S3_REGION || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1';
+const AWS_REGION = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1';
 const AZURE_KEY_VAULT_URL = process.env.AZURE_KEY_VAULT_URL;
 const AZURE_KEY_NAME = process.env.AZURE_KEY_NAME;
 const GCP_KMS_KEY_NAME = process.env.GCP_KMS_KEY_NAME;

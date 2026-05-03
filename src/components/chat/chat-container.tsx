@@ -1,8 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { History, Menu, Moon, PanelLeft, Plus, Settings, Sun } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { History, Menu, PanelLeft, Plus, Settings } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useState } from 'react';
 import { AgentModeToggleCompact } from '@/components/agent/agent-mode-toggle';
@@ -18,6 +17,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { ApiKeySettings } from './api-key-settings';
 import type { Source } from './citations';
 import { ConversationHistoryPanel } from './conversation-history-panel';
 import { EmptyState } from './empty-state';
@@ -27,6 +27,9 @@ import { MessageList } from './message-list';
 import { ModelPicker } from './model-picker';
 import { ShareDialog } from './share-dialog';
 import { InlineSourcesPanel, SourcesPanel } from './sources-panel';
+
+// Stable no-op function to prevent unnecessary re-renders
+const noop = () => {};
 
 interface ChatContainerProps {
   messages: Message[];
@@ -49,6 +52,8 @@ interface ChatContainerProps {
   onFeedback?: (messageId: string, rating: 'up' | 'down') => void;
   onSelectConversation?: (chatId: string) => void;
   onDeleteConversation?: (chatId: string) => void;
+  onUploadClick?: () => void;
+  onFilesDrop?: (files: File[]) => void;
   hasMore?: boolean;
   isLoading?: boolean;
   sidebar?: React.ReactNode;
@@ -60,7 +65,7 @@ export function ChatContainer({
   sources,
   isStreaming,
   streamingContent,
-  selectedModel = 'deepseek/deepseek-chat:free',
+  selectedModel = 'inclusionai/ling-2.6-1t:free',
   chatId,
   chatTitle,
   agentMode = false,
@@ -76,12 +81,13 @@ export function ChatContainer({
   onFeedback,
   onSelectConversation,
   onDeleteConversation,
+  onUploadClick,
+  onFilesDrop,
   hasMore = false,
   isLoading = false,
   sidebar,
   className,
 }: ChatContainerProps) {
-  const { theme, setTheme } = useTheme();
   const [isSourcesPanelOpen, setIsSourcesPanelOpen] = useState(false);
   const [isSourcesInlineCollapsed, setIsSourcesInlineCollapsed] = useState(true);
   const [, setSelectedSource] = useState<Source | null>(null);
@@ -207,6 +213,9 @@ export function ChatContainer({
               disabled={isStreaming}
             />
 
+            {/* API Key Settings */}
+            <ApiKeySettings />
+
             {/* Share Button */}
             {chatId && <ShareDialog chatId={chatId} chatTitle={chatTitle || 'Chat'} />}
           </div>
@@ -231,26 +240,6 @@ export function ChatContainer({
 
             <div className="w-px h-4 bg-border/40 hidden md:block mx-1" />
 
-            {/* Theme toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full h-8 w-8 hover:bg-background/50 text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={theme}
-                  initial={{ opacity: 0, rotate: -90, scale: 0.5 }}
-                  animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                  exit={{ opacity: 0, rotate: 90, scale: 0.5 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </motion.div>
-              </AnimatePresence>
-            </Button>
-
             {/* Settings */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -270,15 +259,15 @@ export function ChatContainer({
                   Preferences
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-border/20" />
-                <DropdownMenuItem className="rounded-xl px-3 py-2.5 focus:bg-primary/20 focus:text-primary cursor-pointer transition-colors font-medium">
-                  Model: GPT-4o
+                <DropdownMenuItem className="rounded-xl px-3 py-2.5 focus:bg-primary/20 focus:text-primary cursor-default transition-colors font-medium">
+                  <span className="text-muted-foreground mr-1">Model:</span>{' '}
+                  {selectedModel.split('/').pop()?.replace(':free', '') || selectedModel}
                 </DropdownMenuItem>
-                <DropdownMenuItem className="rounded-xl px-3 py-2.5 focus:bg-primary/20 focus:text-primary cursor-pointer transition-colors font-medium">
-                  Temperature: 0.7
+                <DropdownMenuItem className="rounded-xl px-3 py-2.5 focus:bg-primary/20 focus:text-primary cursor-default transition-colors font-medium">
+                  <span className="text-muted-foreground mr-1">Temperature:</span> 0.7
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-border/20" />
-                <DropdownMenuItem className="rounded-xl px-3 py-2.5 focus:bg-primary/20 focus:text-primary cursor-pointer transition-colors font-medium">
-                  Advanced Settings
+                <DropdownMenuItem className="rounded-xl px-3 py-2.5 focus:bg-primary/20 focus:text-primary cursor-default transition-colors font-medium">
+                  <span className="text-muted-foreground mr-1">Streaming:</span> Enabled
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -321,20 +310,32 @@ export function ChatContainer({
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="h-full flex items-center justify-center p-8"
+                    className="h-full flex flex-col items-center justify-center p-8"
                   >
-                    <EmptyState
-                      onSuggestionClick={onSendMessage}
-                      onUploadClick={() => {
-                        /* Trigger upload */
-                      }}
-                    />
+                    <div className="flex-1 flex items-center justify-center w-full">
+                      <EmptyState
+                        onSuggestionClick={onSendMessage}
+                        onUploadClick={onUploadClick}
+                        onFilesDrop={onFilesDrop}
+                      />
+                    </div>
+                    {/* Input always visible on empty state */}
+                    <div className="w-full max-w-3xl pb-6">
+                      <div className="glass-panel rounded-3xl p-2 shadow-2xl border border-white/20">
+                        <MessageInput
+                          onSend={onSendMessage}
+                          isLoading={isLoading || isStreaming}
+                          disabled={isLoading}
+                          placeholder="Ask anything... or try a suggestion above"
+                        />
+                      </div>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            {/* Floating Input Area anchored to the bottom */}
+            {/* Floating Input Area anchored to the bottom — only when messages exist */}
             {hasMessages && (
               <motion.div
                 initial={{ y: 50, opacity: 0 }}
@@ -389,9 +390,9 @@ export function ChatContainer({
       {/* Conversation History Panel */}
       <ConversationHistoryPanel
         currentChatId={chatId}
-        onSelectConversation={onSelectConversation || (() => {})}
-        onDeleteConversation={onDeleteConversation || (() => {})}
-        onNewChat={onNewChat || (() => {})}
+        onSelectConversation={onSelectConversation || noop}
+        onDeleteConversation={onDeleteConversation || noop}
+        onNewChat={onNewChat || noop}
         isOpen={isHistoryPanelOpen}
         onClose={() => setIsHistoryPanelOpen(false)}
       />

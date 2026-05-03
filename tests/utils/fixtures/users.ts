@@ -4,7 +4,7 @@
  * Sample users for testing authentication and authorization.
  */
 
-import type { User } from '@prisma/client';
+import type { User } from '@/generated/prisma/client';
 
 /**
  * Regular user fixture

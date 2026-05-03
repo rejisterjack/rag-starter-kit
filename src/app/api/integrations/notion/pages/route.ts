@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
             userId: session.user.id,
             workspaceId,
             metadata: {
-              notionPageId,
+              notionPageId: pageId,
               importedAt: new Date().toISOString(),
               source: 'notion',
             },

@@ -3,7 +3,7 @@
  * Manages conversation history with summarization for long conversations
  */
 
-import type { PrismaClient, Message as PrismaMessage } from '@prisma/client';
+import type { PrismaClient, Message as PrismaMessage } from '@/generated/prisma/client';
 import { createProviderFromEnv } from '@/lib/ai/llm';
 import { buildConversationSummarizationPrompt } from '@/lib/ai/prompts/templates';
 import { logger } from '@/lib/logger';

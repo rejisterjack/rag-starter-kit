@@ -106,7 +106,6 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
       const config: RealtimeClientConfig = {
         ...DEFAULT_REALTIME_CONFIG,
         ...customConfig,
-        url: typeof window !== 'undefined' ? window.location.origin : undefined,
       };
       serviceRef.current = createRealtimeService(config);
     }

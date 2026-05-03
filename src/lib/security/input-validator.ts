@@ -219,6 +219,19 @@ export const createApiKeySchema = z.object({
 
 export type CreateApiKeyInput = z.infer<typeof createApiKeySchema>;
 
+export const chatCreateSchema = z.object({
+  title: z.string().max(200).optional(),
+  model: z.string().max(100).optional(),
+});
+export type ChatCreateInput = z.infer<typeof chatCreateSchema>;
+
+export const chatUpdateSchema = z.object({
+  chatId: z.string().min(1),
+  title: z.string().max(200).optional(),
+  model: z.string().max(100).optional(),
+});
+export type ChatUpdateInput = z.infer<typeof chatUpdateSchema>;
+
 // User registration validation with enhanced password policy
 export const registerUserSchema = z.object({
   email: z

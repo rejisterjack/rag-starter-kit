@@ -144,7 +144,7 @@ export async function parseAudio(
     formData.append('response_format', 'verbose_json');
 
     // Create a Blob from the buffer and append as file
-    const blob = new Blob([buffer], { type: mimeType });
+    const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
     formData.append('file', blob, audioFilename);
 
     // Call Whisper API

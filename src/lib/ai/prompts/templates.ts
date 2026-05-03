@@ -31,12 +31,7 @@ If multiple sources support the same claim, cite all of them: "This feature is s
 /**
  * System prompt for when no context is available
  */
-export const NO_CONTEXT_PROMPT = `No relevant documents were found for this query. 
-Please let the user know that you don't have sufficient information to answer accurately.
-Suggest that they:
-1. Upload relevant documents
-2. Rephrase their question
-3. Try a more general query`;
+export const NO_CONTEXT_PROMPT = `No relevant documents were found for this query. Answer the user's question using your general knowledge. If the question is specifically about their uploaded documents, let them know no matching documents were found and suggest uploading relevant files or rephrasing the question.`;
 
 /**
  * System prompt for concise answers

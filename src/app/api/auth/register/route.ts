@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
+import { ZodError } from 'zod';
 
 import { registerUser } from '@/lib/auth';
 import { logger } from '@/lib/logger';
-import { validateRegisterUserInput } from '@/lib/security/input-validator';
+import { formatValidationErrors, validateRegisterUserInput } from '@/lib/security/input-validator';
 import { checkApiRateLimit, getRateLimitIdentifier } from '@/lib/security/rate-limiter';
 
 /**
@@ -46,6 +47,11 @@ export async function POST(req: Request) {
     try {
       validatedInput = validateRegisterUserInput(body);
     } catch (error) {
+      if (error instanceof ZodError) {
+        const issues = formatValidationErrors(error);
+        const message = issues.map((i) => i.message).join(' ');
+        return NextResponse.json({ error: { code: 'VALIDATION_ERROR', message } }, { status: 400 });
+      }
       if (error instanceof Error) {
         return NextResponse.json(
           { error: { code: 'VALIDATION_ERROR', message: error.message } },

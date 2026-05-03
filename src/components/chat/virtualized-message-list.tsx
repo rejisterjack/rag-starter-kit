@@ -61,7 +61,9 @@ export function VirtualizedMessageList({
   gap = 16,
 }: VirtualizedMessageListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
-  const virtualizerRef = useRef<ReturnType<typeof useVirtualizer> | null>(null);
+  const virtualizerRef = useRef<ReturnType<typeof useVirtualizer<HTMLDivElement, Element>> | null>(
+    null
+  );
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [userScrolled, setUserScrolled] = useState(false);
   const lastMessageCountRef = useRef(messages.length);

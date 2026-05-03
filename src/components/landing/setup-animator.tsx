@@ -10,7 +10,7 @@ const setupCommands = [
   'git clone https://github.com/rejisterjack/rag-starter-kit.git',
   'cd rag-starter-kit && cp .env.example .env',
   '# Get FREE API keys from openrouter.ai/keys and aistudio.google.com',
-  'docker compose up',
+  'pnpm dev',
   '🚀 Ready at http://localhost:3000',
 ];
 
@@ -180,7 +180,7 @@ export function SetupAnimator(): React.ReactElement {
           <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { icon: '🔑', label: '2 Free API Keys' },
-              { icon: '🐳', label: 'Docker Compose' },
+              { icon: '⚡', label: 'Zero Infra' },
               { icon: '⚡', label: 'No Python Needed' },
               { icon: '💰', label: '$0 to Start' },
             ].map((item) => (
