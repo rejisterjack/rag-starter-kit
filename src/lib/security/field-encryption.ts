@@ -82,7 +82,11 @@ class AWSKMSProvider implements KMSProvider {
 
   constructor() {
     try {
-      const { KMSClient, GenerateDataKeyCommand, DecryptCommand } = require(/* webpackIgnore: true */ '@aws-sdk/client-kms');
+      const {
+        KMSClient,
+        GenerateDataKeyCommand,
+        DecryptCommand,
+      } = require(/* webpackIgnore: true */ '@aws-sdk/client-kms');
       this.kmsClient = new KMSClient({ region: AWS_REGION });
       this.GenerateDataKeyCommand = GenerateDataKeyCommand;
       this.DecryptCommand = DecryptCommand;
