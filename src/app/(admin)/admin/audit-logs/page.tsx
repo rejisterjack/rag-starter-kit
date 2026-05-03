@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Filter, RefreshCw } from 'lucide-react';
+import { Download, Filter, Loader2, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -87,6 +87,7 @@ export default function AuditLogsPage(): React.ReactElement {
   const [page, setPage] = useState(1);
   const [eventFilter, setEventFilter] = useState<AuditEvent | 'ALL'>('ALL');
   const [severityFilter, setSeverityFilter] = useState<AuditSeverity | 'ALL'>('ALL');
+  const [isExporting, setIsExporting] = useState(false);
 
   const limit = 25;
 
@@ -128,6 +129,7 @@ export default function AuditLogsPage(): React.ReactElement {
   }, [fetchLogs]);
 
   const handleExport = async () => {
+    setIsExporting(true);
     try {
       const response = await fetch('/api/admin/audit-logs/export');
       if (!response.ok) throw new Error('Failed to export logs');
@@ -141,7 +143,10 @@ export default function AuditLogsPage(): React.ReactElement {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (_err) {}
+    } catch (_err) {
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const totalPages = Math.ceil(total / limit);
@@ -153,9 +158,13 @@ export default function AuditLogsPage(): React.ReactElement {
           <h1 className="text-3xl font-bold tracking-tight">Audit Logs</h1>
           <p className="text-muted-foreground mt-2">View and filter system audit events</p>
         </div>
-        <Button variant="outline" onClick={handleExport}>
-          <Download className="mr-2 h-4 w-4" />
-          Export
+        <Button variant="outline" onClick={handleExport} disabled={isExporting}>
+          {isExporting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="mr-2 h-4 w-4" />
+          )}
+          {isExporting ? 'Exporting...' : 'Export'}
         </Button>
       </div>
 

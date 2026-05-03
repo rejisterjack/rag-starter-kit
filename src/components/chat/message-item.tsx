@@ -5,6 +5,7 @@ import {
   Bot,
   Check,
   Copy,
+  Loader2,
   Pencil,
   RefreshCw,
   ThumbsDown,
@@ -81,13 +82,19 @@ export const MessageItem = React.memo(function MessageItem({
   const [editContent, setEditContent] = useState(message.content);
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const isUser = message.role === 'user';
   const isAssistant = message.role === 'assistant';
 
-  const handleSaveEdit = useCallback(() => {
+  const handleSaveEdit = useCallback(async () => {
     if (editContent.trim() && editContent !== message.content) {
-      onEdit?.(message.id, editContent);
+      setIsSaving(true);
+      try {
+        await onEdit?.(message.id, editContent);
+      } finally {
+        setIsSaving(false);
+      }
     }
     setIsEditing(false);
   }, [editContent, message.content, message.id, onEdit]);
@@ -167,8 +174,18 @@ export const MessageItem = React.memo(function MessageItem({
                 autoFocus
               />
               <div className="flex gap-2">
-                <Button size="sm" onClick={handleSaveEdit} className="rounded-full shadow-md">
-                  <Check className="mr-1.5 h-4 w-4" /> Save
+                <Button
+                  size="sm"
+                  onClick={handleSaveEdit}
+                  disabled={isSaving}
+                  className="rounded-full shadow-md"
+                >
+                  {isSaving ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="mr-1.5 h-4 w-4" />
+                  )}
+                  {isSaving ? 'Saving...' : 'Save'}
                 </Button>
                 <Button
                   size="sm"

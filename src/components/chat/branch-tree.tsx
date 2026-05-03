@@ -8,6 +8,7 @@ import {
   Edit3,
   GitBranch,
   GitCommit,
+  Loader2,
   MessageSquare,
   MoreHorizontal,
   Trash2,
@@ -341,6 +342,7 @@ export function BranchTree({
 
   // Branch to delete (for confirmation dialog)
   const [branchToDelete, setBranchToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleToggleExpand = (nodeId: string) => {
     setExpandedNodes((prev) => {
@@ -455,14 +457,27 @@ export function BranchTree({
             </Button>
             <Button
               variant="destructive"
+              disabled={isDeleting}
               onClick={async () => {
                 if (branchToDelete && onDeleteBranch) {
-                  await onDeleteBranch(branchToDelete);
-                  setBranchToDelete(null);
+                  setIsDeleting(true);
+                  try {
+                    await onDeleteBranch(branchToDelete);
+                    setBranchToDelete(null);
+                  } finally {
+                    setIsDeleting(false);
+                  }
                 }
               }}
             >
-              Delete
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

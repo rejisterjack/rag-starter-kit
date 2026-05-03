@@ -51,6 +51,8 @@ export function CommentThread({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [isEditingComment, setIsEditingComment] = useState(false);
+  const [isDeletingComment, setIsDeletingComment] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (!newComment.trim()) return;
@@ -70,22 +72,28 @@ export function CommentThread({
   const handleEdit = async (commentId: string) => {
     if (!editContent.trim()) return;
 
+    setIsEditingComment(true);
     try {
       await onEditComment(commentId, editContent);
       setEditingId(null);
       setEditContent('');
     } catch (_error: unknown) {
       toast.error('Failed to edit comment');
+    } finally {
+      setIsEditingComment(false);
     }
   };
 
   const handleDelete = async (commentId: string) => {
     if (!confirm('Are you sure you want to delete this comment?')) return;
 
+    setIsDeletingComment(commentId);
     try {
       await onDeleteComment(commentId);
     } catch (_error: unknown) {
       toast.error('Failed to delete comment');
+    } finally {
+      setIsDeletingComment(null);
     }
   };
 
@@ -153,8 +161,19 @@ export function CommentThread({
                       className="text-sm"
                     />
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => handleEdit(comment.id)}>
-                        Save
+                      <Button
+                        size="sm"
+                        onClick={() => handleEdit(comment.id)}
+                        disabled={isEditingComment}
+                      >
+                        {isEditingComment ? (
+                          <>
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          'Save'
+                        )}
                       </Button>
                       <Button
                         size="sm"
@@ -195,9 +214,17 @@ export function CommentThread({
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleDelete(comment.id)}
+                      disabled={isDeletingComment === comment.id}
                       className="text-destructive"
                     >
-                      Delete
+                      {isDeletingComment === comment.id ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        'Delete'
+                      )}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
