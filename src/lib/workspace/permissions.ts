@@ -1,4 +1,6 @@
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { del, getOrSet } from '@/lib/cache';
+import { CACHE_KEYS, CACHE_TTL } from '@/lib/cache/keys';
 import { prisma } from '@/lib/db';
 
 import type { MemberRole } from './types';
@@ -121,14 +123,20 @@ export async function checkPermissions(
   workspaceId: string,
   permissions: Permission[]
 ): Promise<PermissionCheckResult> {
-  // Get user's membership in workspace
-  const membership = await prisma.workspaceMember.findFirst({
-    where: {
-      workspaceId,
-      userId,
-      status: 'ACTIVE',
-    },
-  });
+  const cacheKey = CACHE_KEYS.workspacePermission(userId, workspaceId);
+
+  const membership = await getOrSet(
+    cacheKey,
+    () =>
+      prisma.workspaceMember.findFirst({
+        where: {
+          workspaceId,
+          userId,
+          status: 'ACTIVE',
+        },
+      }),
+    CACHE_TTL.WORKSPACE_PERMISSION
+  );
 
   if (!membership) {
     return {
@@ -138,7 +146,7 @@ export async function checkPermissions(
   }
 
   // Get role permissions
-  const rolePermissions = ROLE_PERMISSIONS[membership.role];
+  const rolePermissions = ROLE_PERMISSIONS[membership.role as MemberRole];
 
   // Check if user has all required permissions
   const missingPermissions = permissions.filter((permission) => {
@@ -161,14 +169,14 @@ export async function checkPermissions(
 
     return {
       allowed: false,
-      role: membership.role,
+      role: membership.role as MemberRole,
       missingPermissions,
     };
   }
 
   return {
     allowed: true,
-    role: membership.role,
+    role: membership.role as MemberRole,
   };
 }
 
@@ -233,6 +241,22 @@ export async function isWorkspaceAdmin(userId: string, workspaceId: string): Pro
   });
 
   return !!membership;
+}
+
+// =============================================================================
+// Cache Invalidation
+// =============================================================================
+
+/**
+ * Invalidate cached permissions for a user in a workspace.
+ * Call this when roles change, members are added/removed, etc.
+ */
+export async function invalidatePermissionCache(
+  userId: string,
+  workspaceId: string
+): Promise<void> {
+  await del(CACHE_KEYS.workspacePermission(userId, workspaceId));
+  await del(CACHE_KEYS.permissionContext(userId, workspaceId));
 }
 
 // =============================================================================

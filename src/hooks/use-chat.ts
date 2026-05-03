@@ -48,7 +48,7 @@ const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1000;
 
 /**
- * Parse error from API response and generate a user-friendly message
+ * Parse error from API response — handles canonical { success, error: { code, message } } format
  */
 async function parseApiError(response: Response): Promise<Error> {
   let errorMessage = 'An unexpected error occurred';
@@ -56,8 +56,21 @@ async function parseApiError(response: Response): Promise<Error> {
 
   try {
     const data = await response.json();
-    errorCode = data.code || data.error?.code || 'UNKNOWN';
-    errorMessage = data.details || data.error?.message || data.error || errorMessage;
+    // Canonical format: { success: false, error: { code, message, details? } }
+    if (data.error && typeof data.error === 'object') {
+      errorCode = data.error.code || 'UNKNOWN';
+      errorMessage = data.error.message || errorMessage;
+      if (data.error.details) {
+        errorMessage =
+          typeof data.error.details === 'string'
+            ? `${errorMessage}: ${data.error.details}`
+            : errorMessage;
+      }
+    } else if (data.error && typeof data.error === 'string') {
+      // Legacy flat format fallback: { error: string, code: string }
+      errorMessage = data.error;
+      errorCode = data.code || 'UNKNOWN';
+    }
   } catch {
     // Response body wasn't JSON
     errorMessage = response.statusText || errorMessage;
@@ -134,6 +147,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const [page, setPage] = useState(1);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isSendingRef = useRef(false);
   const modelRef = useRef(model);
   modelRef.current = model;
   const conversationIdRef = useRef(conversationId);
@@ -145,6 +159,9 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   // Load messages for a specific chat ID — called explicitly by the parent, NOT via useEffect
   const loadMessages = useCallback(async (chatId: string, pageNum = 1) => {
     if (!chatId) return;
+
+    // Defer state updates while a send is in-flight to avoid wiping optimistic messages
+    if (isSendingRef.current) return;
 
     try {
       const response = await fetch(`/api/chat?chatId=${chatId}&limit=50`, {
@@ -240,6 +257,11 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       const trimmedContent = content.trim();
       if (!trimmedContent) return;
 
+      // Guard: abort any in-flight request before starting a new one
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
       // Input validation
       if (trimmedContent.length > 100000) {
         const err = new Error('Message is too long. Please shorten your input.');
@@ -251,6 +273,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
       setError(null);
       setIsLoading(true);
+      isSendingRef.current = true;
 
       // Create optimistic user message
       const userMessage: Message = {
@@ -360,13 +383,24 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           const contentType = response.headers.get('content-type') ?? '';
           const isEventStream = contentType.includes('text/event-stream');
 
+          // Throttle state updates to ~30fps to reduce re-render pressure during streaming
+          let lastFlush = 0;
+          const FLUSH_INTERVAL = 33; // ~30fps
+          const flushContent = (content: string) => {
+            const now = performance.now();
+            if (now - lastFlush >= FLUSH_INTERVAL) {
+              lastFlush = now;
+              setStreamingContent(content);
+            }
+          };
+
           // AI SDK streamText().toTextStreamResponse() uses text/plain with raw UTF-8 chunks.
           if (!isEventStream) {
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
               fullContent += decoder.decode(value, { stream: true });
-              setStreamingContent(fullContent);
+              flushContent(fullContent);
             }
             fullContent += decoder.decode();
           } else {
@@ -385,11 +419,11 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
                     const textDelta = JSON.parse(line.slice(2));
                     if (typeof textDelta === 'string') {
                       fullContent += textDelta;
-                      setStreamingContent(fullContent);
+                      flushContent(fullContent);
                     }
                   } catch {
                     fullContent += line.slice(2);
-                    setStreamingContent(fullContent);
+                    flushContent(fullContent);
                   }
                 } else if (line.startsWith('e:')) {
                   try {
@@ -406,11 +440,14 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
                   // done
                 } else {
                   fullContent += line;
-                  setStreamingContent(fullContent);
+                  flushContent(fullContent);
                 }
               }
             }
           }
+
+          // Final flush — always update with complete content
+          setStreamingContent(fullContent);
 
           // Stream completed — create the final assistant message
           if (fullContent.trim()) {
@@ -483,6 +520,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           setIsStreaming(false);
           setStreamingContent('');
           abortControllerRef.current = null;
+          isSendingRef.current = false;
         }
       };
 

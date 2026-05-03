@@ -22,7 +22,10 @@ const nextConfig: NextConfig = {
 			'tesseract.js',
 			'lucide-react',
 			'date-fns',
-		],
+				'framer-motion',
+				'react-markdown',
+				'@tanstack/react-virtual',
+			],
 	},
 	webpack: (config, { isServer }): webpack.Configuration => {
 		// Suppress "Serializing big strings impacts deserialization performance" warnings.

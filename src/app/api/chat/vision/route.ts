@@ -6,7 +6,7 @@
  */
 
 import { google } from '@ai-sdk/google';
-import { generateText, streamText } from 'ai';
+import { type CoreMessage, generateText, type LanguageModel, streamText } from 'ai';
 import { NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
@@ -50,7 +50,10 @@ export async function POST(req: Request) {
     // Step 1: Authenticate
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+        { status: 401 }
+      );
     }
 
     const userId = session.user.id;
@@ -67,9 +70,12 @@ export async function POST(req: Request) {
     if (!rateLimitResult.success) {
       return NextResponse.json(
         {
-          error: 'Rate limit exceeded',
-          code: 'RATE_LIMIT',
-          resetAt: new Date(rateLimitResult.reset).toISOString(),
+          success: false,
+          error: {
+            code: 'RATE_LIMIT',
+            message: 'Rate limit exceeded',
+            resetAt: new Date(rateLimitResult.reset).toISOString(),
+          },
         },
         {
           status: 429,
@@ -86,7 +92,7 @@ export async function POST(req: Request) {
 
     if (!messages || messages.length === 0) {
       return NextResponse.json(
-        { error: 'Messages are required', code: 'VALIDATION_ERROR' },
+        { success: false, error: { code: 'VALIDATION_ERROR', message: 'Messages are required' } },
         { status: 400 }
       );
     }
@@ -109,7 +115,7 @@ export async function POST(req: Request) {
         });
 
         return NextResponse.json(
-          { error: 'Access denied to workspace', code: 'FORBIDDEN' },
+          { success: false, error: { code: 'FORBIDDEN', message: 'Access denied to workspace' } },
           { status: 403 }
         );
       }
@@ -189,12 +195,13 @@ export async function POST(req: Request) {
     });
 
     // Step 8: Generate response
+    const visionModel = getVisionModel();
+    const coreMessages = visionMessages as CoreMessage[];
+
     if (shouldStream) {
       const result = streamText({
-        // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
-        model: google('gemini-1.5-flash') as any,
-        // biome-ignore lint/suspicious/noExplicitAny: AI SDK type compatibility
-        messages: visionMessages as any,
+        model: visionModel,
+        messages: coreMessages,
         temperature: config?.temperature ?? 0.7,
         maxTokens: config?.maxTokens ?? 2000,
       });
@@ -217,10 +224,8 @@ export async function POST(req: Request) {
       return response;
     } else {
       const result = await generateText({
-        // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
-        model: google('gemini-1.5-flash') as any,
-        // biome-ignore lint/suspicious/noExplicitAny: AI SDK type compatibility
-        messages: visionMessages as any,
+        model: visionModel,
+        messages: coreMessages,
         temperature: config?.temperature ?? 0.7,
         maxTokens: config?.maxTokens ?? 2000,
       });
@@ -263,9 +268,12 @@ export async function POST(req: Request) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: 'Failed to process request',
-        code: 'INTERNAL_ERROR',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Failed to process request',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        },
       },
       { status: 500 }
     );
@@ -278,6 +286,13 @@ export async function POST(req: Request) {
 function base64ToBuffer(base64: string): Buffer {
   const base64Data = base64.replace(/^data:image\/\w+;base64,/, '');
   return Buffer.from(base64Data, 'base64');
+}
+
+/**
+ * Get the vision model — typed wrapper to avoid `as any` casts
+ */
+function getVisionModel(): LanguageModel {
+  return google('gemini-1.5-flash') as unknown as LanguageModel;
 }
 
 /**

@@ -7,6 +7,7 @@
  */
 
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
 
 // =============================================================================
@@ -117,8 +118,8 @@ class UpstashRateLimiter implements RateLimiterBackend {
       const { Redis } = require('@upstash/redis');
 
       const redis = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL || '',
-        token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+        url: env.UPSTASH_REDIS_REST_URL || '',
+        token: env.UPSTASH_REDIS_REST_TOKEN || '',
       });
 
       this.ratelimit = Ratelimit;
@@ -202,7 +203,7 @@ export function getRateLimiter(): RateLimiterBackend {
     return rateLimiterBackend;
   }
 
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
     logger.info('Using Upstash Redis for rate limiting');
     rateLimiterBackend = new UpstashRateLimiter();
   } else {

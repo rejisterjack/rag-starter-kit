@@ -1,6 +1,7 @@
 'use client';
 
 import { Bot, Square } from 'lucide-react';
+import React from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -12,7 +13,15 @@ interface StreamingMessageProps {
   className?: string;
 }
 
-export function StreamingMessage({ content, onCancel, className }: StreamingMessageProps) {
+const MemoizedMarkdown = React.memo(function MemoizedMarkdown({ content }: { content: string }) {
+  return <Markdown content={content} />;
+});
+
+export const StreamingMessage = React.memo(function StreamingMessage({
+  content,
+  onCancel,
+  className,
+}: StreamingMessageProps) {
   return (
     <div className={cn('relative py-6 bg-muted/30', className)}>
       <div className="mx-auto flex max-w-3xl gap-4 px-4">
@@ -40,8 +49,13 @@ export function StreamingMessage({ content, onCancel, className }: StreamingMess
           </div>
 
           {/* Message content */}
-          <div className="text-foreground">
-            <Markdown content={content || '▌'} />
+          <div
+            className="text-foreground"
+            role="log"
+            aria-live="polite"
+            aria-label="Assistant response"
+          >
+            <MemoizedMarkdown content={content || '▌'} />
             {content && (
               <span className="inline-block h-4 w-2 animate-pulse bg-primary align-middle" />
             )}
@@ -60,4 +74,4 @@ export function StreamingMessage({ content, onCancel, className }: StreamingMess
       </div>
     </div>
   );
-}
+});

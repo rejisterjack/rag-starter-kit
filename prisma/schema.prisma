@@ -61,6 +61,12 @@ model User {
   // SSO fields
   samlId              String?   @unique
 
+  // MFA fields
+  mfaEnabled          Boolean   @default(false)
+  mfaSecret           String?   // Encrypted TOTP secret
+  mfaBackupCodes      String[]  @default([])
+  mfaVerifiedAt       DateTime?
+
   accounts      Account[]
   sessions      Session[]
 
@@ -141,6 +147,7 @@ model Workspace {
   collections DocumentCollection[]
   subscription Subscription?
 
+  version     Int           @default(1)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -259,12 +266,14 @@ model Document {
   tags        DocumentTagsOnDocuments[]
   collections DocumentCollectionsOnDocuments[]
 
+  version     Int              @default(1)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
   @@index([userId])
   @@index([workspaceId])
   @@index([status])
+  @@index([workspaceId, status])
   @@index([ocrProcessed])
   @@index([ocrConfidence])
   @@map("documents")
@@ -432,11 +441,13 @@ model Chat {
   messages    Message[]
   share       ChatShare?
 
+  version     Int        @default(1)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   @@index([userId])
   @@index([workspaceId])
+  @@index([userId, workspaceId])
   @@map("chats")
 }
 
@@ -461,6 +472,7 @@ model Message {
   createdAt   DateTime  @default(now())
 
   @@index([chatId])
+  @@index([chatId, createdAt])
   @@map("messages")
 }
 
@@ -623,6 +635,10 @@ model ApiKey {
   // Permissions
   permissions String[]   @default([])
 
+  // Access restrictions
+  allowedIps       String[]   @default([])
+  allowedEndpoints String[]   @default([])
+
   // Status
   status      ApiKeyStatus @default(ACTIVE)
   expiresAt   DateTime?
@@ -710,12 +726,18 @@ model AuditLog {
   ipAddress   String?
   userAgent   String?
 
+  // Integrity chain (SHA-256 hash chain for tamper detection)
+  recordHash   String?
+  previousHash String?
+
   createdAt   DateTime     @default(now())
 
   @@index([userId])
   @@index([workspaceId])
   @@index([event])
   @@index([createdAt])
+  @@index([workspaceId, createdAt])
+  @@index([event, createdAt])
   @@map("audit_logs")
 }
 

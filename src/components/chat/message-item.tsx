@@ -13,7 +13,7 @@ import {
   User,
   X,
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -85,28 +85,31 @@ export const MessageItem = React.memo(function MessageItem({
   const isUser = message.role === 'user';
   const isAssistant = message.role === 'assistant';
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = useCallback(() => {
     if (editContent.trim() && editContent !== message.content) {
       onEdit?.(message.id, editContent);
     }
     setIsEditing(false);
-  };
+  }, [editContent, message.content, message.id, onEdit]);
 
   const handleCancelEdit = () => {
     setEditContent(message.content);
     setIsEditing(false);
   };
 
-  const handleCopy = async () => {
+  const handleCopy = useCallback(async () => {
     await navigator.clipboard.writeText(message.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
+  }, [message.content]);
 
-  const handleFeedback = (rating: 'up' | 'down') => {
-    setFeedback(rating);
-    onFeedback?.(message.id, rating);
-  };
+  const handleFeedback = useCallback(
+    (rating: 'up' | 'down') => {
+      setFeedback(rating);
+      onFeedback?.(message.id, rating);
+    },
+    [message.id, onFeedback]
+  );
 
   return (
     <div

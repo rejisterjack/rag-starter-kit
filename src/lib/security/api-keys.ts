@@ -1,8 +1,12 @@
 import crypto from 'node:crypto';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { get, set } from '@/lib/cache';
+import { CACHE_KEYS, CACHE_TTL } from '@/lib/cache/keys';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+
+import { isIpInCidr } from '@/lib/security/ssrf-protection';
 
 import type { Permission } from '@/lib/workspace/permissions';
 
@@ -107,6 +111,8 @@ export async function createApiKey(
       workspaceId,
       userId: createdByUserId,
       permissions: input.permissions,
+      allowedIps: input.allowedIps ?? [],
+      allowedEndpoints: input.allowedEndpoints ?? [],
       expiresAt,
     },
   });
@@ -120,6 +126,8 @@ export async function createApiKey(
       keyId: apiKey.id,
       name: input.name,
       permissions: input.permissions,
+      allowedIps: input.allowedIps ?? [],
+      allowedEndpoints: input.allowedEndpoints ?? [],
       expiresAt,
     },
   });
@@ -184,8 +192,26 @@ export async function validateApiKey(
     return { valid: false, error: 'API key has expired' };
   }
 
-  // Verify key hash using bcrypt
-  const isValid = await verifyKey(apiKey.keyHash, key);
+  // Check cached validation result first (avoids ~100ms bcrypt compare)
+  const cacheKey = CACHE_KEYS.apiKeyValidation(keyPreview);
+  const cached = await get<{ keyId: string; permissions: Permission[] }>(cacheKey);
+
+  let isValid: boolean;
+  if (cached && cached.keyId === apiKey.id) {
+    isValid = true;
+  } else {
+    // Verify key hash using bcrypt
+    isValid = await verifyKey(apiKey.keyHash, key);
+    if (isValid) {
+      // Cache the successful validation
+      await set(
+        cacheKey,
+        { keyId: apiKey.id, permissions: apiKey.permissions as Permission[] },
+        CACHE_TTL.API_KEY_VALIDATION
+      );
+    }
+  }
+
   if (!isValid) {
     await logAuditEvent({
       event: AuditEvent.SUSPICIOUS_ACTIVITY,
@@ -202,19 +228,45 @@ export async function validateApiKey(
   // Get permissions
   const permissions = apiKey.permissions as Permission[];
 
-  // Check IP restrictions (if implemented in the future)
-  // IP restriction checks would go here when the feature is implemented
-  // For now, we skip this check since scopes field doesn't exist in the schema
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  void options?.ipAddress;
+  // Check IP restrictions
+  const allowedIps = apiKey.allowedIps as string[];
+  if (allowedIps.length > 0 && options?.ipAddress) {
+    const ipAllowed = allowedIps.some((cidr) => isIpInCidr(options.ipAddress as string, cidr));
+    if (!ipAllowed) {
+      await logAuditEvent({
+        event: AuditEvent.SUSPICIOUS_ACTIVITY,
+        workspaceId: apiKey.workspaceId ?? undefined,
+        metadata: {
+          activity: 'api_key_ip_restriction_violation',
+          keyId: apiKey.id,
+          requestIp: options.ipAddress,
+        },
+        severity: 'CRITICAL',
+      });
+      return { valid: false, error: 'IP address not allowed for this API key' };
+    }
+  }
 
-  // Placeholder for IP check - always passes for now
-  // IP restriction checks would go here when implemented
-  // For now, we skip this check since scopes field doesn't exist in the schema
-
-  // Check endpoint restrictions (placeholder - feature not yet implemented)
-  // Endpoint restriction checks would go here when the scopes feature is implemented
-  // For now, we skip this check
+  // Check endpoint restrictions
+  const allowedEndpoints = apiKey.allowedEndpoints as string[];
+  if (allowedEndpoints.length > 0 && options?.endpoint) {
+    const endpointAllowed = allowedEndpoints.some((allowed) =>
+      options.endpoint?.startsWith(allowed)
+    );
+    if (!endpointAllowed) {
+      await logAuditEvent({
+        event: AuditEvent.SUSPICIOUS_ACTIVITY,
+        workspaceId: apiKey.workspaceId ?? undefined,
+        metadata: {
+          activity: 'api_key_endpoint_restriction_violation',
+          keyId: apiKey.id,
+          requestedEndpoint: options.endpoint,
+        },
+        severity: 'WARNING',
+      });
+      return { valid: false, error: 'Endpoint not allowed for this API key' };
+    }
+  }
 
   // Check required permissions
   if (options?.requiredPermissions) {

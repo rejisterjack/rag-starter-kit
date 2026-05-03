@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { canManageMembers } from '@/lib/workspace/permissions';
+import { canManageMembers, invalidatePermissionCache } from '@/lib/workspace/permissions';
 import { removeMember, updateMemberRole } from '@/lib/workspace/workspace';
 
 interface RouteParams {
@@ -77,6 +77,9 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
       );
     }
 
+    // Invalidate cached permissions for the affected member
+    await invalidatePermissionCache(member.userId, workspaceId);
+
     return NextResponse.json({
       success: true,
       data: { message: 'Member role updated successfully' },
@@ -138,6 +141,9 @@ export const DELETE = withApiAuth(async (_req, session, { params }: RouteParams)
         { status: 400 }
       );
     }
+
+    // Invalidate cached permissions for the removed member
+    await invalidatePermissionCache(member.userId, workspaceId);
 
     return NextResponse.json({
       success: true,

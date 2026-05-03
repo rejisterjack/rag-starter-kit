@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { WebhookStatus } from '@/generated/prisma/client';
 import { withApiAuth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { prisma, prismaRead } from '@/lib/db';
 import { inngest } from '@/lib/inngest/client';
 import { logger } from '@/lib/logger';
 import { verifyWebhookSignature } from '@/lib/webhooks/delivery';
@@ -100,7 +100,7 @@ export const GET = withApiAuth(async (_req: Request, session, { params }: RouteP
     const { id } = await params;
 
     // Get the webhook
-    const webhook = await prisma.webhook.findUnique({
+    const webhook = await prismaRead.webhook.findUnique({
       where: { id },
     });
 

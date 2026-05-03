@@ -17,7 +17,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { withApiAuth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { prisma, prismaRead } from '@/lib/db';
 import { inngest } from '@/lib/inngest/client';
 import { logger } from '@/lib/logger';
 import {
@@ -31,6 +31,7 @@ import {
   parseXLSXBuffer,
 } from '@/lib/rag/ingestion';
 import { isYouTubeUrl } from '@/lib/rag/ingestion/parsers/youtube';
+import { isFeatureDegraded } from '@/lib/resilience/degradation';
 import { validateFile, validateFileBytes } from '@/lib/security/input-validator';
 import {
   addRateLimitHeaders,
@@ -38,6 +39,7 @@ import {
   getRateLimitIdentifier,
 } from '@/lib/security/rate-limiter';
 import { virusScanner } from '@/lib/security/virus-scanner';
+import { withSpan } from '@/lib/tracing';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 import { checkDocumentLimit, checkStorageLimit } from '@/lib/workspace/resource-limits';
 
@@ -56,6 +58,20 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
 
   try {
     const userId = session.user.id;
+
+    // Step 1b: Check if file upload is degraded
+    if (await isFeatureDegraded('file_upload')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'SERVICE_DEGRADED',
+            message: 'File uploads are temporarily unavailable. Please try again later.',
+          },
+        },
+        { status: 503, headers: { 'X-Degraded-Features': 'file_upload' } }
+      );
+    }
 
     // Step 2: Check rate limit
     const rateLimitIdentifier = getRateLimitIdentifier(req, {
@@ -365,68 +381,66 @@ async function handleFileIngestion(
   let metadata: Record<string, unknown> = {};
 
   try {
-    switch (validation.type) {
-      case 'PDF': {
-        content = await parsePDF(buffer);
-        metadata = { source: 'pdf' };
-        break;
-      }
+    content = await withSpan('ingest.parse_document', async (span) => {
+      span.setAttribute('ingest.file_type', validation.type ?? 'unknown');
+      span.setAttribute('ingest.file_size', file.size);
+      let parsed: string;
+      switch (validation.type) {
+        case 'PDF': {
+          parsed = await parsePDF(buffer);
+          metadata = { source: 'pdf' };
+          break;
+        }
 
-      case 'DOCX': {
-        content = await parseDOCX(buffer);
-        metadata = { source: 'docx' };
-        break;
-      }
+        case 'DOCX': {
+          parsed = await parseDOCX(buffer);
+          metadata = { source: 'docx' };
+          break;
+        }
 
-      case 'XLSX': {
-        content = await parseXLSXBuffer(buffer);
-        metadata = { source: 'xlsx' };
-        break;
-      }
+        case 'XLSX': {
+          parsed = await parseXLSXBuffer(buffer);
+          metadata = { source: 'xlsx' };
+          break;
+        }
 
-      case 'PPTX': {
-        content = await parsePPTXBuffer(buffer);
-        metadata = { source: 'pptx' };
-        break;
-      }
+        case 'PPTX': {
+          parsed = await parsePPTXBuffer(buffer);
+          metadata = { source: 'pptx' };
+          break;
+        }
 
-      case 'TXT':
-      case 'MD': {
-        content = parseText(buffer);
-        metadata = { source: 'text' };
-        break;
-      }
+        case 'TXT':
+        case 'MD': {
+          parsed = parseText(buffer);
+          metadata = { source: 'text' };
+          break;
+        }
 
-      case 'HTML': {
-        content = await parseHTML(buffer);
-        metadata = { source: 'html' };
-        break;
-      }
+        case 'HTML': {
+          parsed = await parseHTML(buffer);
+          metadata = { source: 'html' };
+          break;
+        }
 
-      case 'AUDIO': {
-        content = await parseAudio(buffer, file.type, file.name);
-        metadata = { source: 'audio', mimeType: file.type };
-        break;
-      }
+        case 'AUDIO': {
+          parsed = await parseAudio(buffer, file.type, file.name);
+          metadata = { source: 'audio', mimeType: file.type };
+          break;
+        }
 
-      case 'VIDEO': {
-        content = await parseVideo(buffer, file.type, file.name);
-        metadata = { source: 'video', mimeType: file.type };
-        break;
-      }
+        case 'VIDEO': {
+          parsed = await parseVideo(buffer, file.type, file.name);
+          metadata = { source: 'video', mimeType: file.type };
+          break;
+        }
 
-      default:
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: 'UNSUPPORTED_TYPE',
-              message: `Document type '${validation.type}' is not supported`,
-            },
-          },
-          { status: 400 }
-        );
-    }
+        default:
+          throw new Error(`Document type '${validation.type}' is not supported`);
+      }
+      span.setAttribute('ingest.content_length', parsed.length);
+      return parsed;
+    });
   } catch (error) {
     return NextResponse.json(
       {
@@ -705,7 +719,7 @@ export const GET = withApiAuth(async (req: NextRequest, session) => {
     }
 
     // Fetch document
-    const document = await prisma.document.findUnique({
+    const document = await prismaRead.document.findUnique({
       where: { id: documentId },
       include: {
         ingestionJob: true,

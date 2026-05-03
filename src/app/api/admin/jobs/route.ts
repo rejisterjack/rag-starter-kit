@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { withApiAuth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { prismaRead } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +20,7 @@ export const GET = withApiAuth(async (req) => {
         ? { status: status as 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' }
         : {};
 
-    const jobs = await prisma.ingestionJob.findMany({
+    const jobs = await prismaRead.ingestionJob.findMany({
       where,
       include: {
         document: {

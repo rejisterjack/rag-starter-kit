@@ -4,13 +4,15 @@ import { Github, Heart, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import {
   ChatSimulator,
+  RagPipelineDiagram,
+  TechStackMarquee,
+} from '@/components/dynamic/landing-dynamic';
+import {
   FeatureGrid,
   HeroSection,
   OpenSourceCTA,
-  RagPipelineDiagram,
   ScrollProgress,
   SetupAnimator,
-  TechStackMarquee,
 } from '@/components/landing';
 import { RAGBotWidget } from '@/components/widget';
 

@@ -58,6 +58,7 @@ import {
 } from 'ai';
 import { logger } from '@/lib/logger';
 import { estimateTokens } from '@/lib/rag/token-budget';
+import { embeddingCircuitBreaker } from '@/lib/resilience/external-services';
 import type { RAGConfig } from '@/types';
 
 // Embedding model configuration (Google Gemini - FREE)
@@ -190,13 +191,15 @@ export async function generateChatCompletion(
  * Get API key: https://aistudio.google.com/app/apikey
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const result = await embed({
-    // biome-ignore lint/suspicious/noExplicitAny: Google AI SDK v3 to v4 compatibility
-    model: google.textEmbeddingModel(EMBEDDING_MODEL) as any,
-    value: text,
-  });
+  return embeddingCircuitBreaker.execute(async () => {
+    const result = await embed({
+      // biome-ignore lint/suspicious/noExplicitAny: Google AI SDK v3 to v4 compatibility
+      model: google.textEmbeddingModel(EMBEDDING_MODEL) as any,
+      value: text,
+    });
 
-  return Array.from(result.embedding);
+    return Array.from(result.embedding);
+  });
 }
 
 /**

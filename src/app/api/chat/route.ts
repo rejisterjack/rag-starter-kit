@@ -16,14 +16,23 @@ import { generateText, type LanguageModel, streamText } from 'ai';
 import { NextResponse } from 'next/server';
 import type { LLMMessage } from '@/lib/ai/llm';
 import { buildSystemPromptWithContext } from '@/lib/ai/prompts/templates';
+import { bufferUsageRecord } from '@/lib/analytics/usage-buffer';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import {
+  ConcurrentModificationError,
+  extractVersion,
+  updateWithVersion,
+} from '@/lib/db/optimistic-locking';
+import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
 import { CitationHandler, sourcesToChunks } from '@/lib/rag/citations';
 import { ConversationMemory } from '@/lib/rag/memory';
 import { retrieveSources } from '@/lib/rag/retrieval';
 import { estimateMessageTokens } from '@/lib/rag/token-budget';
+import { isFeatureDegraded } from '@/lib/resilience/degradation';
+import { llmCircuitBreaker } from '@/lib/resilience/external-services';
 import {
   chatCreateSchema,
   chatUpdateSchema,
@@ -34,6 +43,7 @@ import {
   checkApiRateLimit,
   getRateLimitIdentifier,
 } from '@/lib/security/rate-limiter';
+import { withSpan } from '@/lib/tracing';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 import type { RAGConfig } from '@/types';
 
@@ -76,7 +86,10 @@ export async function POST(req: Request) {
     // Step 1: Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+        { status: 401 }
+      );
     }
 
     const userId = session.user.id;
@@ -93,9 +106,12 @@ export async function POST(req: Request) {
     if (!rateLimitResult.success) {
       return NextResponse.json(
         {
-          error: 'Rate limit exceeded',
-          code: 'RATE_LIMIT',
-          resetAt: new Date(rateLimitResult.reset).toISOString(),
+          success: false,
+          error: {
+            code: 'RATE_LIMIT',
+            message: 'Rate limit exceeded',
+            resetAt: new Date(rateLimitResult.reset).toISOString(),
+          },
         },
         {
           status: 429,
@@ -103,6 +119,20 @@ export async function POST(req: Request) {
             'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
           },
         }
+      );
+    }
+
+    // Step 2b: Check if LLM generation is degraded
+    if (await isFeatureDegraded('llm_generation')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'SERVICE_DEGRADED',
+            message: 'AI service temporarily unavailable. Please try again shortly.',
+          },
+        },
+        { status: 503, headers: { 'X-Degraded-Features': 'llm_generation' } }
       );
     }
 
@@ -122,16 +152,62 @@ export async function POST(req: Request) {
         });
 
         return NextResponse.json(
-          { error: 'Access denied to workspace', code: 'FORBIDDEN' },
+          { success: false, error: { code: 'FORBIDDEN', message: 'Access denied to workspace' } },
           { status: 403 }
         );
       }
     }
 
-    // Step 4: Extract custom provider keys from headers
+    // Step 4: Extract and validate custom provider keys from headers
+    const rawOpenRouterKey = req.headers.get('x-key-openrouter') || undefined;
+    const rawFireworksKey = req.headers.get('x-key-fireworks') || undefined;
+
+    // Validate format — reject obviously malformed keys
+    if (rawOpenRouterKey && !rawOpenRouterKey.startsWith('sk-or-')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_API_KEY',
+            message: 'OpenRouter API key must start with "sk-or-".',
+          },
+        },
+        { status: 400 }
+      );
+    }
+    if (rawFireworksKey && !rawFireworksKey.startsWith('fw_')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: 'INVALID_API_KEY', message: 'Fireworks API key must start with "fw_".' },
+        },
+        { status: 400 }
+      );
+    }
+    // Enforce max length to prevent header abuse
+    const MAX_KEY_LENGTH = 256;
+    if (rawOpenRouterKey && rawOpenRouterKey.length > MAX_KEY_LENGTH) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: 'INVALID_API_KEY', message: 'OpenRouter API key is too long.' },
+        },
+        { status: 400 }
+      );
+    }
+    if (rawFireworksKey && rawFireworksKey.length > MAX_KEY_LENGTH) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: 'INVALID_API_KEY', message: 'Fireworks API key is too long.' },
+        },
+        { status: 400 }
+      );
+    }
+
     const customKeys = {
-      openrouter: req.headers.get('x-key-openrouter') || undefined,
-      fireworks: req.headers.get('x-key-fireworks') || undefined,
+      openrouter: rawOpenRouterKey,
+      fireworks: rawFireworksKey,
     };
 
     // Step 5: Parse and validate request body
@@ -143,7 +219,7 @@ export async function POST(req: Request) {
         error: error instanceof Error ? error.message : 'Unknown',
       });
       return NextResponse.json(
-        { error: 'Invalid JSON body', code: 'INVALID_BODY' },
+        { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
       );
     }
@@ -155,7 +231,14 @@ export async function POST(req: Request) {
     } catch (error) {
       if (error instanceof Error) {
         return NextResponse.json(
-          { error: 'Validation failed', code: 'VALIDATION_ERROR', details: error.message },
+          {
+            success: false,
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Validation failed',
+              details: error.message,
+            },
+          },
           { status: 400 }
         );
       }
@@ -187,7 +270,10 @@ export async function POST(req: Request) {
       });
 
       if (!chat) {
-        return NextResponse.json({ error: 'Chat not found', code: 'NOT_FOUND' }, { status: 404 });
+        return NextResponse.json(
+          { success: false, error: { code: 'NOT_FOUND', message: 'Chat not found' } },
+          { status: 404 }
+        );
       }
 
       const recentMessages = await memory.getRecentMessages(effectiveConversationId, 10);
@@ -201,8 +287,19 @@ export async function POST(req: Request) {
 
     // Step 8: Retrieve relevant sources (graceful fallback if embedding/vector search fails)
     let sources: Awaited<ReturnType<typeof retrieveSources>> = [];
+    let vectorSearchDegraded = false;
     try {
-      sources = await retrieveSources(userMessage, userId, config);
+      if (await isFeatureDegraded('vector_search')) {
+        vectorSearchDegraded = true;
+        logger.info('Vector search degraded, skipping RAG retrieval');
+      } else {
+        sources = await withSpan('chat.retrieve_sources', async (span) => {
+          span.setAttribute('chat.query_length', userMessage.length);
+          const result = await retrieveSources(userMessage, userId, config);
+          span.setAttribute('chat.sources_count', result.length);
+          return result;
+        });
+      }
     } catch (err) {
       logger.warn('Source retrieval failed, continuing without RAG context', {
         error: err instanceof Error ? err.message : String(err),
@@ -231,9 +328,12 @@ export async function POST(req: Request) {
     if (estimatedTokens > config.maxTokens * 2) {
       return NextResponse.json(
         {
-          error: 'Message too long',
-          code: 'TOKEN_LIMIT',
-          details: `Estimated tokens (${estimatedTokens}) exceeds limit (${config.maxTokens * 2})`,
+          success: false,
+          error: {
+            code: 'TOKEN_LIMIT',
+            message: 'Message too long',
+            details: `Estimated tokens (${estimatedTokens}) exceeds limit (${config.maxTokens * 2})`,
+          },
         },
         { status: 400 }
       );
@@ -265,19 +365,40 @@ export async function POST(req: Request) {
       // Streaming response — probe models first, then stream with a working one
       const modelsToTry = [config.model, ...MODEL_FALLBACK_CHAIN.filter((m) => m !== config.model)];
 
+      // If the circuit breaker is open, skip probing entirely
+      if (llmCircuitBreaker.getState() === 'OPEN') {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'MODEL_UNAVAILABLE',
+              message: 'AI service temporarily unavailable. Please try again in a moment.',
+            },
+          },
+          { status: 503 }
+        );
+      }
+
       let usedModel = config.model;
       let probeOk = false;
 
       // Quick probe: generate 1 token to verify the model responds before committing to a stream
       for (const modelName of modelsToTry) {
+        const probeStart = Date.now();
         try {
-          await generateText({
-            model: getModel(modelName, customKeys),
-            messages: [{ role: 'user', content: userMessage.slice(0, 100) }],
-            maxTokens: 1,
+          await llmCircuitBreaker.execute(async () => {
+            await generateText({
+              model: getModel(modelName, customKeys),
+              messages: [{ role: 'user', content: userMessage.slice(0, 100) }],
+              maxTokens: 1,
+            });
           });
           usedModel = modelName;
           probeOk = true;
+          logger.debug('Model probe succeeded', {
+            model: modelName,
+            durationMs: Date.now() - probeStart,
+          });
           break;
         } catch (err) {
           logger.warn(`Model ${modelName} probe failed, trying next`, {
@@ -289,8 +410,11 @@ export async function POST(req: Request) {
       if (!probeOk) {
         return NextResponse.json(
           {
-            error: 'All AI models are currently unavailable. Please try again in a moment.',
-            code: 'MODEL_UNAVAILABLE',
+            success: false,
+            error: {
+              code: 'MODEL_UNAVAILABLE',
+              message: 'All AI models are currently unavailable. Please try again in a moment.',
+            },
           },
           { status: 503 }
         );
@@ -302,24 +426,19 @@ export async function POST(req: Request) {
         temperature: config.temperature,
         maxTokens: config.maxTokens,
         onFinish: async (completion) => {
-          if (effectiveConversationId) {
-            await memory.addMessage(effectiveConversationId, {
-              role: 'assistant',
-              content: completion.text,
-            });
+          try {
+            if (effectiveConversationId) {
+              await prisma.message.create({
+                data: {
+                  chatId: effectiveConversationId,
+                  content: completion.text,
+                  role: 'ASSISTANT',
+                },
+              });
+            }
 
-            await maybeGenerateTitle(
-              effectiveConversationId,
-              userMessage,
-              completion.text,
-              usedModel,
-              customKeys
-            );
-          }
-
-          if (completion.usage) {
-            await prisma.apiUsage.create({
-              data: {
+            if (completion.usage) {
+              bufferUsageRecord({
                 userId,
                 workspaceId,
                 endpoint: '/api/chat',
@@ -329,7 +448,22 @@ export async function POST(req: Request) {
                 tokensTotal:
                   (completion.usage.promptTokens ?? 0) + (completion.usage.completionTokens ?? 0),
                 latencyMs: Date.now() - startTime,
-              },
+              });
+            }
+
+            // Title generation is non-critical — run outside transaction
+            if (effectiveConversationId) {
+              await maybeGenerateTitle(
+                effectiveConversationId,
+                userMessage,
+                completion.text,
+                usedModel,
+                customKeys
+              );
+            }
+          } catch (txError) {
+            logger.warn('Transaction failed in streaming onFinish', {
+              error: txError instanceof Error ? txError.message : String(txError),
             });
           }
         },
@@ -348,6 +482,7 @@ export async function POST(req: Request) {
         headers: {
           'X-Message-Sources': JSON.stringify(sourcesMetadata),
           'X-Model-Used': usedModel,
+          ...(vectorSearchDegraded ? { 'X-Degraded-Features': 'vector_search' } : {}),
         },
       });
 
@@ -369,29 +504,46 @@ export async function POST(req: Request) {
 
       // Save assistant response
       if (effectiveConversationId) {
-        await memory.addMessage(effectiveConversationId, {
-          role: 'assistant',
-          content: response.text,
-          sources: citations.map((c) => ({
-            id: c.chunkId,
-            content: c.content,
-            similarity: c.score,
-            metadata: {
-              documentId: c.documentId,
-              documentName: c.documentName,
-              page: c.page,
-              chunkIndex: 0,
-              totalChunks: 0,
+        await prisma.message.create({
+          data: {
+            chatId: effectiveConversationId,
+            content: response.text,
+            role: 'ASSISTANT',
+            sources: citations.map((c) => ({
+              id: c.chunkId,
+              content: c.content,
+              similarity: c.score,
+              metadata: {
+                documentId: c.documentId,
+                documentName: c.documentName,
+                page: c.page,
+                chunkIndex: 0,
+                totalChunks: 0,
+              },
+            })),
+            tokensUsed: {
+              prompt: response.usage?.promptTokens ?? 0,
+              completion: response.usage?.completionTokens ?? 0,
+              total: response.usage?.totalTokens ?? 0,
             },
-          })),
-          tokensUsed: {
-            prompt: response.usage?.promptTokens ?? 0,
-            completion: response.usage?.completionTokens ?? 0,
-            total: response.usage?.totalTokens ?? 0,
           },
         });
+      }
 
-        // Generate title if this is the first exchange
+      // Buffer usage record (batched write)
+      bufferUsageRecord({
+        userId,
+        workspaceId,
+        endpoint: '/api/chat',
+        method: 'POST',
+        tokensPrompt: response.usage?.promptTokens ?? 0,
+        tokensCompletion: response.usage?.completionTokens ?? 0,
+        tokensTotal: response.usage?.totalTokens ?? 0,
+        latencyMs: Date.now() - startTime,
+      });
+
+      // Title generation is non-critical — run outside transaction
+      if (effectiveConversationId) {
         await maybeGenerateTitle(
           effectiveConversationId,
           userMessage,
@@ -400,20 +552,6 @@ export async function POST(req: Request) {
           customKeys
         );
       }
-
-      // Log token usage
-      await prisma.apiUsage.create({
-        data: {
-          userId,
-          workspaceId,
-          endpoint: '/api/chat',
-          method: 'POST',
-          tokensPrompt: response.usage?.promptTokens ?? 0,
-          tokensCompletion: response.usage?.completionTokens ?? 0,
-          tokensTotal: response.usage?.totalTokens ?? 0,
-          latencyMs: Date.now() - startTime,
-        },
-      });
 
       const jsonResponse = NextResponse.json({
         success: true,
@@ -445,9 +583,12 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        error: 'Failed to process chat request',
-        code: 'INTERNAL_ERROR',
-        details: errorMessage,
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Failed to process chat request',
+          details: errorMessage,
+        },
       },
       { status: statusCode }
     );
@@ -463,7 +604,10 @@ export async function PUT(req: Request) {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+        { status: 401 }
+      );
     }
 
     const userId = session.user.id;
@@ -476,8 +620,11 @@ export async function PUT(req: Request) {
     if (!dbUser) {
       return NextResponse.json(
         {
-          error: 'Your session is out of date. Please sign in again.',
-          code: 'USER_NOT_FOUND',
+          success: false,
+          error: {
+            code: 'USER_NOT_FOUND',
+            message: 'Your session is out of date. Please sign in again.',
+          },
         },
         { status: 401 }
       );
@@ -505,9 +652,12 @@ export async function PUT(req: Request) {
     if (!rateLimitResult.success) {
       return NextResponse.json(
         {
-          error: 'Rate limit exceeded',
-          code: 'RATE_LIMIT',
-          resetAt: new Date(rateLimitResult.reset).toISOString(),
+          success: false,
+          error: {
+            code: 'RATE_LIMIT',
+            message: 'Rate limit exceeded',
+            resetAt: new Date(rateLimitResult.reset).toISOString(),
+          },
         },
         {
           status: 429,
@@ -527,7 +677,7 @@ export async function PUT(req: Request) {
         error: error instanceof Error ? error.message : 'Unknown',
       });
       return NextResponse.json(
-        { error: 'Invalid JSON body', code: 'INVALID_BODY' },
+        { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
       );
     }
@@ -535,7 +685,14 @@ export async function PUT(req: Request) {
     const parsed = chatCreateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Invalid input', code: 'VALIDATION_ERROR', details: parsed.error.issues },
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid input',
+            details: parsed.error.issues,
+          },
+        },
         { status: 400 }
       );
     }
@@ -583,9 +740,12 @@ export async function PUT(req: Request) {
     const isDev = process.env.NODE_ENV === 'development';
     return NextResponse.json(
       {
-        error: 'Failed to create chat',
-        code: 'INTERNAL_ERROR',
-        ...(isDev && { details: errMsg }),
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Failed to create chat',
+          ...(isDev && { details: errMsg }),
+        },
       },
       { status: 500 }
     );
@@ -601,7 +761,10 @@ export async function GET(req: Request) {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+        { status: 401 }
+      );
     }
 
     const userId = session.user.id;
@@ -616,7 +779,10 @@ export async function GET(req: Request) {
 
     if (!effectiveId) {
       return NextResponse.json(
-        { error: 'chatId or conversationId is required', code: 'MISSING_ID' },
+        {
+          success: false,
+          error: { code: 'MISSING_ID', message: 'chatId or conversationId is required' },
+        },
         { status: 400 }
       );
     }
@@ -630,7 +796,10 @@ export async function GET(req: Request) {
     });
 
     if (!chat) {
-      return NextResponse.json({ error: 'Chat not found', code: 'NOT_FOUND' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: { code: 'NOT_FOUND', message: 'Chat not found' } },
+        { status: 404 }
+      );
     }
 
     const memory = new ConversationMemory(prisma);
@@ -654,7 +823,10 @@ export async function GET(req: Request) {
       error: error instanceof Error ? error.message : String(error),
     });
     return NextResponse.json(
-      { error: 'Failed to retrieve chat history', code: 'INTERNAL_ERROR' },
+      {
+        success: false,
+        error: { code: 'INTERNAL_ERROR', message: 'Failed to retrieve chat history' },
+      },
       { status: 500 }
     );
   }
@@ -669,7 +841,10 @@ export async function DELETE(req: Request) {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+        { status: 401 }
+      );
     }
 
     const userId = session.user.id;
@@ -681,7 +856,7 @@ export async function DELETE(req: Request) {
 
     if (!chatId) {
       return NextResponse.json(
-        { error: 'chatId is required', code: 'MISSING_ID' },
+        { success: false, error: { code: 'MISSING_ID', message: 'chatId is required' } },
         { status: 400 }
       );
     }
@@ -695,14 +870,20 @@ export async function DELETE(req: Request) {
     });
 
     if (!chat) {
-      return NextResponse.json({ error: 'Chat not found', code: 'NOT_FOUND' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: { code: 'NOT_FOUND', message: 'Chat not found' } },
+        { status: 404 }
+      );
     }
 
     // Check delete permission for workspace chats
     if (chat.workspaceId && chat.userId !== userId) {
       const canDelete = await checkPermission(userId, chat.workspaceId, Permission.DELETE_CHATS);
       if (!canDelete) {
-        return NextResponse.json({ error: 'Access denied', code: 'FORBIDDEN' }, { status: 403 });
+        return NextResponse.json(
+          { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
+          { status: 403 }
+        );
       }
     }
 
@@ -728,7 +909,7 @@ export async function DELETE(req: Request) {
       error: error instanceof Error ? error.message : String(error),
     });
     return NextResponse.json(
-      { error: 'Failed to delete chat', code: 'INTERNAL_ERROR' },
+      { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to delete chat' } },
       { status: 500 }
     );
   }
@@ -743,7 +924,10 @@ export async function PATCH(req: Request) {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+        { status: 401 }
+      );
     }
 
     const userId = session.user.id;
@@ -758,7 +942,7 @@ export async function PATCH(req: Request) {
         error: error instanceof Error ? error.message : 'Unknown',
       });
       return NextResponse.json(
-        { error: 'Invalid JSON body', code: 'INVALID_BODY' },
+        { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
         { status: 400 }
       );
     }
@@ -766,7 +950,14 @@ export async function PATCH(req: Request) {
     const parsed = chatUpdateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Invalid input', code: 'VALIDATION_ERROR', details: parsed.error.issues },
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid input',
+            details: parsed.error.issues,
+          },
+        },
         { status: 400 }
       );
     }
@@ -774,7 +965,7 @@ export async function PATCH(req: Request) {
 
     if (!chatId) {
       return NextResponse.json(
-        { error: 'chatId is required', code: 'MISSING_ID' },
+        { success: false, error: { code: 'MISSING_ID', message: 'chatId is required' } },
         { status: 400 }
       );
     }
@@ -788,7 +979,10 @@ export async function PATCH(req: Request) {
     });
 
     if (!chat) {
-      return NextResponse.json({ error: 'Chat not found', code: 'NOT_FOUND' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: { code: 'NOT_FOUND', message: 'Chat not found' } },
+        { status: 404 }
+      );
     }
 
     // Build update data
@@ -796,11 +990,27 @@ export async function PATCH(req: Request) {
     if (title !== undefined) updateData.title = title;
     if (model !== undefined) updateData.model = model;
 
-    // Update chat
-    const updatedChat = await prisma.chat.update({
-      where: { id: chatId },
-      data: updateData,
-    });
+    // Update chat (with optimistic locking if If-Match provided)
+    let updatedChat: Record<string, unknown>;
+    const expectedVersion = extractVersion(req.headers);
+    try {
+      if (expectedVersion !== null) {
+        updatedChat = await updateWithVersion('chat', chatId, updateData, expectedVersion);
+      } else {
+        updatedChat = await prisma.chat.update({
+          where: { id: chatId },
+          data: updateData,
+        });
+      }
+    } catch (e) {
+      if (e instanceof ConcurrentModificationError) {
+        return NextResponse.json(
+          { success: false, error: { code: 'CONFLICT', message: e.message } },
+          { status: 409 }
+        );
+      }
+      throw e;
+    }
 
     // Log update
     // FIXED: Use correct audit event for chat updates
@@ -811,14 +1021,16 @@ export async function PATCH(req: Request) {
       metadata: { chatId, updates: Object.keys(updateData) },
     });
 
+    const chatResult = updatedChat as Record<string, unknown>;
     return NextResponse.json({
       success: true,
       data: {
         chat: {
-          id: updatedChat.id,
-          title: updatedChat.title,
-          model: updatedChat.model,
-          updatedAt: updatedChat.updatedAt.toISOString(),
+          id: chatResult.id,
+          title: chatResult.title,
+          model: chatResult.model,
+          version: chatResult.version,
+          updatedAt: (chatResult.updatedAt as Date).toISOString(),
         },
       },
     });
@@ -827,7 +1039,7 @@ export async function PATCH(req: Request) {
       error: error instanceof Error ? error.message : String(error),
     });
     return NextResponse.json(
-      { error: 'Failed to update chat', code: 'INTERNAL_ERROR' },
+      { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to update chat' } },
       { status: 500 }
     );
   }
@@ -846,7 +1058,7 @@ function getModel(
 ): LanguageModel {
   // Fireworks AI models (prefixed with "accounts/fireworks/")
   if (modelName.startsWith('accounts/fireworks/')) {
-    const fireworksKey = customKeys?.fireworks || process.env.FIREWORKS_API_KEY;
+    const fireworksKey = customKeys?.fireworks || env.FIREWORKS_API_KEY;
     if (!fireworksKey) {
       throw new Error('Fireworks API key required. Set FIREWORKS_API_KEY or provide your own key.');
     }
@@ -858,7 +1070,7 @@ function getModel(
   }
 
   // OpenRouter models (contains '/' or ends with ':free') - default
-  const openrouterKey = customKeys?.openrouter || process.env.OPENROUTER_API_KEY;
+  const openrouterKey = customKeys?.openrouter || env.OPENROUTER_API_KEY;
   if (openrouterKey) {
     const openrouter = createOpenRouter({ apiKey: openrouterKey });
     return openrouter.chat(modelName) as unknown as LanguageModel;
@@ -893,12 +1105,14 @@ async function generateWithFallback(
 
   for (const modelName of modelsToTry) {
     try {
-      const result = await generateText({
-        model: getModel(modelName, options.customKeys),
-        messages,
-        temperature: options.temperature,
-        maxTokens: options.maxTokens,
-      });
+      const result = await llmCircuitBreaker.execute(async () =>
+        generateText({
+          model: getModel(modelName, options.customKeys),
+          messages,
+          temperature: options.temperature,
+          maxTokens: options.maxTokens,
+        })
+      );
 
       // Return successful result with the model that worked
       return {

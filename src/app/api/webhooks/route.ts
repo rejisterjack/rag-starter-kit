@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { withApiAuth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { prisma, prismaRead } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { generateWebhookSecret } from '@/lib/webhooks/delivery';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
@@ -116,7 +116,7 @@ export const GET = withApiAuth(async (req, session) => {
 
     // Get webhooks with pagination
     const [webhooks, total] = await Promise.all([
-      prisma.webhook.findMany({
+      prismaRead.webhook.findMany({
         where: { workspaceId },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
@@ -135,7 +135,7 @@ export const GET = withApiAuth(async (req, session) => {
           secret: false,
         },
       }),
-      prisma.webhook.count({
+      prismaRead.webhook.count({
         where: { workspaceId },
       }),
     ]);

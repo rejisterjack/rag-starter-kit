@@ -34,6 +34,8 @@ export { D3Chart } from './d3-visualization';
 export type { AnimationProps } from './gsap-animations';
 // GSAP animations (lazy-loaded)
 export { FadeIn, SlideUp, StaggerContainer } from './gsap-animations';
+// Landing page heavy components (lazy-loaded framer-motion)
+export { ChatSimulator, RagPipelineDiagram, TechStackMarquee } from './landing-dynamic';
 export type { PDFViewerProps } from './pdf-export';
 // PDF export (lazy-loaded)
 export {

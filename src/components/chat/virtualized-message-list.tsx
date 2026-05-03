@@ -19,7 +19,7 @@ import { ArrowDown, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { Message } from '@/types';
+import type { Message } from './message-item';
 
 // =============================================================================
 // Types

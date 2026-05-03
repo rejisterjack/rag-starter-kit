@@ -5,8 +5,7 @@
  * Optimized for high-throughput scenarios.
  */
 
-import type { DocumentChunk } from '@/generated/prisma/client';
-import { Prisma, type PrismaClient } from '@/generated/prisma/client';
+import type { DocumentChunk, PrismaClient } from '@/generated/prisma/client';
 
 import { logger } from '@/lib/logger';
 
@@ -143,78 +142,32 @@ export async function batchInsertChunks(
 }
 
 /**
- * Insert a single batch of chunks
+ * Insert a single batch of chunks using parameterized queries
  */
 async function insertBatch(
   client: PrismaClientOrTransaction,
   chunks: ChunkInsertData[]
 ): Promise<void> {
-  // Build values for bulk insert
-  const values = chunks.map((chunk) => {
+  for (const chunk of chunks) {
     const id = chunk.id ?? crypto.randomUUID();
-    return {
-      id,
-      document_id: chunk.documentId,
-      content: chunk.content,
-      embedding: chunk.embedding,
-      index: chunk.index,
-      start: chunk.start ?? 0,
-      end: chunk.end ?? chunk.content.length,
-      page: chunk.page ?? null,
-      section: chunk.section ?? null,
-    };
-  });
-
-  // Use unnest for efficient bulk insert
-  const query = Prisma.sql`
-    INSERT INTO document_chunks (
-      id, document_id, content, embedding, "index", 
-      start, "end", page, section, created_at
-    )
-    SELECT 
-      v.id, v.document_id, v.content, v.embedding::vector, v.index,
-      v.start, v.end, v.page, v.section, NOW()
-    FROM UNNEST(
-      ${Prisma.raw(`ARRAY[${values.map((v) => `'${v.id}'`).join(',')}]::uuid[]`)},
-      ${Prisma.raw(`ARRAY[${values.map((v) => `'${v.document_id}'`).join(',')}]::text[]`)},
-      ${Prisma.raw(`ARRAY[${values.map((v) => `'${v.content.replace(/'/g, "''")}'`).join(',')}]::text[]`)},
-      ${Prisma.raw(`ARRAY[${values.map((v) => `'[${v.embedding.join(',')}]'`).join(',')}]::vector[]`)},
-      ${Prisma.raw(`ARRAY[${values.map((v) => v.index).join(',')}]::int[]`)},
-      ${Prisma.raw(`ARRAY[${values.map((v) => v.start).join(',')}]::int[]`)},
-      ${Prisma.raw(`ARRAY[${values.map((v) => v.end).join(',')}]::int[]`)},
-      ${Prisma.raw(`ARRAY[${values.map((v) => v.page ?? 'NULL').join(',')}]::int[]`)},
-      ${Prisma.raw(`ARRAY[${values.map((v) => (v.section ? `'${v.section.replace(/'/g, "''")}'` : 'NULL')).join(',')}]::text[]`)}
-    ) AS v(id, document_id, content, embedding, index, start, "end", page, section)
-  `;
-
-  // Fallback to individual inserts if unnest fails
-  try {
-    await client.$executeRaw(query);
-  } catch (error: unknown) {
-    logger.error('Batch insert via unnest failed, falling back to individual inserts', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-    // Fallback: insert one by one
-    for (const chunk of values) {
-      await client.$executeRaw`
-        INSERT INTO document_chunks (
-          id, document_id, content, embedding, "index", 
-          start, "end", page, section, created_at
-        )
-        VALUES (
-          ${chunk.id},
-          ${chunk.document_id},
-          ${chunk.content},
-          ${chunk.embedding}::vector,
-          ${chunk.index},
-          ${chunk.start},
-          ${chunk.end},
-          ${chunk.page},
-          ${chunk.section},
-          NOW()
-        )
-      `;
-    }
+    await client.$executeRaw`
+      INSERT INTO document_chunks (
+        id, document_id, content, embedding, "index",
+        start, "end", page, section, created_at
+      )
+      VALUES (
+        ${id},
+        ${chunk.documentId},
+        ${chunk.content},
+        ${chunk.embedding}::vector,
+        ${chunk.index},
+        ${chunk.start ?? 0},
+        ${chunk.end ?? chunk.content.length},
+        ${chunk.page ?? null},
+        ${chunk.section ?? null},
+        NOW()
+      )
+    `;
   }
 }
 
@@ -296,27 +249,25 @@ export async function batchUpdateChunks(
     await prisma.$transaction(async (tx: PrismaTransactionClient) => {
       for (const update of batch) {
         try {
-          const sets: string[] = [];
-
           if (update.content !== undefined) {
-            sets.push(`content = '${update.content.replace(/'/g, "''")}'`);
+            await tx.$executeRaw`
+              UPDATE document_chunks SET content = ${update.content} WHERE id = ${update.chunkId}
+            `;
           }
           if (update.embedding !== undefined) {
-            sets.push(`embedding = '[${update.embedding.join(',')}]'::vector`);
+            await tx.$executeRaw`
+              UPDATE document_chunks SET embedding = ${update.embedding}::vector WHERE id = ${update.chunkId}
+            `;
           }
           if (update.page !== undefined) {
-            sets.push(`page = ${update.page}`);
+            await tx.$executeRaw`
+              UPDATE document_chunks SET page = ${update.page} WHERE id = ${update.chunkId}
+            `;
           }
           if (update.section !== undefined) {
-            sets.push(`section = '${update.section.replace(/'/g, "''")}'`);
-          }
-
-          if (sets.length > 0) {
-            await tx.$executeRawUnsafe(`
-              UPDATE document_chunks
-              SET ${sets.join(', ')}
-              WHERE id = '${update.chunkId}'
-            `);
+            await tx.$executeRaw`
+              UPDATE document_chunks SET section = ${update.section} WHERE id = ${update.chunkId}
+            `;
           }
 
           successCount++;

@@ -153,7 +153,7 @@ function parseCidr(cidr: string): { start: number; end: number } {
 /**
  * Check if an IP is in a CIDR range
  */
-function isIpInCidr(ip: string, cidr: string): boolean {
+export function isIpInCidr(ip: string, cidr: string): boolean {
   try {
     const ipNum = ipToNumber(ip);
     const { start, end } = parseCidr(cidr);

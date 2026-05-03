@@ -1,11 +1,14 @@
 /**
- * React Hook for Conversation Branching
+ * React Hook for Conversation Branching — backed by TanStack Query
  */
 
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 import { toast } from 'sonner';
+import { apiClient } from '@/lib/api-client';
+import { branchKeys } from '@/lib/query-keys';
 
 export interface ConversationBranch {
   id: string;
@@ -74,151 +77,138 @@ export interface UseConversationBranchOptions {
 export function useConversationBranch(
   options: UseConversationBranchOptions
 ): UseConversationBranchReturn {
-  const [branches, setBranches] = useState<ConversationBranch[]>([]);
-  const [currentBranch, setCurrentBranch] = useState<ConversationBranch | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
+  const { conversationId, onBranchChange } = options;
 
-  const fetchBranches = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/chat/branch?conversationId=${options.conversationId}`);
-      if (!response.ok) throw new Error('Failed to fetch branches');
+  const query = useQuery({
+    queryKey: branchKeys.list(conversationId),
+    queryFn: async () => {
+      const data = await apiClient<{ branches: ConversationBranch[] }>(
+        `/api/chat/branch?conversationId=${conversationId}`
+      );
+      return data.branches;
+    },
+    enabled: !!conversationId,
+  });
 
-      const data = await response.json();
-      setBranches(data.branches);
-      setCurrentBranch(data.branches.find((b: ConversationBranch) => b.isActive) || null);
-    } catch (err) {
-      const fetchError = err instanceof Error ? err : new Error(String(err));
-      setError(fetchError);
-      toast.error('Failed to load branches');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [options.conversationId]);
+  const currentBranch = query.data?.find((b) => b.isActive) || null;
 
-  useEffect(() => {
-    fetchBranches();
-  }, [fetchBranches]);
-
-  const forkConversation = useCallback(
-    async (messageId: string, name?: string): Promise<ConversationBranch> => {
-      const response = await fetch('/api/chat/branch', {
+  const forkMutation = useMutation({
+    mutationFn: async ({ messageId, name }: { messageId: string; name?: string }) => {
+      const data = await apiClient<{ branch: ConversationBranch }>('/api/chat/branch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          conversationId: options.conversationId,
+          conversationId,
           messageId,
-          name: name || `Branch ${branches.length + 1}`,
+          name: name || `Branch ${(query.data?.length || 0) + 1}`,
         }),
       });
-
-      if (!response.ok) throw new Error('Failed to create branch');
-
-      const data = await response.json();
-      await fetchBranches();
-      toast.success('Branch created');
       return data.branch;
     },
-    [options.conversationId, branches.length, fetchBranches]
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: branchKeys.list(conversationId) });
+      toast.success('Branch created');
+    },
+    onError: () => {
+      toast.error('Failed to create branch');
+    },
+  });
 
-  const switchBranch = useCallback(
-    async (branchId: string) => {
-      const response = await fetch('/api/chat/branch', {
+  const switchMutation = useMutation({
+    mutationFn: async (branchId: string) => {
+      await apiClient('/api/chat/branch', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversationId: options.conversationId,
-          branchId,
-          action: 'switch',
-        }),
+        body: JSON.stringify({ conversationId, branchId, action: 'switch' }),
       });
-
-      if (!response.ok) throw new Error('Failed to switch branch');
-
-      await fetchBranches();
-      const branch = branches.find((b) => b.id === branchId);
-      if (branch) {
-        options.onBranchChange?.(branch);
-      }
+      return branchId;
+    },
+    onSuccess: (branchId) => {
+      queryClient.invalidateQueries({ queryKey: branchKeys.list(conversationId) });
+      const branch = query.data?.find((b) => b.id === branchId);
+      if (branch) onBranchChange?.(branch);
       toast.success('Switched branch');
     },
-    [options, branches, fetchBranches]
-  );
+    onError: () => {
+      toast.error('Failed to switch branch');
+    },
+  });
 
-  const renameBranch = useCallback(
-    async (branchId: string, name: string) => {
-      const response = await fetch('/api/chat/branch', {
+  const renameMutation = useMutation({
+    mutationFn: async ({ branchId, name }: { branchId: string; name: string }) => {
+      await apiClient('/api/chat/branch', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ branchId, name }),
       });
-
-      if (!response.ok) throw new Error('Failed to rename branch');
-      await fetchBranches();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: branchKeys.list(conversationId) });
       toast.success('Branch renamed');
     },
-    [fetchBranches]
-  );
+    onError: () => {
+      toast.error('Failed to rename branch');
+    },
+  });
 
-  const deleteBranch = useCallback(
-    async (branchId: string) => {
-      const response = await fetch(`/api/chat/branch?branchId=${branchId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to delete branch');
-      await fetchBranches();
+  const deleteMutation = useMutation({
+    mutationFn: async (branchId: string) => {
+      await apiClient(`/api/chat/branch?branchId=${branchId}`, { method: 'DELETE' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: branchKeys.list(conversationId) });
       toast.success('Branch deleted');
     },
-    [fetchBranches]
-  );
+    onError: () => {
+      toast.error('Failed to delete branch');
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async ({ messageId, newContent }: { messageId: string; newContent: string }) => {
+      await apiClient('/api/chat/branch', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId, messageId, newContent, action: 'edit' }),
+      });
+    },
+    onSuccess: () => {
+      toast.success('Message updated');
+    },
+    onError: () => {
+      toast.error('Failed to edit message');
+    },
+  });
 
   const compareBranches = useCallback(
     async (branchAId: string, branchBId: string): Promise<BranchComparison> => {
-      const response = await fetch(
+      const data = await apiClient<{ comparison: BranchComparison }>(
         `/api/chat/branch/compare?branchA=${branchAId}&branchB=${branchBId}`
       );
-      if (!response.ok) throw new Error('Failed to compare branches');
-
-      const data = await response.json();
       return data.comparison;
     },
     []
   );
 
-  const editMessage = useCallback(
-    async (messageId: string, newContent: string) => {
-      const response = await fetch('/api/chat/branch', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversationId: options.conversationId,
-          messageId,
-          newContent,
-          action: 'edit',
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to edit message');
-      toast.success('Message updated');
-    },
-    [options.conversationId]
-  );
+  const refreshBranches = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: branchKeys.list(conversationId) });
+  }, [queryClient, conversationId]);
 
   return {
-    branches,
+    branches: query.data || [],
     currentBranch,
-    isLoading,
-    error,
-    forkConversation,
-    switchBranch,
-    renameBranch,
-    deleteBranch,
+    isLoading: query.isLoading,
+    error: query.error,
+    forkConversation: (messageId, name) => forkMutation.mutateAsync({ messageId, name }),
+    switchBranch: async (branchId) => {
+      await switchMutation.mutateAsync(branchId);
+    },
+    renameBranch: (branchId, name) => renameMutation.mutateAsync({ branchId, name }),
+    deleteBranch: (branchId) => deleteMutation.mutateAsync(branchId),
     compareBranches,
-    editMessage,
-    refreshBranches: fetchBranches,
+    editMessage: (messageId, newContent) => editMutation.mutateAsync({ messageId, newContent }),
+    refreshBranches,
   };
 }
 

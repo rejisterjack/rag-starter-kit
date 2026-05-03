@@ -1,5 +1,7 @@
 import { AuditEvent, AuditSeverity, type Prisma } from '@/generated/prisma/client';
+import { computeRecordHash, getLatestHash } from '@/lib/audit/hash-chain';
 import { prisma } from '@/lib/db';
+import { detachOldPartitions } from '@/lib/db/partition-manager';
 import { logger } from '@/lib/logger';
 
 // Re-export enums for convenience
@@ -35,6 +37,7 @@ export interface AuditLogQuery {
   endDate?: Date;
   limit?: number;
   offset?: number;
+  cursor?: string;
 }
 
 export interface AuditLogResult {
@@ -64,21 +67,41 @@ export interface AuditLogResult {
  */
 export async function logAuditEvent(input: LogAuditEventInput): Promise<void> {
   try {
-    // Don't block on audit logging
-    prisma.auditLog
-      .create({
-        data: {
-          event: input.event,
+    // Fetch previous hash and create record — non-blocking
+    const id = crypto.randomUUID();
+    const now = new Date();
+
+    getLatestHash()
+      .then((previousHash) => {
+        const recordHash = computeRecordHash({
+          id,
+          event: input.event as string,
+          severity: (input.severity ?? 'INFO') as string,
           userId: input.userId,
           workspaceId: input.workspaceId,
-          severity: input.severity ?? 'INFO',
-          metadata: (input.metadata ?? {}) as unknown as Prisma.InputJsonValue,
-          resource: (input.resource ?? {}) as unknown as Prisma.InputJsonValue,
-          changes: (input.changes ?? {}) as unknown as Prisma.InputJsonValue,
-          error: input.error ?? null,
-          ipAddress: input.ipAddress,
-          userAgent: input.userAgent,
-        },
+          metadata: input.metadata,
+          createdAt: now,
+          previousHash,
+        });
+
+        return prisma.auditLog.create({
+          data: {
+            id,
+            event: input.event,
+            userId: input.userId,
+            workspaceId: input.workspaceId,
+            severity: input.severity ?? 'INFO',
+            metadata: (input.metadata ?? {}) as unknown as Prisma.InputJsonValue,
+            resource: (input.resource ?? {}) as unknown as Prisma.InputJsonValue,
+            changes: (input.changes ?? {}) as unknown as Prisma.InputJsonValue,
+            error: input.error ?? null,
+            ipAddress: input.ipAddress,
+            userAgent: input.userAgent,
+            recordHash,
+            previousHash,
+            createdAt: now,
+          },
+        });
       })
       .catch((error) => {
         logger.error('Failed to write audit log', {
@@ -165,7 +188,7 @@ export async function getAuditLogs(
       },
       orderBy: { createdAt: 'desc' },
       take: query.limit ?? 50,
-      skip: query.offset ?? 0,
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : { skip: query.offset ?? 0 }),
     }),
     prisma.auditLog.count({ where }),
   ]);
@@ -335,6 +358,20 @@ export async function cleanupAuditLogs(): Promise<{
   deleted: number;
   retained: number;
 }> {
+  // Try partition-based cleanup first (metadata-only, no table bloat)
+  try {
+    const detached = await detachOldPartitions(3);
+    if (detached > 0) {
+      const remaining = await prisma.auditLog.count();
+      return { deleted: detached, retained: remaining };
+    }
+  } catch (error) {
+    logger.debug('Partition cleanup not available, falling back to DELETE', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
+  }
+
+  // Fallback: DELETE-based cleanup for non-partitioned tables
   const regularRetention = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); // 90 days
   const securityRetention = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000); // 1 year
 

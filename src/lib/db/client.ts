@@ -24,6 +24,8 @@ import { logger } from '@/lib/logger';
 type GlobalWithPrisma = typeof globalThis & {
   _prismaPool: Pool | undefined;
   _prismaClient: PrismaClient | undefined;
+  _prismaReadPool: Pool | undefined;
+  _prismaReadClient: PrismaClient | undefined;
 };
 
 // ---------------------------------------------------------------------------
@@ -32,10 +34,11 @@ type GlobalWithPrisma = typeof globalThis & {
 
 function createPool(): Pool {
   // Use validated DATABASE_URL from env.ts
+  const defaultMax = env.NODE_ENV === 'production' ? 25 : 3;
   return new Pool({
     connectionString: env.DATABASE_URL,
-    // Keep pool small in development; scale up in production
-    max: env.NODE_ENV === 'production' ? 10 : 3,
+    // Scale via DB_POOL_MAX env var, or use sensible defaults
+    max: env.DB_POOL_MAX ?? defaultMax,
     // Idle connections are released after 30 s
     idleTimeoutMillis: 30_000,
     // Fail fast if the DB is unreachable
@@ -117,6 +120,48 @@ export const prisma = extendWithSlowQueryMiddleware(basePrisma);
 if (env.NODE_ENV !== 'production') {
   g._prismaClient = basePrisma;
 }
+
+// ---------------------------------------------------------------------------
+// Read Replica (optional)
+// ---------------------------------------------------------------------------
+
+const READ_REPLICA_URL = env.DATABASE_READ_REPLICA_URL;
+
+function createReadPool(): Pool {
+  const defaultMax = env.NODE_ENV === 'production' ? 20 : 2;
+  return new Pool({
+    connectionString: READ_REPLICA_URL,
+    max: env.DB_POOL_MAX ? Math.ceil(env.DB_POOL_MAX * 0.8) : defaultMax,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 5_000,
+  });
+}
+
+function createReadClient(): PrismaClient {
+  const g = globalThis as GlobalWithPrisma;
+  if (!g._prismaReadPool) {
+    g._prismaReadPool = createReadPool();
+  }
+  const adapter = new PrismaPg(g._prismaReadPool);
+  return new PrismaClient({ adapter, log: ['warn', 'error'] });
+}
+
+/**
+ * Read-replica PrismaClient. Falls back to the primary client
+ * when DATABASE_READ_REPLICA_URL is not configured.
+ */
+export const prismaRead: PrismaClient = READ_REPLICA_URL
+  ? extendWithSlowQueryMiddleware(
+      ((): PrismaClient => {
+        const g = globalThis as GlobalWithPrisma;
+        const base = g._prismaReadClient ?? createReadClient();
+        if (env.NODE_ENV !== 'production') {
+          g._prismaReadClient = base;
+        }
+        return base;
+      })()
+    )
+  : prisma;
 
 // Re-export PrismaClient type for convenience
 export type { PrismaClient };

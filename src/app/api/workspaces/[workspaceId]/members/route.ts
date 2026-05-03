@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { withApiAuth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { prismaRead } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { canManageMembers } from '@/lib/workspace/permissions';
 import { inviteMember } from '@/lib/workspace/workspace';
@@ -20,7 +20,7 @@ export const GET = withApiAuth(async (req, session, { params }: RouteParams) => 
     const { workspaceId } = await params;
 
     // Check if user has access to workspace
-    const membership = await prisma.workspaceMember.findFirst({
+    const membership = await prismaRead.workspaceMember.findFirst({
       where: {
         workspaceId,
         userId: session.user.id,
@@ -41,12 +41,12 @@ export const GET = withApiAuth(async (req, session, { params }: RouteParams) => 
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)));
 
     // Get total count for pagination
-    const total = await prisma.workspaceMember.count({
+    const total = await prismaRead.workspaceMember.count({
       where: { workspaceId },
     });
 
     // Get paginated members
-    const members = await prisma.workspaceMember.findMany({
+    const members = await prismaRead.workspaceMember.findMany({
       where: { workspaceId },
       include: {
         user: {

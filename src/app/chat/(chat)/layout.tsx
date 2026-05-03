@@ -12,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function ChatLayout({ children }: ChatLayoutProps): React.ReactElement {
-  return <div className="h-screen overflow-hidden">{children}</div>;
+  return <div className="h-full overflow-hidden">{children}</div>;
 }

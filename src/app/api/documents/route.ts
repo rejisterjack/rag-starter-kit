@@ -15,6 +15,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { parsePaginationParams, validatePaginationParams } from '@/lib/db/cursor-pagination';
 import {
   addRateLimitHeaders,
   checkApiRateLimit,
@@ -79,8 +80,16 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
     const workspaceIdFilter = searchParams.get('workspaceId') || workspaceId;
-    const limit = parseInt(searchParams.get('limit') ?? '100', 10);
-    const offset = parseInt(searchParams.get('offset') ?? '0', 10);
+
+    // Support both cursor and legacy offset pagination
+    const paginationParams = parsePaginationParams(searchParams, { limit: 100 });
+    const validation = validatePaginationParams(paginationParams);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { success: false, error: { code: 'VALIDATION_ERROR', message: validation.error } },
+        { status: 400 }
+      );
+    }
 
     // Step 4: Validate workspace access if filtering by workspace
     if (workspaceIdFilter) {
@@ -120,16 +129,19 @@ export async function GET(req: NextRequest) {
       where.status = status.toUpperCase();
     }
 
-    // Step 6: Fetch documents
+    // Step 6: Fetch documents with cursor-based pagination
+    const { limit: pageSize, cursor, sortOrder } = paginationParams;
+    const take = pageSize + 1; // +1 to detect next page
+
     const documents = await prisma.document.findMany({
       where,
       include: {
         chunks: { select: { id: true } },
         ingestionJob: { select: { progress: true, error: true } },
       },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      skip: offset,
+      orderBy: { createdAt: sortOrder },
+      take,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
 
     // Step 7: Format response
@@ -149,19 +161,21 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Step 8: Get total count for pagination
-    const totalCount = await prisma.document.count({ where });
+    // Step 8: Build pagination result
+    const hasNextPage = documents.length > pageSize;
+    const resultDocs = hasNextPage ? documents.slice(0, pageSize) : documents;
+    const lastDoc = resultDocs[resultDocs.length - 1];
 
-    // Step 9: Return response
+    const pagedFormatted = formattedDocuments.slice(0, resultDocs.length);
+
     const response = NextResponse.json({
       success: true,
       data: {
-        documents: formattedDocuments,
+        documents: pagedFormatted,
         pagination: {
-          total: totalCount,
-          limit,
-          offset,
-          hasMore: offset + documents.length < totalCount,
+          hasNextPage,
+          nextCursor: hasNextPage && lastDoc ? lastDoc.id : null,
+          limit: pageSize,
         },
       },
     });

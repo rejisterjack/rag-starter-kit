@@ -56,6 +56,11 @@ import {
   recordFailedAttempt,
   recordSuccessfulLogin,
 } from '@/lib/security/account-lockout';
+import {
+  isSessionRevoked,
+  revokeAllUserSessions,
+  trackSession,
+} from '@/lib/security/session-store';
 import { createDefaultWorkspace, getUserWorkspaces } from '@/lib/workspace/workspace';
 
 // =============================================================================
@@ -208,6 +213,11 @@ export const {
         // Record successful login (resets failed attempts)
         await recordSuccessfulLogin(email);
 
+        // Check if MFA is required
+        if (user.mfaEnabled) {
+          throw new Error(`MFA_REQUIRED:${user.id}`);
+        }
+
         // Log successful login
         await logAuditEvent({
           event: AuditEvent.USER_LOGIN,
@@ -233,6 +243,9 @@ export const {
         token.id = user.id;
         token.role = user.role ?? 'USER';
 
+        // Generate a unique JTI for session revocation tracking
+        token.jti = crypto.randomUUID();
+
         // Get user's first workspace for default
         const workspaces = await getUserWorkspaces(user.id ?? '');
         if (workspaces.length > 0) {
@@ -241,6 +254,11 @@ export const {
             (m: { userId: string }) => m.userId === user.id
           );
           token.workspaceRole = member?.role ?? 'MEMBER';
+        }
+
+        // Track the new session
+        if (user.id) {
+          await trackSession(user.id, token.jti as string).catch(() => {});
         }
       }
 
@@ -260,9 +278,19 @@ export const {
       return token;
     },
 
-    // Session Callback - Attach user data to session
+    // Session Callback - Attach user data to session and check revocation
     async session({ session, token }) {
       if (token && session.user) {
+        // Check if session has been revoked
+        const jti = typeof token.jti === 'string' ? token.jti : null;
+        if (jti) {
+          const revoked = await isSessionRevoked(jti).catch(() => false);
+          if (revoked) {
+            // Return an empty session to force re-authentication
+            return {} as typeof session;
+          }
+        }
+
         session.user.id = typeof token.id === 'string' ? token.id : '';
         session.user.role = typeof token.role === 'string' ? token.role : 'USER';
         session.user.workspaceId =
@@ -424,6 +452,9 @@ export async function changePassword({
       where: { id: userId },
       data: { password: hashedPassword },
     });
+
+    // Revoke all existing sessions so user must re-authenticate
+    await revokeAllUserSessions(userId);
 
     // Log password change
     await logAuditEvent({

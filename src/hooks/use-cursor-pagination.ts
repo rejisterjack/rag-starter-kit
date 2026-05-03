@@ -1,12 +1,17 @@
+/**
+ * Cursor-Based Pagination Hook — backed by TanStack Query useInfiniteQuery
+ */
+
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import type { CursorPaginationParams, CursorPaginationResult } from '@/lib/db/cursor-pagination';
 
 interface UseCursorPaginationOptions<T> {
+  queryKey: readonly unknown[];
   fetchPage: (params: CursorPaginationParams) => Promise<CursorPaginationResult<T>>;
   initialLimit?: number;
-  initialData?: T[];
 }
 
 interface UseCursorPaginationReturn<T> {
@@ -18,109 +23,60 @@ interface UseCursorPaginationReturn<T> {
   loadNextPage: () => Promise<void>;
   loadPreviousPage: () => Promise<void>;
   refresh: () => Promise<void>;
+  isFetchingNextPage: boolean;
 }
 
 export function useCursorPagination<T extends { id: string }>(
   options: UseCursorPaginationOptions<T>
 ): UseCursorPaginationReturn<T> {
-  const { fetchPage, initialLimit = 20 } = options;
+  const { queryKey, fetchPage, initialLimit = 20 } = options;
 
-  const [items, setItems] = useState<T[]>(options.initialData || []);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const [pagination, setPagination] = useState({
-    hasNextPage: false,
-    hasPreviousPage: false,
-    nextCursor: null as string | null,
-    previousCursor: null as string | null,
+  type PageParam = { cursor: string | null; direction: 'forward' | 'backward' };
+
+  const initialPageParam: PageParam = { cursor: null, direction: 'forward' };
+
+  const query = useInfiniteQuery({
+    queryKey,
+    queryFn: ({ pageParam }: { pageParam: PageParam }) =>
+      fetchPage({
+        limit: initialLimit,
+        cursor: pageParam.cursor,
+        direction: pageParam.direction,
+      }),
+    initialPageParam,
+    getNextPageParam: (lastPage): PageParam | undefined => {
+      if (!lastPage.pagination.hasNextPage) return undefined;
+      return { cursor: lastPage.pagination.nextCursor, direction: 'forward' };
+    },
+    getPreviousPageParam: (firstPage): PageParam | undefined => {
+      if (!firstPage.pagination.hasPreviousPage) return undefined;
+      return { cursor: firstPage.pagination.previousCursor, direction: 'backward' };
+    },
   });
 
-  const loadNextPage = useCallback(async () => {
-    if (isLoading || !pagination.hasNextPage) return;
+  const items = useMemo(() => {
+    if (!query.data?.pages) return [];
+    return query.data.pages.flatMap((page) => page.items);
+  }, [query.data?.pages]);
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const result = await fetchPage({
-        limit: initialLimit,
-        cursor: pagination.nextCursor,
-        direction: 'forward',
-      });
-
-      setItems((prev) => [...prev, ...result.items]);
-      setPagination({
-        hasNextPage: result.pagination.hasNextPage,
-        hasPreviousPage: true,
-        nextCursor: result.pagination.nextCursor,
-        previousCursor: result.pagination.previousCursor,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to load page'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchPage, initialLimit, isLoading, pagination.hasNextPage, pagination.nextCursor]);
-
-  const loadPreviousPage = useCallback(async () => {
-    if (isLoading || !pagination.hasPreviousPage) return;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const result = await fetchPage({
-        limit: initialLimit,
-        cursor: pagination.previousCursor,
-        direction: 'backward',
-      });
-
-      setItems((prev) => [...result.items, ...prev]);
-      setPagination({
-        hasNextPage: true,
-        hasPreviousPage: result.pagination.hasPreviousPage,
-        nextCursor: result.pagination.nextCursor,
-        previousCursor: result.pagination.previousCursor,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to load page'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchPage, initialLimit, isLoading, pagination.hasPreviousPage, pagination.previousCursor]);
-
-  const refresh = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const result = await fetchPage({
-        limit: initialLimit,
-        direction: 'forward',
-      });
-
-      setItems(result.items);
-      setPagination({
-        hasNextPage: result.pagination.hasNextPage,
-        hasPreviousPage: false,
-        nextCursor: result.pagination.nextCursor,
-        previousCursor: null,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to refresh'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchPage, initialLimit]);
+  const firstPage = query.data?.pages[0];
+  const lastPage = query.data?.pages[query.data.pages.length - 1];
 
   return {
     items,
-    isLoading,
-    error,
-    hasNextPage: pagination.hasNextPage,
-    hasPreviousPage: pagination.hasPreviousPage,
-    loadNextPage,
-    loadPreviousPage,
-    refresh,
+    isLoading: query.isLoading,
+    error: query.error,
+    hasNextPage: lastPage?.pagination.hasNextPage ?? false,
+    hasPreviousPage: firstPage?.pagination.hasPreviousPage ?? false,
+    loadNextPage: async () => {
+      await query.fetchNextPage();
+    },
+    loadPreviousPage: async () => {
+      await query.fetchPreviousPage();
+    },
+    refresh: async () => {
+      await query.refetch();
+    },
+    isFetchingNextPage: query.isFetchingNextPage,
   };
 }

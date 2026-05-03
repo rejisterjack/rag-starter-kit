@@ -1,11 +1,14 @@
 /**
- * React Hook for API Key Management
+ * React Hook for API Key Management — backed by TanStack Query
  */
 
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 import { toast } from 'sonner';
+import { ApiError, apiClient } from '@/lib/api-client';
+import { apiKeyKeys } from '@/lib/query-keys';
 
 export interface ApiKey {
   id: string;
@@ -50,159 +53,124 @@ export interface UseApiKeysReturn {
 }
 
 export function useApiKeys(workspaceId?: string): UseApiKeysReturn {
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchApiKeys = useCallback(async () => {
-    if (!workspaceId) {
-      setApiKeys([]);
-      return;
-    }
+  const query = useQuery({
+    queryKey: apiKeyKeys.list(workspaceId || ''),
+    queryFn: async () => {
+      if (!workspaceId) return [];
+      const data = await apiClient<{ data: { apiKeys: ApiKey[] } }>(
+        `/api/api-keys?workspaceId=${encodeURIComponent(workspaceId)}`
+      );
+      return (data.data?.apiKeys || []) as ApiKey[];
+    },
+    enabled: !!workspaceId,
+  });
 
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/api-keys?workspaceId=${encodeURIComponent(workspaceId)}`);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error?.message || 'Failed to fetch API keys');
-      }
-
-      const data = await response.json();
-      // Transform the API response to match our interface
-      const transformedKeys: ApiKey[] =
-        data.data?.apiKeys?.map((key: ApiKey) => ({
-          ...key,
-          createdAt: key.createdAt,
-          lastUsedAt: key.lastUsedAt,
-          expiresAt: key.expiresAt,
-        })) || [];
-      setApiKeys(transformedKeys);
-    } catch (err) {
-      const fetchError = err instanceof Error ? err : new Error(String(err));
-      setError(fetchError);
-      toast.error(fetchError.message || 'Failed to load API keys');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [workspaceId]);
-
-  useEffect(() => {
-    fetchApiKeys();
-  }, [fetchApiKeys]);
-
-  const createKey = useCallback(
-    async (data: {
+  const createKeyMutation = useMutation({
+    mutationFn: async (data: {
       name: string;
       description?: string;
       permissions: string[];
       expiresIn?: number;
-    }): Promise<{ key: string; keyId: string }> => {
-      if (!workspaceId) {
-        throw new Error('Workspace ID is required');
-      }
-
-      const response = await fetch('/api/api-keys', {
+    }) => {
+      if (!workspaceId) throw new Error('Workspace ID is required');
+      const result = await apiClient<{
+        data: { apiKey: { key: string; id: string } };
+      }>('/api/api-keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...data,
-          workspaceId,
-        }),
+        body: JSON.stringify({ ...data, workspaceId }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error?.message || 'Failed to create API key');
-      }
-
-      const result = await response.json();
-      await fetchApiKeys();
-      return {
-        key: result.data?.apiKey?.key,
-        keyId: result.data?.apiKey?.id,
-      };
+      return { key: result.data.apiKey.key, keyId: result.data.apiKey.id };
     },
-    [fetchApiKeys, workspaceId]
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: apiKeyKeys.list(workspaceId || '') });
+    },
+    onError: (error: Error) => {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to create API key');
+    },
+  });
 
-  const revokeKey = useCallback(
-    async (keyId: string) => {
-      const response = await fetch(`/api/api-keys/${keyId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error?.message || 'Failed to revoke API key');
-      }
-
-      await fetchApiKeys();
+  const revokeKeyMutation = useMutation({
+    mutationFn: async (keyId: string) => {
+      await apiClient(`/api/api-keys/${keyId}`, { method: 'DELETE' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: apiKeyKeys.list(workspaceId || '') });
       toast.success('API key revoked successfully');
     },
-    [fetchApiKeys]
-  );
-
-  const regenerateKey = useCallback(
-    async (keyId: string): Promise<{ key: string }> => {
-      const response = await fetch(`/api/api-keys/${keyId}/regenerate`, {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error?.message || 'Failed to regenerate API key');
-      }
-
-      const result = await response.json();
-      await fetchApiKeys();
-      toast.success('API key regenerated successfully');
-      return result;
+    onError: (error: Error) => {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to revoke API key');
     },
-    [fetchApiKeys]
-  );
+  });
 
-  const updateKey = useCallback(
-    async (keyId: string, data: { name?: string; permissions?: string[] }) => {
-      const response = await fetch(`/api/api-keys/${keyId}`, {
+  const regenerateKeyMutation = useMutation({
+    mutationFn: async (keyId: string): Promise<{ key: string }> => {
+      const result = await apiClient<{ data: { key: string } }>(
+        `/api/api-keys/${keyId}/regenerate`,
+        { method: 'POST' }
+      );
+      return { key: result.data.key };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: apiKeyKeys.list(workspaceId || '') });
+      toast.success('API key regenerated successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to regenerate API key');
+    },
+  });
+
+  const updateKeyMutation = useMutation({
+    mutationFn: async ({
+      keyId,
+      data,
+    }: {
+      keyId: string;
+      data: { name?: string; permissions?: string[] };
+    }) => {
+      await apiClient(`/api/api-keys/${keyId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error?.message || 'Failed to update API key');
-      }
-
-      await fetchApiKeys();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: apiKeyKeys.list(workspaceId || '') });
       toast.success('API key updated successfully');
     },
-    [fetchApiKeys]
-  );
+    onError: (error: Error) => {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to update API key');
+    },
+  });
 
   const getKeyUsage = useCallback(async (keyId: string, days = 30): Promise<ApiKeyUsage[]> => {
-    const response = await fetch(`/api/api-keys/${keyId}?days=${days}`);
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.error?.message || 'Failed to fetch key usage');
+    try {
+      const data = await apiClient<{ data: { usage: ApiKeyUsage[] } }>(
+        `/api/api-keys/${keyId}?days=${days}`
+      );
+      return data.data?.usage || [];
+    } catch (err) {
+      const error = err instanceof ApiError ? err : new Error(String(err));
+      throw error;
     }
-
-    const data = await response.json();
-    return data.data?.usage || [];
   }, []);
 
+  const refresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: apiKeyKeys.list(workspaceId || '') });
+  }, [queryClient, workspaceId]);
+
   return {
-    apiKeys,
-    isLoading,
-    error,
-    createKey,
-    revokeKey,
-    regenerateKey,
-    updateKey,
+    apiKeys: query.data || [],
+    isLoading: query.isLoading,
+    error: query.error,
+    createKey: (data) => createKeyMutation.mutateAsync(data),
+    revokeKey: (keyId) => revokeKeyMutation.mutateAsync(keyId),
+    regenerateKey: (keyId) => regenerateKeyMutation.mutateAsync(keyId),
+    updateKey: (keyId, data) => updateKeyMutation.mutateAsync({ keyId, data }),
     getKeyUsage,
-    refresh: fetchApiKeys,
+    refresh,
   };
 }
 

@@ -76,6 +76,7 @@ export const MessageInput = memo(function MessageInput({
     // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
+      textareaRef.current.focus();
     }
 
     // Release submit guard after a tick

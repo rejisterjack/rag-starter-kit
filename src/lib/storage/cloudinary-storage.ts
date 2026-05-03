@@ -6,6 +6,7 @@
  */
 
 import { logger } from '@/lib/logger';
+import { storageCircuitBreaker } from '@/lib/resilience/external-services';
 
 // =============================================================================
 // Configuration
@@ -46,52 +47,54 @@ export async function uploadFile(
   data: Buffer,
   options: UploadOptions = {}
 ): Promise<{ url: string; etag: string }> {
-  const { v2: cloudinary } = await import('cloudinary');
-  const config = getConfig();
+  return storageCircuitBreaker.execute(async () => {
+    const { v2: cloudinary } = await import('cloudinary');
+    const config = getConfig();
 
-  cloudinary.config({
-    cloud_name: config.cloudName,
-    api_key: config.apiKey,
-    api_secret: config.apiSecret,
-    secure: true,
+    cloudinary.config({
+      cloud_name: config.cloudName,
+      api_key: config.apiKey,
+      api_secret: config.apiSecret,
+      secure: true,
+    });
+
+    const resourceType = options.resourceType || inferResourceType(key, options.contentType);
+    const publicId = keyToPublicId(key);
+
+    const uploadStream = (data: Buffer): Promise<{ secure_url: string; etag?: string }> =>
+      new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            public_id: publicId,
+            resource_type: resourceType,
+            overwrite: true,
+            tags: options.metadata?.tags,
+            context: options.metadata
+              ? Object.fromEntries(
+                  Object.entries(options.metadata).map(([k, v]) => [`custom.${k}`, v])
+                )
+              : undefined,
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve({ secure_url: result?.secure_url ?? '', etag: result?.etag });
+          }
+        );
+        uploadStream.end(data);
+      });
+
+    try {
+      const result = await uploadStream(data);
+      logger.info('File uploaded to Cloudinary', { key, publicId, resourceType });
+      return { url: result.secure_url, etag: result.etag || '' };
+    } catch (error) {
+      logger.error('Cloudinary upload failed', {
+        key,
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
+      throw error;
+    }
   });
-
-  const resourceType = options.resourceType || inferResourceType(key, options.contentType);
-  const publicId = keyToPublicId(key);
-
-  const uploadStream = (data: Buffer): Promise<{ secure_url: string; etag?: string }> =>
-    new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          public_id: publicId,
-          resource_type: resourceType,
-          overwrite: true,
-          tags: options.metadata?.tags,
-          context: options.metadata
-            ? Object.fromEntries(
-                Object.entries(options.metadata).map(([k, v]) => [`custom.${k}`, v])
-              )
-            : undefined,
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve({ secure_url: result?.secure_url ?? '', etag: result?.etag });
-        }
-      );
-      uploadStream.end(data);
-    });
-
-  try {
-    const result = await uploadStream(data);
-    logger.info('File uploaded to Cloudinary', { key, publicId, resourceType });
-    return { url: result.secure_url, etag: result.etag || '' };
-  } catch (error) {
-    logger.error('Cloudinary upload failed', {
-      key,
-      error: error instanceof Error ? error.message : 'Unknown',
-    });
-    throw error;
-  }
 }
 
 // =============================================================================

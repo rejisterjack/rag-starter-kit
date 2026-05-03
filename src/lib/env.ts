@@ -21,6 +21,10 @@ const envSchema = z.object({
   NEXTAUTH_URL: z.string().url('NEXTAUTH_URL must be a valid URL'),
   OPENROUTER_API_KEY: z.string().min(1, 'OPENROUTER_API_KEY is required'),
 
+  // Optional AI provider keys
+  FIREWORKS_API_KEY: z.string().optional(),
+  GOOGLE_GENERATIVE_AI_API_KEY: z.string().optional(),
+
   // Optional variables with defaults
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
@@ -59,6 +63,12 @@ const envSchema = z.object({
   // Email (Resend for production, console fallback for dev)
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
+
+  // Read replica (optional — falls back to primary DATABASE_URL)
+  DATABASE_READ_REPLICA_URL: z.string().optional(),
+
+  // Database pool sizing
+  DB_POOL_MAX: z.coerce.number().optional(),
 
   // Encryption key for sensitive data at rest (min 32 chars)
   ENCRYPTION_MASTER_KEY: z.string().min(32).optional(),

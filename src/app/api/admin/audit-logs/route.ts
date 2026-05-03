@@ -16,8 +16,9 @@ export async function GET(req: Request): Promise<Response> {
     const { searchParams } = new URL(req.url);
 
     // Parse query parameters
-    const limit = parseInt(searchParams.get('limit') ?? '50', 10);
+    const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 100);
     const offset = parseInt(searchParams.get('offset') ?? '0', 10);
+    const cursor = searchParams.get('cursor') ?? undefined;
     const event = searchParams.get('event') as AuditEvent | undefined;
     const severity = searchParams.get('severity') as AuditSeverity | undefined;
     const userId = searchParams.get('userId') ?? undefined;
@@ -35,8 +36,9 @@ export async function GET(req: Request): Promise<Response> {
       severity && Object.values(AuditSeverity).includes(severity) ? severity : undefined;
 
     const result = await getAuditLogs({
-      limit: Math.min(limit, 100), // Cap at 100
-      offset,
+      limit,
+      offset: cursor ? undefined : offset,
+      cursor,
       event: validEvent,
       severity: validSeverity,
       userId,

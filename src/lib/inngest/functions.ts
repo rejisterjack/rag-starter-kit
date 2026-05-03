@@ -4,8 +4,12 @@
  * Handles document ingestion processing in the background
  */
 
+import { detectCostAnomalies } from '@/lib/billing/cost-monitor';
 import { prisma } from '@/lib/db';
+import { detachOldPartitions, ensurePartitions } from '@/lib/db/partition-manager';
 import { logger } from '@/lib/logger';
+import { dispatchAlert } from '@/lib/monitoring/alerting';
+import { detectAnomalies } from '@/lib/monitoring/anomaly-detector';
 import { ChunkingEngine } from '@/lib/rag/chunking';
 import { createEmbeddings } from '@/lib/rag/engine';
 import { scrapeURL } from '@/lib/rag/ingestion/parsers/url';
@@ -487,6 +491,69 @@ export const bulkIngestJob = inngest.createFunction(
 );
 
 // =============================================================================
+// Anomaly Detection Job
+// =============================================================================
+
+export const anomalyDetectionJob = inngest.createFunction(
+  {
+    id: 'anomaly-detection',
+    name: 'Run Anomaly Detection',
+  },
+  { cron: '*/5 * * * *' },
+  async ({ step }: { step: InngestContext['step'] }) => {
+    const alerts = await step.run('detect-anomalies', async () => {
+      return detectAnomalies();
+    });
+
+    if (alerts.length > 0) {
+      await step.run('dispatch-alerts', async () => {
+        await Promise.all(alerts.map((alert) => dispatchAlert(alert)));
+      });
+    }
+
+    return { checked: true, alertCount: alerts.length };
+  }
+);
+
+// =============================================================================
+// Cost Monitoring Job
+// =============================================================================
+
+export const costMonitoringJob = inngest.createFunction(
+  {
+    id: 'cost-monitoring',
+    name: 'Run Cost Anomaly Detection',
+  },
+  { cron: '*/15 * * * *' },
+  async ({ step }: { step: InngestContext['step'] }) => {
+    const anomalies = await step.run('detect-cost-anomalies', async () => {
+      return detectCostAnomalies();
+    });
+
+    if (anomalies.length > 0) {
+      await step.run('dispatch-cost-alerts', async () => {
+        for (const anomaly of anomalies) {
+          await dispatchAlert({
+            type: `cost_anomaly:${anomaly.severity === 'CRITICAL' ? 'critical' : 'warning'}`,
+            severity: anomaly.severity,
+            description: `Workspace ${anomaly.workspaceId}: ${anomaly.multiplier}x normal spend (${anomaly.currentHourTokens} tokens vs ${anomaly.hourlyAverage} avg)`,
+            workspaceId: anomaly.workspaceId,
+            metadata: {
+              currentHourTokens: anomaly.currentHourTokens,
+              hourlyAverage: anomaly.hourlyAverage,
+              multiplier: anomaly.multiplier,
+            },
+            detectedAt: new Date(),
+          });
+        }
+      });
+    }
+
+    return { checked: true, anomalyCount: anomalies.length };
+  }
+);
+
+// =============================================================================
 // Cleanup Job
 // =============================================================================
 
@@ -536,6 +603,29 @@ export const cleanupStaleJobs = inngest.createFunction(
     return {
       cleanedUpCount: staleJobs.length,
     };
+  }
+);
+
+// =============================================================================
+// Partition Maintenance Job
+// =============================================================================
+
+export const partitionMaintenanceJob = inngest.createFunction(
+  {
+    id: 'partition-maintenance',
+    name: 'Maintain Table Partitions',
+  },
+  { cron: '0 0 1 * *' }, // first of each month
+  async ({ step }: { step: InngestContext['step'] }) => {
+    await step.run('ensure-future-partitions', async () => {
+      await ensurePartitions(3);
+    });
+
+    const detached = await step.run('detach-old-partitions', async () => {
+      return detachOldPartitions(12); // keep 12 months of data
+    });
+
+    return { detached };
   }
 );
 

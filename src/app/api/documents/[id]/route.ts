@@ -12,7 +12,12 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { withApiAuth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { prisma, prismaRead } from '@/lib/db';
+import {
+  ConcurrentModificationError,
+  extractVersion,
+  updateWithVersion,
+} from '@/lib/db/optimistic-locking';
 import { logger } from '@/lib/logger';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
@@ -35,7 +40,7 @@ export const GET = withApiAuth(
       const { id: documentId } = await params;
 
       // Step 2: Fetch document with chunks
-      const document = await prisma.document.findUnique({
+      const document = await prismaRead.document.findUnique({
         where: { id: documentId },
         include: {
           chunks: {
@@ -201,18 +206,41 @@ export const PATCH = withApiAuth(
         updateData.metadata = { ...currentMetadata, ...body.metadata };
       }
 
-      // Step 6: Update document
-      const updatedDocument = await prisma.document.update({
-        where: { id: documentId },
-        data: updateData,
-      });
+      // Step 6: Update document (with optimistic locking if If-Match provided)
+      let updatedDocument: Record<string, unknown>;
+      const expectedVersion = extractVersion(req.headers);
+      try {
+        if (expectedVersion !== null) {
+          updatedDocument = await updateWithVersion(
+            'document',
+            documentId,
+            updateData,
+            expectedVersion
+          );
+        } else {
+          updatedDocument = await prisma.document.update({
+            where: { id: documentId },
+            data: updateData,
+          });
+        }
+      } catch (e) {
+        if (e instanceof ConcurrentModificationError) {
+          return NextResponse.json(
+            { success: false, error: { code: 'CONFLICT', message: e.message } },
+            { status: 409 }
+          );
+        }
+        throw e;
+      }
 
+      const result = updatedDocument as Record<string, unknown>;
       return NextResponse.json({
         success: true,
         data: {
-          id: updatedDocument.id,
-          name: updatedDocument.name,
-          updatedAt: updatedDocument.updatedAt.toISOString(),
+          id: result.id,
+          name: result.name,
+          version: result.version,
+          updatedAt: (result.updatedAt as Date).toISOString(),
         },
       });
     } catch (error) {

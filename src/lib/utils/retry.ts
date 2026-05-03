@@ -132,6 +132,8 @@ export interface CircuitBreakerOptions {
   resetTimeoutMs?: number;
   /** Half-open request count for testing */
   halfOpenMaxCalls?: number;
+  /** Called when the circuit transitions to OPEN state */
+  onOpen?: () => void;
 }
 
 type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
@@ -195,6 +197,7 @@ export class CircuitBreaker {
 
     if (this.failures >= (this.options.failureThreshold ?? 5)) {
       this.state = 'OPEN';
+      this.options.onOpen?.();
     }
   }
 

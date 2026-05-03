@@ -7,8 +7,6 @@
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { v4 as uuidv4 } from 'uuid';
-
 import { logger } from '@/lib/logger';
 
 import type { StorageConfig, StoredFile } from './types';
@@ -63,7 +61,7 @@ export class ExportStorage {
       expiresInHours?: number;
     }
   ): Promise<StoredFile> {
-    const key = uuidv4();
+    const key = crypto.randomUUID();
     const filename = options.filename ?? `${key}.${this.getExtension(options.mimeType)}`;
     const expiresAt = new Date(
       Date.now() + (options.expiresInHours ?? DEFAULT_EXPIRY_HOURS) * 60 * 60 * 1000

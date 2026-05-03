@@ -10,6 +10,7 @@ import { AgentThinkingIndicator } from './agent-thinking-indicator';
 import { type Message, MessageItem } from './message-item';
 import { StreamingMessage } from './streaming-message';
 import { type ToolCall, ToolResultRenderer } from './tool-result-renderer';
+import { VirtualizedMessageList } from './virtualized-message-list';
 
 interface MessageListProps {
   messages: Message[];
@@ -59,10 +60,18 @@ export function MessageList({
   const [showScrollButton, setShowScrollButton] = React.useState(false);
 
   // Auto-scroll to bottom on new messages / streaming
-  // biome-ignore lint/correctness/useExhaustiveDependencies: messages.length and streamingContent.length are intentional triggers
+  // Uses instant scroll during streaming to avoid jank from competing smooth animations.
+  const scrollAnchorRef = useRef<HTMLDivElement>(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — trigger scroll on message count and streaming content changes
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length, streamingContent.length]);
+    const anchor = scrollAnchorRef.current ?? endRef.current;
+    if (!anchor) return;
+
+    // Instant scroll during streaming (avoids laggy smooth-scroll pileup),
+    // smooth scroll when a new message is added.
+    anchor.scrollIntoView({ behavior: isStreaming ? 'instant' : 'smooth' });
+  }, [messages.length, streamingContent.length, isStreaming]);
 
   // Observe the sentinel to show/hide scroll-to-bottom button
   useEffect(() => {
@@ -80,11 +89,13 @@ export function MessageList({
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
+  const shouldVirtualize = messages.length > 50;
+
   return (
     <div className={cn('relative', className)}>
       <div className="flex flex-col py-4 px-2">
         {/* Load more button */}
-        {hasMore && (
+        {hasMore && !shouldVirtualize && (
           <div className="flex justify-center py-2 mb-2">
             <Button
               variant="outline"
@@ -114,30 +125,61 @@ export function MessageList({
           </div>
         )}
 
-        {/* Messages */}
-        {messages.map((message, index) => (
-          <div key={message.id}>
-            <MessageItem
-              message={message}
-              onEdit={onEditMessage}
-              onDelete={onDeleteMessage}
-              onCitationClick={onCitationClick}
-              isLastMessage={index === messages.length - 1}
-              isStreaming={isStreaming}
-              onRegenerate={onRegenerate}
-              onFeedback={onFeedback}
-            />
-            {/* Render tool call results inline for agent assistant messages */}
-            {isAgentMode && message.role === 'assistant' && (
-              <div className="mx-4 mt-1 mb-2">
-                <ToolResultRenderer
-                  content={message.content}
-                  toolCalls={(message as Message & { toolCalls?: ToolCall[] }).toolCalls}
+        {/* Messages — virtualized when > 50 */}
+        {shouldVirtualize ? (
+          <VirtualizedMessageList
+            messages={messages}
+            isLoading={isLoading}
+            hasMore={hasMore}
+            onLoadMore={onLoadMore}
+            renderMessage={(message, index) => (
+              <>
+                <MessageItem
+                  message={message}
+                  onEdit={onEditMessage}
+                  onDelete={onDeleteMessage}
+                  onCitationClick={onCitationClick}
+                  isLastMessage={index === messages.length - 1}
+                  isStreaming={isStreaming}
+                  onRegenerate={onRegenerate}
+                  onFeedback={onFeedback}
                 />
-              </div>
+                {isAgentMode && message.role === 'assistant' && (
+                  <div className="mx-4 mt-1 mb-2">
+                    <ToolResultRenderer
+                      content={message.content}
+                      toolCalls={(message as Message & { toolCalls?: ToolCall[] }).toolCalls}
+                    />
+                  </div>
+                )}
+              </>
             )}
-          </div>
-        ))}
+            className="h-[calc(100vh-300px)]"
+          />
+        ) : (
+          messages.map((message, index) => (
+            <div key={message.id}>
+              <MessageItem
+                message={message}
+                onEdit={onEditMessage}
+                onDelete={onDeleteMessage}
+                onCitationClick={onCitationClick}
+                isLastMessage={index === messages.length - 1}
+                isStreaming={isStreaming}
+                onRegenerate={onRegenerate}
+                onFeedback={onFeedback}
+              />
+              {isAgentMode && message.role === 'assistant' && (
+                <div className="mx-4 mt-1 mb-2">
+                  <ToolResultRenderer
+                    content={message.content}
+                    toolCalls={(message as Message & { toolCalls?: ToolCall[] }).toolCalls}
+                  />
+                </div>
+              )}
+            </div>
+          ))
+        )}
 
         {/* Agent thinking indicator */}
         {isAgentMode && isStreaming && agentThinking && (
@@ -154,6 +196,9 @@ export function MessageList({
             <StreamingMessage content={streamingContent} onCancel={onCancelStreaming} />
           </div>
         )}
+
+        {/* Scroll anchor — scrolls here during streaming */}
+        {!shouldVirtualize && <div ref={scrollAnchorRef} className="h-px" />}
 
         {/* Scroll sentinel */}
         <div ref={endRef} className="h-1" />

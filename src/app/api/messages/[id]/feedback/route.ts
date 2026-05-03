@@ -9,7 +9,7 @@ import { headers } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth, withApiAuth } from '@/lib/auth';
-import { prisma } from '@/lib/db/client';
+import { prisma, prismaRead } from '@/lib/db/client';
 import { logger } from '@/lib/logger';
 import { checkApiRateLimit } from '@/lib/security/rate-limiter';
 
@@ -160,7 +160,7 @@ export const GET = withApiAuth(
       const { id: messageId } = await params;
 
       // Verify message exists and user has access
-      const message = await prisma.message.findUnique({
+      const message = await prismaRead.message.findUnique({
         where: { id: messageId },
         include: {
           chat: {
@@ -185,7 +185,7 @@ export const GET = withApiAuth(
       }
 
       // Get feedback statistics
-      const feedbacks = await prisma.messageFeedback.findMany({
+      const feedbacks = await prismaRead.messageFeedback.findMany({
         where: { messageId },
         select: {
           id: true,

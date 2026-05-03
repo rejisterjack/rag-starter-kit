@@ -8,7 +8,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withApiAuth } from '@/lib/auth';
-import { prisma } from '@/lib/db/client';
+import { prisma, prismaRead } from '@/lib/db/client';
 import { logger } from '@/lib/logger';
 import { checkApiRateLimit } from '@/lib/security/rate-limiter';
 
@@ -142,7 +142,7 @@ export const GET = withApiAuth(
       const userId = session.user.id;
 
       // Verify chat exists and user owns it
-      const chat = await prisma.chat.findUnique({
+      const chat = await prismaRead.chat.findUnique({
         where: { id: chatId },
         select: { id: true, userId: true },
       });
@@ -159,7 +159,7 @@ export const GET = withApiAuth(
       }
 
       // Get share settings
-      const share = await prisma.chatShare.findUnique({
+      const share = await prismaRead.chatShare.findUnique({
         where: { chatId },
       });
 

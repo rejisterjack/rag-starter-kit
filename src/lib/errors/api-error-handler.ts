@@ -11,6 +11,7 @@
 
 import { NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
 import { ERROR_CODES, type ErrorCode } from './error-codes';
 
@@ -290,8 +291,7 @@ function handleUnknownError(
       success: false,
       error: {
         code: ERROR_CODES.API_UNKNOWN_ERROR,
-        message:
-          process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : errorMessage,
+        message: env.NODE_ENV === 'production' ? 'An unexpected error occurred' : errorMessage,
         requestId,
       },
     },

@@ -9,7 +9,7 @@
 // ---------------------------------------------------------------------------
 // Re-export the singleton Prisma client
 // ---------------------------------------------------------------------------
-export { type PrismaClient, prisma } from './client';
+export { type PrismaClient, prisma, prismaRead } from './client';
 
 import type { Prisma } from '@/generated/prisma/client';
 import type { Chat, Document, DocumentChunk, IngestionJob, Message } from '@/types';

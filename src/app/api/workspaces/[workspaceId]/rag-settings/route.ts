@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withApiAuth } from '@/lib/auth';
-import { prisma } from '@/lib/db/client';
+import { prisma, prismaRead } from '@/lib/db/client';
 import { logger } from '@/lib/logger';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 import { getWorkspaceResourceUsage } from '@/lib/workspace/resource-limits';
@@ -48,7 +48,7 @@ export const GET = withApiAuth(async (_req, session, { params }: RouteParams) =>
     }
 
     // Get workspace settings
-    const workspace = await prisma.workspace.findUnique({
+    const workspace = await prismaRead.workspace.findUnique({
       where: { id: workspaceId },
       select: { settings: true, llmProvider: true, llmModel: true },
     });

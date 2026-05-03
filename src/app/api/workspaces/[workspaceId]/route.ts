@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 
 import { withApiAuth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { prismaRead } from '@/lib/db';
+import {
+  ConcurrentModificationError,
+  extractVersion,
+  updateWithVersion,
+} from '@/lib/db/optimistic-locking';
 import { logger } from '@/lib/logger';
 import { canManageWorkspace } from '@/lib/workspace/permissions';
 import { deleteWorkspace, getWorkspaceById, updateWorkspace } from '@/lib/workspace/workspace';
@@ -19,7 +24,7 @@ export const GET = withApiAuth(async (_req, session, { params }: RouteParams) =>
     const { workspaceId } = await params;
 
     // Check if user has access to workspace
-    const membership = await prisma.workspaceMember.findFirst({
+    const membership = await prismaRead.workspaceMember.findFirst({
       where: {
         workspaceId,
         userId: session.user.id,
@@ -126,21 +131,45 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
       throw error;
     }
 
-    // Update workspace
-    const workspace = await updateWorkspace(workspaceId, validatedInput);
+    // Update workspace (with optimistic locking if If-Match provided)
+    let workspace: Record<string, unknown>;
+    const expectedVersion = extractVersion(req.headers);
+    try {
+      if (expectedVersion !== null) {
+        const updateData: Record<string, unknown> = {};
+        if (validatedInput.name !== undefined) updateData.name = validatedInput.name;
+        if (validatedInput.description !== undefined)
+          updateData.description = validatedInput.description;
+        if (validatedInput.avatar !== undefined) updateData.logoUrl = validatedInput.avatar;
+        if (validatedInput.settings !== undefined) updateData.settings = validatedInput.settings;
+        workspace = await updateWithVersion('workspace', workspaceId, updateData, expectedVersion);
+      } else {
+        workspace = await updateWorkspace(workspaceId, validatedInput);
+      }
+    } catch (e) {
+      if (e instanceof ConcurrentModificationError) {
+        return NextResponse.json(
+          { error: { code: 'CONFLICT', message: e.message } },
+          { status: 409 }
+        );
+      }
+      throw e;
+    }
 
+    const wsResult = workspace as Record<string, unknown>;
     return NextResponse.json({
       success: true,
       data: {
         workspace: {
-          id: workspace.id,
-          name: workspace.name,
-          slug: workspace.slug,
-          description: workspace.description,
-          avatar: workspace.avatar,
-          plan: workspace.plan,
-          settings: workspace.settings,
-          updatedAt: workspace.updatedAt.toISOString(),
+          id: wsResult.id,
+          name: wsResult.name,
+          slug: wsResult.slug,
+          description: wsResult.description,
+          avatar: wsResult.logoUrl ?? wsResult.avatar,
+          plan: wsResult.plan,
+          settings: wsResult.settings,
+          version: wsResult.version,
+          updatedAt: (wsResult.updatedAt as Date).toISOString(),
         },
       },
     });

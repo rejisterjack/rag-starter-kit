@@ -2,6 +2,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { analyticsKeys } from '@/lib/query-keys';
 
 // Types
 export interface AnalyticsFilter {
@@ -149,15 +150,8 @@ async function fetchRealtimeEvents(): Promise<RealtimeEvent[]> {
   return response.json();
 }
 
-// Query Keys
-export const analyticsKeys = {
-  all: ['analytics'] as const,
-  overview: (filter: AnalyticsFilter) => [...analyticsKeys.all, 'overview', filter] as const,
-  metrics: (filter: AnalyticsFilter) => [...analyticsKeys.all, 'metrics', filter] as const,
-  timeSeries: (filter: AnalyticsFilter) => [...analyticsKeys.all, 'timeseries', filter] as const,
-  realtime: () => [...analyticsKeys.all, 'realtime'] as const,
-  events: () => [...analyticsKeys.all, 'events'] as const,
-};
+// Re-export analytics keys for convenience
+export { analyticsKeys };
 
 // Hooks
 export interface UseAnalyticsOptions {
@@ -170,7 +164,7 @@ export function useAnalyticsOverview(options: UseAnalyticsOptions = {}) {
   const { filter = {}, refreshInterval = 60000, enabled = true } = options;
 
   return useQuery({
-    queryKey: analyticsKeys.overview(filter),
+    queryKey: analyticsKeys.overview(filter as Record<string, unknown>),
     queryFn: () => fetchAnalyticsOverview(filter),
     refetchInterval: refreshInterval,
     enabled,
@@ -181,7 +175,7 @@ export function useAnalyticsMetrics(options: UseAnalyticsOptions = {}) {
   const { filter = {}, refreshInterval = 60000, enabled = true } = options;
 
   return useQuery({
-    queryKey: analyticsKeys.metrics(filter),
+    queryKey: analyticsKeys.metrics(filter as Record<string, unknown>),
     queryFn: () => fetchMetrics(filter),
     refetchInterval: refreshInterval,
     enabled,
@@ -192,7 +186,7 @@ export function useAnalyticsTimeSeries(options: UseAnalyticsOptions = {}) {
   const { filter = {}, refreshInterval = 60000, enabled = true } = options;
 
   return useQuery({
-    queryKey: analyticsKeys.timeSeries(filter),
+    queryKey: analyticsKeys.timeSeries(filter as Record<string, unknown>),
     queryFn: () => fetchTimeSeries(filter),
     refetchInterval: refreshInterval,
     enabled,
