@@ -75,7 +75,7 @@ export async function uploadFile(
         },
         (error, result) => {
           if (error) reject(error);
-          else resolve({ secure_url: result?.secure_url, etag: result?.etag });
+          else resolve({ secure_url: result?.secure_url ?? '', etag: result?.etag });
         }
       );
       uploadStream.end(data);

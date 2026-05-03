@@ -11,25 +11,25 @@
   --color-ring: hsl(var(--ring));
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
-  
+
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
-  
+
   --color-secondary: hsl(var(--secondary));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
-  
+
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
-  
+
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));
-  
+
   --color-accent: hsl(var(--accent));
   --color-accent-foreground: hsl(var(--accent-foreground));
-  
+
   --color-popover: hsl(var(--popover));
   --color-popover-foreground: hsl(var(--popover-foreground));
-  
+
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
@@ -37,13 +37,13 @@
   --color-glass: hsl(var(--glass));
   --color-glass-border: hsl(var(--glass-border));
   --color-glass-highlight: hsl(var(--glass-highlight));
-  
+
   /* Border Radius for softer, rounder Apple feel */
   --radius-xl: calc(var(--radius) + 12px);
   --radius-lg: calc(var(--radius) + 4px);
   --radius-md: var(--radius);
   --radius-sm: calc(var(--radius) - 4px);
-  
+
   /* Font Family - Ensure we rely on System fonts if Geist fails */
   --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -97,28 +97,27 @@
     backdrop-filter: blur(12px) saturate(180%);
     -webkit-backdrop-filter: blur(12px) saturate(180%);
     border: 1px solid hsl(var(--glass-border));
-    box-shadow: 
+    box-shadow:
       0 4px 24px -1px rgba(0, 0, 0, 0.1),
       inset 0 1px 0 0 hsl(var(--glass-highlight));
   }
 
   .glass-heavy {
     background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--background) / 0.3) 100%);
-    backdrop-filter: blur(32px) saturate(200%);
-    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
     border: 1px solid hsl(var(--glass-border));
-    box-shadow: 
+    box-shadow:
       0 8px 32px -4px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 0 hsl(var(--glass-highlight)),
-      inset 0 0 20px 0 hsl(var(--glass-highlight));
+      inset 0 1px 0 0 hsl(var(--glass-highlight));
   }
-  
+
   .glass-panel {
     background: hsl(var(--glass) / 0.7);
-    backdrop-filter: blur(24px) saturate(150%);
-    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    backdrop-filter: blur(12px) saturate(130%);
+    -webkit-backdrop-filter: blur(12px) saturate(130%);
     border: 1px solid hsl(var(--glass-border));
-    box-shadow: 0 12px 48px -12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.25);
   }
 
   /* Vibrant Backgrounds for visionOS feel */
@@ -132,37 +131,38 @@
     overflow: hidden;
     background: hsl(var(--background));
   }
-  
+
   .vibrant-bg::before,
   .vibrant-bg::after {
     content: '';
     position: absolute;
     border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.5;
-    animation: float 20s infinite ease-in-out alternate;
+    filter: blur(100px);
+    opacity: 0.35;
+    will-change: transform;
+    animation: float 30s infinite ease-in-out alternate;
   }
 
   .vibrant-bg::before {
     top: -10%;
     left: -10%;
-    width: 70vw;
-    height: 70vw;
-    background: radial-gradient(circle, hsl(var(--primary) / 0.3), transparent 70%);
+    width: 60vw;
+    height: 60vw;
+    background: radial-gradient(circle, hsl(var(--primary) / 0.25), transparent 70%);
   }
 
   .vibrant-bg::after {
     bottom: -20%;
     right: -10%;
-    width: 60vw;
-    height: 60vw;
-    background: radial-gradient(circle, hsl(320 100% 60% / 0.2), transparent 70%);
-    animation-delay: -10s;
+    width: 50vw;
+    height: 50vw;
+    background: radial-gradient(circle, hsl(320 100% 60% / 0.15), transparent 70%);
+    animation-delay: -15s;
   }
 
   @keyframes float {
     0% { transform: translate(0, 0) scale(1); }
-    100% { transform: translate(5%, 5%) scale(1.1); }
+    100% { transform: translate(3%, 3%) scale(1.05); }
   }
 
   .text-gradient {

@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { History, Menu, PanelLeft, Plus, Settings } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { AgentModeToggleCompact } from '@/components/agent/agent-mode-toggle';
 import { Button } from '@/components/ui/button';
 import {
@@ -60,7 +60,7 @@ interface ChatContainerProps {
   className?: string;
 }
 
-export function ChatContainer({
+export const ChatContainer = memo(function ChatContainer({
   messages,
   sources,
   isStreaming,
@@ -118,7 +118,7 @@ export function ChatContainer({
   return (
     <div
       className={cn(
-        'flex h-screen w-full p-4 gap-4 overflow-hidden relative text-foreground selection:bg-primary/30',
+        'flex h-full w-full p-2 gap-2 overflow-hidden relative text-foreground selection:bg-primary/30',
         className
       )}
     >
@@ -145,25 +145,20 @@ export function ChatContainer({
 
       {/* Desktop sidebar as a floating glass panel */}
       {sidebar && (
-        <motion.div
-          initial={{ opacity: 0, x: -20, scale: 0.95 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
-          transition={{ duration: 0.5, type: 'spring', bounce: 0.3 }}
-          className="hidden lg:flex w-[320px] flex-col relative z-20 glass-heavy rounded-[2rem] overflow-hidden border border-white/10 shadow-[0_8px_32px_-4px_rgba(0,0,0,0.3)]"
+        <div
+          className="hidden lg:flex w-[280px] shrink-0 flex-col h-full relative z-20 glass-heavy rounded-2xl overflow-hidden border border-white/10 shadow-[0_8px_32px_-4px_rgba(0,0,0,0.3)]"
         >
           {sidebar}
-        </motion.div>
+        </div>
       )}
 
-      {/* Main chat area as the central floating panel */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.98, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.6, type: 'spring', bounce: 0.3, delay: 0.1 }}
-        className="flex flex-1 flex-col min-w-0 relative z-10 glass-heavy rounded-[2rem] overflow-hidden border border-white/10 shadow-[0_12px_48px_-12px_rgba(0,0,0,0.4)]"
+      {/* Main chat area — uses grid for strict row sizing */}
+      <div
+        className="flex-1 min-w-0 h-full grid relative z-10 glass-heavy rounded-2xl overflow-hidden border border-white/10 shadow-[0_12px_48px_-12px_rgba(0,0,0,0.4)]"
+        style={{ gridTemplateRows: 'auto 1fr auto' }}
       >
-        {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-border/20 px-6 bg-white/5 backdrop-blur-xl relative z-30">
+        {/* Header — row 1 */}
+        <header className="flex h-12 items-center justify-between border-b border-border/20 px-4 bg-white/5 backdrop-blur-sm relative z-30">
           <div className="flex items-center gap-2 lg:hidden">
             <div className="w-12" /> {/* Spacer for mobile menu button */}
           </div>
@@ -187,17 +182,15 @@ export function ChatContainer({
             </TooltipProvider>
 
             {onNewChat && (
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="gap-2 rounded-full shadow-lg shadow-primary/30 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-5"
-                  onClick={onNewChat}
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">New Chat</span>
-                </Button>
-              </motion.div>
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-1.5 rounded-full shadow-lg shadow-primary/30 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-4 h-8 text-xs"
+                onClick={onNewChat}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">New Chat</span>
+              </Button>
             )}
             {/* Model Picker */}
             <ModelPicker
@@ -274,83 +267,34 @@ export function ChatContainer({
           </div>
         </header>
 
-        {/* Chat content bounds */}
-        <div className="flex flex-1 overflow-hidden relative">
-          <div className="flex flex-1 flex-col min-w-0 bg-transparent h-full relative">
-            {/* The main scrollable area for messages or empty state */}
-            <div className="flex-1 overflow-y-auto scrollbar-thin">
-              <AnimatePresence mode="wait">
-                {hasMessages ? (
-                  <motion.div
-                    key="messages"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="flex-1 pb-32"
-                  >
-                    <MessageList
-                      messages={messages}
-                      isStreaming={isStreaming}
-                      streamingContent={streamingContent}
-                      hasMore={hasMore}
-                      onLoadMore={onLoadMore}
-                      onEditMessage={onEditMessage}
-                      onDeleteMessage={onDeleteMessage}
-                      onCitationClick={handleCitationClick}
-                      onCancelStreaming={onCancelStreaming}
-                      onRegenerate={onRegenerate}
-                      onFeedback={onFeedback}
-                      isAgentMode={isAgentMode}
-                      agentThinking={isAgentMode && isStreaming}
-                    />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="empty"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="h-full flex flex-col items-center justify-center p-8"
-                  >
-                    <div className="flex-1 flex items-center justify-center w-full">
-                      <EmptyState
-                        onSuggestionClick={onSendMessage}
-                        onUploadClick={onUploadClick}
-                        onFilesDrop={onFilesDrop}
-                      />
-                    </div>
-                    {/* Input always visible on empty state */}
-                    <div className="w-full max-w-3xl pb-6">
-                      <div className="glass-panel rounded-3xl p-2 shadow-2xl border border-white/20">
-                        <MessageInput
-                          onSend={onSendMessage}
-                          isLoading={isLoading || isStreaming}
-                          disabled={isLoading}
-                          placeholder="Ask anything... or try a suggestion above"
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Floating Input Area anchored to the bottom — only when messages exist */}
-            {hasMessages && (
-              <motion.div
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-4xl px-4 z-40"
-              >
-                <div className="glass-panel rounded-3xl p-2 shadow-2xl border border-white/20">
-                  <MessageInput
-                    onSend={onSendMessage}
-                    isLoading={isLoading || isStreaming}
-                    disabled={isLoading}
-                  />
-                </div>
-              </motion.div>
+        {/* Messages area — row 2 (takes all remaining space, scrolls internally) */}
+        <div className="overflow-hidden relative flex h-full min-h-0">
+          {/* Messages column */}
+          <div className="flex-1 overflow-y-auto scrollbar-thin">
+            {hasMessages ? (
+              <MessageList
+                messages={messages}
+                isStreaming={isStreaming}
+                streamingContent={streamingContent}
+                hasMore={hasMore}
+                onLoadMore={onLoadMore}
+                onEditMessage={onEditMessage}
+                onDeleteMessage={onDeleteMessage}
+                onCitationClick={handleCitationClick}
+                onCancelStreaming={onCancelStreaming}
+                onRegenerate={onRegenerate}
+                onFeedback={onFeedback}
+                isAgentMode={isAgentMode}
+                agentThinking={isAgentMode && isStreaming}
+              />
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center p-4">
+                <EmptyState
+                  onSuggestionClick={onSendMessage}
+                  onUploadClick={onUploadClick}
+                  onFilesDrop={onFilesDrop}
+                />
+              </div>
             )}
           </div>
 
@@ -358,11 +302,11 @@ export function ChatContainer({
           <AnimatePresence>
             {!isSourcesInlineCollapsed && (
               <motion.div
-                initial={{ width: 0, opacity: 0, x: 50 }}
-                animate={{ width: 380, opacity: 1, x: 0 }}
-                exit={{ width: 0, opacity: 0, x: 50 }}
-                transition={{ duration: 0.4, type: 'spring', bounce: 0.2 }}
-                className="hidden md:block border-l border-white/10 bg-white/5 backdrop-blur-sm z-20"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 340, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="hidden md:block border-l border-white/10 bg-white/5 backdrop-blur-sm z-20 overflow-y-auto"
               >
                 <InlineSourcesPanel
                   sources={sources}
@@ -377,7 +321,18 @@ export function ChatContainer({
             )}
           </AnimatePresence>
         </div>
-      </motion.div>
+
+        {/* Input area — row 3 (auto height, always visible) */}
+        <div className="flex justify-center px-3 py-2 border-t border-white/10">
+          <MessageInput
+            onSend={onSendMessage}
+            isLoading={isLoading || isStreaming}
+            disabled={isLoading}
+            placeholder={hasMessages ? 'Send a message...' : 'Ask anything... or try a suggestion above'}
+            className="w-full max-w-4xl"
+          />
+        </div>
+      </div>
 
       {/* Mobile Sources Modal */}
       <SourcesPanel
@@ -398,4 +353,4 @@ export function ChatContainer({
       />
     </div>
   );
-}
+});

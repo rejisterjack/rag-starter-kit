@@ -1,6 +1,5 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
 import { FileText, Filter, FolderOpen, Search, Trash2, Upload } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -92,11 +91,11 @@ export const DocumentList = memo(function DocumentList({
       )}
     >
       {/* Header */}
-      <div className="border-b border-border/50 p-5">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-semibold flex items-center gap-2 text-foreground tracking-tight">
-            <div className="rounded-md bg-primary/10 p-1.5 ring-1 ring-primary/20">
-              <FolderOpen className="h-5 w-5 text-primary" />
+      <div className="border-b border-border/50 p-3">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold flex items-center gap-2 text-foreground tracking-tight text-sm">
+            <div className="rounded-md bg-primary/10 p-1 ring-1 ring-primary/20">
+              <FolderOpen className="h-4 w-4 text-primary" />
             </div>
             Knowledge Base
           </h2>
@@ -107,17 +106,17 @@ export const DocumentList = memo(function DocumentList({
 
         {/* Search */}
         <div className="relative group">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
           <Input
             placeholder="Search documents..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-foreground/5 border-foreground/10 focus-visible:ring-primary/50 transition-all rounded-xl"
+            className="pl-8 h-8 text-sm bg-foreground/5 border-foreground/10 focus-visible:ring-primary/50 transition-all rounded-lg"
           />
         </div>
 
         {/* Filter and actions */}
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-2 flex items-center justify-between">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -193,23 +192,19 @@ export const DocumentList = memo(function DocumentList({
 
       {/* Document list */}
       <ScrollArea className="flex-1 scrollbar-thin">
-        <div className="p-4 space-y-3">
+        <div className="p-2 space-y-2">
           {isLoading ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+            <div className="space-y-3">
               <DocumentSkeleton />
               <DocumentSkeleton />
               <DocumentSkeleton />
-            </motion.div>
+            </div>
           ) : filteredDocuments.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground"
-            >
-              <div className="mb-4 rounded-full bg-foreground/5 p-4 ring-1 ring-foreground/10">
-                <FileText className="h-8 w-8 text-muted-foreground/50" />
+            <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+              <div className="mb-3 rounded-full bg-foreground/5 p-3 ring-1 ring-foreground/10">
+                <FileText className="h-6 w-6 text-muted-foreground/50" />
               </div>
-              <p className="text-sm font-medium">
+              <p className="text-xs font-medium">
                 {searchQuery || statusFilter.length > 0
                   ? 'No documents match your filters'
                   : 'No documents uploaded yet'}
@@ -218,61 +213,39 @@ export const DocumentList = memo(function DocumentList({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="mt-5 rounded-lg border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
+                  className="mt-3 rounded-lg border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-colors text-xs"
                   onClick={onUpload}
                 >
-                  <Upload className="mr-2 h-4 w-4" />
+                  <Upload className="mr-1.5 h-3.5 w-3.5" />
                   Upload your first document
                 </Button>
               )}
-            </motion.div>
+            </div>
           ) : (
-            <AnimatePresence mode="popLayout">
-              {filteredDocuments.map((doc, index) => (
-                <motion.div
+            filteredDocuments.map((doc) => (
+                <DocumentCard
                   key={doc.id}
-                  layout
-                  initial={{ opacity: 0, x: -20, scale: 0.95 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                  transition={{ duration: 0.3, delay: index * 0.05, ease: 'easeOut' }}
-                >
-                  <DocumentCard
-                    document={doc}
-                    onDelete={onDelete}
-                    onReingest={onReingest}
-                    onPreview={onPreview}
-                    isSelected={doc.id === selectedDocumentId}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
+                  document={doc}
+                  onDelete={onDelete}
+                  onReingest={onReingest}
+                  onPreview={onPreview}
+                  isSelected={doc.id === selectedDocumentId}
+                />
+              ))
           )}
         </div>
       </ScrollArea>
 
       {/* Footer stats */}
-      <AnimatePresence>
-        {documents.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-          >
-            <Separator className="bg-border/50" />
-            <div className="p-4 text-xs text-muted-foreground bg-foreground/5 backdrop-blur-sm">
-              <div className="flex justify-between">
-                <span>Total documents</span>
-                <span className="font-medium text-foreground">{documents.length}</span>
-              </div>
-              <div className="flex justify-between mt-1.5">
-                <span>Ready</span>
-                <span className="font-medium text-emerald-500">{statusCounts.completed || 0}</span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {documents.length > 0 && (
+        <>
+          <Separator className="bg-border/50" />
+          <div className="px-3 py-2 text-[10px] text-muted-foreground bg-foreground/5 flex justify-between">
+            <span>{documents.length} docs</span>
+            <span className="text-emerald-500">{statusCounts.completed || 0} ready</span>
+          </div>
+        </>
+      )}
     </div>
   );
 });

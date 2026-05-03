@@ -176,7 +176,7 @@ export default async function RootLayout({
         <link rel="prefetch" href="/offline" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
         {/* Skip to content link for accessibility */}
@@ -188,9 +188,9 @@ export default async function RootLayout({
         </a>
         <div className="vibrant-bg" />
         <Providers>
-          <div className="relative flex min-h-screen flex-col">
+          <div className="fixed inset-0 grid grid-rows-[auto_1fr] overflow-hidden">
             <Navbar />
-            <main id="main-content" className="flex-1" tabIndex={-1}>
+            <main id="main-content" className="min-h-0 overflow-y-auto" tabIndex={-1}>
               {children}
             </main>
           </div>

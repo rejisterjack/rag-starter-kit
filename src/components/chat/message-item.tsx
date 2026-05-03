@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Bot,
   Check,
@@ -109,31 +109,27 @@ export const MessageItem = React.memo(function MessageItem({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+    <div
       className={cn(
-        'group relative py-6 px-4 mb-4 rounded-3xl transition-all duration-300',
+        'group relative py-3 px-4 mb-2 rounded-2xl transition-colors duration-150',
         isUser
-          ? 'ml-auto max-w-3xl bg-primary/10 border border-primary/20 shadow-[0_0_20px_-5px_rgba(124,58,237,0.15)] mr-4'
+          ? 'ml-auto max-w-3xl bg-primary/10 border border-primary/20 mr-4'
           : 'glass max-w-3xl mr-auto ml-4'
       )}
     >
       <div className="flex gap-4">
         {/* Avatar */}
-        <div className="flex shrink-0 flex-col items-center mt-1">
+        <div className="flex shrink-0 flex-col items-center">
           <Avatar
             className={cn(
-              'h-9 w-9 ring-2 ring-offset-2 ring-offset-background shadow-md',
+              'h-8 w-8 ring-1 ring-offset-1 ring-offset-background',
               isUser
                 ? 'bg-primary text-primary-foreground ring-primary/30'
                 : 'bg-emerald-500 text-white ring-emerald-500/30'
             )}
           >
             <AvatarFallback>
-              {isUser ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
+              {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
             </AvatarFallback>
           </Avatar>
         </div>
@@ -141,7 +137,7 @@ export const MessageItem = React.memo(function MessageItem({
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-1 flex items-center gap-2">
             <span
               className={cn(
                 'text-sm font-semibold tracking-tight',
@@ -188,27 +184,21 @@ export const MessageItem = React.memo(function MessageItem({
               </div>
 
               {/* Sources for assistant messages */}
-              <AnimatePresence>
-                {isAssistant && showSources && message.sources && message.sources.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-5 pt-4 border-t border-border/40"
-                  >
-                    <CitationList
-                      sources={message.sources}
-                      onSourceClick={(source) => onCitationClick?.(source.index)}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {isAssistant && showSources && message.sources && message.sources.length > 0 && (
+                <div className="mt-3 pt-2 border-t border-border/40">
+                  <CitationList
+                    sources={message.sources}
+                    onSourceClick={(source) => onCitationClick?.(source.index)}
+                  />
+                </div>
+              )}
             </>
           )}
         </div>
 
         {/* Actions */}
         {!isEditing && (
-          <div className="absolute right-4 top-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100 bg-background/80 backdrop-blur-md rounded-full shadow-sm p-0.5 border border-border/50">
+          <div className="absolute right-3 top-3 opacity-0 transition-opacity duration-150 group-hover:opacity-100 bg-background/80 backdrop-blur-sm rounded-full shadow-sm p-0.5 border border-border/50">
             <TooltipProvider>
               <div className="flex items-center gap-0.5">
                 {/* Regenerate button for last assistant message */}
@@ -354,6 +344,6 @@ export const MessageItem = React.memo(function MessageItem({
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 });

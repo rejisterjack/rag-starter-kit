@@ -33,13 +33,25 @@ interface DocumentChunk {
   section?: string;
 }
 
+// UUID v4 pattern for chatId validation
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Also accept cuid/nanoid-style IDs (alphanumeric, 20-30 chars)
+const SAFE_ID_REGEX = /^[a-zA-Z0-9_-]{10,50}$/;
+
 /**
- * Read chatId from the browser URL — safe for SSR (returns undefined)
+ * Read chatId from the browser URL — safe for SSR (returns undefined).
+ * Validates format to prevent injection.
  */
 function getUrlChatId(): string | undefined {
   if (typeof window === 'undefined') return undefined;
   const params = new URLSearchParams(window.location.search);
-  return params.get('chatId') || undefined;
+  const chatId = params.get('chatId');
+  if (!chatId) return undefined;
+  // Validate chatId format
+  if (UUID_REGEX.test(chatId) || SAFE_ID_REGEX.test(chatId)) {
+    return chatId;
+  }
+  return undefined;
 }
 
 export default function ChatPage(): React.ReactElement {
@@ -113,18 +125,15 @@ export default function ChatPage(): React.ReactElement {
     fetchDocuments();
   }, [fetchDocuments]);
 
-  // Poll for document status updates
+  // Poll for document status updates — only when processing docs exist
+  const hasProcessingDocs = documents.some(
+    (d) => d.status === 'processing' || d.status === 'pending'
+  );
   useEffect(() => {
-    const interval = setInterval(() => {
-      const hasProcessingDocs = documents.some(
-        (d) => d.status === 'processing' || d.status === 'pending'
-      );
-      if (hasProcessingDocs) {
-        fetchDocuments();
-      }
-    }, 3000);
+    if (!hasProcessingDocs) return;
+    const interval = setInterval(fetchDocuments, 3000);
     return () => clearInterval(interval);
-  }, [documents, fetchDocuments]);
+  }, [hasProcessingDocs, fetchDocuments]);
 
   const createChat = useCallback(async (): Promise<string | null> => {
     try {
@@ -271,15 +280,9 @@ export default function ChatPage(): React.ReactElement {
         const newChatId = await createChat();
         if (newChatId) {
           chatId = newChatId;
-          // Clear stale state before setting new ID, then set ID.
-          // This order ensures the useChat effect runs and clears
-          // BEFORE sendMessage adds the optimistic user message.
           clearMessages();
           setCurrentChatId(newChatId);
           window.history.replaceState(null, '', `/chat?chatId=${newChatId}`);
-          // Yield to let React process the state updates and effects
-          // before sendMessage adds the optimistic message
-          await new Promise((resolve) => setTimeout(resolve, 0));
         } else {
           toast.error('Failed to start chat. Please try again.');
           return;
@@ -340,7 +343,7 @@ export default function ChatPage(): React.ReactElement {
   );
 
   return (
-    <>
+    <div className="h-full w-full overflow-hidden">
       <ChatContainer
         messages={messages}
         sources={effectiveSources}
@@ -410,6 +413,6 @@ export default function ChatPage(): React.ReactElement {
           text: chunk.text,
         }))}
       />
-    </>
+    </div>
   );
 }

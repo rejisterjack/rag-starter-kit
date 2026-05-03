@@ -1,10 +1,9 @@
 'use client';
 
-import { FileText, MessageSquare, Sparkles, Upload, Zap } from 'lucide-react';
+import { FileText, MessageSquare, Upload, Zap } from 'lucide-react';
 import type React from 'react';
-import { useCallback } from 'react';
+import { memo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 interface EmptyStateProps {
@@ -25,24 +24,24 @@ const QUICK_ACTIONS = [
   {
     icon: FileText,
     label: 'Upload PDF',
-    description: 'Add documents to your knowledge base',
+    description: 'Add to knowledge base',
     action: 'upload' as const,
   },
   {
     icon: MessageSquare,
     label: 'Start Chat',
-    description: 'Ask questions about your documents',
+    description: 'Ask about documents',
     message: 'What can you help me with?',
   },
   {
     icon: Zap,
     label: 'Quick Summary',
-    description: 'Get a summary of all documents',
+    description: 'Summarize all docs',
     message: 'Summarize my uploaded documents',
   },
 ];
 
-export function EmptyState({
+export const EmptyState = memo(function EmptyState({
   onSuggestionClick,
   onUploadClick,
   onFilesDrop,
@@ -67,29 +66,27 @@ export function EmptyState({
 
   return (
     <section
-      className={cn('flex h-full flex-col items-center justify-center p-8', className)}
+      className={cn('flex flex-col items-center justify-center p-4 max-w-xl mx-auto', className)}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       aria-label="Empty state"
     >
-      <div className="mx-auto max-w-2xl text-center">
-        {/* Welcome header */}
-        <div className="mb-8">
-          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5">
-            <Sparkles className="h-8 w-8 text-primary" />
-          </div>
-          <h1 className="mb-2 text-3xl font-bold tracking-tight">Welcome to RAG Chat</h1>
-          <p className="text-lg text-muted-foreground">
-            Upload documents and ask questions. I&apos;ll find the answers from your knowledge base.
+      <div className="w-full text-center">
+        {/* Welcome header - compact */}
+        <div className="mb-4">
+          <h1 className="mb-1 text-xl font-bold tracking-tight">Welcome to RAG Chat</h1>
+          <p className="text-sm text-muted-foreground">
+            Upload documents and ask questions from your knowledge base.
           </p>
         </div>
 
-        {/* Quick actions */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-3">
+        {/* Quick actions - compact row */}
+        <div className="mb-4 grid gap-2 grid-cols-3">
           {QUICK_ACTIONS.map((action) => (
-            <Card
+            <button
+              type="button"
               key={action.label}
-              className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-sm"
+              className="flex flex-col items-center p-3 rounded-xl border border-border/50 bg-foreground/5 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer text-center"
               onClick={() =>
                 action.action === 'upload'
                   ? onUploadClick?.()
@@ -98,41 +95,36 @@ export function EmptyState({
                     : undefined
               }
             >
-              <CardContent className="flex flex-col items-center p-4 text-center">
-                <div className="mb-2 rounded-lg bg-primary/10 p-2">
-                  <action.icon className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="font-medium">{action.label}</h3>
-                <p className="text-xs text-muted-foreground">{action.description}</p>
-              </CardContent>
-            </Card>
+              <div className="mb-1.5 rounded-lg bg-primary/10 p-1.5">
+                <action.icon className="h-4 w-4 text-primary" />
+              </div>
+              <span className="text-xs font-medium">{action.label}</span>
+              <span className="text-[10px] text-muted-foreground leading-tight">{action.description}</span>
+            </button>
           ))}
         </div>
 
-        {/* Upload zone */}
+        {/* Upload zone - compact */}
         <button
           type="button"
-          className="mb-8 w-full rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/30 p-8 transition-colors hover:border-primary/50 hover:bg-muted/50 cursor-pointer"
+          className="mb-4 w-full rounded-xl border border-dashed border-muted-foreground/25 bg-muted/20 p-4 transition-colors hover:border-primary/50 hover:bg-muted/40 cursor-pointer"
           onClick={onUploadClick}
         >
-          <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-          <p className="font-medium">Drop files here to upload</p>
-          <p className="text-sm text-muted-foreground">Supports PDF, Word, TXT, and more</p>
-          <Button variant="outline" className="mt-4" size="sm">
-            Choose Files
-          </Button>
+          <Upload className="mx-auto mb-1 h-5 w-5 text-muted-foreground" />
+          <p className="text-xs font-medium">Drop files here or click to upload</p>
+          <p className="text-[10px] text-muted-foreground">PDF, Word, TXT, and more</p>
         </button>
 
-        {/* Suggested questions */}
+        {/* Suggested questions - compact */}
         <div>
-          <p className="mb-3 text-sm font-medium text-muted-foreground">Try asking:</p>
-          <div className="flex flex-wrap justify-center gap-2">
+          <p className="mb-2 text-xs font-medium text-muted-foreground">Try asking:</p>
+          <div className="flex flex-wrap justify-center gap-1.5">
             {SUGGESTED_QUESTIONS.map((question) => (
               <Button
                 key={question}
                 variant="outline"
                 size="sm"
-                className="rounded-full"
+                className="rounded-full text-xs h-7 px-3"
                 onClick={() => onSuggestionClick?.(question)}
               >
                 {question}
@@ -143,4 +135,4 @@ export function EmptyState({
       </div>
     </section>
   );
-}
+});

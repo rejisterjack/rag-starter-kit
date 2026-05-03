@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default function ChatLayout({ children }: ChatLayoutProps): React.ReactElement {
   return (
     <ErrorBoundary>
-      <div className="h-screen overflow-hidden">{children}</div>
+      <div className="h-full overflow-hidden">{children}</div>
     </ErrorBoundary>
   );
 }
