@@ -132,7 +132,7 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
     }
 
     // Update workspace (with optimistic locking if If-Match provided)
-    let workspace: Record<string, unknown>;
+    let workspace: Record<string, unknown> | Awaited<ReturnType<typeof updateWorkspace>>;
     const expectedVersion = extractVersion(req.headers);
     try {
       if (expectedVersion !== null) {
@@ -156,7 +156,7 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
       throw e;
     }
 
-    const wsResult = workspace as Record<string, unknown>;
+    const wsResult = workspace as unknown as Record<string, unknown>;
     return NextResponse.json({
       success: true,
       data: {
