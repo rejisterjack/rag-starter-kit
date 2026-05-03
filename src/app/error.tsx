@@ -1,6 +1,5 @@
 'use client';
 
-import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,7 @@ interface ErrorProps {
 // biome-ignore lint/suspicious/noShadowRestrictedNames: Next.js error page convention
 export default function Error({ error, reset }: ErrorProps): React.ReactElement {
   useEffect(() => {
-    Sentry.captureException(error);
+    console.error(error);
   }, [error]);
 
   return (

@@ -12,6 +12,7 @@ import {
   SetupAnimator,
   TechStackMarquee,
 } from '@/components/landing';
+import { RAGBotWidget } from '@/components/widget';
 
 export default function HomePage(): React.ReactElement {
   return (
@@ -39,6 +40,9 @@ export default function HomePage(): React.ReactElement {
 
       {/* Open Source CTA - GitHub celebration + deploy badges */}
       <OpenSourceCTA />
+
+      {/* RAG Bot Widget */}
+      <RAGBotWidget />
 
       {/* Footer */}
       <footer className="border-t border-border/50 py-12 bg-muted/20">

@@ -387,8 +387,6 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
     // Plausible for analytics (self-hosted)
     'https://*.plausible.io',
     process.env.NEXT_PUBLIC_ANALYTICS_HOST,
-    // Sentry for error tracking
-    'https://*.sentry.io',
     // Inngest for background jobs
     'https://*.inngest.com',
     // Ollama (local development)

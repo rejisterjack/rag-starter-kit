@@ -4,7 +4,6 @@
  * Provides centralized error handling for API routes with:
  * - Standardized error responses
  * - Automatic error logging
- * - Sentry integration for error tracking
  * - Rate limit error handling
  * - CSRF error handling
  * - Validation error formatting
@@ -269,25 +268,6 @@ function handleUnknownError(
     userId: context.userId,
     workspaceId: context.workspaceId,
   });
-
-  // Send to Sentry if configured
-  if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
-    import('@sentry/nextjs')
-      .then(({ captureException }) => {
-        captureException(error, {
-          tags: {
-            endpoint: context.endpoint,
-            method: context.method,
-          },
-          extra: {
-            requestId,
-            userId: context.userId,
-            workspaceId: context.workspaceId,
-          },
-        });
-      })
-      .catch(() => {});
-  }
 
   // Log audit event for critical errors
   logAuditEvent({
