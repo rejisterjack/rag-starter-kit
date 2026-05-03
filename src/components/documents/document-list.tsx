@@ -223,15 +223,15 @@ export const DocumentList = memo(function DocumentList({
             </div>
           ) : (
             filteredDocuments.map((doc) => (
-                <DocumentCard
-                  key={doc.id}
-                  document={doc}
-                  onDelete={onDelete}
-                  onReingest={onReingest}
-                  onPreview={onPreview}
-                  isSelected={doc.id === selectedDocumentId}
-                />
-              ))
+              <DocumentCard
+                key={doc.id}
+                document={doc}
+                onDelete={onDelete}
+                onReingest={onReingest}
+                onPreview={onPreview}
+                isSelected={doc.id === selectedDocumentId}
+              />
+            ))
           )}
         </div>
       </ScrollArea>

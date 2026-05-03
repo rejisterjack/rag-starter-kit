@@ -20,7 +20,6 @@ const envSchema = z.object({
     .min(32, 'NEXTAUTH_SECRET must be at least 32 characters (generate: openssl rand -base64 32)'),
   NEXTAUTH_URL: z.string().url('NEXTAUTH_URL must be a valid URL'),
   OPENROUTER_API_KEY: z.string().min(1, 'OPENROUTER_API_KEY is required'),
-  GOOGLE_API_KEY: z.string().min(1, 'GOOGLE_API_KEY is required'),
 
   // Optional variables with defaults
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -61,9 +60,6 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
 
-  // Google embedding quota
-  GOOGLE_EMBED_DAILY_LIMIT: z.coerce.number().default(1400),
-
   // Encryption key for sensitive data at rest (min 32 chars)
   ENCRYPTION_MASTER_KEY: z.string().min(32).optional(),
 
@@ -101,7 +97,9 @@ function validateEnv(): EnvSchema {
       // biome-ignore lint/suspicious/noConsole: Intentional error logging at startup
       console.error('❌ Failed to validate environment variables:', error);
     }
-    process.exit(1);
+    throw new Error(
+      'Environment validation failed. Check the console output above for missing or invalid variables.'
+    );
   }
 }
 

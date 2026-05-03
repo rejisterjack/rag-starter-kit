@@ -184,58 +184,54 @@ export const MessageInput = memo(function MessageInput({
 
       {/* Input area */}
       <div className="relative flex items-end gap-2 rounded-xl bg-foreground/5 border border-white/10 p-2 focus-within:bg-background/50 focus-within:ring-1 focus-within:ring-ring/50 transition-colors">
-          {/* File attachment button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0 rounded-lg h-8 w-8"
-            disabled={disabled || isLoading}
-            asChild
-          >
-            <label className="cursor-pointer">
-              <Paperclip className="h-4 w-4" />
-              <input
-                type="file"
-                className="hidden"
-                multiple
-                accept=".pdf,.doc,.docx,.txt,.md,.csv,.json,.html,.xls,.xlsx"
-                onChange={handleFileSelect}
-                disabled={disabled || isLoading}
-              />
-            </label>
-          </Button>
+        {/* File attachment button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 rounded-lg h-8 w-8"
+          disabled={disabled || isLoading}
+          asChild
+        >
+          <label className="cursor-pointer">
+            <Paperclip className="h-4 w-4" />
+            <input
+              type="file"
+              className="hidden"
+              multiple
+              accept=".pdf,.doc,.docx,.txt,.md,.csv,.json,.html,.xls,.xlsx"
+              onChange={handleFileSelect}
+              disabled={disabled || isLoading}
+            />
+          </label>
+        </Button>
 
-          {/* Textarea */}
-          <Textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            disabled={disabled || isLoading}
-            className="min-h-[36px] max-h-[160px] resize-none border-0 bg-transparent px-2 py-2 text-sm placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
-            rows={1}
-          />
+        {/* Textarea */}
+        <Textarea
+          ref={textareaRef}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          disabled={disabled || isLoading}
+          className="min-h-[36px] max-h-[160px] resize-none border-0 bg-transparent px-2 py-2 text-sm placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+          rows={1}
+        />
 
-          {/* Send button */}
-          <Button
-            onClick={handleSubmit}
-            disabled={!hasContent || disabled || isLoading || isSubmitting}
-            size="icon"
-            className={cn(
-              'shrink-0 rounded-lg h-8 w-8 transition-colors',
-              hasContent && !disabled && !isLoading
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground'
-            )}
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
+        {/* Send button */}
+        <Button
+          onClick={handleSubmit}
+          disabled={!hasContent || disabled || isLoading || isSubmitting}
+          size="icon"
+          className={cn(
+            'shrink-0 rounded-lg h-8 w-8 transition-colors',
+            hasContent && !disabled && !isLoading
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground'
+          )}
+        >
+          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        </Button>
+      </div>
     </div>
   );
 });

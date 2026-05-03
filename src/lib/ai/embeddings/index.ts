@@ -79,7 +79,7 @@ export function createEmbeddingProvider(config: EmbeddingConfig): EmbeddingProvi
  * Environment variables:
  * - EMBEDDING_PROVIDER: 'google', 'openai', or 'ollama' (default: 'google')
  * - EMBEDDING_MODEL: Model name (default: text-embedding-004 for Google)
- * - GOOGLE_API_KEY or GEMINI_API_KEY: Google AI Studio API key
+
  * - OPENAI_API_KEY: OpenAI API key (if using OpenAI)
  * - OLLAMA_BASE_URL: Ollama base URL (if using Ollama)
  */
@@ -101,7 +101,7 @@ export function createEmbeddingProviderFromEnv(
         );
       }
 
-      const apiKey = overrides?.apiKey ?? process.env.GOOGLE_API_KEY ?? process.env.GEMINI_API_KEY;
+      const apiKey = overrides?.apiKey;
 
       return createGoogleProvider(model, apiKey);
     }

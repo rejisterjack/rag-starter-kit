@@ -145,9 +145,7 @@ export const ChatContainer = memo(function ChatContainer({
 
       {/* Desktop sidebar as a floating glass panel */}
       {sidebar && (
-        <div
-          className="hidden lg:flex w-[280px] shrink-0 flex-col h-full relative z-20 glass-heavy rounded-2xl overflow-hidden border border-white/10 shadow-[0_8px_32px_-4px_rgba(0,0,0,0.3)]"
-        >
+        <div className="hidden lg:flex w-[280px] shrink-0 flex-col h-full relative z-20 glass-heavy rounded-2xl overflow-hidden border border-white/10 shadow-[0_8px_32px_-4px_rgba(0,0,0,0.3)]">
           {sidebar}
         </div>
       )}
@@ -328,7 +326,9 @@ export const ChatContainer = memo(function ChatContainer({
             onSend={onSendMessage}
             isLoading={isLoading || isStreaming}
             disabled={isLoading}
-            placeholder={hasMessages ? 'Send a message...' : 'Ask anything... or try a suggestion above'}
+            placeholder={
+              hasMessages ? 'Send a message...' : 'Ask anything... or try a suggestion above'
+            }
             className="w-full max-w-4xl"
           />
         </div>

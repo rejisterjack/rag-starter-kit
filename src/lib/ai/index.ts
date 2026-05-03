@@ -36,7 +36,6 @@
  * Set environment variables in `.env`:
  * ```
  * OPENROUTER_API_KEY=sk-or-v1-...
- * GOOGLE_API_KEY=AIzaSy...
  * ```
  *
  * @module ai

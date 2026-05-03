@@ -99,7 +99,9 @@ export const EmptyState = memo(function EmptyState({
                 <action.icon className="h-4 w-4 text-primary" />
               </div>
               <span className="text-xs font-medium">{action.label}</span>
-              <span className="text-[10px] text-muted-foreground leading-tight">{action.description}</span>
+              <span className="text-[10px] text-muted-foreground leading-tight">
+                {action.description}
+              </span>
             </button>
           ))}
         </div>

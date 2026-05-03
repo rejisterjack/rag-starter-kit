@@ -17,7 +17,7 @@
 
 import { google } from '@ai-sdk/google';
 import { embed, embedMany } from 'ai';
-import { env } from '@/lib/env';
+
 import { logger } from '@/lib/logger';
 import { redis } from '@/lib/redis';
 import type { EmbeddingProvider } from './types';
@@ -41,7 +41,7 @@ export const GOOGLE_MODELS = {
 export type GoogleModel = keyof typeof GOOGLE_MODELS;
 
 // Daily quota configuration
-const DAILY_QUOTA_LIMIT = env.GOOGLE_EMBED_DAILY_LIMIT || 1400;
+const DAILY_QUOTA_LIMIT = 1400;
 const QUOTA_WARNING_THRESHOLD = Math.floor(DAILY_QUOTA_LIMIT * 0.93); // 93% of limit
 
 /**
