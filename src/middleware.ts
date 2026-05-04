@@ -213,7 +213,7 @@ export async function middleware(req: NextRequest) {
     const cspNonce = btoa(String.fromCharCode(...nonceBytes));
 
     // Get token from session
-    const token = await getToken({ req, secret: env.NEXTAUTH_SECRET });
+    const token = await getToken({ req });
     const isLoggedIn = !!token;
     const user = token ? { id: token.sub, role: token.role, workspaceId: token.workspaceId } : null;
 
