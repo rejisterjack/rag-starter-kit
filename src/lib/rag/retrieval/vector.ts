@@ -59,10 +59,10 @@ function getSimilarityCalculation(
       return `1 / (1 + (${columnRef} <-> ${embeddingParam}::vector))`;
     case 'inner_product':
       // Normalize inner product to 0-1 using sigmoid-like transformation
-      return `CASE 
-        WHEN (${columnRef} <#> ${embeddingParam}::vector) > 0 
-        THEN 1 / (1 + exp(-(${columnRef} <#> ${embeddingParam}::vector))) 
-        ELSE 0 
+      return `CASE
+        WHEN (${columnRef} <#> ${embeddingParam}::vector) > 0
+        THEN 1 / (1 + exp(-(${columnRef} <#> ${embeddingParam}::vector)))
+        ELSE 0
       END`;
     default:
       return `1 - (${columnRef} <=> ${embeddingParam}::vector)`;
@@ -107,8 +107,17 @@ function buildFilters(
   }
 
   // Metadata filters (JSONB queries)
+  // SECURITY: Sanitize metadata keys to prevent SQL injection.
+  // Keys are used as JSONB path selectors and cannot be parameterized in PostgreSQL.
+  // Only allow alphanumeric characters, underscores, and hyphens.
   if (options.filters?.metadata) {
+    const SAFE_KEY_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
     for (const [key, value] of Object.entries(options.filters.metadata)) {
+      if (!SAFE_KEY_PATTERN.test(key)) {
+        throw new Error(
+          `Invalid metadata filter key: "${key}". Only alphanumeric, underscore, and hyphen characters are allowed.`
+        );
+      }
       filters.push(`d.metadata->>'${key}' = $${idx++}`);
       params.push(String(value));
     }
@@ -154,7 +163,7 @@ export class VectorRetriever {
 
     // Build the SQL query
     const sqlQuery = `
-      SELECT 
+      SELECT
         dc.id,
         dc.document_id as "documentId",
         dc.content,
@@ -252,11 +261,20 @@ export async function searchVector(
 /**
  * Create a vector index on document chunks
  * This should be run as a migration
+ *
+ * SECURITY: indexName is validated to prevent SQL injection since it cannot
+ * be parameterized as a PostgreSQL identifier.
  */
 export function createVectorIndexSQL(
   metric: DistanceMetric = 'cosine',
   indexName = 'idx_chunks_embedding'
 ): string {
+  // Validate indexName to prevent SQL injection (only safe identifier chars)
+  const SAFE_IDENTIFIER = /^[a-zA-Z_][a-zA-Z0-9_]{0,62}$/;
+  if (!SAFE_IDENTIFIER.test(indexName)) {
+    throw new Error(`Invalid index name: "${indexName}". Must be a valid SQL identifier.`);
+  }
+
   const opclass =
     metric === 'cosine'
       ? 'vector_cosine_ops'
@@ -266,8 +284,8 @@ export function createVectorIndexSQL(
 
   return `
     -- Create vector index for ${metric} similarity
-    CREATE INDEX IF NOT EXISTS ${indexName} 
-    ON "document_chunks" 
+    CREATE INDEX IF NOT EXISTS ${indexName}
+    ON "document_chunks"
     USING ivfflat (embedding ${opclass})
     WITH (lists = 100);
   `;
