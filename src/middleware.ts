@@ -77,6 +77,8 @@ const PUBLIC_ROUTES = [
   '/api/webhook',
   '/api/csrf',
   '/api/health',
+  '/api/docs',
+  '/api/csp-report',
   '/_next',
   '/static',
   '/favicon.ico',
@@ -484,19 +486,31 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
   const csp = [
     "default-src 'self'",
     scriptSrc,
-    styleSrc,
+    `${styleSrc} https://cdn.jsdelivr.net`,
     "img-src 'self' blob: data: https:",
-    "font-src 'self'",
+    "font-src 'self' https://cdn.jsdelivr.net",
     `connect-src https://api.github.com ${connectSrc}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
+    'report-uri /api/csp-report',
+    'report-to csp-endpoint',
   ].join('; ');
 
   response.headers.set('Content-Security-Policy', csp);
 
-  // Expose nonce on response header as well (for debugging)
-  if (requestId && n) {
+  // CSP Reporting API endpoint configuration
+  response.headers.set(
+    'Report-To',
+    JSON.stringify({
+      group: 'csp-endpoint',
+      max_age: 86400,
+      endpoints: [{ url: '/api/csp-report' }],
+    })
+  );
+
+  // Expose nonce on response header only in development (for debugging)
+  if (env.NODE_ENV === 'development' && requestId && n) {
     response.headers.set('X-Nonce', n);
   }
 

@@ -20,6 +20,8 @@ export { fetchWithCsrf, getCsrfToken, useCsrf } from './use-csrf';
 export { useIntersectionObserver } from './use-intersection-observer';
 // PWA hooks
 export { usePWA } from './use-pwa';
+// Accessibility hooks
+export { useReducedMotion } from './use-reduced-motion';
 // Voice hooks
 export { useSpeechRecognition } from './use-speech-recognition';
 export { useTextToSpeech } from './use-text-to-speech';

@@ -41,6 +41,7 @@ yarn-error.log*
 
 # TypeScript
 *.tsbuildinfo
+tsconfig.tsbuildinfo
 next-env.d.ts
 
 # IDE

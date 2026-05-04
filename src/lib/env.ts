@@ -71,7 +71,18 @@ const envSchema = z.object({
   DB_POOL_MAX: z.coerce.number().optional(),
 
   // Encryption key for sensitive data at rest (min 32 chars)
-  ENCRYPTION_MASTER_KEY: z.string().min(32).optional(),
+  // Required in production for encrypting SAML keys, webhook secrets, etc.
+  ENCRYPTION_MASTER_KEY: z
+    .string()
+    .min(
+      32,
+      'ENCRYPTION_MASTER_KEY must be at least 32 characters (generate: openssl rand -base64 32)'
+    )
+    .optional()
+    .refine(
+      (val) => process.env.NODE_ENV !== 'production' || (val !== undefined && val.length >= 32),
+      { message: 'ENCRYPTION_MASTER_KEY is required in production' }
+    ),
 
   // CSRF protection key (falls back to NEXTAUTH_SECRET if not set)
   CSRF_SECRET: z.string().min(32).optional(),

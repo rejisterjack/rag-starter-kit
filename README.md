@@ -16,9 +16,10 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/ci.yml?label=CI&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![E2E Tests](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/e2e.yml?label=E2E&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![Lighthouse](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/lighthouse.yml?label=Lighthouse&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
+[![Coverage](https://img.shields.io/badge/coverage-90%25+-brightgreen?style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![All Contributors](https://img.shields.io/github/all-contributors/rejisterjack/rag-starter-kit?color=ee8449&style=flat-square)](#contributors)
 
-[🚀 Live Demo](https://rag-starter-kit.vercel.app/) · [🐛 Report Bug](../../issues) · [✨ Request Feature](../../issues)
+[🚀 Live Demo](https://rag-starter-kit.vercel.app/) · [📖 API Docs](https://rag-starter-kit.vercel.app/api/docs) · [🐛 Report Bug](../../issues) · [✨ Request Feature](../../issues)
 
 <img src="https://img.shields.io/badge/100%25_FREE_AI-✓-brightgreen?style=for-the-badge&logo=openai" alt="100% Free AI" />
 
@@ -189,6 +190,24 @@ pnpm dev
 |---------|-----|-------|
 | Next.js app | http://localhost:3000 | Main application |
 | Inngest Dashboard | http://localhost:8288 | Background jobs |
+
+### Docker (Self-Hosted)
+
+```bash
+# Start PostgreSQL + Redis locally
+docker compose up -d
+
+# Update .env with local database URL:
+# DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ragdb
+
+# Run migrations and seed
+pnpm db:migrate
+pnpm db:seed
+
+# Build and run production container
+docker build -t rag-starter-kit .
+docker run -p 3000:3000 --env-file .env --network host rag-starter-kit
+```
 
 ### One-Click Deploy
 
@@ -432,7 +451,7 @@ The RAG Starter Kit implements comprehensive security measures:
 - **Audit logging** for security events
 - **Rate limiting** with progressive penalties
 
-Report vulnerabilities to [security@example.com](mailto:security@example.com). See [SECURITY.md](./SECURITY.md) for details.
+Report vulnerabilities via [GitHub Security Advisory](https://github.com/rejisterjack/rag-starter-kit/security/advisories/new). See [SECURITY.md](./SECURITY.md) for details.
 
 ---
 

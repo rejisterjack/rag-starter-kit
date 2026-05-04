@@ -1,0 +1,60 @@
+# =============================================================================
+# RAG Starter Kit - Local Development Services
+# =============================================================================
+#
+# This docker-compose file provides local PostgreSQL (with pgvector) and Redis
+# for development without needing external managed services (Neon, Upstash).
+#
+# Usage:
+#   docker compose up -d         # Start services
+#   docker compose down          # Stop services
+#   docker compose down -v       # Stop and remove volumes (reset data)
+#
+# Then update your .env:
+#   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ragdb
+#   UPSTASH_REDIS_REST_URL=http://localhost:8079
+#   UPSTASH_REDIS_REST_TOKEN=local-dev-token
+#
+# =============================================================================
+
+services:
+  # PostgreSQL with pgvector extension for vector similarity search
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: rag-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ragdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for rate limiting and caching
+  redis:
+    image: redis:7-alpine
+    container_name: rag-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

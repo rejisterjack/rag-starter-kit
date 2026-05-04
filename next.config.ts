@@ -1,9 +1,14 @@
 import type { NextConfig } from "next";
 import type { webpack } from "next/dist/compiled/webpack/webpack";
 import type { Header } from "next/dist/lib/load-custom-routes";
+import bundleAnalyzer from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = bundleAnalyzer({
+	enabled: process.env.ANALYZE === "true",
+});
 
 const nextConfig: NextConfig = {
-	// output: "standalone",
+	output: "standalone",
 	experimental: {
 		// Partial Prerendering - improves TTFB by streaming static shell
 		// Requires Next.js 15+ canary version - disabled for stability
@@ -161,4 +166,4 @@ const nextConfig: NextConfig = {
 	},
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);
