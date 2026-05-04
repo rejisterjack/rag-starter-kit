@@ -6,14 +6,29 @@
   "framework": "nextjs",
   "regions": ["iad1"],
   "functions": {
-    "app/api/**/*.ts": {
+    "app/api/chat/**/*.ts": {
       "maxDuration": 300
+    },
+    "app/api/ingest/**/*.ts": {
+      "maxDuration": 300
+    },
+    "app/api/voice/**/*.ts": {
+      "maxDuration": 120
+    },
+    "app/api/**/*.ts": {
+      "maxDuration": 30
     }
   },
-  "env": {
-    "NEXTAUTH_URL": "https://${VERCEL_URL}"
-  },
   "headers": [
+    {
+      "source": "/_next/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
     {
       "source": "/api/(.*)",
       "headers": [
@@ -43,7 +58,7 @@
   "crons": [
     {
       "path": "/api/health",
-      "schedule": "0 0 * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }

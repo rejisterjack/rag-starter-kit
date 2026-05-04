@@ -79,6 +79,7 @@ const PUBLIC_ROUTES = [
   '/api/health',
   '/api/docs',
   '/api/csp-report',
+  '/api/error-report',
   '/_next',
   '/static',
   '/favicon.ico',
@@ -563,14 +564,17 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
     'https://*.googleapis.com',
     // Upstash for rate limiting
     'https://*.upstash.io',
+    // Vercel Analytics & Speed Insights
+    'https://vitals.vercel-insights.com',
+    'https://*.vercel-scripts.com',
+    'https://va.vercel-scripts.com',
     // Plausible for analytics (self-hosted)
     'https://*.plausible.io',
     process.env.NEXT_PUBLIC_ANALYTICS_HOST,
     // Inngest for background jobs
     'https://*.inngest.com',
-    // Ollama (local development)
-    'http://localhost:*',
-    'ws://localhost:*',
+    // Ollama (local development only)
+    ...(env.NODE_ENV === 'development' ? ['http://localhost:*', 'ws://localhost:*'] : []),
     // WebSocket for production (Socket.io, realtime)
     'wss://*.vercel.app',
     'wss://*.inngest.com',
@@ -606,6 +610,8 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
+    // Enforce HTTPS for all sub-resource requests in production
+    ...(env.NODE_ENV === 'production' ? ['upgrade-insecure-requests'] : []),
     'report-uri /api/csp-report',
     'report-to csp-endpoint',
   ].join('; ');

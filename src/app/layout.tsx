@@ -1,3 +1,5 @@
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { headers } from 'next/headers';
@@ -201,6 +203,9 @@ export default async function RootLayout({
         <PWAScripts nonce={nonce} />
         {/* CSRF Token Initialization */}
         <CsrfTokenScript nonce={nonce} />
+        {/* Vercel Analytics & Core Web Vitals */}
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );

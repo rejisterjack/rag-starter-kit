@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { checkRAGHealth } from '@/lib/rag/engine';
+import { isRedisConfigured, redis } from '@/lib/redis';
 
 // =============================================================================
 // Types
@@ -122,6 +123,34 @@ async function checkEmbeddingProvider(): Promise<HealthStatus> {
   }
 }
 
+async function checkRedis(): Promise<HealthStatus> {
+  const start = Date.now();
+  if (!isRedisConfigured()) {
+    return {
+      status: 'degraded',
+      responseTime: Date.now() - start,
+      message: 'Redis not configured — using in-memory fallback',
+      lastChecked: new Date().toISOString(),
+    };
+  }
+  try {
+    await redis.ping();
+    return {
+      status: 'up',
+      responseTime: Date.now() - start,
+      lastChecked: new Date().toISOString(),
+    };
+  } catch (error) {
+    logger.error('Redis health check failed', { error });
+    return {
+      status: 'down',
+      responseTime: Date.now() - start,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      lastChecked: new Date().toISOString(),
+    };
+  }
+}
+
 async function checkRAGPipeline(): Promise<HealthStatus> {
   const start = Date.now();
   try {
@@ -159,6 +188,7 @@ export async function GET(): Promise<NextResponse> {
     uptime: Date.now() - START_TIME,
     checks: {
       database: await checkDatabase(),
+      redis: await checkRedis(),
       vectorStore: await checkVectorStore(),
       embeddingProvider: await checkEmbeddingProvider(),
       ragPipeline: await checkRAGPipeline(),

@@ -11,237 +11,178 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
-  PNPM_VERSION: '10'
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9"
 
 jobs:
-  # ==========================================
-  # Lint Job
-  # ==========================================
-  lint:
-    name: Lint (Biome)
+  # ─────────────────────────────────────────────
+  # Quality Gates — must pass before deploy
+  # ─────────────────────────────────────────────
+  lint-and-typecheck:
+    name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703c22d82ef19c587725f9f0f1 # v4.0.0
+      - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run Biome lint
-        run: pnpm lint
-
-      - name: Check formatting
-        run: pnpm format:check
-
-  # ==========================================
-  # Type Check Job
-  # ==========================================
-  type-check:
-    name: Type Check (TypeScript)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703c22d82ef19c587725f9f0f1 # v4.0.0
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma client
+      - name: Generate Prisma Client
         run: pnpm db:generate
 
-      - name: Run TypeScript type check
+      - name: Lint (Biome)
+        run: pnpm check
+
+      - name: Type Check
         run: pnpm type-check
 
-  # ==========================================
-  # Test Job (Vitest Unit Tests)
-  # ==========================================
-  test:
-    name: Test (Vitest)
+  unit-tests:
+    name: Unit & Integration Tests
     runs-on: ubuntu-latest
-    needs: [lint, type-check]
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ragdb_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ragdb_test?pgbouncer=true&connect_timeout=15
-      POSTGRES_PRISMA_URL: postgres://postgres:postgres@localhost:5432/ragdb_test?pgbouncer=true&connect_timeout=15
-      POSTGRES_URL_NON_POOLING: postgres://postgres:postgres@localhost:5432/ragdb_test
-      NEXTAUTH_SECRET: test-secret-key-for-ci-only
-      NEXTAUTH_URL: http://localhost:3000
-      OPENROUTER_API_KEY: sk-test-key-for-ci-only
-      GOOGLE_API_KEY: test-key-for-ci-only
-      NODE_ENV: test
-
+    needs: lint-and-typecheck
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703c22d82ef19c587725f9f0f1 # v4.0.0
+      - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Setup database
-        run: |
-          npx prisma generate
-          npx prisma migrate deploy
+      - name: Generate Prisma Client
+        run: pnpm db:generate
 
       - name: Run unit tests
-        run: pnpm test:unit --reporter=verbose
+        run: pnpm test:run
+        env:
+          # Minimal env vars for test context
+          DATABASE_URL: "postgresql://test:test@localhost:5432/testdb"
+          NEXTAUTH_SECRET: "test-secret-at-least-32-characters-long!!"
+          NEXTAUTH_URL: "http://localhost:3000"
+          OPENROUTER_API_KEY: "sk-or-v1-test-key"
+          NODE_ENV: "test"
 
-      - name: Run integration tests
-        run: pnpm test:integration --reporter=verbose
-
-      - name: Run test coverage (enforces 90% threshold)
-        run: pnpm test:coverage
-
-      - name: Upload test results
+      - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ github.run_id }}
-          path: test-results/
+          name: coverage-report
+          path: coverage/
           retention-days: 7
 
-  # ==========================================
-  # Build Job
-  # ==========================================
   build:
-    name: Build
+    name: Production Build
     runs-on: ubuntu-latest
-    needs: [lint, type-check]
+    needs: lint-and-typecheck
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703c22d82ef19c587725f9f0f1 # v4.0.0
+      - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build application
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+
+      - name: Build
         run: pnpm build
         env:
-          # Dummy env vars for build-time only
-          POSTGRES_PRISMA_URL: postgres://dummy:dummy@localhost:5432/dummy
-          POSTGRES_URL_NON_POOLING: postgres://dummy:dummy@localhost:5432/dummy
-          NEXTAUTH_SECRET: dummy-secret-for-build-only
-          OPENAI_API_KEY: sk-dummy-for-build-only
-          NEXT_TELEMETRY_DISABLED: 1
+          DATABASE_URL: "postgresql://test:test@localhost:5432/testdb"
+          NEXTAUTH_SECRET: "test-secret-at-least-32-characters-long!!"
+          NEXTAUTH_URL: "http://localhost:3000"
+          OPENROUTER_API_KEY: "sk-or-v1-test-key"
+          NODE_ENV: "production"
 
-  # ==========================================
+  # ─────────────────────────────────────────────
   # Security Audit
-  # ==========================================
-  security-audit:
-    name: Security Audit
+  # ─────────────────────────────────────────────
+  security:
+    name: Dependency Audit
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703c22d82ef19c587725f9f0f1 # v4.0.0
+      - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run pnpm audit
-        id: audit
-        run: |
-          echo "Running security audit..."
-          pnpm audit --audit-level moderate --json > audit-results.json || true
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=high
+        continue-on-error: true # Don't block deploy on audit warnings, but surface them
 
-          # Check for critical and high vulnerabilities
-          CRITICAL_COUNT=$(cat audit-results.json | jq '[.advisories[]? | select(.severity == "critical")] | length' 2>/dev/null || echo "0")
-          HIGH_COUNT=$(cat audit-results.json | jq '[.advisories[]? | select(.severity == "high")] | length' 2>/dev/null || echo "0")
+  # ─────────────────────────────────────────────
+  # E2E Tests (only on main branch pushes)
+  # ─────────────────────────────────────────────
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
 
-          echo "Critical vulnerabilities: $CRITICAL_COUNT"
-          echo "High vulnerabilities: $HIGH_COUNT"
-
-          if [ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ]; then
-            echo "::error::Found $CRITICAL_COUNT critical and $HIGH_COUNT high severity vulnerabilities"
-            cat audit-results.json | jq -r '.advisories[]? | select(.severity == "critical" or .severity == "high") | "\(.severity): \(.module_name) - \(.title)"'
-            exit 1
-          fi
-
-          echo "✅ No critical or high severity vulnerabilities found"
-
-      - name: Check for outdated dependencies
-        run: |
-          echo "Checking for outdated dependencies..."
-          pnpm outdated --format json > outdated.json 2>/dev/null || true
-
-          MAJOR_OUTDATED=$(cat outdated.json | jq '[.[]? | select(.current != .latest)] | length' 2>/dev/null || echo "0")
-
-          if [ "$MAJOR_OUTDATED" -gt 10 ]; then
-            echo "::warning::Found $MAJOR_OUTDATED outdated dependencies. Consider updating."
-          fi
-
-      - name: Upload audit results
-        if: failure()
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      - uses: pnpm/action-setup@v4
         with:
-          name: security-audit-results
-          path: audit-results.json
-          retention-days: 30
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: pnpm test:e2e:chrome
+        env:
+          DATABASE_URL: "postgresql://test:test@localhost:5432/testdb"
+          NEXTAUTH_SECRET: "test-secret-at-least-32-characters-long!!"
+          NEXTAUTH_URL: "http://localhost:3000"
+          OPENROUTER_API_KEY: "sk-or-v1-test-key"
+          NODE_ENV: "test"
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

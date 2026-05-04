@@ -8,6 +8,9 @@ const withBundleAnalyzer = bundleAnalyzer({
 });
 
 const nextConfig: NextConfig = {
+	// "standalone" enables output file tracing — produces minimal function bundles
+	// by including only necessary dependencies. Reduces cold start times on both
+	// Vercel serverless functions and Docker deployments.
 	output: "standalone",
 	experimental: {
 		// Partial Prerendering - improves TTFB by streaming static shell
