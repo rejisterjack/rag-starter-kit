@@ -122,6 +122,29 @@ export const {
     GitHub({
       clientId: process.env.AUTH_GITHUB_ID as string,
       clientSecret: process.env.AUTH_GITHUB_SECRET as string,
+      // Fetch private emails from GitHub /user/emails endpoint
+      userinfo: {
+        url: 'https://api.github.com/user',
+        async request({ tokens }: { tokens: { access_token: string } }) {
+          const profileRes = await fetch('https://api.github.com/user', {
+            headers: { Authorization: `Bearer ${tokens.access_token}` },
+          });
+          const profile = await profileRes.json();
+
+          if (!profile.email) {
+            const emailsRes = await fetch('https://api.github.com/user/emails', {
+              headers: { Authorization: `Bearer ${tokens.access_token}` },
+            });
+            const emails = await emailsRes.json();
+            const primary = emails.find(
+              (e: { primary: boolean; verified: boolean }) => e.primary && e.verified
+            );
+            if (primary) profile.email = primary.email;
+          }
+
+          return profile;
+        },
+      },
       // allowDangerousEmailAccountLinking is intentionally NOT enabled
       // to prevent OAuth account takeover attacks
     }),
