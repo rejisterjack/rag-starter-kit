@@ -53,15 +53,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v6
         with:
           version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
@@ -105,7 +105,7 @@ jobs:
     needs: setup
     steps:
       - name: ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: 'http://localhost:3000'
           rules_file_name: '.zap/rules.tsv'
@@ -114,7 +114,7 @@ jobs:
           fail_action: true
 
       - name: Upload ZAP report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: zap-baseline-report
@@ -130,10 +130,10 @@ jobs:
     needs: setup
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: ZAP Full Scan
-        uses: zaproxy/action-full-scan@v0.10.0
+        uses: zaproxy/action-full-scan@v0.13.0
         with:
           target: 'http://localhost:3000'
           rules_file_name: '.zap/rules.tsv'
@@ -142,7 +142,7 @@ jobs:
           fail_action: true
 
       - name: Upload ZAP report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: zap-full-report
@@ -158,10 +158,10 @@ jobs:
     needs: setup
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: ZAP API Scan
-        uses: zaproxy/action-api-scan@v0.7.0
+        uses: zaproxy/action-api-scan@v0.10.0
         with:
           target: 'http://localhost:3000/api/docs/openapi.json'
           format: openapi
@@ -169,7 +169,7 @@ jobs:
           fail_action: true
 
       - name: Upload ZAP API report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: zap-api-report
