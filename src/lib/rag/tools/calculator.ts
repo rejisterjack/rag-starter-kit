@@ -43,18 +43,49 @@ function validateExpression(expression: string): boolean {
   }
 
   // Check for dangerous patterns
+  // SECURITY: Block JavaScript exploitation gadgets that could escape
+  // the math evaluation sandbox via prototype chain or global access
   const dangerousPatterns = [
     /eval\s*\(/i,
     /function\s*\(/i,
     /=>/,
     /import\s*\(/i,
     /require\s*\(/i,
-    /process/,
-    /global/,
-    /window/,
-    /document/,
+    /process/i,
+    /global/i,
+    /globalthis/i,
+    /window/i,
+    /document/i,
     /fetch\s*\(/i,
     /XMLHttpRequest/i,
+    /constructor/i,
+    /__proto__/i,
+    /prototype/i,
+    /\bthis\b/i,
+    /\breflect\b/i,
+    /\bproxy\b/i,
+    /\bsymbol\b/i,
+    /\bobject\b/i,
+    /\barray\b/i,
+    /\bstring\b/i,
+    /\bnumber\b/i,
+    /\bboolean\b/i,
+    /\bfunction\b/i,
+    /\breturn\b/i,
+    /\bwhile\b/i,
+    /\bfor\b/i,
+    /\bif\b/i,
+    /\bvar\b/i,
+    /\blet\b/i,
+    /\bconst\b/i,
+    /\bnew\b/i,
+    /\bdelete\b/i,
+    /\btypeof\b/i,
+    /\bvoid\b/i,
+    /\bin\b/i,
+    /\binstanceof\b/i,
+    /\[\s*['"`]/, // bracket notation property access with strings
+    /\.\s*\w+\s*\[/, // dot notation followed by bracket access
   ];
 
   for (const pattern of dangerousPatterns) {
@@ -115,9 +146,10 @@ function evaluateMath(expression: string): number {
     throw new Error('Expression contains invalid characters or patterns');
   }
 
-  // Use Function constructor in a controlled way
+  // Use Function constructor in a controlled way with strict mode
+  // to prevent access to global `this` object
   // eslint-disable-next-line no-new-func
-  const result = new Function(`return (${cleanExpr})`)();
+  const result = new Function(`"use strict"; return (${cleanExpr})`)();
 
   if (typeof result !== 'number' || !Number.isFinite(result)) {
     throw new Error('Invalid calculation result');
