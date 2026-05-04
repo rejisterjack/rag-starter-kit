@@ -1,0 +1,14 @@
+# RAG Starter Kit - Robots.txt
+# https://www.robotstxt.org/
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /chat/
+Disallow: /_next/
+Disallow: /login
+Disallow: /register
+
+# Sitemap
+Sitemap: https://rag-starter-kit.vercel.app/sitemap.xml

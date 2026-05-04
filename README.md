@@ -309,7 +309,7 @@ pnpm dev
 | Variable | Description | Get Key |
 |----------|-------------|---------|
 | `OPENROUTER_API_KEY` | Chat/LLM (free models) | [openrouter.ai/keys](https://openrouter.ai/keys) |
-| `GOOGLE_API_KEY` | Embeddings (1,500/day free) | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Embeddings (1,500/day free) | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
 | `NEXTAUTH_SECRET` | JWT signing | `openssl rand -base64 32` |
 
 ---
@@ -371,7 +371,7 @@ See [Contributors](./CONTRIBUTORS.md) for our community!
 |-------|----------|
 | **Port in use** | Check if port 3000 is free: `lsof -i :3000` |
 | **Prisma generate fails** | Run `pnpm prisma generate` manually |
-| **Embedding errors** | Verify `GOOGLE_API_KEY` is valid and has quota remaining |
+| **Embedding errors** | Verify `GOOGLE_GENERATIVE_AI_API_KEY` is valid and has quota remaining |
 | **LLM timeout** | Check OpenRouter status or switch models in settings |
 | **Upload fails** | Verify Cloudinary credentials in your `.env` file |
 | **WebSocket not connecting** | Check `NEXT_PUBLIC_APP_URL` matches your browser URL |
