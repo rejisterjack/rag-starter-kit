@@ -76,10 +76,12 @@ const nextConfig: NextConfig = {
 		);
 
 		// thread-stream (used by pino) spawns worker threads via dynamic require("lib/worker.js")
-		// which breaks under webpack bundling with output: "standalone"
-		if (isServer) {
-			config.externals.push(/^thread-stream/);
-		}
+		// which breaks under webpack bundling with output: "standalone" and is unavailable on
+		// Vercel serverless. Resolve to false — pino works without it when no transports are used.
+		config.resolve.alias = {
+			...config.resolve.alias,
+			'thread-stream': false,
+		};
 
 		// Prevent pg from trying to load optional native bindings
 		// Resolve optional OTEL peer deps to false to suppress "Module not found" warnings
