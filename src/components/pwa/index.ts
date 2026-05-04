@@ -3,31 +3,70 @@
  * Progressive Web App UI components
  */
 
-// Install prompt components
+// ─── Connectivity (Enhanced) ──────────────────────────────────────────────────
+
+export {
+  ConnectivityBanner,
+  ConnectivityChip,
+  ConnectivityDot,
+} from './connectivity-banner';
+
+// ─── Sync Progress ────────────────────────────────────────────────────────────
+
+export {
+  SyncActionList,
+  SyncProgressBar,
+  SyncStatusBadge,
+  SyncToast,
+} from './sync-progress';
+
+// ─── Data Freshness ───────────────────────────────────────────────────────────
+
+export {
+  CachedDataWrapper,
+  FreshnessBadge,
+  FreshnessBar,
+} from './data-freshness';
+
+// ─── Offline Fallback ─────────────────────────────────────────────────────────
+
+export { OfflineFallback } from './offline-fallback';
+
+// ─── Install Prompt ───────────────────────────────────────────────────────────
+
 export {
   FloatingInstallButton,
   InstallPrompt,
   IOSInstallHint,
 } from './install-prompt';
 
-// Offline indicator components
+// ─── Offline Indicators (Legacy) ──────────────────────────────────────────────
+
 export {
-  ConnectionDot,
+  ConnectionDot as LegacyConnectionDot,
   NetworkStatusBadge,
   OfflineIndicator,
   OfflineSkeleton,
 } from './offline-indicator';
-// Offline message composer components
+
+// ─── Offline Message Composer ─────────────────────────────────────────────────
+
 export {
   OfflineInput,
   OfflineMessageComposer,
   PendingMessagesBadge,
 } from './offline-message-composer';
+
+// ─── Provider ─────────────────────────────────────────────────────────────────
+
 export { PWAProvider } from './pwa-provider';
 
-// PWA infrastructure
+// ─── PWA Infrastructure ───────────────────────────────────────────────────────
+
 export { PWAScripts } from './pwa-scripts';
-// Update notification components
+
+// ─── Update Notifications ─────────────────────────────────────────────────────
+
 export {
   CheckUpdateButton,
   UpdateBanner,

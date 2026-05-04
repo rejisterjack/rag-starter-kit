@@ -14,10 +14,18 @@ export {
 } from './use-analytics-event';
 // API Keys hooks
 export { useApiKeys } from './use-api-keys';
+// Connectivity & Offline hooks
+export { useConnectivity, useIsOnline } from './use-connectivity';
 export { useConversationBranch } from './use-conversation-branch';
 // CSRF hook
 export { fetchWithCsrf, getCsrfToken, useCsrf } from './use-csrf';
 export { useIntersectionObserver } from './use-intersection-observer';
+export {
+  useDataFreshness,
+  useOfflineMutation,
+  useOfflineQuery,
+  useSyncStatus,
+} from './use-offline-query';
 // PWA hooks
 export { usePWA } from './use-pwa';
 // Accessibility hooks

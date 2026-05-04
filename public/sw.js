@@ -1,305 +1,552 @@
 /**
- * Service Worker for RAG Starter Kit PWA
- * Provides offline support, caching, and background sync
+ * Production-grade Service Worker using Workbox strategies
+ * Provides advanced caching, background sync, and offline-first capabilities.
+ *
+ * Caching Strategies:
+ * - Stale-While-Revalidate: JS/CSS assets (fast first paint, background refresh)
+ * - Cache-First: Static media, fonts, icons (long-lived resources)
+ * - Network-First: API responses (freshness preferred with cache fallback)
+ * - Precache: App shell and critical resources
+ *
+ * @see https://developer.chrome.com/docs/workbox/
  */
 
-const CACHE_NAME = 'rag-starter-kit-v2';
-const STATIC_CACHE = `${CACHE_NAME}-static`;
-const DYNAMIC_CACHE = `${CACHE_NAME}-dynamic`;
-const API_CACHE = `${CACHE_NAME}-api`;
+// ─── Workbox CDN Import ───────────────────────────────────────────────────────
+importScripts(
+  'https://storage.googleapis.com/workbox-cdn/releases/7.3.0/workbox-sw.js'
+);
 
-// Assets to cache on install
-const STATIC_ASSETS = [
-  '/',
-  '/login',
-  '/offline',
-  '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
-];
+const { precaching, routing, strategies, expiration, cacheableResponse, backgroundSync } =
+  workbox;
 
-// Cache strategies
-const CACHE_STRATEGIES = {
-  // Cache First for static assets
-  static: async (request) => {
-    const cache = await caches.open(STATIC_CACHE);
-    const cached = await cache.match(request);
-    
-    if (cached) {
-      // Refresh cache in background
-      fetch(request).then((response) => {
-        if (response.ok) {
-          cache.put(request, response.clone());
-        }
-      }).catch(() => {});
-      return cached;
-    }
-    
-    const response = await fetch(request);
-    if (response.ok) {
-      cache.put(request, response.clone());
-    }
-    return response;
-  },
-  
-  // Network First for API calls
-  api: async (request) => {
-    const cache = await caches.open(API_CACHE);
-    
-    try {
-      const networkResponse = await fetch(request);
-      if (networkResponse.ok) {
-        cache.put(request, networkResponse.clone());
-      }
-      return networkResponse;
-    } catch (error) {
-      const cached = await cache.match(request);
-      if (cached) {
-        return cached;
-      }
-      throw error;
-    }
-  },
-  
-  // Stale While Revalidate for dynamic content
-  dynamic: async (request) => {
-    const cache = await caches.open(DYNAMIC_CACHE);
-    const cached = await cache.match(request);
-    
-    const networkPromise = fetch(request).then((response) => {
-      if (response.ok) {
-        cache.put(request, response.clone());
-      }
-      return response;
-    }).catch(() => cached);
-    
-    return cached || networkPromise;
-  },
-  
-  // Network Only for mutations
-  network: (request) => fetch(request),
+// ─── Configuration ────────────────────────────────────────────────────────────
+
+const CACHE_PREFIX = 'rag-pwa';
+const CACHE_VERSION = 'v3';
+
+const CACHE_NAMES = {
+  PRECACHE: `${CACHE_PREFIX}-precache-${CACHE_VERSION}`,
+  STATIC: `${CACHE_PREFIX}-static-${CACHE_VERSION}`,
+  IMAGES: `${CACHE_PREFIX}-images-${CACHE_VERSION}`,
+  API: `${CACHE_PREFIX}-api-${CACHE_VERSION}`,
+  PAGES: `${CACHE_PREFIX}-pages-${CACHE_VERSION}`,
+  FONTS: `${CACHE_PREFIX}-fonts-${CACHE_VERSION}`,
 };
 
-// Determine strategy based on request
-function getStrategy(request) {
-  const url = new URL(request.url);
-  
-  // Skip non-GET requests
-  if (request.method !== 'GET') {
-    return 'network';
-  }
-  
-  // API calls
-  if (url.pathname.startsWith('/api/')) {
-    // Read operations can be cached
-    if (['GET', 'HEAD'].includes(request.method)) {
-      return 'api';
-    }
-    return 'network';
-  }
-  
-  // Static assets
-  if (
-    url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|otf)$/) ||
-    STATIC_ASSETS.includes(url.pathname)
-  ) {
-    return 'static';
-  }
-  
-  // Next.js build files
-  if (url.pathname.includes('/_next/')) {
-    return 'static';
-  }
-  
-  // Everything else
-  return 'dynamic';
-}
+const SYNC_QUEUES = {
+  API_MUTATIONS: 'api-mutations',
+  CHAT_MESSAGES: 'chat-messages',
+};
 
-// Install event - cache static assets
-self.addEventListener('install', (event) => {
-  console.log('[SW] Installing...');
-  
-  event.waitUntil(
-    caches.open(STATIC_CACHE)
-      .then((cache) => {
-        console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
-      })
-      .then(() => self.skipWaiting())
-  );
+const OFFLINE_PAGE = '/offline';
+const NETWORK_TIMEOUT_MS = 3000;
+
+// ─── Skip Waiting & Claim Clients ─────────────────────────────────────────────
+
+self.addEventListener('install', () => {
+  self.skipWaiting();
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating...');
-  
   event.waitUntil(
-    caches.keys()
-      .then((cacheNames) => {
-        return Promise.all(
-          cacheNames
-            .filter((name) => name.startsWith(CACHE_NAME) && name !== CACHE_NAME)
-            .map((name) => {
-              console.log('[SW] Deleting old cache:', name);
-              return caches.delete(name);
-            })
-        );
-      })
-      .then(() => self.clients.claim())
+    Promise.all([
+      self.clients.claim(),
+      cleanOldCaches(),
+    ])
   );
 });
 
-// Fetch event - handle requests with appropriate strategy
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const strategy = getStrategy(request);
-  
-  event.respondWith(
-    CACHE_STRATEGIES[strategy](request)
-      .catch((error) => {
-        console.error('[SW] Fetch failed:', error);
-        
-        // Return offline page for navigation requests
-        if (request.mode === 'navigate') {
-          return caches.match('/offline');
-        }
-        
-        throw error;
-      })
+async function cleanOldCaches() {
+  const cacheNames = await caches.keys();
+  const validCaches = new Set(Object.values(CACHE_NAMES));
+  return Promise.all(
+    cacheNames
+      .filter((name) => name.startsWith(CACHE_PREFIX) && !validCaches.has(name))
+      .map((name) => caches.delete(name))
   );
-});
-
-// Background Sync for offline messages
-self.addEventListener('sync', (event) => {
-  console.log('[SW] Background sync:', event.tag);
-  
-  if (event.tag === 'sync-messages') {
-    event.waitUntil(syncMessages());
-  }
-});
-
-async function syncMessages() {
-  const db = await openDB('rag-offline-db', 1);
-  const messages = await db.getAll('pending-messages');
-  
-  for (const message of messages) {
-    try {
-      await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(message.data),
-      });
-      
-      await db.delete('pending-messages', message.id);
-    } catch (error) {
-      console.error('[SW] Failed to sync message:', error);
-    }
-  }
 }
 
-// Push notifications
-self.addEventListener('push', (event) => {
-  console.log('[SW] Push received:', event);
-  
-  const data = event.data?.json() || {};
-  const options = {
-    body: data.body || 'New notification',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/badge-72x72.png',
-    tag: data.tag || 'default',
-    data: data.data || {},
-    actions: data.actions || [],
-    requireInteraction: data.requireInteraction || false,
-  };
-  
-  event.waitUntil(
-    self.registration.showNotification(
-      data.title || 'RAG Starter Kit',
-      options
-    )
-  );
+// ─── Precache App Shell ───────────────────────────────────────────────────────
+
+precaching.precacheAndRoute([
+  { url: '/offline', revision: '3' },
+  { url: '/manifest.json', revision: '3' },
+]);
+
+// ─── Navigation Routes (Network-First with offline fallback) ──────────────────
+
+const navigationHandler = new strategies.NetworkFirst({
+  cacheName: CACHE_NAMES.PAGES,
+  networkTimeoutSeconds: NETWORK_TIMEOUT_MS / 1000,
+  plugins: [
+    new cacheableResponse.CacheableResponsePlugin({
+      statuses: [0, 200],
+    }),
+    new expiration.ExpirationPlugin({
+      maxEntries: 50,
+      maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+    }),
+  ],
 });
 
-// Notification click
-self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked:', event);
-  
-  event.notification.close();
-  
-  const notificationData = event.notification.data;
-  const urlToOpen = notificationData?.url || '/';
-  
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        // Focus existing window if open
-        for (const client of clientList) {
-          if (client.url === urlToOpen && 'focus' in client) {
-            return client.focus();
-          }
-        }
-        
-        // Open new window
-        if (self.clients.openWindow) {
-          return self.clients.openWindow(urlToOpen);
-        }
-      })
-  );
-});
+routing.registerRoute(
+  ({ request }) => request.mode === 'navigate',
+  async (args) => {
+    try {
+      return await navigationHandler.handle(args);
+    } catch {
+      const cache = await caches.open(CACHE_NAMES.PRECACHE);
+      const cachedResponse = await cache.match('/offline');
+      return cachedResponse || new Response('Offline', {
+        status: 503,
+        headers: { 'Content-Type': 'text/html' },
+      });
+    }
+  }
+);
 
-// Message handling from client
+// ─── Stale-While-Revalidate: JS & CSS Assets ─────────────────────────────────
+
+routing.registerRoute(
+  ({ request, url }) =>
+    url.origin === self.location.origin &&
+    (request.destination === 'script' || request.destination === 'style'),
+  new strategies.StaleWhileRevalidate({
+    cacheName: CACHE_NAMES.STATIC,
+    plugins: [
+      new cacheableResponse.CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new expiration.ExpirationPlugin({
+        maxEntries: 200,
+        maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year (versioned assets)
+      }),
+    ],
+  })
+);
+
+// ─── Stale-While-Revalidate: Next.js chunks ──────────────────────────────────
+
+routing.registerRoute(
+  ({ url }) =>
+    url.origin === self.location.origin &&
+    url.pathname.startsWith('/_next/static/'),
+  new strategies.StaleWhileRevalidate({
+    cacheName: CACHE_NAMES.STATIC,
+    plugins: [
+      new cacheableResponse.CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new expiration.ExpirationPlugin({
+        maxEntries: 200,
+        maxAgeSeconds: 365 * 24 * 60 * 60,
+      }),
+    ],
+  })
+);
+
+// ─── Cache-First: Images ──────────────────────────────────────────────────────
+
+routing.registerRoute(
+  ({ request }) => request.destination === 'image',
+  new strategies.CacheFirst({
+    cacheName: CACHE_NAMES.IMAGES,
+    plugins: [
+      new cacheableResponse.CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new expiration.ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+        purgeOnQuotaError: true,
+      }),
+    ],
+  })
+);
+
+// ─── Cache-First: Fonts ───────────────────────────────────────────────────────
+
+routing.registerRoute(
+  ({ request }) => request.destination === 'font',
+  new strategies.CacheFirst({
+    cacheName: CACHE_NAMES.FONTS,
+    plugins: [
+      new cacheableResponse.CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new expiration.ExpirationPlugin({
+        maxEntries: 30,
+        maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+      }),
+    ],
+  })
+);
+
+// ─── Cache-First: Google Fonts ────────────────────────────────────────────────
+
+routing.registerRoute(
+  ({ url }) =>
+    url.origin === 'https://fonts.googleapis.com' ||
+    url.origin === 'https://fonts.gstatic.com',
+  new strategies.CacheFirst({
+    cacheName: CACHE_NAMES.FONTS,
+    plugins: [
+      new cacheableResponse.CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new expiration.ExpirationPlugin({
+        maxEntries: 30,
+        maxAgeSeconds: 365 * 24 * 60 * 60,
+      }),
+    ],
+  })
+);
+
+// ─── Network-First: API Routes ────────────────────────────────────────────────
+
+// Health check endpoint (used by connectivity monitor)
+routing.registerRoute(
+  ({ url }) => url.pathname === '/api/health',
+  new strategies.NetworkOnly()
+);
+
+// API data routes - Network-First for freshness, cache fallback
+routing.registerRoute(
+  ({ url }) =>
+    url.origin === self.location.origin &&
+    url.pathname.startsWith('/api/') &&
+    !url.pathname.startsWith('/api/auth/'),
+  new strategies.NetworkFirst({
+    cacheName: CACHE_NAMES.API,
+    networkTimeoutSeconds: NETWORK_TIMEOUT_MS / 1000,
+    plugins: [
+      new cacheableResponse.CacheableResponsePlugin({
+        statuses: [0, 200],
+        headers: {
+          'X-Is-Cacheable': 'true', // Only cache responses that opt-in
+        },
+      }),
+      new expiration.ExpirationPlugin({
+        maxEntries: 200,
+        maxAgeSeconds: 24 * 60 * 60, // 24 hours
+      }),
+    ],
+  })
+);
+
+// ─── Fallback API handler for GET requests without cache header ───────────────
+
+routing.registerRoute(
+  ({ url, request }) =>
+    url.origin === self.location.origin &&
+    url.pathname.startsWith('/api/') &&
+    request.method === 'GET' &&
+    !url.pathname.startsWith('/api/auth/') &&
+    !url.pathname.startsWith('/api/health'),
+  new strategies.NetworkFirst({
+    cacheName: CACHE_NAMES.API,
+    networkTimeoutSeconds: NETWORK_TIMEOUT_MS / 1000,
+    plugins: [
+      new cacheableResponse.CacheableResponsePlugin({
+        statuses: [200],
+      }),
+      new expiration.ExpirationPlugin({
+        maxEntries: 200,
+        maxAgeSeconds: 60 * 60, // 1 hour for uncategorized
+      }),
+    ],
+  })
+);
+
+// ─── Background Sync: API Mutations ───────────────────────────────────────────
+
+const apiMutationSync = new backgroundSync.BackgroundSyncPlugin(
+  SYNC_QUEUES.API_MUTATIONS,
+  {
+    maxRetentionTime: 24 * 60, // 24 hours in minutes
+    onSync: async ({ queue }) => {
+      let entry;
+      while ((entry = await queue.shiftRequest())) {
+        try {
+          await fetch(entry.request.clone());
+          broadcastMessage({
+            type: 'SYNC_COMPLETE',
+            payload: { url: entry.request.url },
+          });
+        } catch (error) {
+          await queue.unshiftRequest(entry);
+          throw error;
+        }
+      }
+    },
+  }
+);
+
+// Register background sync for POST/PUT/PATCH/DELETE to API
+routing.registerRoute(
+  ({ url, request }) =>
+    url.origin === self.location.origin &&
+    url.pathname.startsWith('/api/') &&
+    request.method !== 'GET' &&
+    request.method !== 'HEAD',
+  new strategies.NetworkOnly({
+    plugins: [apiMutationSync],
+  }),
+  'POST'
+);
+
+routing.registerRoute(
+  ({ url, request }) =>
+    url.origin === self.location.origin &&
+    url.pathname.startsWith('/api/') &&
+    request.method !== 'GET' &&
+    request.method !== 'HEAD',
+  new strategies.NetworkOnly({
+    plugins: [apiMutationSync],
+  }),
+  'PUT'
+);
+
+routing.registerRoute(
+  ({ url, request }) =>
+    url.origin === self.location.origin &&
+    url.pathname.startsWith('/api/') &&
+    request.method !== 'GET' &&
+    request.method !== 'HEAD',
+  new strategies.NetworkOnly({
+    plugins: [apiMutationSync],
+  }),
+  'PATCH'
+);
+
+routing.registerRoute(
+  ({ url, request }) =>
+    url.origin === self.location.origin &&
+    url.pathname.startsWith('/api/') &&
+    request.method !== 'GET' &&
+    request.method !== 'HEAD',
+  new strategies.NetworkOnly({
+    plugins: [apiMutationSync],
+  }),
+  'DELETE'
+);
+
+// ─── Background Sync: Chat Messages ──────────────────────────────────────────
+
+const chatMessageSync = new backgroundSync.BackgroundSyncPlugin(
+  SYNC_QUEUES.CHAT_MESSAGES,
+  {
+    maxRetentionTime: 24 * 60,
+    onSync: async ({ queue }) => {
+      let entry;
+      while ((entry = await queue.shiftRequest())) {
+        try {
+          await fetch(entry.request.clone());
+          broadcastMessage({
+            type: 'CHAT_SYNC_COMPLETE',
+            payload: { url: entry.request.url },
+          });
+        } catch (error) {
+          await queue.unshiftRequest(entry);
+          throw error;
+        }
+      }
+    },
+  }
+);
+
+routing.registerRoute(
+  ({ url, request }) =>
+    url.origin === self.location.origin &&
+    url.pathname === '/api/chat' &&
+    request.method === 'POST',
+  new strategies.NetworkOnly({
+    plugins: [chatMessageSync],
+  }),
+  'POST'
+);
+
+// ─── Message Handler ──────────────────────────────────────────────────────────
+
 self.addEventListener('message', (event) => {
-  console.log('[SW] Message received:', event.data);
-  
-  switch (event.data.type) {
+  if (!event.data) return;
+
+  const { type, payload } = event.data;
+
+  switch (type) {
     case 'SKIP_WAITING':
       self.skipWaiting();
       break;
-      
-    case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: CACHE_NAME });
+
+    case 'CACHE_URLS':
+      if (payload?.urls) {
+        event.waitUntil(cacheUrls(payload.urls, payload.cacheName));
+      }
       break;
-      
+
     case 'CLEAR_CACHE':
+      event.waitUntil(clearCache(payload?.cacheName));
+      break;
+
+    case 'GET_CACHE_STATS':
       event.waitUntil(
-        caches.keys().then((names) => 
-          Promise.all(names.map((name) => caches.delete(name)))
-        )
+        getCacheStats().then((stats) => {
+          event.source?.postMessage({
+            type: 'CACHE_STATS',
+            payload: stats,
+          });
+        })
       );
+      break;
+
+    case 'PROCESS_SYNC_QUEUE':
+      // Trigger manual sync processing
+      event.waitUntil(processSyncQueues());
       break;
   }
 });
 
-// Helper for IndexedDB (simplified version)
-function openDB(name, version) {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(name, version);
-    
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve({
-      getAll: (store) => new Promise((res, rej) => {
-        const tx = request.result.transaction(store, 'readonly');
-        const st = tx.objectStore(store);
-        const getAll = st.getAll();
-        getAll.onsuccess = () => res(getAll.result);
-        getAll.onerror = () => rej(getAll.error);
-      }),
-      delete: (store, key) => new Promise((res, rej) => {
-        const tx = request.result.transaction(store, 'readwrite');
-        const st = tx.objectStore(store);
-        const del = st.delete(key);
-        del.onsuccess = () => res();
-        del.onerror = () => rej(del.error);
-      }),
-    });
-    
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains('pending-messages')) {
-        db.createObjectStore('pending-messages', { keyPath: 'id' });
-      }
+// ─── Push Notification Handler ────────────────────────────────────────────────
+
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  try {
+    const data = event.data.json();
+    const title = data.title || 'RAG Starter Kit';
+    const options = {
+      body: data.body || '',
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-72x72.png',
+      tag: data.tag || 'default',
+      data: data.data || {},
+      actions: data.actions || [],
+      vibrate: [200, 100, 200],
     };
+
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch {
+    // Invalid push data
+  }
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const urlToOpen = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      // Focus existing tab if open
+      const existingClient = clients.find((client) =>
+        client.url.includes(self.location.origin)
+      );
+
+      if (existingClient) {
+        existingClient.focus();
+        existingClient.navigate(urlToOpen);
+        return existingClient;
+      }
+
+      // Open new tab
+      return self.clients.openWindow(urlToOpen);
+    })
+  );
+});
+
+// ─── Periodic Background Sync ─────────────────────────────────────────────────
+
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag === 'content-sync') {
+    event.waitUntil(periodicContentSync());
+  }
+});
+
+async function periodicContentSync() {
+  try {
+    // Prefetch important data in background
+    const cacheName = CACHE_NAMES.API;
+    const cache = await caches.open(cacheName);
+
+    const urlsToRefresh = ['/api/conversations'];
+
+    await Promise.allSettled(
+      urlsToRefresh.map(async (url) => {
+        const response = await fetch(url, {
+          credentials: 'include',
+          headers: { 'X-Background-Sync': 'true' },
+        });
+        if (response.ok) {
+          await cache.put(url, response);
+        }
+      })
+    );
+  } catch {
+    // Background sync failure is non-critical
+  }
+}
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
+function broadcastMessage(message) {
+  self.clients.matchAll({ type: 'window' }).then((clients) => {
+    for (const client of clients) {
+      client.postMessage(message);
+    }
   });
 }
 
-console.log('[SW] Service Worker loaded');
+async function cacheUrls(urls, cacheName = CACHE_NAMES.STATIC) {
+  const cache = await caches.open(cacheName);
+  await cache.addAll(urls);
+}
+
+async function clearCache(cacheName) {
+  if (cacheName) {
+    await caches.delete(cacheName);
+  } else {
+    const keys = await caches.keys();
+    await Promise.all(
+      keys
+        .filter((key) => key.startsWith(CACHE_PREFIX))
+        .map((key) => caches.delete(key))
+    );
+  }
+}
+
+async function getCacheStats() {
+  const stats = {};
+  const cacheKeys = await caches.keys();
+
+  for (const key of cacheKeys) {
+    if (key.startsWith(CACHE_PREFIX)) {
+      const cache = await caches.open(key);
+      const keys = await cache.keys();
+      stats[key] = {
+        entries: keys.length,
+      };
+    }
+  }
+
+  return stats;
+}
+
+async function processSyncQueues() {
+  // Trigger background sync events
+  try {
+    await self.registration.sync.register(SYNC_QUEUES.API_MUTATIONS);
+    await self.registration.sync.register(SYNC_QUEUES.CHAT_MESSAGES);
+  } catch {
+    // Background sync not available
+  }
+}
+
+// ─── Error Reporting ──────────────────────────────────────────────────────────
+
+self.addEventListener('error', (event) => {
+  console.error('[SW] Error:', event.error);
+});
+
+self.addEventListener('unhandledrejection', (event) => {
+  console.error('[SW] Unhandled rejection:', event.reason);
+});
