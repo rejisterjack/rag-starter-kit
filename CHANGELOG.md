@@ -11,11 +11,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Version
 Changes that are merged but not yet tagged as a release.
 
 ### Planned for Next Release
-- Admin dashboard for document management
-- Anthropic Claude provider support
-- Ollama local inference support
-- Ingestion progress UI with real-time updates
-- Duplicate document detection
+- Retrieval debug mode — shows retrieved chunks and scores alongside response in dev
+- Suggested follow-up questions after each response
+- Message feedback (thumbs up/down)
+- Embeddable chat widget (npm package)
+- Notion / GitHub / Google Drive connectors
 
 ---
 
@@ -23,7 +23,7 @@ Changes that are merged but not yet tagged as a release.
 
 ### Initial public release. 🎉
 
-This is the first stable release of `rag-starter-kit` — a production-ready, self-hosted RAG chatbot built entirely in TypeScript with zero required API costs.
+This is the first stable release of `rag-starter-kit` — a production-ready RAG chatbot built entirely in TypeScript with zero required API costs.
 
 ### Added
 
@@ -44,7 +44,7 @@ This is the first stable release of `rag-starter-kit` — a production-ready, se
 **Document Processing**
 - PDF, DOCX, TXT, and Markdown ingestion
 - Background processing via Inngest (document ingestion never blocks the UI)
-- MinIO/S3-compatible file storage
+- Cloudinary cloud file storage
 - Multi-document chat context
 
 **Authentication & Security**
@@ -76,19 +76,19 @@ This is the first stable release of `rag-starter-kit` — a production-ready, se
 - PWA support — installable as native app
 
 **Monitoring & Analytics**
-- Plausible Analytics — privacy-focused, self-hosted in Docker
+- Plausible Analytics — privacy-focused
 - PostHog — product analytics (optional)
 - Token usage tracking per user and workspace
 - API latency monitoring (p50, p95, p99)
 - Health check endpoint at `/api/health`
 
 **Developer Experience**
-- Full Docker Compose local stack — single `docker compose up` starts everything
-- Hot reload in Docker development
+- Full managed cloud services stack — Neon PostgreSQL, Upstash Redis, Cloudinary, Inngest all connected
+- Hot reload in local development
 - Seed script with sample documents for immediate testing
 - Vitest unit tests with coverage reporting
 - Playwright E2E test suite
-- GitHub Actions CI/CD (CI, Docker build, E2E, Lighthouse)
+- GitHub Actions CI/CD (CI, E2E, Lighthouse, Security scanning)
 - One-click deploy buttons for Vercel, Railway, and Render
 - Biome for formatting and linting
 
@@ -98,7 +98,7 @@ This is the first stable release of `rag-starter-kit` — a production-ready, se
 - Automated migrations
 
 **Infrastructure**
-- Docker Compose for local development (Postgres, Redis, MinIO, Inngest, Next.js, Plausible)
+- Managed cloud services — Neon PostgreSQL, Upstash Redis, Cloudinary storage, Inngest background jobs
 - Environment variable validation on startup
 - Complete `.env.example` with documentation for every variable
 

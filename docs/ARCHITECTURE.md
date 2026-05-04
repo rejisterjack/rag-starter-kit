@@ -30,9 +30,10 @@ graph TB
     end
 
     subgraph AI["AI Layer"]
-        OpenAI["OpenAI"]
+        OpenRouter["OpenRouter"]
         Gemini["Google Gemini"]
-        Local["Local Models"]
+        Anthropic["Anthropic Claude"]
+        Ollama["Ollama (Local)"]
     end
 
     subgraph Data["Data Layer"]
@@ -285,11 +286,11 @@ graph TD
 | Frontend | Next.js 15, React 19, TypeScript |
 | Styling | Tailwind CSS 4, shadcn/ui |
 | State | React Query, Zustand |
-| Backend | Next.js API Routes, tRPC |
+| Backend | Next.js API Routes |
 | Database | PostgreSQL 16 + pgvector |
 | Cache | Redis |
 | Storage | Cloudinary |
 | AI | Vercel AI SDK, OpenRouter |
 | Auth | NextAuth v5 |
 | Queue | Inngest |
-| Real-time | Socket.io |
+| Real-time | Ably |

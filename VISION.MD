@@ -6,7 +6,7 @@
 
 ## The One-Line Version
 
-**The TypeScript-native, self-hostable RAG platform for developers who build products — not experiments. And it costs nothing to run.**
+**The TypeScript-native, cloud-native RAG platform for developers who build products — not experiments. And it costs nothing to run.**
 
 ---
 
@@ -28,9 +28,9 @@ So developers either abandon the idea, hire someone who knows Python, or spend t
 
 `rag-starter-kit` is a production-ready RAG platform built entirely in TypeScript and Next.js, with **zero required API costs** — built on OpenRouter free models and Google Gemini's free embedding tier.
 
-You clone it, configure it with two free API keys, and deploy it. You get a real, working chatbot backed by your own documents, running on your own infrastructure, at no cost.
+You clone it, configure it with two free API keys, and deploy it to Vercel. You get a real, working chatbot backed by your own documents, running on managed cloud services, at no cost.
 
-No Python. No paid API keys. No tutorial shortcuts. No fragile glue code.
+No Python. No paid API keys. No tutorial shortcuts. No fragile glue code. No Docker, no infrastructure management.
 
 Everything a production system needs is already wired in: streaming responses, voice I/O, background job processing, multi-user workspaces, file storage, authentication, rate limiting, observability, and one-click deployment to Vercel.
 
@@ -55,10 +55,10 @@ Most RAG tools are Python. This is one of the very few production-grade RAG syst
 This removes the biggest barrier to adoption. Developers try things that are free. They skip things that require a credit card.
 
 **3. Production infrastructure already wired in.**
-Most RAG demos are 200 lines of code with no auth, no file storage, no background jobs, no monitoring. This has all of it — NextAuth.js v5, MinIO/S3, Inngest, PostHog, Plausible, Upstash rate limiting, audit logging, Playwright E2E tests. It's the project you'd spend three weeks building from scratch.
+Most RAG demos are 200 lines of code with no auth, no file storage, no background jobs, no monitoring. This has all of it — NextAuth.js v5, Cloudinary, Inngest, PostHog, Plausible, Upstash Redis, audit logging, Playwright E2E tests. Managed cloud services so you never touch infrastructure. It's the project you'd spend three weeks building from scratch.
 
 **4. Real-time and collaborative from the start.**
-Multi-user workspaces, typing indicators, presence tracking, WebSocket/SSE — not bolted on later. Built in from day one.
+Multi-user workspaces, typing indicators, presence tracking, Ably real-time — not bolted on later. Built in from day one.
 
 ---
 
@@ -91,7 +91,7 @@ Someone who gets a client request for an AI chatbot and needs a production-ready
 
 ### The freelancer / agency scenario
 
-A client asks a freelancer to build an AI chatbot trained on their company documentation. Without this project, the freelancer either says no or spends weeks building infrastructure. With `rag-starter-kit`, they clone it, upload the client's docs, configure two free API keys, and deploy to Vercel. The client has a working, production-grade chatbot. The work that would have taken three weeks takes a weekend.
+A client asks a freelancer to build an AI chatbot trained on their company documentation. Without this project, the freelancer either says no or spends weeks building infrastructure. With `rag-starter-kit`, they clone it, upload the client's docs, configure two free API keys, and deploy to Vercel. The client has a working, production-grade chatbot. No Docker, no server management. The work that would have taken three weeks takes a weekend.
 
 ### The SaaS founder scenario
 
@@ -103,13 +103,13 @@ A company has years of knowledge scattered across Google Drive, Confluence, and 
 
 ### The learning scenario
 
-A developer wants to break into AI engineering but finds most resources are Python-based or too shallow. They clone this project and spend a couple of weekends reading the code — understanding how Inngest queues document ingestion jobs, how pgvector stores and retrieves embeddings, how SSE streams tokens to the UI in real time. They understand production RAG from a real codebase, not a tutorial. And they ran all of it for free.
+A developer wants to break into AI engineering but finds most resources are Python-based or too shallow. They clone this project and spend a couple of weekends reading the code — understanding how Inngest queues document ingestion jobs, how pgvector stores and retrieves embeddings, how SSE streams tokens to the UI in real time. They understand production RAG from a real codebase, not a tutorial. And they ran all of it for free, with `pnpm dev` and two API keys.
 
 ---
 
 ## How It's Deployed
 
-Developers clone the repository, configure their environment variables, and deploy to their own infrastructure — Vercel, Railway, a VPS, or their own server. They own the code completely. Their documents never leave their infrastructure. There is no central server, no account to create, no data sent anywhere except the LLM API calls they configure themselves.
+Developers clone the repository, configure their environment variables, and deploy — Vercel (one click), Railway, Render, or any Node.js host. They own the code completely. No Docker, no infrastructure management. Documents are stored in their own Cloudinary account, data in their own PostgreSQL database. The only external calls are the LLM API they configure themselves.
 
 ---
 
@@ -121,37 +121,37 @@ Developers clone the repository, configure their environment variables, and depl
 - Multi-user workspaces with presence and typing indicators
 - Voice input and output (Web Speech API + Whisper)
 - Background document processing via Inngest
-- MinIO/S3-compatible file storage
+- Cloudinary cloud file storage
 - pgvector on Postgres via Prisma 7
-- NextAuth.js v5 with OAuth (GitHub, Google)
+- NextAuth.js v5 with OAuth (GitHub, Google), SAML 2.0 SSO, and MFA
 - Rate limiting via Upstash Redis
-- PostHog + Plausible analytics (self-hosted)
+- PostHog + Plausible analytics
 - Audit logging
 - Playwright E2E tests + Vitest unit tests
 - CI/CD via GitHub Actions
 - One-click Vercel/Railway/Render deploy
-- Full Docker Compose local stack
 - PWA support
+- Agent mode with tools (web search, calculator, code execution)
+- Webhook ingestion
+- Ably real-time for WebSocket connections
+- OCR with Tesseract.js
+- Multi-modal support (images, audio, video)
 
 ### Near-Term (Next 3 Months)
-- **Admin dashboard** — upload documents, view ingestion status, manage knowledge bases, see usage stats, without touching the database
-- **Multi-LLM switching** — Anthropic Claude and Ollama support alongside OpenRouter, switchable via a single env var
-- **Ingestion progress UI** — real-time progress as large documents are processed
-- **Duplicate detection** — don't re-ingest a file that's already indexed
-- **Configurable retrieval** — chunk size, overlap, top-k, similarity threshold all via env vars with no code changes
+- **Embeddable chat widget** — a `<script>` tag that adds the chatbot to any website
+- **Connector ecosystem** — Notion, GitHub, Google Drive integrations for automated ingestion
+- **Evaluation tooling** — retrieval accuracy scoring so developers can measure RAG quality
 
 ### Medium-Term (3–6 Months)
-- **Embeddable chat widget** — a `<script>` tag that adds the chatbot to any website
-- **Webhook ingestion** — POST a URL, the system fetches, parses, and indexes it automatically
-- **Evaluation tooling** — retrieval accuracy scoring so developers can measure whether RAG quality is improving
-- **Multi-tenancy** — multiple isolated knowledge bases from a single deployment
-- **Conversation history** — persistent chat history per user across sessions
+- **Multi-tenancy enhancements** — more granular resource limits, workspace-level LLM config
+- **Conversation search** — search past conversations by keyword
+- **Suggested follow-up questions** — LLM generates next-question suggestions after each response
+- **npm widget package** — `@rejisterjack/rag-widget` published to npm for embedding anywhere
 
 ### Long-Term (6+ Months)
-- **Connector ecosystem** — Notion, GitHub, Google Drive, Confluence, Slack
-- **Agent mode** — give the chatbot tools: search the web, query a database, call an API
-- **Multi-modal ingestion** — images, audio files, YouTube transcripts
-- **npm widget package** — `@rejisterjack/rag-widget` published to npm for embedding anywhere
+- **Advanced agent capabilities** — database query tool, API orchestration
+- **Conversation analytics** — insights into most-asked questions, satisfaction trends
+- **Collaboration features** — shared conversations, team bookmarks, knowledge-base curation
 
 ---
 
@@ -218,9 +218,9 @@ One solid feature every few weeks beats ten half-finished ones. Quality over vel
 
 **GitHub:** `github.com/rejisterjack/rag-starter-kit`
 
-**Topics:** `rag` `langchain` `nextjs` `typescript` `pgvector` `self-hosted` `chatbot` `openrouter` `free-ai` `inngest` `voice-ai` `docker`
+**Topics:** `rag` `langchain` `nextjs` `typescript` `pgvector` `chatbot` `openrouter` `free-ai` `inngest` `voice-ai` `vercel` `cloudinary`
 
-**One-line description:** Production-ready TypeScript RAG chatbot — free AI, streaming, voice, multi-user, self-hostable, one-click Vercel deploy.
+**One-line description:** Production-ready TypeScript RAG chatbot — free AI, streaming, voice, multi-user, one-click Vercel deploy.
 
 **License:** MIT — free to use, fork, and build on. Always.
 
@@ -228,7 +228,7 @@ One solid feature every few weeks beats ten half-finished ones. Quality over vel
 
 ## The Positioning Statement
 
-For TypeScript developers who need to add RAG capabilities to their product, `rag-starter-kit` is the only open-source platform that gives you a production-ready starting point — with streaming, voice, authentication, background processing, and observability already wired in — without leaving the Node.js ecosystem and without paying for AI APIs to get started.
+For TypeScript developers who need to add RAG capabilities to their product, `rag-starter-kit` is the only open-source platform that gives you a production-ready starting point — with streaming, voice, authentication, background processing, and observability already wired in — without leaving the Node.js ecosystem and without paying for AI APIs to get started. No Docker, no infrastructure management — deploy to Vercel in one click.
 
 Unlike Python-based alternatives like LangChain or RAGFlow, and unlike minimal templates that stop at "it works on my machine," this is built for developers who think in TypeScript, deploy on Vercel or Node.js infrastructure, and want something they can ship to real users from day one.
 

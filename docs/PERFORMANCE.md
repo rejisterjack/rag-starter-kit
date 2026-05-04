@@ -148,7 +148,6 @@ CREATE INDEX idx_messages_conversation ON messages(conversation_id, created_at A
 
 - Lighthouse CI for automated audits
 - Web Vitals monitoring
-- Sentry for error tracking
 - Custom performance metrics
 
 ## Profiling

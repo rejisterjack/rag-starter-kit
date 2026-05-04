@@ -40,9 +40,9 @@ Alternatively, email **rupam[at]rejisterjack[dot]dev** with:
 
 ### What This Project Handles
 
-`rag-starter-kit` is a self-hosted application. When you deploy it, you own the infrastructure. This means:
+`rag-starter-kit` is a cloud-native application. When you deploy it, you control your data. This means:
 
-- **Your documents stay on your servers** — nothing is sent to third parties except the LLM API calls you configure (OpenRouter, Google Gemini, or whichever provider you choose)
+- **Your documents are stored in your own Cloudinary account** — nothing is sent to third parties except the LLM API calls you configure (OpenRouter, Google Gemini, or whichever provider you choose)
 - **Authentication** is handled by NextAuth.js v5 — we don't implement our own auth cryptography
 - **Database access** is scoped by workspace — users cannot access other workspaces' documents or conversations
 
@@ -50,7 +50,7 @@ Alternatively, email **rupam[at]rejisterjack[dot]dev** with:
 
 - Physical security of your deployment infrastructure
 - Network-level security (firewalls, VPNs, DDoS protection)
-- Compliance certifications (SOC2, HIPAA, GDPR) — this is a self-hosted project; compliance is your responsibility based on your deployment
+- Compliance certifications (SOC2, HIPAA, GDPR) — this is an open-source project; compliance is your responsibility based on your deployment
 
 ---
 

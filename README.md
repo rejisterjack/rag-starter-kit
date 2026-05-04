@@ -2,7 +2,7 @@
 
 # 🧠 RAG Starter Kit
 
-**A production-ready, self-hosted RAG (Retrieval-Augmented Generation) chatbot boilerplate**
+**A production-ready RAG (Retrieval-Augmented Generation) chatbot boilerplate**
 
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev/)
@@ -149,7 +149,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 | **Background Jobs** | [Inngest](https://www.inngest.com/) |
 | **State** | [TanStack Query](https://tanstack.com/query) + [Zustand](https://github.com/pmndrs/zustand) |
 | **Testing** | [Vitest](https://vitest.dev/) + [Playwright](https://playwright.dev/) |
-| **Analytics** | [Plausible](https://plausible.io/) (self-hosted) + [PostHog](https://posthog.com/) (optional) |
+| **Analytics** | [Plausible](https://plausible.io/) + [PostHog](https://posthog.com/) (optional) |
 | **DevOps** | [Vercel](https://vercel.com/) |
 | **Linting** | [Biome](https://biomejs.dev/) |
 
@@ -240,8 +240,8 @@ graph TB
     end
 
     subgraph "Real-time Features"
-        Next -->|WebSocket| WS[Socket.io]
-        WS -->|Presence/Typing| User
+        Next -->|WebSocket| Ably[Ably]
+        Ably -->|Presence/Typing| User
     end
 ```
 
@@ -250,13 +250,13 @@ graph TB
 | Layer | Technology | Purpose |
 |-------|------------|---------|
 | **Presentation** | Next.js 15, React 19, Tailwind CSS | UI components, SSR, streaming |
-| **API** | Next.js API Routes, tRPC | RESTful endpoints, type-safe APIs |
+| **API** | Next.js API Routes | RESTful endpoints, type-safe APIs |
 | **AI/ML** | Vercel AI SDK, OpenRouter, Gemini | LLM inference, embeddings |
 | **RAG** | LangChain, custom pipeline | Document processing, retrieval |
 | **Data** | PostgreSQL, pgvector, Redis | Persistent storage, caching |
 | **Storage** | Cloudinary | Document files |
 | **Queue** | Inngest | Background job processing |
-| **Real-time** | Socket.io | WebSocket connections |
+| **Real-time** | Ably | WebSocket connections |
 
 ---
 
