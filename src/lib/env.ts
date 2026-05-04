@@ -23,7 +23,6 @@ const envSchema = z.object({
 
   // Optional AI provider keys
   FIREWORKS_API_KEY: z.string().optional(),
-  GOOGLE_GENERATIVE_AI_API_KEY: z.string().optional(),
 
   // Optional variables with defaults
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
