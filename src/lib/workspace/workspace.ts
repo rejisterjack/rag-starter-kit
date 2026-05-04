@@ -13,7 +13,7 @@ import type { MemberRole, Workspace, WorkspaceMember, WorkspacePlan } from './ty
  * Get the application URL
  * Throws error in production if not configured
  */
-function getAppUrl(): string {
+export function getAppUrl(): string {
   const url = process.env.NEXT_PUBLIC_APP_URL;
   if (url) return url;
 

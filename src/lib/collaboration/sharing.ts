@@ -8,6 +8,9 @@
 
 import { randomBytes } from 'node:crypto';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
+import { emailService } from '@/lib/notifications/email';
+import { getAppUrl } from '@/lib/workspace/workspace';
 import type { Message } from '@/types';
 
 // ============================================================================
@@ -417,6 +420,15 @@ export async function processMentions(
 
   const mentionedUsernames = new Set<string>();
 
+  // Fetch sender and chat once for all mention emails
+  const sender = await prisma.user.findUnique({
+    where: { id: senderUserId },
+    select: { name: true, email: true },
+  });
+  const chatTitle = message.chat?.title || 'Untitled conversation';
+  const appUrl = getAppUrl();
+  const commentUrl = `${appUrl}/chat/${message.chatId}`;
+
   let matchResult: RegExpExecArray | null = null;
   // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex iteration pattern
   while ((matchResult = mentionRegex.exec(content)) !== null) {
@@ -460,6 +472,24 @@ export async function processMentions(
         read: mention.read,
         createdAt: mention.createdAt,
       });
+
+      // Send mention notification email (fire-and-forget)
+      try {
+        await emailService.sendEmail({
+          to: mentionedUser.email,
+          template: emailService.mentionEmail({
+            userName: mentionedUser.name || mentionedUser.email,
+            mentionedBy: sender?.name || sender?.email || 'Someone',
+            commentContent: mention.content,
+            conversationTitle: chatTitle,
+            commentUrl,
+          }),
+        });
+      } catch (emailError) {
+        logger.error('Failed to send mention notification', {
+          error: emailError instanceof Error ? emailError.message : 'Unknown',
+        });
+      }
     }
   }
 

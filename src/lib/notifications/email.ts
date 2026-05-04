@@ -132,12 +132,12 @@ export class EmailService {
       subject: 'Welcome to RAG Starter Kit!',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #333;">Welcome, ${userName}!</h1>
+          <h1 style="color: #333;">Welcome, ${escapeHtml(userName)}!</h1>
           <p>Thank you for joining RAG Starter Kit. We're excited to have you on board!</p>
           <p>Get started by logging in to your account:</p>
-          <a href="${loginUrl}" style="display: inline-block; padding: 12px 24px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">Get Started</a>
+          <a href="${escapeHtml(loginUrl)}" style="display: inline-block; padding: 12px 24px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">Get Started</a>
           <p style="margin-top: 20px; color: #666; font-size: 12px;">
-            If the button doesn't work, copy and paste this link: ${loginUrl}
+            If the button doesn't work, copy and paste this link: ${escapeHtml(loginUrl)}
           </p>
         </div>
       `,
@@ -237,6 +237,75 @@ export class EmailService {
         </div>
       `,
       text: `${mentionedBy} mentioned you in ${conversationTitle}: ${commentContent}. View at ${commentUrl}`,
+    };
+  }
+
+  passwordChangedNotificationEmail({
+    userName,
+    changedAt,
+    ipAddress,
+  }: {
+    userName: string;
+    changedAt: Date;
+    ipAddress?: string;
+  }): EmailTemplate {
+    const timestamp = changedAt.toLocaleString();
+    const ipInfo = ipAddress ? ` from IP address <strong>${escapeHtml(ipAddress)}</strong>` : '';
+
+    return {
+      subject: 'Your password was changed',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #333;">Password Changed</h1>
+          <p>Hi ${escapeHtml(userName)},</p>
+          <p>Your password was changed${ipInfo} on <strong>${timestamp}</strong>.</p>
+          <p style="padding: 12px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; color: #856404;">
+            If you did not make this change, please contact support immediately and reset your password.
+          </p>
+        </div>
+      `,
+      text: `Hi ${userName}, your password was changed${ipAddress ? ` from IP ${ipAddress}` : ''} on ${timestamp}. If you did not make this change, contact support immediately.`,
+    };
+  }
+
+  mfaStatusChangeEmail({
+    userName,
+    action,
+    timestamp,
+    ipAddress,
+  }: {
+    userName: string;
+    action: 'enabled' | 'disabled';
+    timestamp: Date;
+    ipAddress?: string;
+  }): EmailTemplate {
+    const isEnabled = action === 'enabled';
+    const timeStr = timestamp.toLocaleString();
+    const ipInfo = ipAddress ? ` from IP address <strong>${escapeHtml(ipAddress)}</strong>` : '';
+    const subject = isEnabled
+      ? 'Two-factor authentication enabled'
+      : 'Two-factor authentication disabled';
+
+    const warningBlock = !isEnabled
+      ? `<p style="padding: 12px; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 5px; color: #721c24;">
+          <strong>Security warning:</strong> Two-factor authentication has been disabled on your account. This reduces your account security. We strongly recommend re-enabling it.
+        </p>`
+      : '';
+
+    return {
+      subject,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #333;">${subject}</h1>
+          <p>Hi ${escapeHtml(userName)},</p>
+          <p>Two-factor authentication has been <strong>${isEnabled ? 'enabled' : 'disabled'}</strong> on your account${ipInfo} on <strong>${timeStr}</strong>.</p>
+          ${warningBlock}
+          <p style="margin-top: 20px; color: #666; font-size: 12px;">
+            If you did not make this change, please contact support immediately.
+          </p>
+        </div>
+      `,
+      text: `Hi ${userName}, two-factor authentication has been ${isEnabled ? 'enabled' : 'disabled'} on your account${ipAddress ? ` from IP ${ipAddress}` : ''} on ${timeStr}. If you did not make this change, contact support immediately.`,
     };
   }
 

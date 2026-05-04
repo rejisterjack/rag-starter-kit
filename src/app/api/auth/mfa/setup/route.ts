@@ -7,6 +7,8 @@ import { z } from 'zod';
 
 import { withApiAuth } from '@/lib/auth';
 import { prisma, prismaRead } from '@/lib/db';
+import { logger } from '@/lib/logger';
+import { emailService } from '@/lib/notifications/email';
 import {
   encryptTotpSecret,
   generateTotpSetup,
@@ -81,6 +83,28 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
       mfaVerifiedAt: new Date(),
     },
   });
+
+  // Send MFA enabled notification (fire-and-forget)
+  try {
+    const mfaUser = await prismaRead.user.findUnique({
+      where: { id: session.user.id },
+      select: { email: true, name: true },
+    });
+    if (mfaUser) {
+      await emailService.sendEmail({
+        to: mfaUser.email,
+        template: emailService.mfaStatusChangeEmail({
+          userName: mfaUser.name || mfaUser.email,
+          action: 'enabled',
+          timestamp: new Date(),
+        }),
+      });
+    }
+  } catch (emailError) {
+    logger.error('Failed to send MFA enabled notification', {
+      error: emailError instanceof Error ? emailError.message : 'Unknown',
+    });
+  }
 
   return NextResponse.json({ success: true, message: 'MFA enabled successfully' });
 });

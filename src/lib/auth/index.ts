@@ -51,6 +51,7 @@ import Google from 'next-auth/providers/google';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { emailService } from '@/lib/notifications/email';
 import {
   getLockoutStatus,
   recordFailedAttempt,
@@ -61,7 +62,7 @@ import {
   revokeAllUserSessions,
   trackSession,
 } from '@/lib/security/session-store';
-import { createDefaultWorkspace, getUserWorkspaces } from '@/lib/workspace/workspace';
+import { createDefaultWorkspace, getAppUrl, getUserWorkspaces } from '@/lib/workspace/workspace';
 
 // =============================================================================
 // Type Extensions
@@ -332,6 +333,25 @@ export const {
             userId: user.id,
             metadata: { email: user.email, provider: 'oauth' },
           });
+
+          // Send welcome email (fire-and-forget)
+          try {
+            const appUrl = getAppUrl();
+            const userEmail = user.email;
+            if (userEmail) {
+              await emailService.sendEmail({
+                to: userEmail,
+                template: emailService.welcomeEmail(
+                  user.name || userEmail.split('@')[0],
+                  `${appUrl}/login`
+                ),
+              });
+            }
+          } catch (emailError) {
+            logger.error('Failed to send welcome email', {
+              error: emailError instanceof Error ? emailError.message : 'Unknown',
+            });
+          }
         } catch (error) {
           logger.error('Failed to create default workspace', {
             error: error instanceof Error ? error.message : 'Unknown',
@@ -408,6 +428,19 @@ export async function registerUser({
       metadata: { email, provider: 'credentials' },
     });
 
+    // Send welcome email (fire-and-forget)
+    try {
+      const appUrl = getAppUrl();
+      await emailService.sendEmail({
+        to: email,
+        template: emailService.welcomeEmail(name || email.split('@')[0], `${appUrl}/login`),
+      });
+    } catch (emailError) {
+      logger.error('Failed to send welcome email', {
+        error: emailError instanceof Error ? emailError.message : 'Unknown',
+      });
+    }
+
     return { success: true, userId: user.id };
   } catch (error) {
     logger.error('Registration error', {
@@ -461,6 +494,21 @@ export async function changePassword({
       event: AuditEvent.PASSWORD_CHANGED,
       userId,
     });
+
+    // Send password change notification (fire-and-forget)
+    try {
+      await emailService.sendEmail({
+        to: user.email,
+        template: emailService.passwordChangedNotificationEmail({
+          userName: user.name || user.email,
+          changedAt: new Date(),
+        }),
+      });
+    } catch (emailError) {
+      logger.error('Failed to send password change notification', {
+        error: emailError instanceof Error ? emailError.message : 'Unknown',
+      });
+    }
 
     return { success: true };
   } catch (error) {
