@@ -15,6 +15,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { generateText, type LanguageModel, streamText } from 'ai';
 import { NextResponse } from 'next/server';
 import type { LLMMessage } from '@/lib/ai/llm';
+import { modelHealthCache } from '@/lib/ai/model-health-cache';
 import { buildSystemPromptWithContext } from '@/lib/ai/prompts/templates';
 import { bufferUsageRecord } from '@/lib/analytics/usage-buffer';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
@@ -362,10 +363,10 @@ export async function POST(req: Request) {
     });
 
     if (shouldStream) {
-      // Streaming response — probe models first, then stream with a working one
-      const modelsToTry = [config.model, ...MODEL_FALLBACK_CHAIN.filter((m) => m !== config.model)];
+      // Streaming response — use health cache to avoid expensive probes
+      const allModels = [config.model, ...MODEL_FALLBACK_CHAIN.filter((m) => m !== config.model)];
 
-      // If the circuit breaker is open, skip probing entirely
+      // If the circuit breaker is open, fail fast
       if (llmCircuitBreaker.getState() === 'OPEN') {
         return NextResponse.json(
           {
@@ -379,31 +380,56 @@ export async function POST(req: Request) {
         );
       }
 
-      let usedModel = config.model;
+      // Filter models based on health cache (skip models in backoff)
+      const modelsToTry = modelHealthCache.getModelsToTry(allModels);
+
+      if (modelsToTry.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'MODEL_UNAVAILABLE',
+              message: 'All AI models are currently unavailable. Please try again in a moment.',
+            },
+          },
+          { status: 503 }
+        );
+      }
+
+      let usedModel = modelsToTry[0];
       let probeOk = false;
 
-      // Quick probe: generate 1 token to verify the model responds before committing to a stream
-      for (const modelName of modelsToTry) {
-        const probeStart = Date.now();
-        try {
-          await llmCircuitBreaker.execute(async () => {
-            await generateText({
-              model: getModel(modelName, customKeys),
-              messages: [{ role: 'user', content: userMessage.slice(0, 100) }],
-              maxTokens: 1,
+      // If the primary model was recently confirmed healthy, skip probing entirely
+      if (modelHealthCache.isRecentlyHealthy(modelsToTry[0])) {
+        usedModel = modelsToTry[0];
+        probeOk = true;
+        logger.debug('Skipping probe — model recently healthy', { model: usedModel });
+      } else {
+        // Only probe when model health is unknown or expired
+        for (const modelName of modelsToTry) {
+          const probeStart = Date.now();
+          try {
+            await llmCircuitBreaker.execute(async () => {
+              await generateText({
+                model: getModel(modelName, customKeys),
+                messages: [{ role: 'user', content: userMessage.slice(0, 100) }],
+                maxTokens: 1,
+              });
             });
-          });
-          usedModel = modelName;
-          probeOk = true;
-          logger.debug('Model probe succeeded', {
-            model: modelName,
-            durationMs: Date.now() - probeStart,
-          });
-          break;
-        } catch (err) {
-          logger.warn(`Model ${modelName} probe failed, trying next`, {
-            error: err instanceof Error ? err.message : String(err),
-          });
+            usedModel = modelName;
+            probeOk = true;
+            modelHealthCache.recordSuccess(modelName);
+            logger.debug('Model probe succeeded', {
+              model: modelName,
+              durationMs: Date.now() - probeStart,
+            });
+            break;
+          } catch (err) {
+            modelHealthCache.recordFailure(modelName);
+            logger.warn(`Model ${modelName} probe failed, trying next`, {
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
         }
       }
 
@@ -581,13 +607,15 @@ export async function POST(req: Request) {
         ? getErrorStatusCode((error as { code: string }).code)
         : 500;
 
+    // Only expose error details in development to prevent information leakage
+    const isDev = process.env.NODE_ENV === 'development';
     return NextResponse.json(
       {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Failed to process chat request',
-          details: errorMessage,
+          ...(isDev && { details: errorMessage }),
         },
       },
       { status: statusCode }
@@ -773,7 +801,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const chatId = searchParams.get('chatId');
     const conversationId = searchParams.get('conversationId');
-    const limit = parseInt(searchParams.get('limit') ?? '50', 10);
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '50', 10) || 50, 1), 100);
 
     const effectiveId = chatId ?? conversationId;
 

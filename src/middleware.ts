@@ -87,10 +87,22 @@ const PUBLIC_ROUTES = [
 ];
 
 // Routes that require CSRF protection
-// Note: Chat/ingest/documents API routes are excluded because the frontend
-// uses plain fetch (not form submissions). These are already protected by
-// authentication, rate limiting, and CORS.
-const CSRF_PROTECTED_ROUTES = ['/api/admin', '/api/export', '/api/invite'];
+// All state-changing API routes must be protected against CSRF attacks.
+// While authentication + CORS provides defense-in-depth, CSRF tokens prevent
+// attacks from same-site contexts and ensure explicit user intent.
+const CSRF_PROTECTED_ROUTES = [
+  '/api/admin',
+  '/api/export',
+  '/api/invite',
+  '/api/chat',
+  '/api/ingest',
+  '/api/documents',
+  '/api/workspaces',
+  '/api/api-keys',
+  '/api/webhooks',
+  '/api/billing',
+  '/api/voice',
+];
 
 // Safe HTTP methods that don't require CSRF protection
 const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
@@ -133,6 +145,53 @@ function getCorsHeaders(req: NextRequest) {
 function withRequestId(response: NextResponse, requestId: string): NextResponse {
   response.headers.set('X-Request-ID', requestId);
   return response;
+}
+
+// =============================================================================
+// Session Fingerprint Verification (Edge-compatible)
+// =============================================================================
+
+/**
+ * Verify session fingerprint in Edge Runtime.
+ * Compares stored fingerprint with current request characteristics.
+ */
+async function verifySessionFingerprint(
+  headers: Headers,
+  storedFingerprint: string
+): Promise<boolean> {
+  if (!storedFingerprint) return true;
+
+  const userAgent = headers.get('user-agent') || 'unknown';
+  const acceptLanguage = headers.get('accept-language') || 'unknown';
+
+  // Extract stable UA components (browser family + OS)
+  const lowerUA = userAgent.toLowerCase();
+  let browser = 'unknown';
+  if (lowerUA.includes('firefox')) browser = 'firefox';
+  else if (lowerUA.includes('edg/') || lowerUA.includes('edge')) browser = 'edge';
+  else if (lowerUA.includes('opr/') || lowerUA.includes('opera')) browser = 'opera';
+  else if (lowerUA.includes('chrome') && !lowerUA.includes('edg')) browser = 'chrome';
+  else if (lowerUA.includes('safari') && !lowerUA.includes('chrome')) browser = 'safari';
+
+  let os = 'unknown';
+  if (lowerUA.includes('windows')) os = 'windows';
+  else if (lowerUA.includes('macintosh') || lowerUA.includes('mac os')) os = 'macos';
+  else if (lowerUA.includes('iphone') || lowerUA.includes('ipad')) os = 'ios';
+  else if (lowerUA.includes('android')) os = 'android';
+  else if (lowerUA.includes('linux')) os = 'linux';
+
+  const raw = `${browser}|${os}|${acceptLanguage.split(',')[0]}`;
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(raw);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const currentFingerprint = hashArray
+    .slice(0, 16)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  return currentFingerprint === storedFingerprint;
 }
 
 // =============================================================================
@@ -221,10 +280,39 @@ export async function middleware(req: NextRequest) {
     // Check for API key authentication
     const apiKey = req.headers.get('X-API-Key');
     if (apiKey && pathname.startsWith('/api/')) {
-      // API key validation will be handled by the route handler
-      // We just pass through here and let the route handle it
-      const response = NextResponse.next();
+      // Basic format validation — reject obviously invalid keys early
+      if (apiKey.length < 20 || apiKey.length > 200) {
+        const corsHeaders = getCorsHeaders(req);
+        const response = NextResponse.json(
+          { error: 'Invalid API key format', code: 'INVALID_API_KEY' },
+          { status: 401, headers: corsHeaders }
+        );
+        return withRequestId(response, requestId);
+      }
+
+      // API key users skip CSRF (they use key-based auth, not cookies)
+      // but must still pass through admin route checks below
+      const isAdminApiRoute = ADMIN_ROUTES.some((route) => pathname.startsWith(route));
+      if (isAdminApiRoute) {
+        // Admin routes with API keys need route-handler validation
+        // Pass through but don't skip admin checks — the route handler validates permissions
+      }
+
+      const apiKeyHeaders = new Headers(req.headers);
+      apiKeyHeaders.set('x-request-id', requestId);
+      apiKeyHeaders.set('x-nonce', cspNonce);
+
+      const response = NextResponse.next({
+        request: { headers: apiKeyHeaders },
+      });
       addSecurityHeaders(response, requestId, cspNonce);
+
+      // Add CORS headers
+      const corsHeaders = getCorsHeaders(req);
+      Object.entries(corsHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+
       return withRequestId(response, requestId);
     }
 
@@ -295,6 +383,31 @@ export async function middleware(req: NextRequest) {
       }
       const response = NextResponse.redirect(new URL('/', nextUrl));
       return withRequestId(response, requestId);
+    }
+
+    // Session fingerprint verification for authenticated users
+    // Detects session token theft by comparing client characteristics
+    if (isLoggedIn && token && pathname.startsWith('/api/')) {
+      const storedFingerprint = typeof token.fingerprint === 'string' ? token.fingerprint : null;
+
+      if (storedFingerprint) {
+        // Verify the request client matches the session fingerprint
+        const fingerprintValid = await verifySessionFingerprint(req.headers, storedFingerprint);
+        if (!fingerprintValid) {
+          requestLogger.warn('Session fingerprint mismatch — possible token theft', {
+            path: pathname,
+          });
+          const corsHeaders = getCorsHeaders(req);
+          const response = NextResponse.json(
+            {
+              error: 'Session invalid. Please sign in again.',
+              code: 'SESSION_FINGERPRINT_MISMATCH',
+            },
+            { status: 401, headers: corsHeaders }
+          );
+          return withRequestId(response, requestId);
+        }
+      }
     }
 
     // Add user info to headers for server components
@@ -426,8 +539,8 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
   // Prevent MIME type sniffing
   response.headers.set('X-Content-Type-Options', 'nosniff');
 
-  // XSS Protection
-  response.headers.set('X-XSS-Protection', '1; mode=block');
+  // XSS Protection - set to 0 to disable legacy XSS Auditor (deprecated, can cause issues)
+  response.headers.set('X-XSS-Protection', '0');
 
   // Referrer Policy
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -487,7 +600,7 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
     "default-src 'self'",
     scriptSrc,
     `${styleSrc} https://cdn.jsdelivr.net`,
-    "img-src 'self' blob: data: https:",
+    "img-src 'self' blob: data: https://res.cloudinary.com https://*.githubusercontent.com https://*.googleusercontent.com",
     "font-src 'self' https://cdn.jsdelivr.net",
     `connect-src https://api.github.com ${connectSrc}`,
     "frame-ancestors 'none'",

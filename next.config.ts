@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
 		// Renamed to cacheComponents in newer versions
 		// dynamicIO: true,
 
+		// Limit server action / API route body size to prevent memory exhaustion attacks
+		serverActions: {
+			bodySizeLimit: '4mb',
+		},
+
 		// Optimize package imports for better tree-shaking
 		optimizePackageImports: [
 			'recharts',

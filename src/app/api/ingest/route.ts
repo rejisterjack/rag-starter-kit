@@ -38,6 +38,7 @@ import {
   checkApiRateLimit,
   getRateLimitIdentifier,
 } from '@/lib/security/rate-limiter';
+import { validateUrlSafety } from '@/lib/security/ssrf-protection';
 import { virusScanner } from '@/lib/security/virus-scanner';
 import { withSpan } from '@/lib/tracing';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
@@ -339,24 +340,6 @@ async function handleFileIngestion(
     }
   }
 
-  // Step 4: Validate document
-  const validation = validateFile(file, {
-    maxSize: MAX_FILE_SIZE,
-  });
-
-  if (!validation.valid) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'VALIDATION_FAILED',
-          message: validation.error ?? 'Unknown validation error',
-        },
-      },
-      { status: 400 }
-    );
-  }
-
   // Step 5: Convert to buffer and validate magic bytes
   const bytes = await file.arrayBuffer();
 
@@ -382,10 +365,10 @@ async function handleFileIngestion(
 
   try {
     content = await withSpan('ingest.parse_document', async (span) => {
-      span.setAttribute('ingest.file_type', validation.type ?? 'unknown');
+      span.setAttribute('ingest.file_type', fileValidation.type ?? 'unknown');
       span.setAttribute('ingest.file_size', file.size);
       let parsed: string;
-      switch (validation.type) {
+      switch (fileValidation.type) {
         case 'PDF': {
           parsed = await parsePDF(buffer);
           metadata = { source: 'pdf' };
@@ -436,7 +419,7 @@ async function handleFileIngestion(
         }
 
         default:
-          throw new Error(`Document type '${validation.type}' is not supported`);
+          throw new Error(`Document type '${fileValidation.type}' is not supported`);
       }
       span.setAttribute('ingest.content_length', parsed.length);
       return parsed;
@@ -487,7 +470,7 @@ async function handleFileIngestion(
   const document = await prisma.document.create({
     data: {
       name: file.name,
-      contentType: validation.type ?? 'UNKNOWN',
+      contentType: fileValidation.type ?? 'UNKNOWN',
       size: file.size,
       status: 'PENDING',
       userId: userId, // Always use the actual user's ID
@@ -523,7 +506,7 @@ async function handleFileIngestion(
       documentId: document.id,
       filename: file.name,
       size: file.size,
-      type: validation.type,
+      type: fileValidation.type,
     },
   });
 
@@ -589,6 +572,22 @@ async function handleURLIngestion(
     // Only allow http and https
     if (validatedUrl.protocol !== 'http:' && validatedUrl.protocol !== 'https:') {
       throw new Error('Only HTTP and HTTPS URLs are supported');
+    }
+
+    // SSRF Protection: Block internal/private IPs and hostnames
+    const ssrfCheck = await validateUrlSafety(url);
+    if (!ssrfCheck.safe) {
+      logger.warn('SSRF attempt blocked', { url, reason: ssrfCheck.reason, userId });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'URL_BLOCKED',
+            message: ssrfCheck.reason || 'URL is not allowed',
+          },
+        },
+        { status: 403 }
+      );
     }
 
     // Check against allowed domains if configured

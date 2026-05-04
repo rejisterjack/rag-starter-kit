@@ -66,8 +66,48 @@ interface RateLimiterBackend {
 
 class InMemoryRateLimiter implements RateLimiterBackend {
   private storage = new Map<string, { count: number; resetTime: number }>();
+  private lastCleanup = Date.now();
+  private static readonly CLEANUP_INTERVAL_MS = 60_000; // 1 minute
+  private static readonly MAX_ENTRIES = 10_000; // Safety cap to prevent unbounded growth
+
+  /**
+   * Periodic cleanup of expired entries to prevent memory leaks.
+   * Runs at most once per CLEANUP_INTERVAL_MS.
+   */
+  private maybeCleanup(): void {
+    const now = Date.now();
+    if (now - this.lastCleanup < InMemoryRateLimiter.CLEANUP_INTERVAL_MS) {
+      return;
+    }
+
+    this.lastCleanup = now;
+    let removed = 0;
+
+    for (const [key, record] of this.storage) {
+      if (record.resetTime < now) {
+        this.storage.delete(key);
+        removed++;
+      }
+    }
+
+    // Safety: if still too many entries, evict oldest
+    if (this.storage.size > InMemoryRateLimiter.MAX_ENTRIES) {
+      const excess = this.storage.size - InMemoryRateLimiter.MAX_ENTRIES;
+      const iterator = this.storage.keys();
+      for (let i = 0; i < excess; i++) {
+        const key = iterator.next().value;
+        if (key) this.storage.delete(key);
+      }
+    }
+
+    if (removed > 0) {
+      logger.debug('Rate limiter cleanup completed', { removed, remaining: this.storage.size });
+    }
+  }
 
   async checkLimit(identifier: string, config: RateLimitConfig): Promise<RateLimitResult> {
+    this.maybeCleanup();
+
     const key = `${config.prefix}:${identifier}`;
     const now = Date.now();
 

@@ -37,21 +37,44 @@ export async function set<T>(key: string, value: T, ttlMs: number): Promise<void
 
 /**
  * Invalidate cache entries matching a key pattern.
- * Uses SCAN + DEL to avoid blocking Redis on large key spaces.
+ * Uses SCAN-based iteration to avoid blocking Redis on large key spaces.
  */
 export async function invalidate(pattern: string): Promise<void> {
   if (!isRedisConfigured()) return;
   try {
-    // Upstash doesn't support SCAN natively in the same way — use KEYS for targeted patterns
-    const keys = await redis.keys(pattern);
-    if (keys.length > 0) {
-      await redis.del(...keys);
+    // Use SCAN for non-blocking pattern matching (avoids O(N) KEYS command)
+    let cursor = '0';
+    let totalDeleted = 0;
+    do {
+      const scanResult = await redis.scan(cursor, {
+        match: pattern,
+        count: 100,
+      });
+      // Upstash returns [string cursor, string[] keys]
+      cursor = String((scanResult as unknown as [string, string[]])[0]);
+      const keys = (scanResult as unknown as [string, string[]])[1];
+      if (keys && keys.length > 0) {
+        await redis.del(...keys);
+        totalDeleted += keys.length;
+      }
+    } while (cursor !== '0');
+
+    if (totalDeleted > 0) {
+      logger.debug('Cache invalidation completed', { pattern, keysDeleted: totalDeleted });
     }
   } catch (error) {
-    logger.debug('Cache invalidation failed', {
-      pattern,
-      error: error instanceof Error ? error.message : '',
-    });
+    // Fallback: try KEYS if SCAN is not supported (older Upstash SDK versions)
+    try {
+      const keys = await redis.keys(pattern);
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch {
+      logger.debug('Cache invalidation failed', {
+        pattern,
+        error: error instanceof Error ? error.message : '',
+      });
+    }
   }
 }
 

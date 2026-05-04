@@ -34,13 +34,22 @@ type GlobalWithPrisma = typeof globalThis & {
 
 function createPool(): Pool {
   // Use validated DATABASE_URL from env.ts
-  const defaultMax = env.NODE_ENV === 'production' ? 25 : 3;
+  //
+  // IMPORTANT: For serverless deployments (Vercel, AWS Lambda), each function
+  // instance creates its own pool. Keep max LOW (5-10) to avoid connection
+  // exhaustion. Use Prisma Accelerate, PgBouncer, or Neon's connection pooler
+  // for high-concurrency workloads.
+  //
+  // For traditional servers (Docker, VMs), higher values (15-25) are appropriate.
+  const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  const defaultMax = isServerless ? 5 : env.NODE_ENV === 'production' ? 15 : 3;
+
   return new Pool({
     connectionString: env.DATABASE_URL,
     // Scale via DB_POOL_MAX env var, or use sensible defaults
     max: env.DB_POOL_MAX ?? defaultMax,
-    // Idle connections are released after 30 s
-    idleTimeoutMillis: 30_000,
+    // Idle connections are released after 20s (serverless) or 30s (server)
+    idleTimeoutMillis: isServerless ? 20_000 : 30_000,
     // Fail fast if the DB is unreachable
     connectionTimeoutMillis: 5_000,
   });
