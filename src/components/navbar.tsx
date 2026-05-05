@@ -1,23 +1,22 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import {
-  Github,
-  LayoutDashboard,
-  Loader2,
-  LogOut,
-  Menu,
-  MessageSquare,
-  User,
-  X,
-} from 'lucide-react';
+import { Github, Loader2, LogOut, Menu, MessageSquare, User, X } from 'lucide-react';
 import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
-const navLinks = [
+/** Links shown to logged-out visitors */
+const publicNavLinks = [
   { href: '/demo', label: 'Live Demo' },
+  { href: '/docs', label: 'Docs' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: 'https://github.com/rejisterjack/rag-starter-kit', label: 'GitHub', external: true },
+];
+
+/** Links shown to logged-in users (no demo — they go straight to the app) */
+const authNavLinks = [
   { href: '/docs', label: 'Docs' },
   { href: '/pricing', label: 'Pricing' },
   { href: 'https://github.com/rejisterjack/rag-starter-kit', label: 'GitHub', external: true },
@@ -28,6 +27,8 @@ export function Navbar(): React.ReactElement {
   const { data: session, status } = useSession();
   const isLoading = status === 'loading';
   const isLoggedIn = !!session?.user;
+
+  const navLinks = isLoggedIn ? authNavLinks : publicNavLinks;
 
   return (
     <header className="shrink-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
@@ -60,10 +61,10 @@ export function Navbar(): React.ReactElement {
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : isLoggedIn ? (
               <div className="flex items-center gap-3">
-                <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+                <Button asChild variant="default" size="sm" className="rounded-full px-4">
                   <Link href="/chat">
-                    <LayoutDashboard className="h-4 w-4 mr-2" />
-                    Dashboard
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Open Chat
                   </Link>
                 </Button>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted">
@@ -155,8 +156,8 @@ export function Navbar(): React.ReactElement {
                     onClick={() => setIsOpen(false)}
                     className="flex items-center gap-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
                   >
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
+                    <MessageSquare className="h-4 w-4" />
+                    Open Chat
                   </Link>
                   <div className="flex items-center gap-2 py-2 px-3 rounded-lg bg-muted">
                     <User className="h-4 w-4 text-muted-foreground" />
