@@ -15,7 +15,7 @@
  * - Tracks usage via Redis with daily TTL
  */
 
-import { google } from '@ai-sdk/google';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { embed, embedMany } from 'ai';
 
 import { logger } from '@/lib/logger';
@@ -120,8 +120,9 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
   readonly name = 'google';
   readonly modelName: string;
   readonly dimensions: number;
+  private readonly googleAI: ReturnType<typeof createGoogleGenerativeAI>;
 
-  constructor(model: GoogleModel = 'text-embedding-004', _apiKey?: string, _baseUrl?: string) {
+  constructor(model: GoogleModel = 'text-embedding-004', apiKey?: string, _baseUrl?: string) {
     const modelInfo = GOOGLE_MODELS[model];
     if (!modelInfo) {
       throw new Error(
@@ -129,8 +130,18 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
       );
     }
 
+    const key = apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (!key) {
+      throw new Error(
+        'Google Gemini API key is required. ' +
+          'Set GOOGLE_GENERATIVE_AI_API_KEY in .env or pass it to the constructor. ' +
+          'Get a free key at https://aistudio.google.com/app/apikey'
+      );
+    }
+
     this.modelName = model;
     this.dimensions = modelInfo.dimensions;
+    this.googleAI = createGoogleGenerativeAI({ apiKey: key });
   }
 
   /**
@@ -142,7 +153,7 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
 
     const result = await embed({
       // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
-      model: google.textEmbeddingModel(this.modelName) as any,
+      model: this.googleAI.textEmbeddingModel(this.modelName) as any,
       value: text,
     });
 
@@ -165,7 +176,7 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
 
       const result = await embedMany({
         // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
-        model: google.textEmbeddingModel(this.modelName) as any,
+        model: this.googleAI.textEmbeddingModel(this.modelName) as any,
         values: batch,
       });
 

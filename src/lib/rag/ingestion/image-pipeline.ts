@@ -182,7 +182,7 @@ export async function uploadImageToStorage(
  */
 export async function generateImageCaption(imageBuffer: Buffer | string): Promise<string> {
   try {
-    const { google } = await import('@ai-sdk/google');
+    const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
     const { generateText } = await import('ai');
 
     // Convert buffer to base64 if needed
@@ -196,7 +196,9 @@ export async function generateImageCaption(imageBuffer: Buffer | string): Promis
 
     const result = await generateText({
       // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
-      model: google('gemini-1.5-flash') as any,
+      model: createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY })(
+        'gemini-1.5-flash'
+      ) as any,
       messages: [
         {
           role: 'user',

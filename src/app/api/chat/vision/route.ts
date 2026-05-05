@@ -5,7 +5,7 @@
  * Supports text + image inputs for comprehensive document understanding.
  */
 
-import { google } from '@ai-sdk/google';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { type CoreMessage, generateText, type LanguageModel, streamText } from 'ai';
 import { NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
@@ -292,7 +292,10 @@ function base64ToBuffer(base64: string): Buffer {
  * Get the vision model — typed wrapper to avoid `as any` casts
  */
 function getVisionModel(): LanguageModel {
-  return google('gemini-1.5-flash') as unknown as LanguageModel;
+  const googleAI = createGoogleGenerativeAI({
+    apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+  });
+  return googleAI('gemini-1.5-flash') as unknown as LanguageModel;
 }
 
 /**

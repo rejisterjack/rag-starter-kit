@@ -46,7 +46,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { google } from '@ai-sdk/google';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { openrouter } from '@openrouter/ai-sdk-provider';
 import {
   embed,
@@ -63,6 +63,15 @@ import type { RAGConfig } from '@/types';
 
 // Embedding model configuration (Google Gemini - FREE)
 const EMBEDDING_MODEL = 'text-embedding-004';
+
+// Validate Google API key at module load time
+if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+  throw new Error(
+    'GOOGLE_GENERATIVE_AI_API_KEY is required for embeddings. ' +
+      'Get a free key at https://aistudio.google.com/app/apikey'
+  );
+}
+const googleAI = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY });
 
 /**
  * BEST OpenRouter FREE Models - Ranked by Performance
@@ -194,7 +203,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   return embeddingCircuitBreaker.execute(async () => {
     const result = await embed({
       // biome-ignore lint/suspicious/noExplicitAny: Google AI SDK v3 to v4 compatibility
-      model: google.textEmbeddingModel(EMBEDDING_MODEL) as any,
+      model: googleAI.textEmbeddingModel(EMBEDDING_MODEL) as any,
       value: text,
     });
 
@@ -215,7 +224,7 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
 
     const result = await embedMany({
       // biome-ignore lint/suspicious/noExplicitAny: Google AI SDK v3 to v4 compatibility
-      model: google.textEmbeddingModel(EMBEDDING_MODEL) as any,
+      model: googleAI.textEmbeddingModel(EMBEDDING_MODEL) as any,
       values: batch,
     });
 

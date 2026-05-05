@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { Source } from '@/components/chat/citations';
 import type { Message } from '@/components/chat/message-item';
+import { getCsrfToken } from '@/hooks/use-csrf';
 import { getAllProviderKeys } from '@/hooks/use-provider-keys';
 
 export interface UseChatOptions {
@@ -300,9 +301,20 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
           // Build headers with custom provider keys from localStorage
           const providerKeys = getAllProviderKeys();
+          let csrfToken = getCsrfToken();
+          if (!csrfToken) {
+            try {
+              const res = await fetch('/api/csrf/token');
+              if (res.ok) {
+                const data = await res.json();
+                csrfToken = data.token;
+              }
+            } catch {}
+          }
           const headers: Record<string, string> = {
             'Content-Type': 'application/json',
           };
+          if (csrfToken) headers['x-csrf-token'] = csrfToken;
           if (providerKeys.openrouter) headers['x-key-openrouter'] = providerKeys.openrouter;
           if (providerKeys.fireworks) headers['x-key-fireworks'] = providerKeys.fireworks;
 

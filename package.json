@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev | pino-pretty -c -t HH:mm:ss Z -i pid,hostname",
     "build": "next build",
     "build:analyze": "ANALYZE=true next build",
     "start": "next start",

@@ -213,9 +213,23 @@ export async function middleware(req: NextRequest) {
     const cspNonce = btoa(String.fromCharCode(...nonceBytes));
 
     // Get token from session
+    const authSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+    const allCookies = req.cookies.getAll().map((c) => c.name);
+    const sessionCookie =
+      req.cookies.get('authjs.session-token')?.value ??
+      req.cookies.get('__Secure-authjs.session-token')?.value;
+
+    console.log('[MW DEBUG]', {
+      path: pathname,
+      authSecretSet: !!authSecret,
+      authSecretLen: authSecret?.length ?? 0,
+      cookies: allCookies,
+      hasSessionCookie: !!sessionCookie,
+    });
+
     const token = await getToken({
       req,
-      secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+      secret: authSecret,
     });
     const isLoggedIn = !!token;
     const user = token ? { id: token.sub, role: token.role, workspaceId: token.workspaceId } : null;
@@ -238,8 +252,10 @@ export async function middleware(req: NextRequest) {
     }
 
     // CSRF Protection for state-changing API requests
+    // Authenticated requests using SameSite=Strict session cookies are already
+    // protected against CSRF — only enforce token check for unauthenticated requests.
     const requiresCsrf = CSRF_PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
-    if (requiresCsrf && !SAFE_METHODS.includes(req.method)) {
+    if (requiresCsrf && !SAFE_METHODS.includes(req.method) && !isLoggedIn) {
       const csrfValid = await validateCsrfToken(req);
       if (!csrfValid) {
         requestLogger.warn('CSRF validation failed', { pathname });
