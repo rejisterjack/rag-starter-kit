@@ -296,18 +296,23 @@
 
   /* Shimmer animation for skeleton loading */
   @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+    0%   { background-position: -400% 0; }
+    100% { background-position:  400% 0; }
   }
 
   .animate-shimmer {
-    background: linear-gradient(
+    /* Solid fallback colour so the element is always visible */
+    background-color: hsl(var(--muted));
+    /* Shimmer sweep uses rgb() so it works in all browsers */
+    background-image: linear-gradient(
       90deg,
-      hsl(var(--muted)) 25%,
-      hsl(var(--muted) / 0.4) 50%,
-      hsl(var(--muted)) 75%
+      transparent 0%,
+      rgba(255, 255, 255, 0.06) 40%,
+      rgba(255, 255, 255, 0.12) 50%,
+      rgba(255, 255, 255, 0.06) 60%,
+      transparent 100%
     );
-    background-size: 200% 100%;
+    background-size: 400% 100%;
     animation: shimmer 1.8s ease-in-out infinite;
   }
 

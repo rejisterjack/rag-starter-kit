@@ -252,13 +252,13 @@ export const DocumentList = memo(function DocumentList({
 
 function DocumentSkeleton() {
   return (
-    <div className="rounded-xl border border-border/50 bg-foreground/5 p-4 shadow-sm backdrop-blur-sm">
+    <div className="rounded-xl border border-border/50 bg-muted/20 p-4 shadow-sm">
       <div className="flex items-start gap-4">
-        <Skeleton className="h-10 w-10 shrink-0 rounded-lg bg-foreground/10" />
+        <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
         <div className="flex-1 space-y-2.5 mt-1">
-          <Skeleton className="h-4 w-3/4 bg-foreground/10 rounded" />
-          <Skeleton className="h-3 w-1/2 bg-foreground/10 rounded" />
-          <Skeleton className="h-2 w-full bg-foreground/5 rounded mt-4" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-1/2" />
+          <Skeleton className="h-2 w-full mt-4" />
         </div>
       </div>
     </div>
