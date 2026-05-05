@@ -431,13 +431,13 @@ export async function registerUser({
     // Hash password
     const hashedPassword = await hash(password, 12);
 
-    // Create user
+    // Create user — emailVerified is null until they click the verification link
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         name: name || null,
-        emailVerified: new Date(), // Auto-verify for credentials
+        emailVerified: null,
       },
     });
 
@@ -453,17 +453,28 @@ export async function registerUser({
       metadata: { email, provider: 'credentials' },
     });
 
-    // Send welcome email (fire-and-forget)
+    // Send email verification link (fire-and-forget)
     try {
+      const crypto = await import('crypto');
+      const token = crypto.randomBytes(32).toString('hex');
+      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      await prisma.verificationToken.create({
+        data: { identifier: email, token, expires },
+      });
+
       const appUrl = getAppUrl();
+      const verifyUrl = `${appUrl}/api/auth/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
+
       await emailService.sendEmail({
         to: email,
-        template: emailService.welcomeEmail(name || email.split('@')[0], `${appUrl}/login`),
+        template: emailService.verificationEmail(name || email.split('@')[0], verifyUrl),
       });
     } catch (emailError) {
-      logger.error('Failed to send welcome email', {
+      logger.error('Failed to send verification email', {
         error: emailError instanceof Error ? emailError.message : 'Unknown',
       });
+      // Non-fatal: user can request a resend via POST /api/auth/verify-email
     }
 
     return { success: true, userId: user.id };

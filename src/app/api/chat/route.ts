@@ -59,7 +59,7 @@ const defaultConfig: RAGConfig = {
   similarityThreshold: 0.7,
   temperature: 0.7,
   maxTokens: 2000,
-  model: 'arcee-ai/trinity-large-preview:free',
+  model: 'google/gemini-2.0-flash-exp:free',
   embeddingModel: 'text-embedding-004',
 };
 
@@ -68,7 +68,7 @@ const defaultConfig: RAGConfig = {
  * IMPLEMENTED: Fallback logic tries each model in order until one succeeds
  */
 const MODEL_FALLBACK_CHAIN = [
-  'arcee-ai/trinity-large-preview:free',
+  'google/gemini-2.0-flash-exp:free',
   'stepfun/step-3.5-flash:free',
   'nvidia/nemotron-3-super-120b-a12b:free',
   'qwen/qwen3-coder:free',

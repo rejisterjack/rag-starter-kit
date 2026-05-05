@@ -153,7 +153,7 @@ export function OpenSourceCTA(): React.ReactElement {
                 variant="outline"
                 className="group h-14 px-8 text-base rounded-full glass-light border-white/10 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300 interactive"
               >
-                <Link href="/chat">
+                <Link href="/demo">
                   <ExternalLink className="mr-2 h-5 w-5 text-white/70 group-hover:text-white transition-colors" />
                   Try the Demo
                 </Link>

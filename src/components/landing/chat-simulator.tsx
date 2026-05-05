@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bot, FileText, RefreshCw, Sparkles, User, Zap } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface ChatMessage {
@@ -289,6 +290,29 @@ export function ChatSimulator(): React.ReactElement {
                   <Sparkles className="h-4 w-4 text-primary-foreground" />
                 </div>
               </div>
+            </div>
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 relative z-20">
+              <Link href="/demo" className="w-full sm:w-auto">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors px-8 py-3.5 rounded-full font-medium shadow-lg shadow-primary/25"
+                >
+                  <Sparkles className="h-5 w-5" />
+                  Try It Yourself — No Login Required
+                </button>
+              </Link>
+              <Link
+                href="https://github.com/rejisterjack/rag-starter-kit"
+                target="_blank"
+                className="w-full sm:w-auto"
+              >
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-center gap-2 glass-light hover:bg-white/5 border border-border text-foreground transition-colors px-8 py-3.5 rounded-full font-medium"
+                >
+                  Clone & Deploy
+                </button>
+              </Link>
             </div>
           </div>
         </motion.div>

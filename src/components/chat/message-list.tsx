@@ -24,7 +24,9 @@ interface MessageListProps {
   onCitationClick?: (index: number) => void;
   onCancelStreaming?: () => void;
   onRegenerate?: () => void;
-  onFeedback?: (messageId: string, rating: 'up' | 'down') => void;
+  onFeedback?: (messageId: string, rating: 'UP' | 'DOWN') => void;
+  followUpQuestions?: string[];
+  onFollowUpSelect?: (question: string) => void;
   isAgentMode?: boolean;
   agentThinking?: boolean;
   agentSteps?: Array<{ label: string; status: 'pending' | 'active' | 'done' | 'error' }>;
@@ -50,6 +52,8 @@ export function MessageList({
   onCancelStreaming,
   onRegenerate,
   onFeedback,
+  followUpQuestions,
+  onFollowUpSelect,
   isAgentMode = false,
   agentThinking = false,
   agentSteps,
@@ -141,8 +145,10 @@ export function MessageList({
                   onCitationClick={onCitationClick}
                   isLastMessage={index === messages.length - 1}
                   isStreaming={isStreaming}
+                  followUpQuestions={index === messages.length - 1 ? followUpQuestions : undefined}
                   onRegenerate={onRegenerate}
                   onFeedback={onFeedback}
+                  onFollowUpSelect={onFollowUpSelect}
                 />
                 {isAgentMode && message.role === 'assistant' && (
                   <div className="mx-4 mt-1 mb-2">
@@ -166,8 +172,10 @@ export function MessageList({
                 onCitationClick={onCitationClick}
                 isLastMessage={index === messages.length - 1}
                 isStreaming={isStreaming}
+                followUpQuestions={index === messages.length - 1 ? followUpQuestions : undefined}
                 onRegenerate={onRegenerate}
                 onFeedback={onFeedback}
+                onFollowUpSelect={onFollowUpSelect}
               />
               {isAgentMode && message.role === 'assistant' && (
                 <div className="mx-4 mt-1 mb-2">

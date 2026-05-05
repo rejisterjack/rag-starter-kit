@@ -65,7 +65,7 @@ const defaultConfig: RAGConfig = {
   similarityThreshold: 0.7,
   temperature: 0.7,
   maxTokens: 2000,
-  model: 'arcee-ai/trinity-large-preview:free',
+  model: 'google/gemini-2.0-flash-exp:free',
   embeddingModel: 'text-embedding-004',
 };
 

@@ -157,14 +157,88 @@ export default function LoginPage(): React.ReactElement {
 
       {loginError && (
         <motion.div variants={itemVariants}>
-          <Alert variant="destructive" className="border-red-500/50 bg-red-500/10 backdrop-blur-md">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              {loginError === 'CredentialsSignin'
-                ? 'Invalid email or password'
-                : decodeURIComponent(loginError)}
-            </AlertDescription>
-          </Alert>
+          {loginError === 'verification-token-expired' ||
+          loginError === 'invalid-verification-token' ||
+          loginError === 'invalid-verification-link' ? (
+            <Alert className="border-yellow-500/50 bg-yellow-500/10 backdrop-blur-md">
+              <AlertTriangle className="h-4 w-4 text-yellow-400" />
+              <AlertDescription className="text-yellow-200">
+                {loginError === 'verification-token-expired'
+                  ? 'Your verification link has expired.'
+                  : 'This verification link is invalid or already used.'}{' '}
+                <button
+                  type="button"
+                  className="underline font-medium hover:text-yellow-100"
+                  onClick={async () => {
+                    const emailVal = (
+                      document.querySelector('input[type="email"]') as HTMLInputElement
+                    )?.value;
+                    if (!emailVal) {
+                      alert('Enter your email address first, then click resend.');
+                      return;
+                    }
+                    await fetch('/api/auth/verify-email', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ email: emailVal }),
+                    });
+                    alert(
+                      'If that email is registered and unverified, a new verification link has been sent.'
+                    );
+                  }}
+                >
+                  Resend verification email
+                </button>
+              </AlertDescription>
+            </Alert>
+          ) : loginError === 'email-not-verified' ? (
+            <Alert className="border-yellow-500/50 bg-yellow-500/10 backdrop-blur-md">
+              <AlertTriangle className="h-4 w-4 text-yellow-400" />
+              <AlertDescription className="text-yellow-200">
+                Please verify your email before signing in. Check your inbox or{' '}
+                <button
+                  type="button"
+                  className="underline font-medium hover:text-yellow-100"
+                  onClick={async () => {
+                    const emailVal = (
+                      document.querySelector('input[type="email"]') as HTMLInputElement
+                    )?.value;
+                    if (!emailVal) {
+                      alert('Enter your email address first, then click resend.');
+                      return;
+                    }
+                    await fetch('/api/auth/verify-email', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ email: emailVal }),
+                    });
+                    alert(
+                      'If that email is registered and unverified, a new verification link has been sent.'
+                    );
+                  }}
+                >
+                  resend the verification email
+                </button>
+                .
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <Alert
+              variant="destructive"
+              className="border-red-500/50 bg-red-500/10 backdrop-blur-md"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                {loginError === 'CredentialsSignin'
+                  ? 'Invalid email or password'
+                  : loginError === 'OAuthAccountNotLinked'
+                    ? 'This email is already registered with a different sign-in method.'
+                    : loginError === 'SessionRequired'
+                      ? 'You must be signed in to access that page.'
+                      : decodeURIComponent(loginError)}
+              </AlertDescription>
+            </Alert>
+          )}
         </motion.div>
       )}
 

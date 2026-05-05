@@ -76,22 +76,23 @@ const googleAI = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIV
 /**
  * BEST OpenRouter FREE Models - Ranked by Performance
  * All available at: https://openrouter.ai/models?max_price=0
+ * Last verified: 2026-05-05
  */
 export const BEST_FREE_MODELS = {
-  // 🥇 TIER 1: Best Overall Performance
-  DEEPSEEK_CHAT: 'meta-llama/llama-3.3-70b-instruct:free', // Excellent reasoning, fast
+  // 🥇 TIER 1: Best Overall Performance (confirmed working)
+  PRIMARY_CHAT: 'google/gemma-3-12b-it:free', // Fast, reliable, Google AI Studio
 
   // 🥈 TIER 2: Great Performance
-  MISTRAL_7B: 'mistralai/mistral-7b-instruct:free', // Fast, reliable
-  LLAMA_3_1_8B: 'meta-llama/llama-3.1-8b-instruct:free', // Meta's best
+  GPT_OSS_120B: 'openai/gpt-oss-120b:free', // OpenAI OSS — very capable
+  GPT_OSS_20B: 'openai/gpt-oss-20b:free', // Smaller, faster OSS variant
 
-  // 🥉 TIER 3: Good Alternative
-  GEMMA_2_9B: 'google/gemma-2-9b-it:free', // Google's open model
-  QWEN_2_5_7B: 'qwen/qwen-2.5-7b-instruct:free', // Alibaba's model
+  // 🥉 TIER 3: Good Alternatives
+  GEMMA_3_27B: 'google/gemma-3-27b-it:free', // Google, larger Gemma variant
+  LLAMA_3_3_70B: 'meta-llama/llama-3.3-70b-instruct:free', // Meta's best free model
 
-  // 🏅 TIER 4: Experimental
+  // 🏅 TIER 4: Fallback options
+  LLAMA_3_2_3B: 'meta-llama/llama-3.2-3b-instruct:free', // Small but fast
   HERMES_405B: 'nousresearch/hermes-3-llama-3.1-405b:free', // Very capable but slow
-  PHI_3_MEDIUM: 'microsoft/phi-3-medium:free', // Microsoft
 } as const;
 
 /**
@@ -99,11 +100,12 @@ export const BEST_FREE_MODELS = {
  * Automatically tries next model if one fails/rate-limits
  */
 export const MODEL_FALLBACK_CHAIN = [
-  BEST_FREE_MODELS.DEEPSEEK_CHAT,
-  BEST_FREE_MODELS.MISTRAL_7B,
-  BEST_FREE_MODELS.LLAMA_3_1_8B,
-  BEST_FREE_MODELS.GEMMA_2_9B,
-  BEST_FREE_MODELS.QWEN_2_5_7B,
+  BEST_FREE_MODELS.PRIMARY_CHAT,
+  BEST_FREE_MODELS.GPT_OSS_120B,
+  BEST_FREE_MODELS.GPT_OSS_20B,
+  BEST_FREE_MODELS.GEMMA_3_27B,
+  BEST_FREE_MODELS.LLAMA_3_3_70B,
+  BEST_FREE_MODELS.LLAMA_3_2_3B,
 ];
 
 export const defaultAIConfig: RAGConfig = {
@@ -113,7 +115,7 @@ export const defaultAIConfig: RAGConfig = {
   similarityThreshold: 0.7,
   temperature: 0.7,
   maxTokens: 2000,
-  model: BEST_FREE_MODELS.DEEPSEEK_CHAT, // Best free model
+  model: BEST_FREE_MODELS.PRIMARY_CHAT, // Best free model
   embeddingModel: EMBEDDING_MODEL,
 };
 
@@ -133,7 +135,7 @@ export async function streamChatCompletion(messages: UIMessage[], config: Partia
     try {
       const result = streamText({
         // biome-ignore lint/suspicious/noExplicitAny: OpenRouter SDK type compatibility
-        model: openrouter.chat(model) as any,
+        model: openrouter(model) as any,
         // biome-ignore lint/suspicious/noExplicitAny: UIMessage to ModelMessage conversion
         messages: messages as any,
         temperature: modelConfig.temperature,
@@ -174,7 +176,7 @@ export async function generateChatCompletion(
     try {
       const result = await generateText({
         // biome-ignore lint/suspicious/noExplicitAny: OpenRouter SDK type compatibility
-        model: openrouter.chat(model) as any,
+        model: openrouter(model) as any,
         // biome-ignore lint/suspicious/noExplicitAny: UIMessage to ModelMessage conversion
         messages: messages as any,
         temperature: modelConfig.temperature,

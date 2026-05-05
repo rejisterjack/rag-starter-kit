@@ -42,7 +42,7 @@ export const AVAILABLE_MODELS: ModelOption[] = [
     badge: 'Easiest',
   },
   {
-    id: 'arcee-ai/trinity-large-preview:free',
+    id: 'google/gemini-2.0-flash-exp:free',
     name: 'Trinity Large Preview',
     provider: 'openrouter',
     description: '400B MoE, 13B active, great for creative tasks',

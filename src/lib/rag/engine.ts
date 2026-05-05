@@ -27,7 +27,7 @@ export const defaultRAGConfig: RAGConfig = {
   similarityThreshold: 0.7,
   temperature: 0.7,
   maxTokens: 2000,
-  model: process.env.DEFAULT_MODEL || 'meta-llama/llama-3.3-70b-instruct:free',
+  model: process.env.DEFAULT_MODEL || 'google/gemma-3-12b-it:free',
   embeddingModel: process.env.EMBEDDING_MODEL || 'text-embedding-004',
 };
 

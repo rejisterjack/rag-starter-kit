@@ -35,7 +35,7 @@ const features: Feature[] = [
     description:
       'Lightning-fast token streaming via Server-Sent Events. Responses appear in real-time with sub-second first token latency.',
     highlight: 'SSE Streaming',
-    tags: ['Real-time', 'WebSocket', 'Presence'],
+    tags: ['Real-time', 'SSE', 'Ably'],
   },
   {
     icon: Users,

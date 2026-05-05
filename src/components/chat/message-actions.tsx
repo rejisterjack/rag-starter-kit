@@ -9,6 +9,8 @@ import {
   MoreHorizontal,
   Pencil,
   Sparkles,
+  ThumbsDown,
+  ThumbsUp,
   Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -350,6 +352,7 @@ interface MessageActionsBarProps {
   onEditAndRegenerate?: (newContent: string, regenerateResponse?: boolean) => Promise<void>;
   onRegenerateFromHere?: () => void;
   onCompare?: () => void;
+  onFeedback?: (rating: 'UP' | 'DOWN') => void;
   className?: string;
 }
 
@@ -367,9 +370,11 @@ export function MessageActionsBar({
   onEditAndRegenerate,
   onRegenerateFromHere,
   onCompare,
+  onFeedback,
   className,
 }: MessageActionsBarProps) {
   const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState<'UP' | 'DOWN' | null>(null);
 
   const handleCopy = async () => {
     if (onCopy) {
@@ -505,6 +510,49 @@ export function MessageActionsBar({
               <p>Delete message</p>
             </TooltipContent>
           </Tooltip>
+        )}
+
+        {/* Feedback - for assistant messages */}
+        {!isUser && onFeedback && (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn('h-7 w-7', feedback === 'UP' && 'text-green-500 bg-green-500/10')}
+                  onClick={() => {
+                    setFeedback('UP');
+                    onFeedback('UP');
+                  }}
+                >
+                  <ThumbsUp className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Helpful</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn('h-7 w-7', feedback === 'DOWN' && 'text-red-500 bg-red-500/10')}
+                  onClick={() => {
+                    setFeedback('DOWN');
+                    onFeedback('DOWN');
+                  }}
+                >
+                  <ThumbsDown className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Not helpful</p>
+              </TooltipContent>
+            </Tooltip>
+          </>
         )}
       </div>
     </TooltipProvider>

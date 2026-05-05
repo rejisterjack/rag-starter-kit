@@ -125,6 +125,54 @@ Uses sliding window algorithm with Redis.
 - Security events
 - Data access
 
+## ENCRYPTION_MASTER_KEY Rotation
+
+`ENCRYPTION_MASTER_KEY` is used to encrypt sensitive values at rest (SAML private keys, webhook secrets, OAuth tokens stored in the database). It is required in production and validated at startup.
+
+### Generating a key
+
+```bash
+openssl rand -base64 32
+```
+
+Store the output in the `ENCRYPTION_MASTER_KEY` environment variable (min 32 characters).
+
+### Rotation procedure
+
+Key rotation must re-encrypt all values encrypted with the old key before the old key is removed. The following procedure achieves zero-downtime rotation:
+
+**Step 1 — Dual-key phase.** Add the new key as `ENCRYPTION_MASTER_KEY_NEW` while keeping `ENCRYPTION_MASTER_KEY` unchanged. Deploy.
+
+**Step 2 — Re-encryption.** Run the migration script that reads each encrypted value with the old key and re-writes it with the new key:
+
+```bash
+# Dry-run first
+pnpm tsx scripts/rotate-encryption-key.ts --dry-run
+
+# Apply
+pnpm tsx scripts/rotate-encryption-key.ts
+```
+
+> **Note:** This script does not exist yet — create it before your first production rotation. It must iterate over all tables that store encrypted columns (currently: `saml_providers.private_key`, `webhooks.secret`, `api_keys.key_hash`).
+
+**Step 3 — Promote.** Set `ENCRYPTION_MASTER_KEY` to the new key value and remove `ENCRYPTION_MASTER_KEY_NEW`. Deploy.
+
+**Step 4 — Verify.** Confirm all encrypted services (SAML SSO, webhooks, API key verification) work correctly before decommissioning the old key.
+
+### What NOT to do
+
+- **Never** delete `ENCRYPTION_MASTER_KEY` before re-encryption is complete — all encrypted values become permanently unreadable.
+- **Never** commit the key to version control. Use a secrets manager (AWS Secrets Manager, Doppler, Vercel Environment Variables).
+- **Never** reuse an old key after rotation.
+
+### Emergency key loss
+
+If the master key is lost there is no recovery path for encrypted values. Affected rows must be invalidated (API keys revoked, SAML configs deleted, webhooks disabled) and re-provisioned by users.
+
+---
+
 ## Vulnerability Reporting
 
-Email security issues to: security@example.com
+Report security vulnerabilities via [GitHub Security Advisories](https://github.com/rejisterjack/rag-starter-kit/security/advisories/new).
+
+Do **not** open a public GitHub issue for security vulnerabilities. Security advisories allow coordinated disclosure and give maintainers time to patch before public disclosure.

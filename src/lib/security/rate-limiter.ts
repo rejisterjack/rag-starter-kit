@@ -48,6 +48,7 @@ export const rateLimits = {
   feedback: { limit: 30, windowMs: 60 * 1000, prefix: 'feedback' },
   share: { limit: 20, windowMs: 60 * 1000, prefix: 'share' },
   share_view: { limit: 60, windowMs: 60 * 1000, prefix: 'share_view' },
+  demo: { limit: 20, windowMs: 15 * 60 * 1000, prefix: 'demo' }, // 20 req per 15 min for public demo
 } as const;
 
 export type RateLimitType = keyof typeof rateLimits;
@@ -260,9 +261,13 @@ export function getRateLimiter(): RateLimiterBackend {
 
 export async function checkRateLimit(
   identifier: string,
-  type: RateLimitType
+  type: RateLimitType,
+  limitOverride?: number
 ): Promise<RateLimitResult> {
-  const config = rateLimits[type];
+  const config = { ...rateLimits[type] };
+  if (limitOverride !== undefined) {
+    (config as any).limit = limitOverride;
+  }
   const limiter = getRateLimiter();
   return limiter.checkLimit(identifier, config);
 }
@@ -270,9 +275,9 @@ export async function checkRateLimit(
 export async function checkApiRateLimit(
   identifier: string,
   type: RateLimitType,
-  metadata?: { userId?: string; workspaceId?: string; endpoint?: string }
+  metadata?: { userId?: string; workspaceId?: string; endpoint?: string; limitOverride?: number }
 ): Promise<RateLimitResult> {
-  const result = await checkRateLimit(identifier, type);
+  const result = await checkRateLimit(identifier, type, metadata?.limitOverride);
 
   if (!result.success && metadata?.userId) {
     await logAuditEvent({

@@ -16,6 +16,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { ApiKeySettings } from './api-key-settings';
 import { useChatContext } from './chat-context';
+import { KeyboardShortcutsTrigger } from './keyboard-shortcuts';
 import { ModelPicker } from './model-picker';
 import { ShareDialog } from './share-dialog';
 
@@ -30,7 +31,7 @@ interface ChatHeaderProps {
 }
 
 export const ChatHeader = memo(function ChatHeader({
-  selectedModel = 'arcee-ai/trinity-large-preview:free',
+  selectedModel = 'google/gemini-2.0-flash-exp:free',
   chatId,
   chatTitle,
   isStreaming,
@@ -114,6 +115,8 @@ export const ChatHeader = memo(function ChatHeader({
         </TooltipProvider>
 
         <div className="w-px h-4 bg-border/40 hidden md:block mx-1" />
+
+        <KeyboardShortcutsTrigger />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

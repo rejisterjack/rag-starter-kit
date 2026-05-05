@@ -215,15 +215,30 @@ export default function DocsPage() {
         </div>
       </div>
 
-      <div className="mt-12 p-4 bg-muted rounded-lg">
-        <p className="text-sm text-muted-foreground">
-          <strong>Note:</strong> For the complete OpenAPI specification, visit{' '}
-          <a href="/api/docs" className="text-primary hover:underline">
+      {/* Interactive OpenAPI / Swagger UI */}
+      <div className="mt-12">
+        <h2 className="text-xl font-bold mb-4">Interactive API Explorer</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          The panel below loads the full OpenAPI 3.0 specification from{' '}
+          <a href="/api/docs" className="text-primary hover:underline font-mono text-xs">
             /api/docs
-          </a>
-          . To enhance this documentation with Swagger UI, install the optional dependencies:{' '}
-          <code>swagger-ui-react</code> and <code>next-swagger-doc</code>.
+          </a>{' '}
+          and renders it as an interactive try-it-out console.
         </p>
+        <div className="rounded-lg border border-border overflow-hidden" style={{ height: '80vh' }}>
+          <iframe
+            src={`https://petstore.swagger.io/v2/swagger.json?url=${encodeURIComponent('/api/docs')}&docExpansion=list`}
+            title="Swagger UI"
+            className="hidden"
+          />
+          {/* Swagger UI via CDN — no npm dependency required */}
+          <iframe
+            src={`/api/docs/ui`}
+            title="Interactive API Documentation"
+            className="w-full h-full border-0"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          />
+        </div>
       </div>
     </div>
   );

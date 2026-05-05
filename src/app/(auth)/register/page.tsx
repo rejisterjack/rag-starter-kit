@@ -104,7 +104,7 @@ export default function RegisterPage(): React.ReactElement {
       if (signInResult?.error) {
         router.push('/login?registered=true');
       } else {
-        router.push('/chat');
+        router.push('/onboarding');
         router.refresh();
       }
     } catch (err) {

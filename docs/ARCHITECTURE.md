@@ -79,19 +79,19 @@ sequenceDiagram
 
     User->>API: Send message
     API->>RAG: generateRAGResponse()
-    
+
     RAG->>Embed: embedQuery(message)
     Embed-->>RAG: query vector
-    
+
     RAG->>Vector: similaritySearch(query, topK=5)
     Vector-->>RAG: relevant chunks
-    
+
     RAG->>RAG: buildContext(chunks)
     RAG->>RAG: buildSystemPrompt(context)
-    
+
     RAG->>LLM: generate(systemPrompt + message)
     LLM-->>RAG: response
-    
+
     RAG-->>API: {answer, sources, tokens}
     API-->>User: Return response with citations
 ```
@@ -110,19 +110,19 @@ sequenceDiagram
     Client->>Middleware: Request
     Middleware->>Rate: checkRateLimit()
     Rate-->>Middleware: allowed?
-    
+
     alt Rate limited
         Rate-->>Client: 429 Too Many Requests
     else Continue
         Middleware->>CSRF: validateCsrfToken()
         CSRF-->>Middleware: valid?
-        
+
         alt Invalid CSRF
             CSRF-->>Client: 403 Forbidden
         else Continue
             Middleware->>Auth: verifyAuth()
             Auth-->>Middleware: user context
-            
+
             alt Not authenticated
                 Auth-->>Client: 401 Unauthorized
             else Continue
@@ -147,7 +147,7 @@ erDiagram
         string role
         datetime created_at
     }
-    
+
     WORKSPACE ||--o{ WORKSPACE_MEMBER : has
     WORKSPACE ||--o{ DOCUMENT : contains
     WORKSPACE ||--o{ CONVERSATION : contains
@@ -158,7 +158,7 @@ erDiagram
         string owner_id FK
         json settings
     }
-    
+
     WORKSPACE_MEMBER {
         string id PK
         string user_id FK
@@ -166,7 +166,7 @@ erDiagram
         string role
         string status
     }
-    
+
     DOCUMENT ||--o{ CHUNK : has
     DOCUMENT {
         string id PK
@@ -176,7 +176,7 @@ erDiagram
         string status
         int size
     }
-    
+
     CHUNK {
         string id PK
         string document_id FK
@@ -184,7 +184,7 @@ erDiagram
         vector embedding
         json metadata
     }
-    
+
     CONVERSATION ||--o{ MESSAGE : contains
     CONVERSATION {
         string id PK
@@ -193,7 +193,7 @@ erDiagram
         string title
         string model
     }
-    
+
     MESSAGE {
         string id PK
         string conversation_id FK
@@ -202,7 +202,7 @@ erDiagram
         json sources
         json metadata
     }
-    
+
     API_KEY {
         string id PK
         string user_id FK
@@ -220,33 +220,33 @@ erDiagram
 graph TB
     subgraph Production["Production Environment"]
         LB["Load Balancer"]
-        
+
         subgraph AppServers["Application Servers"]
             App1["Next.js Instance 1"]
             App2["Next.js Instance 2"]
             App3["Next.js Instance 3"]
         end
-        
+
         subgraph DataLayer["Data Layer"]
             PG[("PostgreSQL Primary")]
             PGRep[("PostgreSQL Replica")]
             RedisCluster[("Redis Cluster")]
             Cloudinary[("Cloudinary")]
         end
-        
+
         subgraph Workers["Background Workers"]
             Inngest["Inngest Workers"]
         end
     end
-    
+
     LB --> App1
     LB --> App2
     LB --> App3
-    
+
     App1 --> PG
     App2 --> PG
     App3 --> PG
-    
+
     PG --> PGRep
     App1 --> RedisCluster
     App1 --> Cloudinary
@@ -261,20 +261,20 @@ graph TD
     Providers --> AuthProvider["Auth Provider"]
     Providers --> ThemeProvider["Theme Provider"]
     Providers --> QueryProvider["Query Provider"]
-    
+
     AuthProvider --> ChatLayout["Chat Layout"]
     AuthProvider --> AdminLayout["Admin Layout"]
     AuthProvider --> AuthLayout["Auth Layout"]
-    
+
     ChatLayout --> ChatContainer["Chat Container"]
     ChatContainer --> MessageList["Message List"]
     ChatContainer --> MessageInput["Message Input"]
     ChatContainer --> SourcesPanel["Sources Panel"]
-    
+
     MessageList --> MessageItem["Message Item"]
     MessageItem --> CitationList["Citation List"]
     MessageItem --> Markdown["Markdown Renderer"]
-    
+
     ChatLayout --> DocumentList["Document List"]
     DocumentList --> DocumentCard["Document Card"]
 ```
@@ -287,10 +287,52 @@ graph TD
 | Styling | Tailwind CSS 4, shadcn/ui |
 | State | React Query, Zustand |
 | Backend | Next.js API Routes |
-| Database | PostgreSQL 16 + pgvector |
+| Database | PostgreSQL 16 + pgvector (HNSW index) |
 | Cache | Redis |
 | Storage | Cloudinary |
 | AI | Vercel AI SDK, OpenRouter |
 | Auth | NextAuth v5 |
 | Queue | Inngest |
 | Real-time | Ably |
+
+## Vector Search: HNSW Index Parameters
+
+The `document_chunks.embedding` column is indexed using **pgvector's HNSW** (Hierarchical Navigable Small World) algorithm for approximate nearest-neighbour search.
+
+### Index definition
+
+```sql
+SET hnsw.ef_construction = 128;
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS document_chunks_embedding_hnsw_idx
+  ON document_chunks
+  USING hnsw (embedding vector_cosine_ops);
+```
+
+### Parameter reference
+
+| Parameter | Value | Effect |
+|-----------|-------|--------|
+| `m` | 16 (pgvector default) | Number of bi-directional links per node. Higher = better recall but more memory. Typical range: 8–64. |
+| `ef_construction` | 128 | Queue size during index build. Higher = better recall at the cost of slower builds. Minimum recommended: 64. |
+| `hnsw.ef_search` | 40 (pgvector default) | Queue size at query time. Raise to `100`–`200` for high-recall querying: `SET hnsw.ef_search = 100;` |
+| Distance function | `vector_cosine_ops` | Cosine similarity — correct for normalised text embeddings from OpenAI / Gemini. Use `vector_l2_ops` for un-normalised models. |
+
+### Tuning guidance
+
+- **Latency vs recall trade-off**: increase `ef_search` at query time without rebuilding the index.
+- **Index memory**: HNSW keeps the graph in RAM. Estimate ≈ `dimensions × 4 bytes × m × num_rows` bytes. A 1 M-row table of 1536-d vectors with m=16 uses ~98 GB — partition or archive old chunks.
+- **Rebuild after bulk inserts**: `REINDEX INDEX CONCURRENTLY document_chunks_embedding_hnsw_idx;`
+- **Monitoring**: query `pg_stat_user_indexes` for index bloat after heavy deletes.
+
+### Changing parameters
+
+To change `m` or `ef_construction` you must drop and recreate the index:
+
+```sql
+DROP INDEX CONCURRENTLY document_chunks_embedding_hnsw_idx;
+SET hnsw.ef_construction = 256;
+CREATE INDEX CONCURRENTLY document_chunks_embedding_hnsw_idx
+  ON document_chunks USING hnsw (embedding vector_cosine_ops)
+  WITH (m = 32);
+```

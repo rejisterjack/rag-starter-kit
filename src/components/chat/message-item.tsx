@@ -41,6 +41,8 @@ export interface Message {
 
 export type { Source } from './citations';
 
+import { SuggestedFollowUps } from './suggested-follow-ups';
+
 interface MessageItemProps {
   message: Message;
   onEdit?: (id: string, newContent: string) => void;
@@ -49,8 +51,10 @@ interface MessageItemProps {
   showSources?: boolean;
   isLastMessage?: boolean;
   isStreaming?: boolean;
+  followUpQuestions?: string[];
   onRegenerate?: () => void;
-  onFeedback?: (id: string, rating: 'up' | 'down') => void;
+  onFeedback?: (id: string, rating: 'UP' | 'DOWN') => void;
+  onFollowUpSelect?: (question: string) => void;
 }
 
 /**
@@ -75,13 +79,15 @@ export const MessageItem = React.memo(function MessageItem({
   showSources = true,
   isLastMessage = false,
   isStreaming = false,
+  followUpQuestions,
   onRegenerate,
   onFeedback,
+  onFollowUpSelect,
 }: MessageItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [copied, setCopied] = useState(false);
-  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
+  const [feedback, setFeedback] = useState<'UP' | 'DOWN' | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const isUser = message.role === 'user';
@@ -111,7 +117,7 @@ export const MessageItem = React.memo(function MessageItem({
   }, [message.content]);
 
   const handleFeedback = useCallback(
-    (rating: 'up' | 'down') => {
+    (rating: 'UP' | 'DOWN') => {
       setFeedback(rating);
       onFeedback?.(message.id, rating);
     },
@@ -212,6 +218,16 @@ export const MessageItem = React.memo(function MessageItem({
                   />
                 </div>
               )}
+
+              {/* Suggested follow-up questions — shown on last assistant message after streaming */}
+              {isAssistant &&
+                isLastMessage &&
+                !isStreaming &&
+                onFollowUpSelect &&
+                followUpQuestions &&
+                followUpQuestions.length > 0 && (
+                  <SuggestedFollowUps questions={followUpQuestions} onSelect={onFollowUpSelect} />
+                )}
             </>
           )}
         </div>
@@ -249,12 +265,12 @@ export const MessageItem = React.memo(function MessageItem({
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 rounded-full hover:bg-foreground/5"
-                          onClick={() => handleFeedback('up')}
+                          onClick={() => handleFeedback('UP')}
                           disabled={feedback !== null}
                         >
                           <ThumbsUp
                             className={`h-4 w-4 ${
-                              feedback === 'up'
+                              feedback === 'UP'
                                 ? 'text-green-500 fill-green-500'
                                 : 'text-muted-foreground'
                             }`}
@@ -271,12 +287,12 @@ export const MessageItem = React.memo(function MessageItem({
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 rounded-full hover:bg-foreground/5"
-                          onClick={() => handleFeedback('down')}
+                          onClick={() => handleFeedback('DOWN')}
                           disabled={feedback !== null}
                         >
                           <ThumbsDown
                             className={`h-4 w-4 ${
-                              feedback === 'down'
+                              feedback === 'DOWN'
                                 ? 'text-red-500 fill-red-500'
                                 : 'text-muted-foreground'
                             }`}

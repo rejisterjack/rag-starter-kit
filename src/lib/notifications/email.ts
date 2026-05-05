@@ -127,6 +127,36 @@ export class EmailService {
   // Email Templates
   // ===========================================================================
 
+  verificationEmail(userName: string, verifyUrl: string): EmailTemplate {
+    const safeUserName = escapeHtml(userName);
+    const safeVerifyUrl = escapeHtml(verifyUrl);
+    return {
+      subject: 'Verify your email address — RAG Starter Kit',
+      html: `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Verify your email</title></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #e5e5e5; margin: 0; padding: 40px 20px;">
+  <div style="max-width: 560px; margin: 0 auto; background: #111; border: 1px solid #222; border-radius: 12px; padding: 40px;">
+    <h1 style="font-size: 24px; font-weight: 700; color: #fff; margin: 0 0 8px;">Verify your email address</h1>
+    <p style="color: #999; margin: 0 0 24px;">Hi ${safeUserName},</p>
+    <p style="color: #ccc; line-height: 1.6; margin: 0 0 32px;">
+      Thanks for signing up! Click the button below to verify your email address and activate your account.
+      This link expires in <strong>24 hours</strong>.
+    </p>
+    <a href="${safeVerifyUrl}" style="display: inline-block; background: #7c3aed; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+      Verify Email Address
+    </a>
+    <p style="color: #666; font-size: 13px; margin: 32px 0 0; line-height: 1.5;">
+      If you didn't create an account, you can safely ignore this email.<br>
+      Or paste this link into your browser: <span style="color: #999;">${safeVerifyUrl}</span>
+    </p>
+  </div>
+</body>
+</html>`,
+      text: `Hi ${userName},\n\nVerify your email address for RAG Starter Kit:\n\n${verifyUrl}\n\nThis link expires in 24 hours.\n\nIf you didn't create an account, ignore this email.`,
+    };
+  }
+
   welcomeEmail(userName: string, loginUrl: string): EmailTemplate {
     return {
       subject: 'Welcome to RAG Starter Kit!',

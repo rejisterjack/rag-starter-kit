@@ -8,11 +8,16 @@ import {
   TechStackMarquee,
 } from '@/components/dynamic/landing-dynamic';
 import {
+  Differentiation,
   FeatureGrid,
   HeroSection,
+  HowItWorks,
   OpenSourceCTA,
   ScrollProgress,
   SetupAnimator,
+  UseCases,
+  WhatsIncluded,
+  WhoItsFor,
 } from '@/components/landing';
 import { RAGBotWidget } from '@/components/widget';
 
@@ -25,17 +30,32 @@ export default function HomePage(): React.ReactElement {
       {/* Hero Section */}
       <HeroSection />
 
+      {/* How It Works - 3 step pipeline explainer */}
+      <HowItWorks />
+
       {/* Setup Demo - Terminal typing animation */}
       <SetupAnimator />
 
+      {/* Who Is This For - Personas */}
+      <WhoItsFor />
+
+      {/* Differentiation - vs Python/LangChain */}
+      <Differentiation />
+
       {/* RAG Pipeline Diagram - Interactive architecture explorer */}
       <RagPipelineDiagram />
+
+      {/* Use Case Stories */}
+      <UseCases />
 
       {/* Simulated Chat - Streaming demo */}
       <ChatSimulator />
 
       {/* Feature Grid - 9 production features */}
       <FeatureGrid />
+
+      {/* What's Included - Checklist */}
+      <WhatsIncluded />
 
       {/* Tech Stack Marquee - Infinite scrolling badges */}
       <TechStackMarquee />
@@ -90,10 +110,24 @@ export default function HomePage(): React.ReactElement {
                 Contribute
               </Link>
               <Link
-                href="/chat"
+                href="/demo"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Demo
+              </Link>
+              <Link
+                href="/docs"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                API Docs
+              </Link>
+              <Link
+                href="https://github.com/rejisterjack/rag-starter-kit/blob/main/CHANGELOG.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Changelog
               </Link>
             </div>
           </div>

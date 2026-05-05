@@ -607,6 +607,77 @@ export const cleanupStaleJobs = inngest.createFunction(
 );
 
 // =============================================================================
+// Nightly Database Cleanup Job (RateLimit + AuditLog TTL)
+// =============================================================================
+
+/**
+ * Runs daily at 03:00 UTC.
+ * Purges expired rate-limit windows and rotates old audit log entries
+ * to prevent unbounded table growth.
+ *
+ * Retention policy (configurable via env):
+ *   RATE_LIMIT_RETENTION_DAYS  — default 7
+ *   AUDIT_LOG_RETENTION_DAYS   — default 90
+ */
+export const nightlyDbCleanupJob = inngest.createFunction(
+  {
+    id: 'nightly-db-cleanup',
+    name: 'Nightly Database Cleanup (RateLimit + AuditLog)',
+  },
+  { cron: '0 3 * * *' }, // 03:00 UTC every day
+  async ({ step }: { step: InngestContext['step'] }) => {
+    const rateLimitRetentionDays = Number(process.env.RATE_LIMIT_RETENTION_DAYS ?? '7');
+    const auditLogRetentionDays = Number(process.env.AUDIT_LOG_RETENTION_DAYS ?? '90');
+
+    const rateLimitCutoff = new Date(Date.now() - rateLimitRetentionDays * 24 * 60 * 60 * 1000);
+    const auditLogCutoff = new Date(Date.now() - auditLogRetentionDays * 24 * 60 * 60 * 1000);
+
+    // --- 1. Delete expired rate limit windows ---
+    const deletedRateLimits = await step.run('delete-expired-rate-limits', async () => {
+      const result = await prisma.rateLimit.deleteMany({
+        where: {
+          windowStart: { lt: rateLimitCutoff },
+        },
+      });
+      return result.count;
+    });
+
+    // --- 2. Delete old audit log entries ---
+    const deletedAuditLogs = await step.run('delete-old-audit-logs', async () => {
+      const result = await prisma.auditLog.deleteMany({
+        where: {
+          createdAt: { lt: auditLogCutoff },
+        },
+      });
+      return result.count;
+    });
+
+    // --- 3. Delete expired verification tokens ---
+    const deletedVerificationTokens = await step.run(
+      'delete-expired-verification-tokens',
+      async () => {
+        const result = await prisma.verificationToken.deleteMany({
+          where: {
+            expires: { lt: new Date() },
+          },
+        });
+        return result.count;
+      }
+    );
+
+    return {
+      deletedRateLimits,
+      deletedAuditLogs,
+      deletedVerificationTokens,
+      retentionPolicy: {
+        rateLimitDays: rateLimitRetentionDays,
+        auditLogDays: auditLogRetentionDays,
+      },
+    };
+  }
+);
+
+// =============================================================================
 // Partition Maintenance Job
 // =============================================================================
 

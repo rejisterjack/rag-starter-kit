@@ -69,6 +69,8 @@ const env = {
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = [
   '/',
+  '/demo',
+  '/api/demo',
   '/login',
   '/register',
   '/forgot-password',

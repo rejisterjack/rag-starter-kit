@@ -29,9 +29,25 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   PORT: z.coerce.number().default(3000),
 
-  // Redis configuration (optional — Upstash for production, in-memory fallback for dev)
-  UPSTASH_REDIS_REST_URL: z.string().optional(),
-  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+  // Redis configuration — required in production for rate limiting persistence.
+  // In development, an in-memory fallback is used automatically.
+  UPSTASH_REDIS_REST_URL: z
+    .string()
+    .optional()
+    .refine(
+      (val) => process.env.NODE_ENV !== 'production' || (val !== undefined && val.length > 0),
+      {
+        message:
+          'UPSTASH_REDIS_REST_URL is required in production (prevents in-memory rate limit fallback)',
+      }
+    ),
+  UPSTASH_REDIS_REST_TOKEN: z
+    .string()
+    .optional()
+    .refine(
+      (val) => process.env.NODE_ENV !== 'production' || (val !== undefined && val.length > 0),
+      { message: 'UPSTASH_REDIS_REST_TOKEN is required in production' }
+    ),
 
   // Storage configuration (Cloudinary for production, local filesystem fallback for dev)
   CLOUDINARY_URL: z.string().optional(),

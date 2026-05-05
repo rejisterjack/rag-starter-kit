@@ -36,7 +36,7 @@ export function useCreateChat() {
 
 export function useSendFeedback() {
   return useMutation({
-    mutationFn: async ({ messageId, rating }: { messageId: string; rating: 'up' | 'down' }) => {
+    mutationFn: async ({ messageId, rating }: { messageId: string; rating: 'UP' | 'DOWN' }) => {
       await apiClient(`/api/messages/${messageId}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

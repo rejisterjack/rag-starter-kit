@@ -328,7 +328,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
               messages: [{ role: 'user', content: trimmedContent }],
               conversationId: effectiveChatId,
               config: {
-                model: modelRef.current || 'arcee-ai/trinity-large-preview:free',
+                model: modelRef.current || 'google/gemini-2.0-flash-exp:free',
               },
               stream: true,
             }),

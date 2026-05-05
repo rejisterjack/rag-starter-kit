@@ -108,7 +108,7 @@ RULES FOR ANSWERING:
 // =============================================================================
 
 const MODEL_FALLBACK_CHAIN = [
-  'arcee-ai/trinity-large-preview:free',
+  'google/gemini-2.0-flash-exp:free',
   'stepfun/step-3.5-flash:free',
   'nvidia/nemotron-3-super-120b-a12b:free',
   'qwen/qwen3-coder:free',

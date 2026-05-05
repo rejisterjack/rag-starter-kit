@@ -2,7 +2,7 @@
 
 # 🧠 RAG Starter Kit
 
-**A production-ready RAG (Retrieval-Augmented Generation) chatbot boilerplate**
+**Ship a production-grade AI document chatbot this weekend — TypeScript-native RAG with streaming, auth, background jobs, and pgvector. Zero Python required.**
 
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev/)
@@ -19,7 +19,10 @@
 [![Coverage](https://img.shields.io/badge/coverage-90%25+-brightgreen?style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![All Contributors](https://img.shields.io/github/all-contributors/rejisterjack/rag-starter-kit?color=ee8449&style=flat-square)](#contributors)
 
-[🚀 Live Demo](https://rag-starter-kit.vercel.app/) · [📖 API Docs](https://rag-starter-kit.vercel.app/api/docs) · [🐛 Report Bug](../../issues) · [✨ Request Feature](../../issues)
+[🚀 Live Demo](https://rag-starter-kit.vercel.app/) · [📖 API Docs](https://rag-starter-kit.vercel.app/api/docs) · [🐛 Report Bug](../../issues) · [✨ Request Feature](../../issues) · [🔖 Changelog](CHANGELOG.md) · [🧩 Chrome Extension](extensions/chrome/README.md)
+
+> **GitHub Topics** (add these in the repo Settings → About → Topics):
+> `rag` `nextjs` `typescript` `langchain` `pgvector` `openai` `chatbot` `ai` `llm` `retrieval-augmented-generation` `starter-kit` `boilerplate` `inngest` `vercel` `postgresql`
 
 <img src="https://img.shields.io/badge/100%25_FREE_AI-✓-brightgreen?style=for-the-badge&logo=openai" alt="100% Free AI" />
 

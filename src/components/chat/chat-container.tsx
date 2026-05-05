@@ -34,7 +34,7 @@ interface ChatContainerProps {
   onModelChange?: (modelId: string) => void;
   onAgentModeToggle?: (enabled: boolean) => void;
   onRegenerate?: () => void;
-  onFeedback?: (messageId: string, rating: 'up' | 'down') => void;
+  onFeedback?: (messageId: string, rating: 'UP' | 'DOWN') => void;
   onSelectConversation?: (chatId: string) => void;
   onDeleteConversation?: (chatId: string) => void;
   onUploadClick?: () => void;
@@ -50,7 +50,7 @@ export const ChatContainer = memo(function ChatContainer({
   sources,
   isStreaming,
   streamingContent,
-  selectedModel = 'arcee-ai/trinity-large-preview:free',
+  selectedModel = 'google/gemini-2.0-flash-exp:free',
   chatId,
   chatTitle,
   agentMode = false,

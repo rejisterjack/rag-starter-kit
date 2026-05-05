@@ -40,7 +40,7 @@ export default function ChatPage(): React.ReactElement {
   const [previewDocumentId, setPreviewDocumentId] = useState<string | null>(null);
   const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined);
   const [agentMode, setAgentMode] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('arcee-ai/trinity-large-preview:free');
+  const [selectedModel, setSelectedModel] = useState('google/gemini-2.0-flash-exp:free');
   const [chatTitle, setChatTitle] = useState('New Chat');
 
   // TanStack Query hooks

@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useChatContext } from './chat-context';
 import type { Source } from './citations';
 import { EmptyState } from './empty-state';
@@ -21,10 +21,26 @@ interface ChatMessagesProps {
   onDeleteMessage?: (id: string) => void;
   onCancelStreaming?: () => void;
   onRegenerate?: () => void;
-  onFeedback?: (messageId: string, rating: 'up' | 'down') => void;
+  onFeedback?: (messageId: string, rating: 'UP' | 'DOWN') => void;
   onSendMessage: (message: string, files?: File[]) => void;
   onUploadClick?: () => void;
   onFilesDrop?: (files: File[]) => void;
+}
+
+/** Fetch contextual follow-up questions from the API */
+async function fetchFollowUps(assistantMessage: string, userQuery?: string): Promise<string[]> {
+  try {
+    const res = await fetch('/api/chat/follow-up', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assistantMessage, userQuery, count: 3 }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.questions) ? data.questions : [];
+  } catch {
+    return [];
+  }
 }
 
 export const ChatMessages = memo(function ChatMessages({
@@ -46,6 +62,35 @@ export const ChatMessages = memo(function ChatMessages({
 }: ChatMessagesProps) {
   const { state, dispatch } = useChatContext();
 
+  // ── Suggested follow-up questions ────────────────────────────────────────
+  const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
+  const lastAssistantIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (isStreaming) {
+      setFollowUpQuestions([]);
+      return;
+    }
+    const lastMsg = messages[messages.length - 1];
+    if (!lastMsg || lastMsg.role !== 'assistant') return;
+    if (lastAssistantIdRef.current === lastMsg.id) return;
+    lastAssistantIdRef.current = lastMsg.id;
+
+    const prevUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+    fetchFollowUps(lastMsg.content, prevUserMsg?.content).then((qs) => {
+      setFollowUpQuestions(qs);
+    });
+  }, [isStreaming, messages]);
+
+  const handleFollowUpSelect = useCallback(
+    (question: string) => {
+      setFollowUpQuestions([]);
+      onSendMessage(question);
+    },
+    [onSendMessage]
+  );
+
+  // ── Citation click handler ────────────────────────────────────────────────
   const handleCitationClick = useCallback(
     (index: number) => {
       const source = sources.find((s) => s.index === index);
@@ -93,6 +138,8 @@ export const ChatMessages = memo(function ChatMessages({
             onCancelStreaming={onCancelStreaming}
             onRegenerate={onRegenerate}
             onFeedback={onFeedback}
+            followUpQuestions={followUpQuestions}
+            onFollowUpSelect={handleFollowUpSelect}
             isAgentMode={state.isAgentMode}
             agentThinking={state.isAgentMode && isStreaming}
           />

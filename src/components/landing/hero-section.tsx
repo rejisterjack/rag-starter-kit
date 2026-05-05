@@ -1,10 +1,13 @@
 'use client';
 
 import { motion, useMotionValue, useSpring, useTransform, type Variants } from 'framer-motion';
-import { ArrowRight, Github, Sparkles, Terminal } from 'lucide-react';
+import { ArrowRight, Github, Sparkles, Terminal, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { useTrackEvent } from '@/hooks/use-analytics-event';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
+import { GitHubStats } from './github-stats';
 
 const staggerContainer: Variants = {
   animate: {
@@ -27,27 +30,42 @@ const fadeUp: Variants = {
 
 export function HeroSection(): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = useReducedMotion();
+  const { track } = useTrackEvent();
 
   // Mouse position for parallax
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
-  // Smooth springs for mouse movement
-  const smoothMouseX = useSpring(mouseX, { stiffness: 50, damping: 20 });
-  const smoothMouseY = useSpring(mouseY, { stiffness: 50, damping: 20 });
+  // Smooth springs for mouse movement — disabled when prefers-reduced-motion
+  const smoothMouseX = useSpring(mouseX, { stiffness: prefersReducedMotion ? 0 : 50, damping: 20 });
+  const smoothMouseY = useSpring(mouseY, { stiffness: prefersReducedMotion ? 0 : 50, damping: 20 });
 
-  // Transforms for 3D parallax elements
-  const rotateX = useTransform(smoothMouseY, [-0.5, 0.5], [15, -15]);
-  const rotateY = useTransform(smoothMouseX, [-0.5, 0.5], [-15, 15]);
+  // Transforms for 3D parallax elements — always computed, ranges zeroed when reduced motion
+  const rotateX = useTransform(
+    smoothMouseY,
+    [-0.5, 0.5],
+    prefersReducedMotion ? [0, 0] : [15, -15]
+  );
+  const rotateY = useTransform(
+    smoothMouseX,
+    [-0.5, 0.5],
+    prefersReducedMotion ? [0, 0] : [-15, 15]
+  );
 
-  const bgX = useTransform(smoothMouseX, [-0.5, 0.5], [-50, 50]);
-  const bgY = useTransform(smoothMouseY, [-0.5, 0.5], [-50, 50]);
+  const bgX = useTransform(smoothMouseX, [-0.5, 0.5], prefersReducedMotion ? [0, 0] : [-50, 50]);
+  const bgY = useTransform(smoothMouseY, [-0.5, 0.5], prefersReducedMotion ? [0, 0] : [-50, 50]);
+
+  // Decorative badge parallax — always computed unconditionally
+  const badgeTopY = useTransform(smoothMouseY, [-0.5, 0.5], [-20, 20]);
+  const badgeBottomY = useTransform(smoothMouseY, [-0.5, 0.5], [20, -20]);
 
   useEffect(() => {
+    if (prefersReducedMotion) return;
+
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      // Normalize mouse coordinates from -0.5 to 0.5
       const x = (e.clientX - rect.left) / rect.width - 0.5;
       const y = (e.clientY - rect.top) / rect.height - 0.5;
       mouseX.set(x);
@@ -56,12 +74,12 @@ export function HeroSection(): React.ReactElement {
 
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, [mouseX, mouseY]);
+  }, [mouseX, mouseY, prefersReducedMotion]);
 
   return (
     <section
       ref={containerRef}
-      className="relative min-h-[95vh] flex items-center justify-center overflow-hidden pt-20 pb-12 lg:pt-32 lg:pb-24 perspective-1000"
+      className="relative min-h-[95vh] flex items-center justify-center overflow-hidden sm:overflow-visible pt-20 pb-12 lg:pt-32 lg:pb-24 perspective-1000"
     >
       {/* Animated interactive background orbs */}
       <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden">
@@ -103,13 +121,21 @@ export function HeroSection(): React.ReactElement {
             </Link>
           </motion.div>
 
-          {/* Headline - Advanced Text Reveal */}
-          <div className="overflow-hidden mb-6">
+          {/* Headline — outcome-centric */}
+          <div className="overflow-hidden mb-4">
             <motion.h1
               variants={textReveal}
               className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl xl:text-[5.5rem] leading-[1.1]"
             >
-              The <span className="text-gradient">TypeScript-Native</span>
+              Ship Your AI
+            </motion.h1>
+          </div>
+          <div className="overflow-hidden mb-4">
+            <motion.h1
+              variants={textReveal}
+              className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl xl:text-[5.5rem] leading-[1.1]"
+            >
+              <span className="text-gradient">Document Chatbot</span>
             </motion.h1>
           </div>
           <div className="overflow-hidden mb-8">
@@ -117,19 +143,20 @@ export function HeroSection(): React.ReactElement {
               variants={textReveal}
               className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl xl:text-[5.5rem] leading-[1.1]"
             >
-              RAG Platform
+              This Weekend
             </motion.h1>
           </div>
 
-          {/* Subheadline */}
+          {/* Subheadline — pain-first */}
           <motion.p
             variants={fadeUp}
             className="mx-auto mt-6 max-w-2xl text-lg sm:text-xl text-muted-foreground leading-relaxed"
           >
-            Production-ready. Self-hostable.{' '}
-            <span className="text-foreground font-medium">Zero API costs.</span>
+            Every TypeScript developer building AI hits the same wall:{' '}
+            <span className="text-foreground font-medium">the RAG ecosystem is Python-first.</span>
             <br className="hidden sm:block" />
-            Deploy an AI document chatbot in minutes — no Python, no credit card, no compromises.
+            Not anymore. Full production RAG in your stack — streaming, voice, auth, background
+            jobs. Zero API costs to start.
           </motion.p>
 
           {/* CTA Buttons */}
@@ -143,13 +170,12 @@ export function HeroSection(): React.ReactElement {
               className="group relative overflow-hidden h-14 px-8 text-base rounded-full bg-primary text-primary-foreground hover:scale-105 transition-all duration-500 hover:shadow-[0_0_3rem_-0.5rem_hsl(var(--primary))]"
             >
               <Link
-                href="https://github.com/rejisterjack/rag-starter-kit"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/demo"
+                onClick={() => track('cta_click', { location: 'hero', label: 'try_demo' })}
               >
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,hsl(var(--background)/0.2),transparent)] -translate-x-[150%] group-hover:animate-[shimmer_1.5s_infinite]" />
-                <Github className="mr-2 h-5 w-5" />
-                Clone & Deploy
+                <Terminal className="mr-2 h-5 w-5" />
+                Try the Live Demo
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Link>
             </Button>
@@ -159,23 +185,49 @@ export function HeroSection(): React.ReactElement {
               size="lg"
               className="h-14 px-8 text-base rounded-full glass-light hover:bg-primary/5 hover:border-primary/50 transition-all duration-300 interactive"
             >
-              <Link href="/chat">
-                <Terminal className="mr-2 h-5 w-5 text-primary" />
-                Try Live Demo
+              <Link
+                href="/register"
+                onClick={() => track('cta_click', { location: 'hero', label: 'sign_up_free' })}
+              >
+                <UserPlus className="mr-2 h-5 w-5 text-primary" />
+                Sign Up Free
               </Link>
             </Button>
+            <Button
+              asChild
+              variant="ghost"
+              size="lg"
+              className="h-14 px-8 text-base rounded-full hover:bg-muted/50 transition-all duration-300"
+            >
+              <Link
+                href="https://github.com/rejisterjack/rag-starter-kit"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track('cta_click', { location: 'hero', label: 'clone_github' })}
+              >
+                <Github className="mr-2 h-5 w-5" />
+                Clone on GitHub
+              </Link>
+            </Button>
+          </motion.div>
+
+          {/* GitHub Stats — above the fold for social proof */}
+          <motion.div variants={fadeUp} className="mt-10 flex justify-center">
+            <div className="glass-panel border-border/30 inline-block rounded-2xl p-2">
+              <GitHubStats />
+            </div>
           </motion.div>
 
           {/* Stats Row */}
           <motion.div
             variants={fadeUp}
-            className="mt-20 grid grid-cols-2 sm:grid-cols-4 gap-6 py-8 relative"
+            className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-6 py-8 relative"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-border/50 to-transparent h-[1px]" />
             <div className="absolute inset-0 top-auto bg-gradient-to-r from-transparent via-border/50 to-transparent h-[1px]" />
 
             {[
-              { value: '2 min', label: 'Setup time' },
+              { value: '< 10 min', label: 'Setup time' },
               { value: '$0', label: 'To run' },
               { value: '100%', label: 'TypeScript' },
               { value: 'MIT', label: 'License' },
@@ -243,7 +295,7 @@ export function HeroSection(): React.ReactElement {
                   transition={{ delay: 2.5 }}
                   className="text-foreground"
                 >
-                  [+] Running 4/4
+                  [+] Installing dependencies...
                 </motion.p>
                 <motion.p
                   initial={{ opacity: 0 }}
@@ -251,7 +303,7 @@ export function HeroSection(): React.ReactElement {
                   transition={{ delay: 2.6 }}
                   className="text-green-400/80 pl-4"
                 >
-                  ✔ Container pgvector-db Started
+                  ✔ Connecting to Neon PostgreSQL...
                 </motion.p>
                 <motion.p
                   initial={{ opacity: 0 }}
@@ -259,7 +311,15 @@ export function HeroSection(): React.ReactElement {
                   transition={{ delay: 2.7 }}
                   className="text-green-400/80 pl-4"
                 >
-                  ✔ Container redis-cache Started
+                  ✔ Connecting to Upstash Redis...
+                </motion.p>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 2.8 }}
+                  className="text-green-400/80 pl-4"
+                >
+                  ✔ Inngest dev server started...
                 </motion.p>
                 <motion.p
                   initial={{ opacity: 0 }}
@@ -275,8 +335,8 @@ export function HeroSection(): React.ReactElement {
 
           {/* Decorative floating elements */}
           <motion.div
-            className="absolute -top-6 -right-6 sm:-top-10 sm:-right-10 glass-panel rounded-2xl p-4 z-20 shadow-2xl"
-            style={{ y: useTransform(smoothMouseY, [-0.5, 0.5], [-20, 20]) }}
+            className="absolute -top-6 -right-6 sm:-top-10 sm:-right-10 glass-panel rounded-2xl p-4 z-20 shadow-2xl hidden sm:block"
+            style={{ y: prefersReducedMotion ? 0 : badgeTopY }}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 2.2, duration: 0.5 }}
@@ -293,8 +353,8 @@ export function HeroSection(): React.ReactElement {
           </motion.div>
 
           <motion.div
-            className="absolute -bottom-6 -left-6 sm:-bottom-10 sm:-left-10 glass-panel rounded-2xl p-4 z-20 shadow-2xl"
-            style={{ y: useTransform(smoothMouseY, [-0.5, 0.5], [20, -20]) }}
+            className="absolute -bottom-6 -left-6 sm:-bottom-10 sm:-left-10 glass-panel rounded-2xl p-4 z-20 shadow-2xl hidden sm:block"
+            style={{ y: prefersReducedMotion ? 0 : badgeBottomY }}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 2.4, duration: 0.5 }}

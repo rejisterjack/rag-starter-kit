@@ -1,9 +1,14 @@
 export { ChatSimulator } from './chat-simulator';
+export { Differentiation } from './differentiation';
 export { FeatureGrid } from './feature-grid';
 export { GitHubStats } from './github-stats';
 export { HeroSection } from './hero-section';
+export { HowItWorks } from './how-it-works';
 export { OpenSourceCTA } from './open-source-cta';
 export { RagPipelineDiagram } from './rag-pipeline-diagram';
 export { ScrollProgress } from './scroll-progress';
 export { SetupAnimator } from './setup-animator';
 export { TechStackMarquee } from './tech-stack-marquee';
+export { UseCases } from './use-cases';
+export { WhatsIncluded } from './whats-included';
+export { WhoItsFor } from './who-its-for';
