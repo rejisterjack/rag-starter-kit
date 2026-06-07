@@ -129,32 +129,51 @@ export function DocumentPreview({ document, isOpen, onClose, content }: Document
       );
     }
 
-    return dispatchViewer(document, content);
+    return (
+      <div className="w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900 via-neutral-950 to-black">
+        {dispatchViewer(document, content)}
+      </div>
+    );
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="p-4 pb-2 border-b">
+      <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 gap-0 border border-white/10 glass-heavy shadow-2xl rounded-2xl overflow-hidden [&>button]:hidden">
+        <DialogHeader className="p-5 pb-4 border-b border-white/10 bg-black/40 backdrop-blur-md">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+            <DialogTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
               {document.name}
               {isProcessing && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </DialogTitle>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               {url && (
-                <a href={url} download={document.name} target="_blank" rel="noopener noreferrer">
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                <a
+                  href={url}
+                  download={document.name}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-transform hover:scale-105 active:scale-95"
+                >
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 border-white/10 hover:bg-white/10 text-muted-foreground hover:text-foreground rounded-lg"
+                  >
                     <Download className="h-4 w-4" />
                   </Button>
                 </a>
               )}
-              <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={onClose}
+                className="h-8 w-8 border-white/10 hover:bg-white/10 text-muted-foreground hover:text-foreground rounded-lg transition-transform hover:scale-105 active:scale-95"
+              >
                 <X className="h-4 w-4" />
               </Button>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
             <span>{(document.size / 1024).toFixed(1)} KB</span>
             <span>·</span>
             <span>{document.type}</span>

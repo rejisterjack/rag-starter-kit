@@ -151,20 +151,37 @@ export const POST = withApiAuth(async (req, session) => {
       where: { documentId },
     });
 
-    // Step 9: Trigger new ingestion via Inngest
+    // Step 9: Process inline (same as upload path) AND notify Inngest
+    // Always run inline to guarantee processing — Inngest is opportunistic.
+    const { processDocumentInline } = await import('@/lib/rag/ingestion/inline-processor');
+    void processDocumentInline(documentId, userId).catch(async (err) => {
+      const errMsg = err instanceof Error ? err.message : 'Unknown';
+      logger.error('Retry processing failed', { documentId, error: errMsg });
+      await prisma.document
+        .update({
+          where: { id: documentId },
+          data: {
+            status: 'FAILED',
+            metadata: { error: errMsg, failedAt: new Date().toISOString() },
+          },
+        })
+        .catch(() => {});
+      await prisma.ingestionJob
+        .updateMany({
+          where: { documentId },
+          data: { status: 'FAILED', error: errMsg, completedAt: new Date() },
+        })
+        .catch(() => {});
+    });
+
+    // Also notify Inngest (opportunistic — may or may not be running)
     try {
       await inngest.send({
         name: 'document/ingest',
         data: { documentId, userId },
       });
     } catch {
-      // Inngest unavailable — process directly
-      logger.info('Inngest unavailable on retry, processing directly', { documentId });
-      const { processDocumentInline } = await import('@/lib/rag/ingestion/inline-processor');
-      void processDocumentInline(documentId, userId).catch(async (err) => {
-        const errMsg = err instanceof Error ? err.message : 'Unknown';
-        logger.error('Retry processing failed', { documentId, error: errMsg });
-      });
+      logger.info('Inngest unavailable on retry (inline processor is running)', { documentId });
     }
 
     // Step 10: Log audit event

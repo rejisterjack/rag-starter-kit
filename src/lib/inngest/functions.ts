@@ -35,7 +35,7 @@ import {
 } from '@/lib/rag/ingestion';
 import { scrapeURL } from '@/lib/rag/ingestion/parsers/url';
 import { isYouTubeUrl, parseYouTube } from '@/lib/rag/ingestion/parsers/youtube';
-import { deleteDocumentFiles, getFile } from '@/lib/storage/cloudinary-storage';
+import { getFile } from '@/lib/storage/cloudinary-storage';
 import { checkDocumentLimit } from '@/lib/workspace/resource-limits';
 import { inngest } from './client';
 
@@ -580,7 +580,7 @@ export const cleanupStaleJobs = inngest.createFunction(
           },
         });
 
-        const doc = await prisma.document.update({
+        await prisma.document.update({
           where: { id: job.documentId },
           data: {
             status: 'FAILED',
@@ -588,14 +588,9 @@ export const cleanupStaleJobs = inngest.createFunction(
               error: 'Processing timeout',
             },
           },
-          select: { storageKey: true },
         });
 
-        // Clean up Cloudinary files for failed documents
-        if (doc.storageKey) {
-          await deleteDocumentFiles(job.documentId).catch(() => {});
-        }
-
+        // Remove vector chunks but keep the Cloudinary file so the user can retry
         await deleteByDocumentId(job.documentId).catch(() => {});
       });
     }
