@@ -189,11 +189,21 @@ export function useRAGBot(options: UseRAGBotOptions = {}): UseRAGBotReturn {
     abortControllerRef.current = new AbortController();
 
     try {
+      // Include CSRF token for the mutating POST request
+      const csrfToken =
+        document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) {
+        headers['x-csrf-token'] = csrfToken;
+      }
+
       const response = await fetch('/api/chat/product', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({
           message: question,
           history: buildHistory(updatedMessages),
