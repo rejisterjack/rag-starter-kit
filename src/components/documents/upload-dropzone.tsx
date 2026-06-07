@@ -26,6 +26,7 @@ import type React from 'react';
 import { useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { fetchWithCsrf } from '@/lib/security/csrf';
 import { cn } from '@/lib/utils';
 
 // =============================================================================
@@ -574,7 +575,7 @@ export function useUpload(options: UseUploadOptions = {}) {
           formData.append('workspaceId', workspaceId);
         }
 
-        const response = await fetch(endpoint, {
+        const response = await fetchWithCsrf(endpoint, {
           method: 'POST',
           body: formData,
         });
@@ -688,7 +689,7 @@ export function useUpload(options: UseUploadOptions = {}) {
           formData.append('workspaceId', workspaceId);
         }
 
-        const response = await fetch(endpoint, {
+        const response = await fetchWithCsrf(endpoint, {
           method: 'POST',
           body: formData,
         });

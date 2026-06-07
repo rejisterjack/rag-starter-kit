@@ -36,7 +36,7 @@ const docsPages: Array<{ path: string; frequency: 'weekly' | 'monthly'; priority
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rag-starter-kit.vercel.app';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rag.rejisterjack.com';
   const now = new Date();
 
   const docsEntries: MetadataRoute.Sitemap = docsPages.map((page) => ({

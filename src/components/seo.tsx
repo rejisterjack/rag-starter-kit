@@ -30,7 +30,7 @@ export function generateSEO({
   publishedTime,
   modifiedTime,
 }: SEOProps): Metadata {
-  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rag-starter-kit.vercel.app';
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rag.rejisterjack.com';
   const fullUrl = `${siteUrl}${url}`;
   const fullImage = image.startsWith('http') ? image : `${siteUrl}${image}`;
 
@@ -40,7 +40,6 @@ export function generateSEO({
     keywords,
     authors: [{ name: author }],
     creator: author,
-    metadataBase: new URL(siteUrl),
     alternates: {
       canonical: fullUrl,
     },
@@ -90,7 +89,7 @@ export function StructuredData({
   type = 'WebSite',
   name = 'RAG Starter Kit',
   description = 'A production-ready RAG chatbot boilerplate',
-  url = process.env.NEXT_PUBLIC_APP_URL || 'https://rag-starter-kit.vercel.app',
+  url = process.env.NEXT_PUBLIC_APP_URL || 'https://rag.rejisterjack.com',
 }: {
   type?: 'WebSite' | 'WebPage' | 'SoftwareApplication';
   name?: string;

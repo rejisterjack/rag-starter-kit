@@ -135,8 +135,9 @@ export const processDocumentJob = inngest.createFunction(
 
     // Step 2b: Re-check workspace document limit (guard against race conditions)
     if (document.workspaceId) {
+      const workspaceId = document.workspaceId;
       const docLimit = await step.run('check-doc-limit', async () => {
-        return checkDocumentLimit(document.workspaceId!);
+        return checkDocumentLimit(workspaceId);
       });
 
       if (!docLimit.allowed) {

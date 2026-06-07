@@ -103,10 +103,10 @@ export async function detachOldPartitions(retentionMonths: number): Promise<numb
       for (const row of result) {
         const name = row.tablename;
         const match = name.match(/(\d{4})_(\d{2})$/);
-        if (!match) continue;
+        if (!match?.[1] || !match?.[2]) continue;
 
-        const year = Number.parseInt(match[1]!, 10);
-        const month = Number.parseInt(match[2]!, 10);
+        const year = Number.parseInt(match[1], 10);
+        const month = Number.parseInt(match[2], 10);
         const partitionDate = new Date(year, month - 1, 1);
 
         if (partitionDate < cutoff) {

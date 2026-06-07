@@ -26,7 +26,7 @@ const geistMono = Geist_Mono({
   adjustFontFallback: true,
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rag-starter-kit.vercel.app';
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rag.rejisterjack.com';
 
 if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_APP_URL) {
   logger.warn(
@@ -60,12 +60,6 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   alternates: {
     canonical: '/',
-    languages: {
-      en: '/',
-      es: '/es',
-      fr: '/fr',
-      ar: '/ar',
-    },
   },
   openGraph: {
     type: 'website',
@@ -132,7 +126,7 @@ export const metadata: Metadata = {
   classification: 'Software Development',
   other: {
     'og:site_name': 'RAG Starter Kit',
-    'twitter:domain': 'rag-starter-kit.vercel.app',
+    'twitter:domain': 'rag.rejisterjack.com',
   },
 };
 

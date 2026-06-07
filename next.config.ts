@@ -203,8 +203,8 @@ const nextConfig: NextConfig = {
 };
 
 const isDev = process.env.NODE_ENV === 'development';
+const baseConfig = withBundleAnalyzer(withMDX(nextConfig));
+
 export default !isDev && process.env.SENTRY_DSN
-  ? withSentryConfig(withBundleAnalyzer(withMDX(nextConfig)), {
-      silent: true,
-    })
-  : withBundleAnalyzer(withMDX(nextConfig));
+  ? withSentryConfig(baseConfig, { silent: true })
+  : baseConfig;

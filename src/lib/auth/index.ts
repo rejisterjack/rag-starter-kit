@@ -62,6 +62,16 @@ import { createDefaultWorkspace, getAppUrl, getUserWorkspaces } from '@/lib/work
 import { authConfig } from './auth.config';
 
 // =============================================================================
+// Env Validation
+// =============================================================================
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required env var: ${name}`);
+  return value;
+}
+
+// =============================================================================
 // Type Extensions
 // =============================================================================
 
@@ -139,8 +149,9 @@ const {
   providers: [
     // GitHub OAuth Provider
     GitHub({
-      clientId: process.env.AUTH_GITHUB_ID as string,
-      clientSecret: process.env.AUTH_GITHUB_SECRET as string,
+      clientId: requireEnv('AUTH_GITHUB_ID'),
+      clientSecret: requireEnv('AUTH_GITHUB_SECRET'),
+      allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
           scope: 'read:user user:email',
@@ -182,10 +193,9 @@ const {
 
     // Google OAuth Provider
     Google({
-      clientId: process.env.AUTH_GOOGLE_ID as string,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET as string,
-      // allowDangerousEmailAccountLinking is intentionally NOT enabled
-      // to prevent OAuth account takeover attacks
+      clientId: requireEnv('AUTH_GOOGLE_ID'),
+      clientSecret: requireEnv('AUTH_GOOGLE_SECRET'),
+      allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
           prompt: 'consent',

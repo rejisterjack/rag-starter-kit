@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import {
   Calculator,
   ChevronDown,
@@ -322,7 +322,7 @@ function ToolResultCard({ toolCall }: { toolCall: ToolCall }) {
       {/* Content */}
       <AnimatePresence>
         {isExpanded && !isRunning && toolCall.result !== undefined && (
-          <motion.div
+          <m.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -336,7 +336,7 @@ function ToolResultCard({ toolCall }: { toolCall: ToolCall }) {
                 <ResultRenderer result={toolCall.result} />
               )}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

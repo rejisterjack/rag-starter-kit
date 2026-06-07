@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { motion, type Variants } from 'framer-motion';
+import { m, type Variants } from 'framer-motion';
 import { AlertTriangle, Github, Loader2, Mail } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -188,16 +188,16 @@ function LoginContent(): React.ReactElement {
   const showSSOOnly = ssoDetected?.forceSSO && ssoDetected.found;
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">
-      <motion.div variants={itemVariants} className="text-center">
+    <m.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">
+      <m.div variants={itemVariants} className="text-center">
         <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent pb-1">
           Welcome back
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">Sign in to your account to continue</p>
-      </motion.div>
+      </m.div>
 
       {loginError && (
-        <motion.div variants={itemVariants}>
+        <m.div variants={itemVariants}>
           {loginError === 'verification-token-expired' ||
           loginError === 'invalid-verification-token' ||
           loginError === 'invalid-verification-link' ? (
@@ -250,11 +250,11 @@ function LoginContent(): React.ReactElement {
               </AlertDescription>
             </Alert>
           )}
-        </motion.div>
+        </m.div>
       )}
 
       {showSSOOnly && (
-        <motion.div variants={itemVariants}>
+        <m.div variants={itemVariants}>
           <Alert className="bg-blue-500/10 border-blue-500/30 backdrop-blur-md text-blue-200">
             <AlertTriangle className="h-4 w-4 text-blue-400" />
             <AlertDescription>
@@ -262,11 +262,11 @@ function LoginContent(): React.ReactElement {
               login is disabled.
             </AlertDescription>
           </Alert>
-        </motion.div>
+        </m.div>
       )}
 
       {/* OAuth buttons */}
-      <motion.div variants={itemVariants} className="space-y-3">
+      <m.div variants={itemVariants} className="space-y-3">
         <Button
           variant="outline"
           className="w-full interactive"
@@ -301,10 +301,10 @@ function LoginContent(): React.ReactElement {
           </svg>
           Continue with Google
         </Button>
-      </motion.div>
+      </m.div>
 
       {(ssoDetected?.found || showSSOOnly) && (
-        <motion.div variants={itemVariants}>
+        <m.div variants={itemVariants}>
           {!showSSOOnly && (
             <div className="relative mb-6 mt-2">
               <div className="absolute inset-0 flex items-center">
@@ -327,11 +327,11 @@ function LoginContent(): React.ReactElement {
             workspaceLogo={ssoDetected?.workspaceLogo}
             ssoMethods={ssoDetected?.ssoMethods || []}
           />
-        </motion.div>
+        </m.div>
       )}
 
       {!showSSOOnly && (
-        <motion.div variants={itemVariants}>
+        <m.div variants={itemVariants}>
           <div className="relative mb-6 mt-2">
             <div className="absolute inset-0 flex items-center">
               <Separator className="w-full border-border/50" />
@@ -406,11 +406,11 @@ function LoginContent(): React.ReactElement {
               )}
             </Button>
           </form>
-        </motion.div>
+        </m.div>
       )}
 
       {!showSSOOnly && (
-        <motion.div variants={itemVariants} className="pt-2">
+        <m.div variants={itemVariants} className="pt-2">
           <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{' '}
             <Link
@@ -420,10 +420,10 @@ function LoginContent(): React.ReactElement {
               Sign up
             </Link>
           </p>
-        </motion.div>
+        </m.div>
       )}
 
-      <motion.div variants={itemVariants}>
+      <m.div variants={itemVariants}>
         <p className="text-center text-xs text-muted-foreground leading-relaxed max-w-[80%] mx-auto">
           By continuing, you agree to our{' '}
           <Link href="/terms" className="hover:text-primary transition-colors">
@@ -435,8 +435,8 @@ function LoginContent(): React.ReactElement {
           </Link>
           .
         </p>
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }
 

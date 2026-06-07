@@ -106,7 +106,10 @@ export async function disconnectDatabase(): Promise<void> {
 const READ_REPLICA_URL = env.DATABASE_READ_REPLICA_URL;
 
 function createReadClient(): PrismaClient {
-  const adapter = new PrismaNeon({ connectionString: READ_REPLICA_URL! });
+  if (!READ_REPLICA_URL) {
+    throw new Error('DATABASE_READ_REPLICA_URL is required for read replica client');
+  }
+  const adapter = new PrismaNeon({ connectionString: READ_REPLICA_URL });
   return new PrismaClient({
     adapter,
     log: ['warn', 'error'],

@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
             color: '#71717a',
           }}
         >
-          <span>rag-starter-kit.vercel.app</span>
+          <span>rag.rejisterjack.com</span>
         </div>
       </div>,
       {

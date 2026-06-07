@@ -230,8 +230,9 @@ export async function validateApiKey(
 
   // Check IP restrictions
   const allowedIps = apiKey.allowedIps as string[];
-  if (allowedIps.length > 0 && options?.ipAddress) {
-    const ipAllowed = allowedIps.some((cidr) => isIpInCidr(options.ipAddress!, cidr));
+  const ip = options?.ipAddress;
+  if (allowedIps.length > 0 && ip) {
+    const ipAllowed = allowedIps.some((cidr) => isIpInCidr(ip, cidr));
     if (!ipAllowed) {
       await logAuditEvent({
         event: AuditEvent.SUSPICIOUS_ACTIVITY,

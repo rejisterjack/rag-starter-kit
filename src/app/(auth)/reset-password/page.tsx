@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import { CheckCircle2, Loader2, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -89,7 +89,7 @@ function ResetPasswordContent(): React.ReactElement {
   return (
     <AnimatePresence mode="wait">
       {isSuccess ? (
-        <motion.div
+        <m.div
           key="success"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -97,14 +97,14 @@ function ResetPasswordContent(): React.ReactElement {
           className="space-y-6 text-center"
         >
           <div className="flex justify-center mb-6">
-            <motion.div
+            <m.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: 'spring' }}
               className="rounded-full bg-emerald-500/20 p-4 border border-emerald-500/30 shadow-[0_0_30px_-5px_rgba(16,185,129,0.3)]"
             >
               <CheckCircle2 className="h-10 w-10 text-emerald-400" />
-            </motion.div>
+            </m.div>
           </div>
           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
             Password Reset
@@ -119,9 +119,9 @@ function ResetPasswordContent(): React.ReactElement {
           >
             <Link href="/login">Sign in now</Link>
           </Button>
-        </motion.div>
+        </m.div>
       ) : (
-        <motion.div
+        <m.div
           key="form"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -201,7 +201,7 @@ function ResetPasswordContent(): React.ReactElement {
               )}
             </Button>
           </form>
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

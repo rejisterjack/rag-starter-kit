@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, useMotionTemplate, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { m, useMotionTemplate, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { Bot, Chrome, Code2, Globe, Mic, Radio, Shield, Upload, Users, Zap } from 'lucide-react';
 import { useRef } from 'react';
 
@@ -137,7 +137,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   const Icon = feature.icon;
 
   return (
-    <motion.div
+    <m.div
       ref={cardRef}
       className="group relative h-full [perspective:1000px] cursor-default"
       initial={{ opacity: 0, y: 50 }}
@@ -145,7 +145,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
       viewport={{ once: true, margin: '-50px' }}
       transition={{ duration: 0.6, delay: index * 0.1, ease: [0.16, 1, 0.3, 1] }}
     >
-      <motion.div
+      <m.div
         className="glass-panel relative h-full rounded-2xl p-6 sm:p-8 overflow-hidden transition-colors duration-500 border border-border/50 group-hover:border-primary/30"
         style={{ rotateX, rotateY, transformStyle: 'preserve-3d' }}
         onMouseMove={handleMouseMove}
@@ -153,7 +153,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
         whileHover={{ scale: 1.02 }}
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       >
-        <motion.div
+        <m.div
           className="absolute inset-0 z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
           style={{ background }}
         />
@@ -183,8 +183,8 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
             ))}
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }
 
@@ -195,7 +195,7 @@ export function FeatureGrid(): React.ReactElement {
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-border/50 to-transparent" />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -215,7 +215,7 @@ export function FeatureGrid(): React.ReactElement {
             Production infrastructure already wired in. Auth, storage, queues, analytics — it&apos;s
             the project you&apos;d spend three weeks building.
           </p>
-        </motion.div>
+        </m.div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature, index) => (

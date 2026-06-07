@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import type { Source } from '@/components/chat/citations';
 import type { Message } from '@/components/chat/message-item';
 import { getSelectedModel } from '@/hooks/use-selected-model';
+import { fetchWithCsrf } from '@/lib/security/csrf';
 
 export interface UseChatOptions {
   conversationId?: string;
@@ -326,7 +327,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
             }
           }
 
-          const response = await fetch(endpoint, {
+          const response = await fetchWithCsrf(endpoint, {
             method: 'POST',
             credentials: 'include',
             headers,

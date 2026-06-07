@@ -7,7 +7,7 @@
 
 'use client';
 
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import type { ReactNode } from 'react';
 
 interface AnimationProps {
@@ -19,14 +19,14 @@ interface AnimationProps {
 
 export function FadeInInternal({ children, delay = 0, duration = 0.5, className }: AnimationProps) {
   return (
-    <motion.div
+    <m.div
       className={className}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration, delay, ease: 'easeOut' }}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -37,14 +37,14 @@ export function SlideUpInternal({
   className,
 }: AnimationProps) {
   return (
-    <motion.div
+    <m.div
       className={className}
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration, delay, ease: 'easeOut' }}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -59,7 +59,7 @@ export function StaggerContainerInternal({
   className,
 }: StaggerProps) {
   return (
-    <motion.div
+    <m.div
       className={className}
       initial="hidden"
       animate="visible"
@@ -71,6 +71,6 @@ export function StaggerContainerInternal({
       }}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }

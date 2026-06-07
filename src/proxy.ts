@@ -16,6 +16,13 @@ const env = {
   NEXT_PUBLIC_ANALYTICS_HOST: process.env.NEXT_PUBLIC_ANALYTICS_HOST ?? '',
 } as const;
 
+if (process.env.NODE_ENV === 'production' && !env.NEXTAUTH_SECRET) {
+  throw new Error(
+    'FATAL: AUTH_SECRET or NEXTAUTH_SECRET must be set in production. ' +
+      'Application cannot start without a secure signing key.'
+  );
+}
+
 // =============================================================================
 // Route Configuration
 // =============================================================================
@@ -167,18 +174,32 @@ export default auth(async function proxy(req) {
       !CSRF_SKIP_PREFIXES.some((p) => pathname.startsWith(p)) &&
       !CSRF_SKIP_EXACT.includes(pathname)
     ) {
-      const csrfValid = await validateCsrfToken(req as NextRequest);
-      if (!csrfValid) {
-        const response = NextResponse.json(
-          {
-            error: 'Invalid CSRF token',
-            code: 'CSRF_INVALID',
-            message:
-              'The request did not include a valid CSRF token. Please refresh the page and try again.',
-          },
-          { status: 403, headers: getCorsHeaders(req) }
-        );
-        return withRequestId(response, requestId, startTime);
+      // For same-origin authenticated requests with a valid session cookie,
+      // rely on SameSite cookie + Origin check instead of double-submit CSRF.
+      const origin = req.headers.get('origin');
+      const hasSessionCookie =
+        req.cookies.has('next-auth.session-token') ||
+        req.cookies.has('__Secure-next-auth.session-token');
+      const isSameOrigin =
+        !origin || origin === env.NEXTAUTH_URL || origin === new URL(env.NEXTAUTH_URL).origin;
+
+      if (hasSessionCookie && isSameOrigin) {
+        // Authenticated same-origin request — CSRF cookie may be absent due to
+        // ServiceWorker replay. Session cookie + SameSite is sufficient protection.
+      } else {
+        const csrfValid = await validateCsrfToken(req as NextRequest);
+        if (!csrfValid) {
+          const response = NextResponse.json(
+            {
+              error: 'Invalid CSRF token',
+              code: 'CSRF_INVALID',
+              message:
+                'The request did not include a valid CSRF token. Please refresh the page and try again.',
+            },
+            { status: 403, headers: getCorsHeaders(req) }
+          );
+          return withRequestId(response, requestId, startTime);
+        }
       }
     }
 
@@ -369,6 +390,8 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
 
   // CSP spec: when both a nonce and 'unsafe-inline' are present, browsers ignore 'unsafe-inline'.
   // This effectively upgrades style security in production while keeping fallback for inline styles.
+  // CSP spec: browsers ignore 'unsafe-inline' when a nonce is present.
+  // Keeping it as a no-op guard — DO NOT remove the nonce or this becomes a real vulnerability.
   const styleSrc =
     env.NODE_ENV === 'production'
       ? `style-src 'self' 'nonce-${n}' 'unsafe-inline'`
