@@ -18,7 +18,7 @@
  * 3. Generation: Context + Query → LLM → Response with Citations
  */
 
-import type { LanguageModelUsage, UIMessage } from 'ai';
+import type { LanguageModelUsage } from 'ai';
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
 import { logger } from '@/lib/logger';
 import type { RAGConfig, RAGQuery, RAGResponse, Source } from '@/types';
@@ -148,7 +148,7 @@ export async function generateRAGResponse(query: RAGQuery): Promise<RAGResponse>
     ];
 
     // Send to LLM and wait for complete response
-    const response = await generateChatCompletion(messages as unknown as UIMessage[], config);
+    const response = await generateChatCompletion(messages, config);
 
     const latency = Date.now() - startTime;
 
@@ -235,7 +235,7 @@ export async function* streamRAGResponse(query: RAGQuery): AsyncGenerator<{
     // PHASE 3: STREAMING GENERATION
     // ------------------------------
     // Get a streaming response from the LLM
-    const stream = await streamChatCompletion(messages as unknown as UIMessage[], config);
+    const stream = await streamChatCompletion(messages, config);
 
     // Yield each chunk as it arrives
     // This allows the UI to display text character-by-character

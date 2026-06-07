@@ -5,6 +5,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { removeUsedBackupCode, verifyBackupCode, verifyTotpCode } from '@/lib/security/mfa';
 import { withIpRateLimit } from '@/lib/security/with-ip-rate-limit';
@@ -32,12 +33,21 @@ async function handler(req: NextRequest) {
 
   const { code, userId } = parsed.data;
 
+  // Verify the requesting user is authenticated and matches the userId in the body
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+  if (userId !== session.user.id) {
+    return NextResponse.json({ error: 'User ID mismatch' }, { status: 403 });
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { mfaEnabled: true, mfaSecret: true, mfaBackupCodes: true },
   });
 
-  if (!user || !user.mfaEnabled || !user.mfaSecret) {
+  if (!user?.mfaEnabled || !user.mfaSecret) {
     return NextResponse.json({ error: 'MFA not configured' }, { status: 400 });
   }
 

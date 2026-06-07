@@ -23,7 +23,9 @@ export async function GET(
 
     // Get optional parameters
     const email = searchParams.get('email');
-    const returnUrl = searchParams.get('returnUrl') || '/chat';
+    const rawReturnUrl = searchParams.get('returnUrl') || '/chat';
+    const returnUrl =
+      rawReturnUrl.startsWith('/') && !rawReturnUrl.startsWith('//') ? rawReturnUrl : '/chat';
     const relayState = encodeURIComponent(
       JSON.stringify({
         returnUrl,
@@ -57,7 +59,10 @@ export async function GET(
       });
 
       // Extract SSO domain from workspace settings
-      const workspaceSettings = workspace?.settings as { ssoDomain?: string } | null;
+      const workspaceSettings = fromJson<{ ssoDomain?: string } | null>(
+        workspace?.settings ?? null,
+        null
+      );
       const ssoDomain = workspaceSettings?.ssoDomain;
 
       if (ssoDomain && domain !== ssoDomain.toLowerCase()) {
@@ -109,9 +114,10 @@ function getBaseUrl(request: NextRequest): string {
  */
 async function storeSamlRequest(requestId: string, workspaceId: string): Promise<void> {
   // Simple in-memory store - replace with Redis in production
-  const store = globalThis as unknown as {
+  type GlobalWithSaml = typeof globalThis & {
     samlRequests?: Map<string, { workspaceId: string; createdAt: number }>;
   };
+  const store = globalThis as GlobalWithSaml;
 
   if (!store.samlRequests) {
     store.samlRequests = new Map();
@@ -133,3 +139,4 @@ async function storeSamlRequest(requestId: string, workspaceId: string): Promise
 
 // Import prisma for workspace lookup
 import { prisma } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';

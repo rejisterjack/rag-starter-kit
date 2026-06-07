@@ -79,8 +79,6 @@ export function DocumentPreview({
             <ScrollArea className="h-full">
               <div className="p-6 space-y-4">
                 {chunks.map((chunk) => (
-                  // biome-ignore lint/a11y/noStaticElementInteractions: Interactive element with conditional role, tabIndex, and keyboard handler
-                  // biome-ignore lint/a11y/useAriaPropsSupportedByRole: Conditional ARIA props based on interactive state
                   <div
                     key={chunk.id}
                     onClick={() => onChunkClick?.(chunk)}

@@ -1,7 +1,7 @@
-'use client';
-
 import { Github, Heart, MessageSquare } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import {
   ChatSimulator,
   RagPipelineDiagram,
@@ -22,9 +22,24 @@ import {
 } from '@/components/landing';
 import { RAGBotWidget } from '@/components/widget';
 
-export default function HomePage(): React.ReactElement {
+export const dynamic = 'force-static';
+
+export const metadata: Metadata = {
+  title: 'RAG Starter Kit — Ship Your AI Document Chatbot This Weekend',
+  description:
+    'Open-source Next.js 16 starter kit for RAG chatbots. TypeScript-first, streaming SSE, pgvector, background jobs, and 2-minute deploy. No Python required.',
+  openGraph: {
+    title: 'RAG Starter Kit — Ship Your AI Document Chatbot This Weekend',
+    description:
+      'Open-source Next.js 16 starter kit for RAG chatbots with pgvector, streaming, and background jobs.',
+    type: 'website',
+  },
+};
+
+export default function HomePage() {
   return (
     <div className="relative min-h-screen">
+      <div className="vibrant-bg" />
       {/* Scroll progress indicator */}
       <ScrollProgress />
 
@@ -44,13 +59,17 @@ export default function HomePage(): React.ReactElement {
       <Differentiation />
 
       {/* RAG Pipeline Diagram - Interactive architecture explorer */}
-      <RagPipelineDiagram />
+      <Suspense fallback={<div className="h-96" />}>
+        <RagPipelineDiagram />
+      </Suspense>
 
       {/* Use Case Stories */}
       <UseCases />
 
       {/* Simulated Chat - Streaming demo */}
-      <ChatSimulator />
+      <Suspense fallback={<div className="h-96" />}>
+        <ChatSimulator />
+      </Suspense>
 
       {/* Feature Grid - 9 production features */}
       <FeatureGrid />
@@ -59,7 +78,9 @@ export default function HomePage(): React.ReactElement {
       <WhatsIncluded />
 
       {/* Tech Stack Marquee - Infinite scrolling badges */}
-      <TechStackMarquee />
+      <Suspense fallback={<div className="h-64" />}>
+        <TechStackMarquee />
+      </Suspense>
 
       {/* Testimonials & Showcase */}
       <Testimonials />
@@ -90,7 +111,7 @@ export default function HomePage(): React.ReactElement {
                 rel="noopener noreferrer"
                 className="text-foreground hover:text-primary transition-colors"
               >
-                @rejisterjack
+                @rejisterjack <span className="sr-only">(opens in new tab)</span>
               </Link>
             </p>
 
@@ -101,7 +122,7 @@ export default function HomePage(): React.ReactElement {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="GitHub Repository"
+                aria-label="GitHub Repository (opens in new tab)"
               >
                 <Github className="h-5 w-5" />
               </Link>
@@ -111,7 +132,7 @@ export default function HomePage(): React.ReactElement {
                 rel="noopener noreferrer"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                Contribute
+                Contribute <span className="sr-only">(opens in new tab)</span>
               </Link>
               <Link
                 href="/demo"
@@ -131,7 +152,7 @@ export default function HomePage(): React.ReactElement {
                 rel="noopener noreferrer"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                Changelog
+                Changelog <span className="sr-only">(opens in new tab)</span>
               </Link>
             </div>
           </div>
@@ -139,7 +160,7 @@ export default function HomePage(): React.ReactElement {
           {/* Bottom bar */}
           <div className="mt-8 pt-6 border-t border-border/30 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-muted-foreground">
-              Powered by Next.js 15, LangChain.js, PostgreSQL + pgvector, and OpenRouter
+              Powered by Next.js 16, LangChain.js, PostgreSQL + pgvector, and OpenRouter
             </p>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span>TypeScript</span>

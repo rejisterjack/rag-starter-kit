@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.8/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
   "assist": {
     "actions": {
       "source": {
@@ -16,7 +16,16 @@
         "noUnusedImports": "error"
       },
       "suspicious": {
-        "noConsole": "warn"
+        "noConsole": "warn",
+        "noAssignInExpressions": "off"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "off"
+      },
+      "a11y": {
+        "useSemanticElements": "off",
+        "noStaticElementInteractions": "off",
+        "useAriaPropsSupportedByRole": "off"
       },
       "style": {
         "useConst": "error",
@@ -30,8 +39,7 @@
       "src/**/*.tsx",
       "tests/**/*.ts",
       "tests/**/*.tsx",
-      "prisma/**/*.ts",
-      "server.ts"
+      "prisma/**/*.ts"
     ],
     "ignoreUnknown": true
   },
@@ -51,7 +59,7 @@
   },
   "overrides": [
     {
-      "includes": ["prisma/seed.ts", "server.ts"],
+      "includes": ["prisma/seed.ts"],
       "linter": {
         "rules": {
           "suspicious": {

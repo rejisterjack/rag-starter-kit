@@ -94,7 +94,7 @@ export function WorkspaceSwitcher({
             ) : currentWorkspace?.avatar ? (
               <Image
                 src={currentWorkspace.avatar}
-                alt=""
+                alt={`${currentWorkspace.name} logo`}
                 width={20}
                 height={20}
                 className="h-5 w-5 rounded-md object-cover"
@@ -120,7 +120,7 @@ export function WorkspaceSwitcher({
                   {currentWorkspace.avatar ? (
                     <Image
                       src={currentWorkspace.avatar}
-                      alt=""
+                      alt={`${currentWorkspace.name} logo`}
                       width={20}
                       height={20}
                       className="h-5 w-5 rounded-md object-cover"
@@ -153,7 +153,7 @@ export function WorkspaceSwitcher({
                   ) : workspace.avatar ? (
                     <Image
                       src={workspace.avatar}
-                      alt=""
+                      alt={`${workspace.name} logo`}
                       width={20}
                       height={20}
                       className="h-5 w-5 rounded-md object-cover"

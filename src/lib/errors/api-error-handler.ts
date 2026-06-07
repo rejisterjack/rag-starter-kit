@@ -167,7 +167,8 @@ function handlePrismaError(
   context: APIErrorContext,
   requestId: string
 ): NextResponse<APIErrorResponse> {
-  const prismaError = error as unknown as { code: string; meta?: { target?: string[] } };
+  // Prisma client known request errors carry `code` and `meta` properties
+  const prismaError = error as Error & { code?: string; meta?: { target?: string[] } };
 
   let code: ErrorCode = ERROR_CODES.DB_ERROR;
   let message = 'Database error occurred';
@@ -219,7 +220,8 @@ function handleZodError(
   context: APIErrorContext,
   requestId: string
 ): NextResponse<APIErrorResponse> {
-  const zodError = error as unknown as {
+  // ZodError carries `issues` (and legacy `errors`) arrays
+  const zodError = error as Error & {
     errors?: Array<{ path: (string | number)[]; message: string }>;
     issues?: Array<{ path: (string | number)[]; message: string }>;
   };

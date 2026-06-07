@@ -5,10 +5,50 @@
  * and route protection. Extracted from NextAuth config for separation of concerns.
  */
 
+import { unstable_cache } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import type { AuthSession } from './index';
 import { auth } from './index';
+
+// =============================================================================
+// Cached Queries
+// =============================================================================
+
+const getCachedWorkspace = unstable_cache(
+  async (workspaceId: string, userId: string) =>
+    prisma.workspace.findFirst({
+      where: {
+        id: workspaceId,
+        members: { some: { userId } },
+      },
+    }),
+  ['workspace-lookup'],
+  { revalidate: 60, tags: ['workspace'] }
+);
+
+const getCachedFallbackWorkspace = unstable_cache(
+  async (userId: string) =>
+    prisma.workspaceMember.findFirst({
+      where: { userId },
+      orderBy: { joinedAt: 'asc' },
+      include: { workspace: true },
+    }),
+  ['workspace-fallback'],
+  { revalidate: 60, tags: ['workspace'] }
+);
+
+const getCachedUser = unstable_cache(
+  async (userId: string) =>
+    prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        workspaceMembers: { include: { workspace: true } },
+      },
+    }),
+  ['user-lookup'],
+  { revalidate: 60, tags: ['user'] }
+);
 
 // =============================================================================
 // Session Queries
@@ -22,20 +62,11 @@ export async function getServerSession() {
   if (!session?.user?.id) return null;
 
   if (session.user.workspaceId) {
-    const workspace = await prisma.workspace.findFirst({
-      where: {
-        id: session.user.workspaceId,
-        members: { some: { userId: session.user.id } },
-      },
-    });
+    const workspace = await getCachedWorkspace(session.user.workspaceId, session.user.id);
     if (workspace) return workspace;
   }
 
-  const member = await prisma.workspaceMember.findFirst({
-    where: { userId: session.user.id },
-    orderBy: { joinedAt: 'asc' },
-    include: { workspace: true },
-  });
+  const member = await getCachedFallbackWorkspace(session.user.id);
 
   return member?.workspace || null;
 }
@@ -63,12 +94,7 @@ export async function getCurrentUser() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  return prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: {
-      workspaceMembers: { include: { workspace: true } },
-    },
-  });
+  return getCachedUser(session.user.id);
 }
 
 // =============================================================================

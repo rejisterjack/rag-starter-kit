@@ -14,6 +14,7 @@ import { createOpenAI, openai } from '@ai-sdk/openai';
 import { type LanguageModel, streamText } from 'ai';
 import { NextResponse } from 'next/server';
 import { createOllama } from 'ollama-ai-provider';
+import { asModel } from '@/lib/ai/types';
 import { checkBodySize } from '@/lib/api/middleware';
 import { wrapStreamWithErrorFrame } from '@/lib/api/stream-error-wrapper';
 
@@ -118,7 +119,7 @@ async function getModel(modelName: string): Promise<LanguageModel> {
 
   // Fireworks models (accounts/fireworks/models/...)
   if (modelName.startsWith('accounts/fireworks/')) {
-    return fireworks(modelName) as unknown as LanguageModel;
+    return asModel<LanguageModel>(fireworks(modelName));
   }
 
   // Ollama models
@@ -127,12 +128,12 @@ async function getModel(modelName: string): Promise<LanguageModel> {
     const ollama = createOllama({
       baseURL: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434/api',
     });
-    return ollama(modelName) as unknown as LanguageModel;
+    return asModel<LanguageModel>(ollama(modelName));
   }
 
   // OpenAI models
   if (modelName.startsWith('gpt-') || modelName.startsWith('text-')) {
-    return openai(modelName) as unknown as LanguageModel;
+    return asModel<LanguageModel>(openai(modelName));
   }
 
   // Use centralized dynamic resolver for everything else (Groq, OpenRouter, etc.)

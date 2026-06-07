@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { withApiAuth } from '@/lib/auth';
 import { prisma, prismaRead } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { validateUrlSafety } from '@/lib/security/ssrf-protection';
 import { generateWebhookSecret } from '@/lib/webhooks/delivery';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
@@ -17,7 +18,7 @@ interface CreateWebhookInput {
   workspaceId: string;
 }
 
-function validateCreateWebhookInput(body: unknown): CreateWebhookInput {
+async function validateCreateWebhookInput(body: unknown): Promise<CreateWebhookInput> {
   if (!body || typeof body !== 'object') {
     throw new Error('Invalid input: expected an object');
   }
@@ -50,6 +51,23 @@ function validateCreateWebhookInput(body: unknown): CreateWebhookInput {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
     throw new Error('Invalid url: must be a valid URL');
+  }
+
+  // SSRF protection — block private/internal URLs
+  try {
+    const ssrfResult = await validateUrlSafety(input.url);
+    if (!ssrfResult.safe) {
+      throw new Error(`Invalid url: ${ssrfResult.reason || 'URL is not allowed'}`);
+    }
+  } catch (error: unknown) {
+    logger.warn('SSRF validation failed for webhook URL', {
+      url: input.url,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Invalid url: could not verify URL safety');
   }
 
   // Validate events
@@ -200,7 +218,7 @@ export const POST = withApiAuth(async (req, session) => {
     let validatedInput: CreateWebhookInput;
     const isDev = process.env.NODE_ENV === 'development';
     try {
-      validatedInput = validateCreateWebhookInput(body);
+      validatedInput = await validateCreateWebhookInput(body);
     } catch (error) {
       if (error instanceof Error) {
         return NextResponse.json(

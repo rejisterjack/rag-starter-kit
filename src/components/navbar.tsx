@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import {
   BookOpen,
   ExternalLink,
@@ -92,12 +91,9 @@ function NavLink({
       )}
     >
       {label}
+      {external && <span className="sr-only"> (opens in new tab)</span>}
       {active && (
-        <motion.span
-          layoutId="nav-pill"
-          className="absolute inset-0 rounded-full bg-primary/10 -z-10"
-          transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-        />
+        <span className="absolute inset-0 rounded-full bg-primary/10 -z-10 transition-opacity duration-300" />
       )}
     </Link>
   );
@@ -171,6 +167,8 @@ export function Navbar(): React.ReactElement {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
+                      aria-label="User menu"
+                      aria-haspopup="true"
                       className="flex items-center gap-2.5 pl-1 pr-3 py-1 rounded-full hover:bg-muted/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
                       <Avatar className="h-8 w-8 border border-border/50">
@@ -232,7 +230,7 @@ export function Navbar(): React.ReactElement {
                     rel="noopener noreferrer"
                   >
                     <Github className="mr-2 h-4 w-4" />
-                    GitHub
+                    GitHub <span className="sr-only">(opens in new tab)</span>
                   </Link>
                 </Button>
                 <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
@@ -280,7 +278,7 @@ export function Navbar(): React.ReactElement {
                   </SheetTitle>
                 </SheetHeader>
 
-                <div className="px-4 py-2 space-y-1">
+                <nav className="px-4 py-2 space-y-1" aria-label="Mobile navigation">
                   {navLinks.map((link) => {
                     const Icon = link.icon;
                     const isActive = !link.external && pathname === link.href;
@@ -300,11 +298,16 @@ export function Navbar(): React.ReactElement {
                       >
                         <Icon className="h-4 w-4" />
                         {link.label}
-                        {link.external && <ExternalLink className="h-3 w-3 ml-auto opacity-50" />}
+                        {link.external && (
+                          <>
+                            <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
+                            <span className="sr-only"> (opens in new tab)</span>
+                          </>
+                        )}
                       </Link>
                     );
                   })}
-                </div>
+                </nav>
 
                 <div className="mt-4 px-6">
                   <div className="h-px bg-border/50" />

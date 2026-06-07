@@ -8,6 +8,7 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { type CoreMessage, generateText, type LanguageModel, streamText } from 'ai';
 import { NextResponse } from 'next/server';
+import { asModel } from '@/lib/ai/types';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -295,7 +296,7 @@ function getVisionModel(): LanguageModel {
   const googleAI = createGoogleGenerativeAI({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   });
-  return googleAI('gemini-1.5-flash') as unknown as LanguageModel;
+  return asModel<LanguageModel>(googleAI('gemini-1.5-flash'));
 }
 
 /**

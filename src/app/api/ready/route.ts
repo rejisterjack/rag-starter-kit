@@ -58,8 +58,8 @@ async function checkRedis(): Promise<ServiceStatus> {
   try {
     const { Redis } = await import('@upstash/redis');
     const redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL as string,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN as string,
+      url: redisUrl,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
     });
     await redis.ping();
     return { ok: true, latencyMs: Date.now() - start };

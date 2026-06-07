@@ -8,6 +8,7 @@
  * and establishes user sessions.
  */
 
+import { encode } from '@auth/core/jwt';
 import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
@@ -20,7 +21,9 @@ import {
   validateEmailDomain,
 } from '@/lib/auth/saml/provider';
 import { prisma } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
+import { trackSession } from '@/lib/security/session-store';
 import { createDefaultWorkspace } from '@/lib/workspace/workspace';
 /**
  * POST handler for SAML ACS
@@ -75,7 +78,10 @@ export async function POST(
       where: { id: workspaceId },
     });
 
-    const workspaceSettings = workspace?.settings as Record<string, unknown> | undefined;
+    const workspaceSettings = fromJson<Record<string, unknown> | undefined>(
+      workspace?.settings ?? undefined,
+      undefined
+    );
     const ssoDomain = workspaceSettings?.ssoDomain as string | undefined;
 
     if (ssoDomain) {
@@ -127,7 +133,7 @@ export async function POST(
     if (!userResult.userId) {
       throw new SamlError('User ID is required', 'WORKSPACE_NOT_FOUND', 500);
     }
-    await createSession(userResult.userId, resolvedWorkspaceId);
+    const sessionToken = await createSession(userResult.userId, resolvedWorkspaceId);
 
     // Parse relay state for redirect
     let redirectUrl = '/chat';
@@ -136,6 +142,9 @@ export async function POST(
         const decoded = JSON.parse(decodeURIComponent(relayState));
         if (decoded.returnUrl) {
           redirectUrl = decoded.returnUrl;
+          // Validate redirect URL to prevent open redirect attacks
+          const safe = redirectUrl.startsWith('/') && !redirectUrl.startsWith('//');
+          redirectUrl = safe ? redirectUrl : '/chat';
         }
       } catch (error: unknown) {
         logger.debug('Invalid SAML relay state, using default redirect', {
@@ -155,10 +164,26 @@ export async function POST(
       });
     }
 
-    // Redirect to destination
+    // Set session cookie and redirect to destination
+    const cookieName =
+      process.env.NODE_ENV === 'production'
+        ? '__Secure-authjs.session-token'
+        : 'authjs.session-token';
+    const sessionCookie = [
+      `${cookieName}=${sessionToken}`,
+      'HttpOnly',
+      'SameSite=Lax',
+      'Path=/',
+      process.env.NODE_ENV === 'production' ? 'Secure' : '',
+      `Max-Age=${7 * 24 * 60 * 60}`,
+    ]
+      .filter(Boolean)
+      .join('; ');
+
     return NextResponse.redirect(new URL(redirectUrl, baseUrl), {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Set-Cookie': sessionCookie,
       },
     });
   } catch (error) {
@@ -204,7 +229,7 @@ async function findOrCreateUser(
       where: { id: workspaceId },
     });
 
-    const settings = (workspace?.settings as Record<string, unknown>) || {};
+    const settings = fromJson<Record<string, unknown>>(workspace?.settings ?? null, {});
     const jitProvisioning = settings.jitProvisioning !== false; // Default true
     const defaultRole = (settings.defaultSSORole as 'MEMBER' | 'ADMIN' | 'VIEWER') || 'MEMBER';
 
@@ -295,19 +320,49 @@ async function findOrCreateUser(
 }
 
 /**
- * Create session for authenticated user
+ * Create a next-auth JWT session for the SAML-authenticated user.
+ * Returns the session token string to be set as a cookie.
  */
-async function createSession(_userId: string, _workspaceId: string): Promise<void> {
-  // Session is handled by NextAuth
-  // The redirect will trigger the session check
-  // Additional session data can be stored here if needed
+async function createSession(userId: string, workspaceId: string): Promise<string> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new SamlError('User not found', 'INVALID_ASSERTION', 500);
+
+  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || '';
+  if (!secret) throw new Error('Auth secret not configured');
+
+  const jti = crypto.randomUUID();
+
+  const token = await encode({
+    salt: 'authjs.session-token',
+    secret,
+    maxAge: 7 * 24 * 60 * 60,
+    token: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      workspaceId,
+      jti,
+    },
+  });
+
+  await trackSession(userId, jti).catch(() => {});
+
+  return token;
 }
 
 /**
- * Extract base URL from request
+ * Extract base URL — prefers NEXT_PUBLIC_APP_URL to avoid header spoofing.
+ * Falls back to host header only in development.
  */
 function getBaseUrl(request: NextRequest): string {
-  const host = request.headers.get('host');
-  const protocol = request.headers.get('x-forwarded-proto') || 'https';
-  return `${protocol}://${host}`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (appUrl) return appUrl;
+
+  if (process.env.NODE_ENV === 'development') {
+    const host = request.headers.get('host') || 'localhost:7392';
+    return `http://${host}`;
+  }
+
+  throw new Error('NEXT_PUBLIC_APP_URL must be set for SAML in production');
 }

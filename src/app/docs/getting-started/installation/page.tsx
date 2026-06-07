@@ -41,7 +41,7 @@ export default function InstallationPage() {
             Clone the Repository
           </h2>
           <CodeBlock title="Terminal">
-            {`git clone https://github.com/nicholasgriffintn/rag-starter-kit.git
+            {`git clone https://github.com/rejisterjack/rag-starter-kit.git
 cd rag-starter-kit`}
           </CodeBlock>
         </section>
@@ -102,6 +102,7 @@ bun install`}
                       className="text-primary hover:underline"
                     >
                       console.prisma.io
+                      <span className="sr-only">(opens in new tab)</span>
                     </a>
                     . Copy the Accelerate connection string.
                   </td>
@@ -117,6 +118,7 @@ bun install`}
                       className="text-primary hover:underline"
                     >
                       openrouter.ai/keys
+                      <span className="sr-only">(opens in new tab)</span>
                     </a>{' '}
                     and generate a key. Free models are available.
                   </td>
@@ -132,6 +134,7 @@ bun install`}
                       className="text-primary hover:underline"
                     >
                       aistudio.google.com
+                      <span className="sr-only">(opens in new tab)</span>
                     </a>
                     . Used for vector embeddings.
                   </td>
@@ -205,6 +208,7 @@ bun db:generate`}
               className="text-primary hover:underline"
             >
               http://localhost:7392
+              <span className="sr-only">(opens in new tab)</span>
             </a>{' '}
             in your browser. Register an account, upload a document, and start chatting.
           </p>
@@ -227,6 +231,7 @@ bun db:generate`}
                 className="text-primary hover:underline"
               >
                 cloudinary.com
+                <span className="sr-only">(opens in new tab)</span>
               </a>
               .
             </li>
@@ -240,6 +245,7 @@ bun db:generate`}
                 className="text-primary hover:underline"
               >
                 console.upstash.com
+                <span className="sr-only">(opens in new tab)</span>
               </a>
               .
             </li>
@@ -253,6 +259,7 @@ bun db:generate`}
                 className="text-primary hover:underline"
               >
                 resend.com
+                <span className="sr-only">(opens in new tab)</span>
               </a>
               .
             </li>

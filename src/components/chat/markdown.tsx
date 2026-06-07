@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import React from 'react';
+import 'katex/dist/katex.min.css';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
@@ -64,10 +65,7 @@ export function Markdown({ content, className, onCitationClick }: MarkdownProps)
               if (typeof node === 'number') return String(node);
               if (!node) return '';
               if (Array.isArray(node)) return node.map(extractText).join('');
-              if (
-                typeof node === 'object' &&
-                'props' in (node as unknown as Record<string, unknown>)
-              )
+              if (typeof node === 'object' && 'props' in node)
                 return extractText(
                   (node as { props: { children: React.ReactNode } }).props.children
                 );

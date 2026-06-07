@@ -43,7 +43,7 @@ export default function GettingStartedPage() {
           <h2 className="text-2xl font-semibold mb-3">Tech Stack</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {[
-              { name: 'Next.js 15', desc: 'App Router, Server Components, Streaming' },
+              { name: 'Next.js 16', desc: 'App Router, Server Components, Streaming' },
               { name: 'TypeScript', desc: 'Full type safety across the stack' },
               { name: 'PostgreSQL + pgvector', desc: 'Vector storage and similarity search' },
               { name: 'Prisma', desc: 'Type-safe database client and migrations' },

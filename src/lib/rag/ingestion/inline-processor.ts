@@ -6,6 +6,7 @@
  */
 
 import { prisma } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 import { ensureDocumentChunksCollection } from '@/lib/qdrant';
 import { createEmbeddings } from '@/lib/rag/engine';
@@ -80,7 +81,7 @@ export async function processDocumentInline(
 
   const document = await prisma.document.findUnique({ where: { id: documentId } });
   if (!document) throw new Error(`Document not found: ${documentId}`);
-  metadata = (document.metadata as Record<string, unknown>) || {};
+  metadata = fromJson<Record<string, unknown>>(document.metadata, {});
   await prisma.document.update({ where: { id: documentId }, data: { status: 'PROCESSING' } });
 
   // Parse content

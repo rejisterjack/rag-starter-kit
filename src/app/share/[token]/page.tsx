@@ -52,7 +52,7 @@ interface ShareData {
 
 export default function SharedChatPage() {
   const params = useParams();
-  const token = params.token as string;
+  const token = Array.isArray(params.token) ? params.token[0] : params.token;
 
   const [data, setData] = useState<ShareData | null>(null);
   const [loading, setLoading] = useState(true);

@@ -126,7 +126,7 @@
     {
       "id": "q021",
       "query": "What is the minimum Node.js version?",
-      "expectedAnswer": "Node.js 18 or later is required. The project is built with Next.js 15 and React 19.",
+      "expectedAnswer": "Node.js 18 or later is required. The project is built with Next.js 16 and React 19.",
       "tags": ["setup", "requirements"]
     },
     {

@@ -17,6 +17,7 @@ import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma, prismaRead } from '@/lib/db';
 import { parsePaginationParams, validatePaginationParams } from '@/lib/db/cursor-pagination';
+import { fromJson } from '@/lib/db/json';
 import {
   addRateLimitHeaders,
   checkApiRateLimit,
@@ -154,7 +155,7 @@ export async function GET(req: NextRequest) {
     });
 
     const formattedDocuments = documents.map((doc) => {
-      const metadata = (doc.metadata as Record<string, unknown>) || {};
+      const metadata = fromJson<Record<string, unknown>>(doc.metadata, {});
       return {
         id: doc.id,
         name: doc.name,
@@ -165,7 +166,9 @@ export async function GET(req: NextRequest) {
         progress: doc.ingestionJob?.progress,
         chunkCount: doc.chunkCount,
         createdAt: doc.createdAt.toISOString(),
-        errorMessage: doc.ingestionJob?.error || (metadata.error as string) || undefined,
+        errorMessage:
+          doc.ingestionJob?.error ||
+          (typeof metadata.error === 'string' ? metadata.error : undefined),
         errorCategory: doc.ingestionJob?.errorCategory ?? undefined,
       };
     });

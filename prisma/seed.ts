@@ -229,7 +229,7 @@ A: Your data lives in your own Prisma Postgres database. Use pg_dump or your hos
 
 ## System Overview
 
-RAG Starter Kit follows a layered architecture built on Next.js 15 App Router:
+RAG Starter Kit follows a layered architecture built on Next.js 16 App Router:
 
 \`\`\`
 Browser → CDN/Edge → Next.js Middleware → App Router → API Routes
@@ -460,7 +460,7 @@ async function main() {
       }> = [];
 
       for (let i = 0; i < textChunks.length; i++) {
-        const chunkContent = textChunks[i]!;
+        const chunkContent = textChunks[i] ?? '';
         const startPos = i * 800;
         const endPos = Math.min(startPos + 1000, doc.content.length);
 

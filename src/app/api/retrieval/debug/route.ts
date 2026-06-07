@@ -69,14 +69,17 @@ export async function GET(req: Request) {
   const { buildQdrantFilter } = await import('@/lib/qdrant/filters');
   const qdrantFilter = buildQdrantFilter({ workspaceId: workspace.id });
   const qdrantResults = await searchSimilar(embedding, { filter: qdrantFilter, topK: limitParam });
-  const chunks: ChunkRow[] = qdrantResults.map((point) => ({
-    id: String(point.id),
-    content: ((point.payload as Record<string, unknown>)?.content as string) ?? '',
-    documentId: ((point.payload as Record<string, unknown>)?.documentId as string) ?? '',
-    index: ((point.payload as Record<string, unknown>)?.index as number) ?? 0,
-    similarity: point.score ?? 0,
-    documentName: ((point.payload as Record<string, unknown>)?.documentName as string) ?? '',
-  }));
+  const chunks: ChunkRow[] = qdrantResults.map((point) => {
+    const p = point.payload ?? {};
+    return {
+      id: String(point.id),
+      content: String(p.content ?? ''),
+      documentId: String(p.documentId ?? ''),
+      index: Number(p.index ?? 0),
+      similarity: point.score ?? 0,
+      documentName: String(p.documentName ?? ''),
+    };
+  });
   timings.vector_search_ms = Date.now() - searchStart;
 
   // Step 3: Keyword BM25-style scoring (simple term overlap, no external dep)

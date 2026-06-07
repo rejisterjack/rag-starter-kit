@@ -22,7 +22,7 @@ interface SEOProps {
 export function generateSEO({
   title = 'RAG Starter Kit',
   description = 'A production-ready RAG (Retrieval-Augmented Generation) chatbot powered by Next.js, LangChain, and PostgreSQL pgvector.',
-  image = '/og-image.png',
+  image = '/og',
   url = '/',
   type = 'website',
   keywords = ['RAG', 'chatbot', 'AI', 'Next.js', 'LangChain', 'OpenAI', 'pgvector', 'PostgreSQL'],
@@ -42,7 +42,7 @@ export function generateSEO({
     creator: author,
     metadataBase: new URL(siteUrl),
     alternates: {
-      canonical: url,
+      canonical: fullUrl,
     },
     openGraph: {
       type,
@@ -90,7 +90,7 @@ export function StructuredData({
   type = 'WebSite',
   name = 'RAG Starter Kit',
   description = 'A production-ready RAG chatbot boilerplate',
-  url = 'https://rag-starter-kit.vercel.app',
+  url = process.env.NEXT_PUBLIC_APP_URL || 'https://rag-starter-kit.vercel.app',
 }: {
   type?: 'WebSite' | 'WebPage' | 'SoftwareApplication';
   name?: string;
@@ -121,7 +121,6 @@ export function StructuredData({
   return (
     <script
       type="application/ld+json"
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: Required for SEO JSON-LD structured data
       dangerouslySetInnerHTML={{
         __html: JSON.stringify(structuredData),
       }}

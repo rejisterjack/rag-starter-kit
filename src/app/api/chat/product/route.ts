@@ -45,7 +45,7 @@ KEY VALUE PROPOSITIONS:
 4. Real-time and collaborative from the start — multi-user workspaces, typing indicators, presence tracking
 
 TECH STACK:
-- Next.js 15 with App Router + React 19
+- Next.js 16 with App Router + React 19
 - Tailwind CSS 4 + shadcn/ui components
 - PostgreSQL 16 + pgvector for vector storage
 - Prisma 7 ORM

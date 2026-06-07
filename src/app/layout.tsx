@@ -9,21 +9,30 @@ import { Providers } from '@/components/providers';
 import { StructuredData } from '@/components/seo';
 import { NavigationProgress } from '@/components/ui/navigation-progress';
 import { Toaster } from '@/components/ui/toaster';
+import { logger } from '@/lib/logger';
 import '@/styles/globals.css';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],
   display: 'swap',
+  adjustFontFallback: true,
 });
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
   display: 'swap',
+  adjustFontFallback: true,
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rag-starter-kit.vercel.app';
+
+if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_APP_URL) {
+  logger.warn(
+    '[metadataBase] NEXT_PUBLIC_APP_URL is not set — falling back to default URL. Set this env var in production.'
+  );
+}
 
 export const metadata: Metadata = {
   title: {
@@ -31,7 +40,7 @@ export const metadata: Metadata = {
     template: '%s | RAG Starter Kit',
   },
   description:
-    'A production-ready RAG (Retrieval-Augmented Generation) chatbot boilerplate powered by Next.js 15, LangChain, and PostgreSQL pgvector. Build AI-powered document chatbots in minutes.',
+    'A production-ready RAG (Retrieval-Augmented Generation) chatbot boilerplate powered by Next.js 16, LangChain, and PostgreSQL pgvector. Build AI-powered document chatbots in minutes.',
   keywords: [
     'RAG',
     'chatbot',
@@ -51,6 +60,12 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   alternates: {
     canonical: '/',
+    languages: {
+      en: '/',
+      es: '/es',
+      fr: '/fr',
+      ar: '/ar',
+    },
   },
   openGraph: {
     type: 'website',
@@ -140,49 +155,14 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* PWA meta tags for iOS */}
-        <meta name="application-name" content="RAG Chatbot" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="RAG Chat" />
-        <meta name="format-detection" content="telephone=no" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="msapplication-TileColor" content="#18181b" />
-        <meta name="msapplication-tap-highlight" content="no" />
-
-        {/* PWA icons for iOS */}
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
-        <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-152x152.png" />
-
-        {/* Splash screen images for iOS */}
-        <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png" />
-
-        {/* KaTeX CSS for LaTeX math rendering */}
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
-          integrity="sha384-nB0miv6/jRmo5OUTIL0mKZsUQSA/1kzMuoHIOXPb6BjSiW4zuv9mqSTJBGdQsGN"
-          crossOrigin="anonymous"
-        />
-
-        {/* Prefetch offline page */}
-        <link rel="prefetch" href="/offline" />
-      </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
-        suppressHydrationWarning
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         {/* Skip to content link for accessibility */}
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
         >
           Skip to content
         </a>
-        <div className="vibrant-bg" />
         <Providers>
           <Suspense>
             <NavigationProgress />
@@ -201,8 +181,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
         {/* PWA Scripts & CSRF — client component, no Suspense needed */}
         <NonceScripts />
         {/* Vercel Analytics & Core Web Vitals */}
-        <SpeedInsights />
-        <Analytics />
+        <Suspense fallback={null}>
+          <SpeedInsights />
+          <Analytics />
+        </Suspense>
       </body>
     </html>
   );

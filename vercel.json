@@ -1,5 +1,4 @@
 {
-  "version": 2,
   "buildCommand": "bun run build",
   "devCommand": "bun run dev",
   "installCommand": "bun install",
@@ -7,13 +6,13 @@
   "regions": ["iad1"],
   "functions": {
     "app/api/chat/**/*.ts": {
-      "maxDuration": 10
+      "maxDuration": 120
     },
     "app/api/ingest/**/*.ts": {
-      "maxDuration": 10
+      "maxDuration": 60
     },
     "app/api/voice/**/*.ts": {
-      "maxDuration": 10
+      "maxDuration": 30
     },
     "app/api/**/*.ts": {
       "maxDuration": 10

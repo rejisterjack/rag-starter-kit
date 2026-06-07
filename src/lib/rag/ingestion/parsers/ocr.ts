@@ -6,7 +6,7 @@
  */
 
 import sharp from 'sharp';
-import { createWorker, type OEM, PSM } from 'tesseract.js';
+import { createWorker, PSM } from 'tesseract.js';
 import { logger } from '@/lib/logger';
 import type {
   OCRConfiguration,
@@ -254,13 +254,13 @@ export async function parseImageWithOCR(
     // Initialize worker with configuration
     const worker = await createWorker(
       fullConfig.language,
-      fullConfig.oem as unknown as OEM,
+      Number(fullConfig.oem),
       fullConfig.logger ? { logger: fullConfig.logger } : undefined
     );
 
     // Set PSM mode
     await worker.setParameters({
-      tessedit_pageseg_mode: fullConfig.psm as unknown as PSM,
+      tessedit_pageseg_mode: PSM.AUTO,
     });
 
     await onProgress?.({
@@ -284,15 +284,7 @@ export async function parseImageWithOCR(
     // Extract text blocks with bounding boxes
     const blocks: OCRTextBlock[] = [];
     // Access paragraphs from the result data
-    const paragraphs = (
-      result.data as unknown as {
-        paragraphs?: Array<{
-          lines: Array<{
-            words: Array<{ text: string; confidence: number; bbox: OCRTextBlock['bbox'] }>;
-          }>;
-        }>;
-      }
-    ).paragraphs;
+    const paragraphs = result.data.paragraphs;
 
     if (paragraphs) {
       for (let pIdx = 0; pIdx < paragraphs.length; pIdx++) {
@@ -379,13 +371,7 @@ export async function parsePDFWithOCRFallback(
 
   try {
     // Convert PDF to images (requires pdf2pic)
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { fromBuffer } = (await import('pdf2pic')) as unknown as {
-      fromBuffer: (
-        buffer: Buffer,
-        options: Record<string, unknown>
-      ) => { bulk: (pages: number) => Promise<Array<{ base64: string }>> };
-    };
+    const { fromBuffer } = await import('pdf2pic');
 
     const convert = fromBuffer(buffer, {
       density: 200, // DPI
@@ -409,7 +395,7 @@ export async function parsePDFWithOCRFallback(
       const imageBuffer = Buffer.from(image.base64, 'base64');
 
       // Run OCR on the page image
-      const worker = await createWorker(config.language, config.oem as unknown as OEM);
+      const worker = await createWorker(config.language, Number(config.oem));
       await worker.setParameters({
         tessedit_pageseg_mode: PSM.AUTO,
       });

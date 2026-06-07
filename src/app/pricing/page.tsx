@@ -120,6 +120,7 @@ export default function PricingPage() {
                 >
                   <Github className="mr-2 h-4 w-4" />
                   Clone on GitHub
+                  <span className="sr-only">(opens in new tab)</span>
                 </Link>
               </Button>
               <Button asChild variant="outline" className="w-full rounded-xl h-11">
@@ -275,6 +276,7 @@ export default function PricingPage() {
                 <Link href={option.href} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                   Deploy
+                  <span className="sr-only">(opens in new tab)</span>
                 </Link>
               </Button>
             </div>

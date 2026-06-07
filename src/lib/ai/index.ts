@@ -54,9 +54,11 @@ import {
   embedMany,
   generateText,
   type LanguageModelUsage,
+  type LanguageModelV1,
   streamText,
   type UIMessage,
 } from 'ai';
+import { asEmbeddingModel } from '@/lib/ai/types';
 import { logger } from '@/lib/logger';
 import { estimateTokens } from '@/lib/rag/token-budget';
 import { embeddingCircuitBreaker } from '@/lib/resilience/external-services';
@@ -292,7 +294,10 @@ export const defaultAIConfig: RAGConfig = {
 
 // ==================== Chat Completions (OpenRouter) ====================
 
-export async function streamChatCompletion(messages: UIMessage[], config: Partial<RAGConfig> = {}) {
+export async function streamChatCompletion(
+  messages: Array<{ role: string; content: string }>,
+  config: Partial<RAGConfig> = {}
+) {
   const modelConfig = { ...defaultAIConfig, ...config };
   const { getModelsForStreaming } = await import('./model-discovery');
   const { modelsToTry: discoveredModels } = await getModelsForStreaming('chat');
@@ -312,10 +317,8 @@ export async function streamChatCompletion(messages: UIMessage[], config: Partia
       if (!languageModel) continue;
 
       const result = streamText({
-        // biome-ignore lint/suspicious/noExplicitAny: SDK type compatibility
-        model: languageModel as any,
-        // biome-ignore lint/suspicious/noExplicitAny: UIMessage to ModelMessage conversion
-        messages: messages as any,
+        model: languageModel,
+        messages: messages as Parameters<typeof streamText>[0]['messages'],
         temperature: modelConfig.temperature,
         maxTokens: modelConfig.maxTokens,
       });
@@ -340,7 +343,7 @@ export interface ChatCompletionResult {
 }
 
 export async function generateChatCompletion(
-  messages: UIMessage[],
+  messages: Array<{ role: string; content: string }>,
   config: Partial<RAGConfig> = {}
 ): Promise<ChatCompletionResult> {
   const modelConfig = { ...defaultAIConfig, ...config };
@@ -360,10 +363,8 @@ export async function generateChatCompletion(
       if (!languageModel) continue;
 
       const result = await generateText({
-        // biome-ignore lint/suspicious/noExplicitAny: SDK type compatibility
-        model: languageModel as any,
-        // biome-ignore lint/suspicious/noExplicitAny: UIMessage to ModelMessage conversion
-        messages: messages as any,
+        model: languageModel,
+        messages: messages as Parameters<typeof generateText>[0]['messages'],
         temperature: modelConfig.temperature,
         maxTokens: modelConfig.maxTokens,
       });
@@ -388,7 +389,7 @@ export async function generateChatCompletion(
  */
 export async function generateTaskCompletion(
   task: AITask,
-  messages: UIMessage[],
+  messages: Array<{ role: string; content: string }>,
   config: Partial<RAGConfig> = {}
 ): Promise<ChatCompletionResult> {
   const modelsToTry = await getModelsForTask(task);
@@ -399,10 +400,8 @@ export async function generateTaskCompletion(
       if (!languageModel) continue;
 
       const result = await generateText({
-        // biome-ignore lint/suspicious/noExplicitAny: provider model types are intentionally widened
-        model: languageModel as any,
-        // biome-ignore lint/suspicious/noExplicitAny: message types are widened for provider compatibility
-        messages: messages as any,
+        model: languageModel,
+        messages: messages as Parameters<typeof generateText>[0]['messages'],
         temperature: config.temperature ?? (task === 'fast' ? 0.5 : 0.7),
         maxTokens: config.maxTokens ?? (task === 'fast' ? 300 : 2000),
       });
@@ -426,7 +425,7 @@ export async function generateTaskCompletion(
  * Resolve a model ID to the appropriate AI SDK language model instance.
  * Routes to the correct provider based on model prefix.
  */
-export function resolveModel(modelId: string) {
+export function resolveModel(modelId: string): LanguageModelV1 | null {
   // Groq models (prefix: "groq/")
   if (modelId.startsWith('groq/')) {
     if (!groq) return null;
@@ -470,8 +469,9 @@ export function resolveModel(modelId: string) {
 export async function generateEmbedding(text: string): Promise<number[]> {
   return embeddingCircuitBreaker.execute(async () => {
     const result = await embed({
-      // biome-ignore lint/suspicious/noExplicitAny: Google AI SDK v3 to v4 compatibility
-      model: googleAI.textEmbeddingModel(EMBEDDING_MODEL) as any,
+      model: asEmbeddingModel<Parameters<typeof embed>[0]['model']>(
+        googleAI.textEmbeddingModel(EMBEDDING_MODEL)
+      ),
       value: text,
     });
 
@@ -491,8 +491,9 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
     const batch = texts.slice(i, i + batchSize);
 
     const result = await embedMany({
-      // biome-ignore lint/suspicious/noExplicitAny: Google AI SDK v3 to v4 compatibility
-      model: googleAI.textEmbeddingModel(EMBEDDING_MODEL) as any,
+      model: asEmbeddingModel<Parameters<typeof embed>[0]['model']>(
+        googleAI.textEmbeddingModel(EMBEDDING_MODEL)
+      ),
       values: batch,
     });
 

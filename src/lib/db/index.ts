@@ -12,10 +12,9 @@
 export { type PrismaClient, prisma, prismaRead } from './client';
 
 import type { Prisma } from '@/generated/prisma/client';
-import type { Chat, Document, IngestionJob, Message } from '@/types';
-import { prisma } from './client';
-import { searchSimilar as qdrantSearchSimilar, deleteByDocumentId } from '@/lib/qdrant';
+import { deleteByDocumentId, searchSimilar as qdrantSearchSimilar } from '@/lib/qdrant';
 import { buildQdrantFilter } from '@/lib/qdrant/filters';
+import { prisma } from './client';
 
 // ---------------------------------------------------------------------------
 // Batch Operations
@@ -160,13 +159,13 @@ export async function getChatById(id: string) {
   });
 }
 
-export async function createChat(userId: string, title = 'New Chat'): Promise<Chat> {
+export async function createChat(userId: string, title = 'New Chat') {
   return prisma.chat.create({
     data: {
       userId,
       title,
     },
-  }) as unknown as Chat;
+  });
 }
 
 export async function updateChatTitle(id: string, title: string) {
@@ -192,7 +191,7 @@ export async function createMessage(
   role: 'USER' | 'ASSISTANT' | 'SYSTEM',
   sources?: unknown,
   tokensUsed?: unknown
-): Promise<Message> {
+) {
   return prisma.message.create({
     data: {
       chatId,
@@ -201,7 +200,7 @@ export async function createMessage(
       sources: sources ?? undefined,
       tokensUsed: tokensUsed ?? undefined,
     },
-  }) as unknown as Message;
+  });
 }
 
 export async function getMessagesByChatId(chatId: string) {
@@ -235,13 +234,13 @@ export async function createDocument(data: {
   userId: string;
   content?: string;
   metadata?: unknown;
-}): Promise<Document> {
+}) {
   return prisma.document.create({
     data: {
       ...data,
       metadata: data.metadata ?? undefined,
     },
-  }) as unknown as Document;
+  });
 }
 
 export async function updateDocumentStatus(
@@ -301,13 +300,16 @@ export async function searchSimilarChunks(
     minScore: threshold,
   });
 
-  return results.map((r) => ({
-    id: String(r.id),
-    documentId: (r.payload as Record<string, unknown>)?.documentId ?? '',
-    content: (r.payload as Record<string, unknown>)?.content ?? '',
-    index: (r.payload as Record<string, unknown>)?.index ?? 0,
-    score: r.score,
-  }));
+  return results.map((r) => {
+    const payload = r.payload ?? {};
+    return {
+      id: String(r.id),
+      documentId: String(payload.documentId ?? ''),
+      content: String(payload.content ?? ''),
+      index: Number(payload.index ?? 0),
+      score: r.score,
+    };
+  });
 }
 
 export async function deleteDocumentChunks(documentId: string): Promise<number> {
@@ -318,14 +320,14 @@ export async function deleteDocumentChunks(documentId: string): Promise<number> 
 // Ingestion Job Queries
 // ============================================================================
 
-export async function createIngestionJob(documentId: string): Promise<IngestionJob> {
+export async function createIngestionJob(documentId: string) {
   return prisma.ingestionJob.create({
     data: {
       documentId,
       status: 'QUEUED',
       progress: 0,
     },
-  }) as unknown as IngestionJob;
+  });
 }
 
 export async function getIngestionJobByDocumentId(documentId: string) {

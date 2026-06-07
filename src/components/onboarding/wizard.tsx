@@ -279,7 +279,6 @@ export function OnboardingWizard({ user: _user }: OnboardingWizardProps) {
                     role="radiogroup"
                     aria-label="Chunking strategy"
                   >
-                    {/* biome-ignore lint/a11y/useSemanticElements: custom styled radio button with rich content */}
                     <button
                       type="button"
                       onClick={() => setChunkingStrategy('fixed')}
@@ -296,7 +295,6 @@ export function OnboardingWizard({ user: _user }: OnboardingWizardProps) {
                         Standard character-based splitting
                       </div>
                     </button>
-                    {/* biome-ignore lint/a11y/useSemanticElements: custom styled radio button with rich content */}
                     <button
                       type="button"
                       onClick={() => setChunkingStrategy('semantic')}

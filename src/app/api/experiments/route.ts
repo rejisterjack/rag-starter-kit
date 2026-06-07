@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { fromJson, toJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 import { canManageWorkspace } from '@/lib/workspace/permissions';
 
@@ -110,8 +111,8 @@ export async function GET(req: Request) {
           description: e.description,
           type: e.type,
           status: e.status,
-          variants: e.variants as unknown as ExperimentVariant[],
-          trafficAllocation: e.trafficAllocation as unknown as TrafficAllocation,
+          variants: fromJson<ExperimentVariant[]>(e.variants, []),
+          trafficAllocation: fromJson<TrafficAllocation>(e.trafficAllocation, {}),
           workspaceId: e.workspaceId,
           createdById: e.createdById,
           startDate: e.startDate?.toISOString() ?? null,
@@ -198,8 +199,8 @@ export async function POST(req: Request) {
         description: validatedInput.description,
         type: validatedInput.type,
         status: 'DRAFT',
-        variants: validatedInput.variants as unknown as object[],
-        trafficAllocation: validatedInput.trafficAllocation as unknown as object,
+        variants: toJson(validatedInput.variants),
+        trafficAllocation: toJson(validatedInput.trafficAllocation),
         workspaceId: validatedInput.workspaceId,
         createdById: session.user.id,
       },
@@ -215,8 +216,8 @@ export async function POST(req: Request) {
             description: experiment.description,
             type: experiment.type,
             status: experiment.status,
-            variants: experiment.variants as unknown as ExperimentVariant[],
-            trafficAllocation: experiment.trafficAllocation as unknown as TrafficAllocation,
+            variants: fromJson<ExperimentVariant[]>(experiment.variants, []),
+            trafficAllocation: fromJson<TrafficAllocation>(experiment.trafficAllocation, {}),
             workspaceId: experiment.workspaceId,
             createdById: experiment.createdById,
             startDate: null,

@@ -16,6 +16,9 @@ out/
 build
 dist
 
+# Compiled JS from TypeScript sources
+src/lib/ai/embeddings/*.js
+
 # Misc
 .DS_Store
 *.pem

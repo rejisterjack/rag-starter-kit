@@ -4,6 +4,7 @@ import { revalidateTag } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { createChatSchema, deleteChatSchema, updateChatTitleSchema } from '@/lib/validation';
 
 interface ChatActionResult {
   success: boolean;
@@ -14,11 +15,17 @@ interface ChatActionResult {
 /**
  * Server Action: Create a new chat.
  */
-export async function createChat(title?: string, _model?: string): Promise<ChatActionResult> {
+export async function createChat(rawTitle?: string, rawModel?: string): Promise<ChatActionResult> {
   const session = await auth();
   if (!session?.user?.id) {
     return { success: false, error: 'Authentication required' };
   }
+
+  const parsed = createChatSchema.safeParse({ title: rawTitle, model: rawModel });
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid input' };
+  }
+  const { title } = parsed.data;
 
   try {
     const chat = await prisma.chat.create({
@@ -52,11 +59,17 @@ export async function createChat(title?: string, _model?: string): Promise<ChatA
 /**
  * Server Action: Delete a chat.
  */
-export async function deleteChat(chatId: string): Promise<ChatActionResult> {
+export async function deleteChat(rawChatId: string): Promise<ChatActionResult> {
   const session = await auth();
   if (!session?.user?.id) {
     return { success: false, error: 'Authentication required' };
   }
+
+  const parsed = deleteChatSchema.safeParse({ chatId: rawChatId });
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid chat ID' };
+  }
+  const { chatId } = parsed.data;
 
   try {
     const chat = await prisma.chat.findFirst({
@@ -86,15 +99,20 @@ export async function deleteChat(chatId: string): Promise<ChatActionResult> {
 /**
  * Server Action: Update chat title.
  */
-export async function updateChatTitle(chatId: string, title: string): Promise<ChatActionResult> {
+export async function updateChatTitle(
+  rawChatId: string,
+  rawTitle: string
+): Promise<ChatActionResult> {
   const session = await auth();
   if (!session?.user?.id) {
     return { success: false, error: 'Authentication required' };
   }
 
-  if (!title.trim()) {
-    return { success: false, error: 'Title cannot be empty' };
+  const parsed = updateChatTitleSchema.safeParse({ chatId: rawChatId, title: rawTitle });
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
   }
+  const { chatId, title } = parsed.data;
 
   try {
     const chat = await prisma.chat.findFirst({

@@ -1,6 +1,7 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { domAnimation, LazyMotion } from 'framer-motion';
 import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider } from 'next-themes';
 import { type ReactNode, useState } from 'react';
@@ -43,7 +44,7 @@ export function Providers({ children }: ProvidersProps): React.ReactElement {
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
-          forcedTheme="dark"
+          enableSystem={true}
           disableTransitionOnChange={false}
         >
           <PWAProvider
@@ -54,7 +55,9 @@ export function Providers({ children }: ProvidersProps): React.ReactElement {
             connectivityPosition="top"
             installPromptDelay={10000}
           >
-            <PlausibleProvider>{children}</PlausibleProvider>
+            <LazyMotion features={domAnimation} strict>
+              <PlausibleProvider>{children}</PlausibleProvider>
+            </LazyMotion>
           </PWAProvider>
           <Toaster richColors closeButton />
         </ThemeProvider>

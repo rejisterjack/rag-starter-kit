@@ -61,7 +61,9 @@ class GoogleDriveClient {
       options?.responseType === 'text' ||
       response.headers.get('content-type')?.includes('text/')
     ) {
-      return response.text() as unknown as T;
+      // When the caller expects text, T is always `string`.
+      // Cast through `unknown` to satisfy the generic return without lying about the shape.
+      return (await response.text()) as T;
     }
 
     return response.json() as Promise<T>;

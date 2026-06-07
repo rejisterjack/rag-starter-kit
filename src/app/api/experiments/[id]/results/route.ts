@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@/generated/prisma/client';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 
 interface RouteParams {
@@ -115,7 +117,7 @@ function calculateExperimentResults(experiment: {
   id: string;
   name: string;
   status: string;
-  variants: unknown;
+  variants: Prisma.JsonValue;
   events: Array<{
     id: string;
     variantId: string;
@@ -125,11 +127,10 @@ function calculateExperimentResults(experiment: {
     createdAt: Date;
   }>;
 }): ExperimentResults {
-  const variants = experiment.variants as unknown as Array<{
-    id: string;
-    name: string;
-    description?: string;
-  }>;
+  const variants = fromJson<Array<{ id: string; name: string; description?: string }>>(
+    experiment.variants,
+    []
+  );
 
   // Initialize stats for each variant
   const variantStatsMap = new Map<string, VariantStats>();

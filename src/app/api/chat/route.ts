@@ -1310,7 +1310,7 @@ export async function PATCH(req: NextRequest) {
       metadata: { chatId, updates: Object.keys(updateData) },
     });
 
-    const chatResult = updatedChat as Record<string, unknown>;
+    const chatResult = updatedChat;
     return NextResponse.json({
       success: true,
       data: {

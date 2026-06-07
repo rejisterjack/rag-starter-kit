@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@/generated/prisma/client';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { fromJson, toJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 import { canManageWorkspace } from '@/lib/workspace/permissions';
 
@@ -77,8 +79,8 @@ export async function GET(_req: Request, { params }: RouteParams) {
           description: experiment.description,
           type: experiment.type,
           status: experiment.status,
-          variants: experiment.variants as unknown as ExperimentVariant[],
-          trafficAllocation: experiment.trafficAllocation as unknown as TrafficAllocation,
+          variants: fromJson<ExperimentVariant[]>(experiment.variants, []),
+          trafficAllocation: fromJson<TrafficAllocation>(experiment.trafficAllocation, {}),
           workspaceId: experiment.workspaceId,
           createdById: experiment.createdById,
           startDate: experiment.startDate?.toISOString() ?? null,
@@ -175,8 +177,8 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     const updateData: {
       name?: string;
       description?: string | null;
-      variants?: object[];
-      trafficAllocation?: object;
+      variants?: Prisma.InputJsonValue;
+      trafficAllocation?: Prisma.InputJsonValue;
     } = {};
 
     if (validatedInput.name !== undefined) {
@@ -186,10 +188,10 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       updateData.description = validatedInput.description ?? null;
     }
     if (validatedInput.variants !== undefined) {
-      updateData.variants = validatedInput.variants as unknown as object[];
+      updateData.variants = toJson(validatedInput.variants);
     }
     if (validatedInput.trafficAllocation !== undefined) {
-      updateData.trafficAllocation = validatedInput.trafficAllocation as unknown as object;
+      updateData.trafficAllocation = toJson(validatedInput.trafficAllocation);
     }
 
     // Update experiment
@@ -207,8 +209,8 @@ export async function PATCH(req: Request, { params }: RouteParams) {
           description: updatedExperiment.description,
           type: updatedExperiment.type,
           status: updatedExperiment.status,
-          variants: updatedExperiment.variants as unknown as ExperimentVariant[],
-          trafficAllocation: updatedExperiment.trafficAllocation as unknown as TrafficAllocation,
+          variants: fromJson<ExperimentVariant[]>(updatedExperiment.variants, []),
+          trafficAllocation: fromJson<TrafficAllocation>(updatedExperiment.trafficAllocation, {}),
           workspaceId: updatedExperiment.workspaceId,
           createdById: updatedExperiment.createdById,
           startDate: updatedExperiment.startDate?.toISOString() ?? null,

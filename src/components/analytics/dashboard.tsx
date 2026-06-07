@@ -1,13 +1,21 @@
 'use client';
 
 import { Activity, Clock, FileText, MessageSquare, Users, Zap } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MetricsCard } from './metrics-card';
 import { RealtimeMonitor } from './realtime-monitor';
-import { TimeSeriesChart } from './time-series-chart';
 import { TopList } from './top-list';
+
+const TimeSeriesChart = dynamic(
+  () => import('./time-series-chart').then((m) => ({ default: m.TimeSeriesChart })),
+  {
+    ssr: false,
+    loading: () => <div className="h-64 animate-pulse bg-muted rounded-lg" />,
+  }
+);
 
 interface AnalyticsData {
   metrics: {
@@ -251,9 +259,8 @@ export function AnalyticsDashboard() {
     return (
       <div className="p-6 space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }, (_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list with no reordering
-            <div key={i} className="h-32 rounded-lg border bg-card animate-pulse" />
+          {['metric-1', 'metric-2', 'metric-3', 'metric-4', 'metric-5', 'metric-6'].map((k) => (
+            <div key={k} className="h-32 rounded-lg border bg-card animate-pulse" />
           ))}
         </div>
       </div>

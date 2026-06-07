@@ -13,6 +13,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { withApiAuth } from '@/lib/auth';
 import { prisma, prismaRead } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import {
   ConcurrentModificationError,
   extractVersion,
@@ -77,12 +78,13 @@ export const GET = withApiAuth(
       }
 
       // B2: Cache response for completed documents (reduce polling DB hits)
-      const cacheControl = document.status === 'COMPLETED'
-        ? 'private, max-age=30, stale-while-revalidate=60'
-        : 'no-cache';
+      const cacheControl =
+        document.status === 'COMPLETED'
+          ? 'private, max-age=30, stale-while-revalidate=60'
+          : 'no-cache';
 
       // Step 4: Fetch chunk stats from Qdrant and format response
-      const metadata = (document.metadata as Record<string, unknown>) || {};
+      const metadata = fromJson<Record<string, unknown>>(document.metadata, {});
       const chunkCount = document.chunkCount;
 
       const formattedDocument = {
@@ -99,7 +101,9 @@ export const GET = withApiAuth(
         createdAt: document.createdAt.toISOString(),
         updatedAt: document.updatedAt.toISOString(),
         content: document.content,
-        errorMessage: document.ingestionJob?.error || (metadata.error as string) || undefined,
+        errorMessage:
+          document.ingestionJob?.error ||
+          (typeof metadata.error === 'string' ? metadata.error : undefined),
         errorCategory: document.ingestionJob?.errorCategory ?? undefined,
         metadata: {
           ...metadata,
@@ -119,12 +123,15 @@ export const GET = withApiAuth(
           : null,
       };
 
-      return NextResponse.json({
-        success: true,
-        data: formattedDocument,
-      }, {
-        headers: { 'Cache-Control': cacheControl },
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          data: formattedDocument,
+        },
+        {
+          headers: { 'Cache-Control': cacheControl },
+        }
+      );
     } catch (error) {
       return NextResponse.json(
         {
@@ -193,7 +200,7 @@ export const PATCH = withApiAuth(
       const updateData: Record<string, unknown> = {};
       if (body.name !== undefined) updateData.name = body.name;
       if (body.metadata !== undefined) {
-        const currentMetadata = (document.metadata as Record<string, unknown>) || {};
+        const currentMetadata = fromJson<Record<string, unknown>>(document.metadata, {});
         updateData.metadata = { ...currentMetadata, ...body.metadata };
       }
 
@@ -224,7 +231,7 @@ export const PATCH = withApiAuth(
         throw e;
       }
 
-      const result = updatedDocument as Record<string, unknown>;
+      const result = updatedDocument;
       return NextResponse.json({
         success: true,
         data: {

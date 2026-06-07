@@ -7,6 +7,7 @@
 
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
 import { batchInsertChunks, prisma, validateChunks } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 import { createChunks } from '@/lib/rag/chunking';
 import { categorizeIngestionError } from '@/lib/rag/ingestion/errors';
@@ -26,10 +27,7 @@ export async function parsePDF(buffer: Buffer): Promise<string> {
   try {
     // Dynamic import for pdf-parse
     const pdfModule = await import('pdf-parse');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parseFn = (
-      pdfModule as unknown as { default: (buffer: Buffer) => Promise<{ text: string }> }
-    ).default;
+    const parseFn = pdfModule.default;
     const data = await parseFn(buffer);
     return data.text;
   } catch (error) {
@@ -47,11 +45,7 @@ export async function parseDOCX(buffer: Buffer): Promise<string> {
   try {
     // Dynamic import for mammoth
     const mammothModule = await import('mammoth');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mammoth = mammothModule as unknown as {
-      extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }>;
-    };
-    const result = await mammoth.extractRawText({ buffer });
+    const result = await mammothModule.extractRawText({ buffer });
     return result.value;
   } catch (error) {
     logger.error('DOCX parsing error', {
@@ -341,28 +335,32 @@ export async function processDocument(
     // Step 4: Store chunks with embeddings using batch operations
     logger.info(`Storing chunks in vector database`, { documentId, count: valid.length });
 
-    const insertResult = await batchInsertChunks(valid, {
-      userId: document.userId,
-      workspaceId: document.workspaceId ?? undefined,
-      documentName: document.name,
-      documentType: document.contentType,
-    }, {
-      batchSize: options.batchSize ?? 50,
-      continueOnError: true,
-      onProgress: (completed, total) => {
-        const progress = 70 + Math.round((completed / total) * 25);
-        if (ingestionJob) {
-          prisma.ingestionJob
-            .update({
-              where: { id: ingestionJob.id },
-              data: { progress: Math.min(progress, 95) },
-            })
-            .catch((err: Error) =>
-              logger.error('Failed to update job progress', { error: err.message })
-            );
-        }
+    const insertResult = await batchInsertChunks(
+      valid,
+      {
+        userId: document.userId,
+        workspaceId: document.workspaceId ?? undefined,
+        documentName: document.name,
+        documentType: document.contentType,
       },
-    });
+      {
+        batchSize: options.batchSize ?? 50,
+        continueOnError: true,
+        onProgress: (completed, total) => {
+          const progress = 70 + Math.round((completed / total) * 25);
+          if (ingestionJob) {
+            prisma.ingestionJob
+              .update({
+                where: { id: ingestionJob.id },
+                data: { progress: Math.min(progress, 95) },
+              })
+              .catch((err: Error) =>
+                logger.error('Failed to update job progress', { error: err.message })
+              );
+          }
+        },
+      }
+    );
 
     logger.info(`Insert complete`, {
       documentId,
@@ -384,7 +382,7 @@ export async function processDocument(
       data: {
         status: insertResult.failureCount === 0 ? 'COMPLETED' : 'COMPLETED',
         metadata: {
-          ...((document.metadata as Record<string, unknown>) ?? {}),
+          ...fromJson<Record<string, unknown>>(document.metadata, {}),
           processedAt: new Date().toISOString(),
           chunkCount: valid.length,
           embeddingModel: embeddingProvider.modelName,

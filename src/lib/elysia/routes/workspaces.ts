@@ -1,6 +1,6 @@
-import { Elysia } from 'elysia'
-import { prisma } from '@/lib/db'
-import { requireAuth } from '../plugins/auth'
+import { Elysia } from 'elysia';
+import { prisma } from '@/lib/db';
+import { requireAuth } from '../plugins/auth';
 
 export const workspacesRoutes = new Elysia({
   name: 'elysia/workspaces',
@@ -9,10 +9,10 @@ export const workspacesRoutes = new Elysia({
   .use(requireAuth)
   .get('/', async ({ session }) => {
     const workspaces = await prisma.workspace.findMany({
-      where: { members: { some: { userId: session!.userId } } },
+      where: { members: { some: { userId: session?.userId } } },
       orderBy: { updatedAt: 'desc' },
       include: { _count: { select: { documents: true, members: true } } },
-    })
+    });
 
     return {
       data: workspaces.map((ws) => ({
@@ -24,5 +24,5 @@ export const workspacesRoutes = new Elysia({
         createdAt: ws.createdAt,
         updatedAt: ws.updatedAt,
       })),
-    }
-  })
+    };
+  });

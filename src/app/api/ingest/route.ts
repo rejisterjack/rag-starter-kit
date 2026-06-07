@@ -18,6 +18,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { withApiAuth } from '@/lib/auth';
 import { prisma, prismaRead } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 import { processDocumentInline } from '@/lib/rag/ingestion/inline-processor';
 import { isYouTubeUrl } from '@/lib/rag/ingestion/parsers/youtube';
@@ -743,7 +744,7 @@ export const GET = withApiAuth(async (req: NextRequest, session) => {
 
     // Get job details
     const job = document.ingestionJob;
-    const metadata = (document.metadata as Record<string, unknown>) || {};
+    const metadata = fromJson<Record<string, unknown>>(document.metadata, {});
 
     // Calculate progress
     let progress = 0;
@@ -772,7 +773,7 @@ export const GET = withApiAuth(async (req: NextRequest, session) => {
         case 'FAILED':
           progress = 0;
           stage = 'failed';
-          error = (metadata.error as string) || 'Processing failed';
+          error = String(metadata.error ?? 'Processing failed');
           break;
       }
     }
@@ -903,7 +904,7 @@ export const DELETE = withApiAuth(async (req: NextRequest, session) => {
       data: {
         status: 'FAILED',
         metadata: {
-          ...((document.metadata as Record<string, unknown>) || {}),
+          ...fromJson<Record<string, unknown>>(document.metadata, {}),
           cancelledAt: new Date().toISOString(),
           error: 'Processing cancelled by user',
         },

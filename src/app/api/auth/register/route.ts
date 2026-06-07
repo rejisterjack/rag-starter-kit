@@ -110,7 +110,7 @@ async function handler(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: true, data: { userId: user.id, message: 'Account created successfully' } },
+      { success: true, data: { message: 'Account created successfully' } },
       { status: 201 }
     );
   } catch (error: unknown) {

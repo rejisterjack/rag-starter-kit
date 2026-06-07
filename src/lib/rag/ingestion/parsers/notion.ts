@@ -47,14 +47,28 @@ type NotionBlock = {
   id: string;
   type: string;
   has_children: boolean;
+  _children?: NotionBlock[];
   [key: string]: unknown;
 };
+
+interface NotionBlockListResponse {
+  results: NotionBlock[];
+  has_more: boolean;
+  next_cursor?: string;
+}
+
+interface NotionPageResponse {
+  properties: Record<string, unknown>;
+  last_edited_time?: string;
+  url?: string;
+}
 
 /** Render a single Notion block to plain text */
 function blockToText(block: NotionBlock): string {
   const type = block.type;
-  // biome-ignore lint/suspicious/noExplicitAny: Notion API response is loosely typed
-  const data = (block as any)[type];
+  const data = (block as Record<string, unknown>)[type] as
+    | (Record<string, unknown> & { rich_text?: Array<{ plain_text: string }> })
+    | undefined;
   if (!data) return '';
 
   const richTexts: Array<{ plain_text: string }> = data.rich_text ?? [];
@@ -118,8 +132,7 @@ export class NotionParser {
 
     do {
       const url = `/blocks/${blockId}/children?page_size=100${cursor ? `&start_cursor=${cursor}` : ''}`;
-      // biome-ignore lint/suspicious/noExplicitAny: Notion API response
-      const data = await this.get<any>(url);
+      const data = await this.get<NotionBlockListResponse>(url);
       const results: NotionBlock[] = data.results ?? [];
       blocks.push(...results);
       cursor = data.has_more ? data.next_cursor : undefined;
@@ -143,8 +156,7 @@ export class NotionParser {
     logger.info('Parsing Notion page', { pageId });
 
     // Get page metadata (title, last edited)
-    // biome-ignore lint/suspicious/noExplicitAny: Notion API response
-    const page = await this.get<any>(`/pages/${pageId}`);
+    const page = await this.get<NotionPageResponse>(`/pages/${pageId}`);
     const properties = page.properties ?? {};
 
     // Title is usually in the "title" or "Name" property

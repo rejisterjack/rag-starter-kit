@@ -1,7 +1,7 @@
-import { Elysia, t } from 'elysia'
-import { generateQueryEmbedding, searchSimilarChunks } from '@/lib/rag/retrieval'
-import type { RAGConfig } from '@/types'
-import { requireAuth } from '../plugins/auth'
+import { Elysia, t } from 'elysia';
+import { generateQueryEmbedding, searchSimilarChunks } from '@/lib/rag/retrieval';
+import type { RAGConfig } from '@/types';
+import { requireAuth } from '../plugins/auth';
 
 export const searchRoutes = new Elysia({
   name: 'elysia/search',
@@ -12,26 +12,20 @@ export const searchRoutes = new Elysia({
     '/',
     async ({ session, workspace, body, set }) => {
       if (!workspace) {
-        set.status = 404
-        return { error: { code: 'WORKSPACE_NOT_FOUND', message: 'Workspace not found' } }
+        set.status = 404;
+        return { error: { code: 'WORKSPACE_NOT_FOUND', message: 'Workspace not found' } };
       }
 
       try {
-        const queryEmbedding = await generateQueryEmbedding(body.query)
+        const queryEmbedding = await generateQueryEmbedding(body.query);
 
         const config: Partial<RAGConfig> = {
           topK: Math.min(body.limit ?? 10, 100),
           similarityThreshold: body.threshold ?? 0.7,
-          filter: body.filters?.documentIds
-            ? { documentIds: body.filters.documentIds }
-            : undefined,
-        }
+          filter: body.filters?.documentIds ? { documentIds: body.filters.documentIds } : undefined,
+        };
 
-        const results = await searchSimilarChunks(
-          queryEmbedding,
-          session!.userId,
-          config
-        )
+        const results = await searchSimilarChunks(queryEmbedding, session?.userId, config);
 
         return {
           data: results.map((r) => ({
@@ -48,10 +42,10 @@ export const searchRoutes = new Elysia({
             total: results.length,
             threshold: config.similarityThreshold,
           },
-        }
+        };
       } catch {
-        set.status = 500
-        return { error: { code: 'SEARCH_ERROR', message: 'Failed to perform search' } }
+        set.status = 500;
+        return { error: { code: 'SEARCH_ERROR', message: 'Failed to perform search' } };
       }
     },
     {
@@ -67,4 +61,4 @@ export const searchRoutes = new Elysia({
         ),
       }),
     }
-  )
+  );

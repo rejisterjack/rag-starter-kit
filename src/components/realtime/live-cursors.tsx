@@ -382,14 +382,12 @@ export const CursorContainer: React.FC<CursorContainerProps> = ({
   );
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: Cursor tracking container requires mouse events
     <div
       ref={containerRef}
       className={cn('relative', className)}
       onMouseMove={handleMouseMove}
       role="button"
       tabIndex={0}
-      onKeyDown={() => {}}
       aria-label="Cursor tracking area"
     >
       {children}

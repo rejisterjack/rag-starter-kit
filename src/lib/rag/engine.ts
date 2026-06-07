@@ -5,7 +5,7 @@
  * Coordinates embedding generation, retrieval, and response generation.
  */
 
-import type { LanguageModelUsage, UIMessage } from 'ai';
+import type { LanguageModelUsage } from 'ai';
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
 import { logger } from '@/lib/logger';
 import { StreamingContentFilter } from '@/lib/security/content-filter';
@@ -76,7 +76,7 @@ export async function generateRAGResponse(query: RAGQuery): Promise<RAGResponse>
       { role: 'user', content: safeQuery },
     ];
 
-    const response = await generateChatCompletion(messages as unknown as UIMessage[], config);
+    const response = await generateChatCompletion(messages, config);
 
     const latency = Date.now() - startTime;
 
@@ -159,7 +159,7 @@ export async function* streamRAGResponse(query: RAGQuery): AsyncGenerator<{
       { role: 'user', content: safeQuery },
     ];
 
-    const stream = await streamChatCompletion(messages as unknown as UIMessage[], config);
+    const stream = await streamChatCompletion(messages, config);
     const contentFilter = new StreamingContentFilter();
 
     for await (const chunk of stream.textStream) {

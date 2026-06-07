@@ -12,6 +12,7 @@ import { auth } from '@/lib/auth';
 import { invalidateDomainCache } from '@/lib/auth/domain-routing';
 import { WorkspaceSSOSettingsSchema } from '@/lib/auth/saml/config';
 import { prisma } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 // =============================================================================
@@ -51,7 +52,7 @@ export async function GET(
     }
 
     // Parse settings
-    const settings = (workspace.settings as Record<string, unknown>) || {};
+    const settings = fromJson<Record<string, unknown>>(workspace.settings, {});
 
     return NextResponse.json({
       ssoEnabled: workspace.ssoEnabled,
@@ -145,7 +146,7 @@ export async function PUT(
     }
 
     // Merge settings
-    const currentSettings = (workspace.settings as Record<string, unknown>) || {};
+    const currentSettings = fromJson<Record<string, unknown>>(workspace.settings, {});
     const newSettings = {
       ...currentSettings,
       forceSSO: data.forceSSO,

@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import { inngest } from '@/lib/inngest/client';
 import { logger } from '@/lib/logger';
 import {
@@ -138,7 +139,7 @@ export const POST = withApiAuth(async (req, session) => {
       data: {
         status: 'PENDING',
         metadata: {
-          ...((document.metadata as Record<string, unknown>) ?? {}),
+          ...fromJson<Record<string, unknown>>(document.metadata, {}),
           retriedAt: new Date().toISOString(),
           previousStatus: document.status,
         },

@@ -39,14 +39,8 @@ async function loadCLIPModel() {
     // Dynamic import to avoid loading on server start
     const { AutoModel, AutoProcessor } = await import('@xenova/transformers');
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    clipModel = await (
-      AutoModel as unknown as { from_pretrained: (model: string) => Promise<unknown> }
-    ).from_pretrained(CLIP_MODEL);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    clipProcessor = await (
-      AutoProcessor as unknown as { from_pretrained: (model: string) => Promise<unknown> }
-    ).from_pretrained(CLIP_MODEL);
+    clipModel = await AutoModel.from_pretrained(CLIP_MODEL);
+    clipProcessor = await AutoProcessor.from_pretrained(CLIP_MODEL);
     return { model: clipModel, processor: clipProcessor };
   } catch (error: unknown) {
     logger.error('Failed to load CLIP model for image embeddings', {

@@ -61,7 +61,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 <details open>
 <summary><b>🎨 Modern UI/UX</b></summary>
 
-- Next.js 15 App Router with React 19
+- Next.js 16 App Router with React 19
 - Tailwind CSS 4 with beautiful dark mode
 - shadcn/ui component library
 - Responsive design (mobile, tablet, desktop)
@@ -142,7 +142,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 
 | Category | Technology |
 |----------|------------|
-| **Framework** | [Next.js 15](https://nextjs.org/) (App Router, RSC, Streaming) |
+| **Framework** | [Next.js 16](https://nextjs.org/) (App Router, RSC, Streaming) |
 | **UI** | [React 19](https://react.dev/), [Tailwind CSS 4](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/) |
 | **AI / RAG** | [Vercel AI SDK](https://sdk.vercel.ai/), LangChain.js, OpenRouter, Anthropic Claude |
 | **Embeddings** | [Google Gemini](https://ai.google.dev/) (free tier) |
@@ -243,7 +243,7 @@ docker run -p 3000:3000 --env-file .env --network host rag-starter-kit
 ```mermaid
 graph TB
     User([User]) -->|Upload Document| Cloudinary[Cloudinary]
-    User -->|Chat Query| Next[Next.js 15 App]
+    User -->|Chat Query| Next[Next.js 16 App]
 
     subgraph "Background Processing"
         Cloudinary -->|Trigger| Inngest[Inngest Jobs]
@@ -271,7 +271,7 @@ graph TB
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| **Presentation** | Next.js 15, React 19, Tailwind CSS | UI components, SSR, streaming |
+| **Presentation** | Next.js 16, React 19, Tailwind CSS | UI components, SSR, streaming |
 | **API** | Next.js API Routes | RESTful endpoints, type-safe APIs |
 | **AI/ML** | Vercel AI SDK, OpenRouter, Gemini | LLM inference, embeddings |
 | **RAG** | LangChain, custom pipeline | Document processing, retrieval |
@@ -332,7 +332,7 @@ bun test:integration  # Integration tests
 ```
 rag-starter-kit/
 ├── src/
-│   ├── app/                 # Next.js 15 App Router
+│   ├── app/                 # Next.js 16 App Router
 │   ├── components/          # React components (shadcn/ui)
 │   ├── lib/
 │   │   ├── ai/             # AI SDK config (OpenRouter + Google)

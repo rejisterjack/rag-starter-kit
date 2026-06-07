@@ -112,7 +112,7 @@ export const GET = withApiAuth(async (_req: Request, session, { params }: RouteP
     // Optional: Delete file after download (for one-time downloads)
     // await storage.deleteFile(exportId);
 
-    return new NextResponse(buffer as unknown as BodyInit, { headers });
+    return new NextResponse(new Uint8Array(buffer), { headers });
   } catch (error) {
     return NextResponse.json(
       {

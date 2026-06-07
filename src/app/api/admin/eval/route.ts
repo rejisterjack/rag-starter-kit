@@ -8,6 +8,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { NextResponse } from 'next/server';
+import { APP_URL } from '@/lib/constants';
 import { EvalRunner } from '@/lib/eval/runner';
 import type { EvalDataset, EvalReport } from '@/lib/eval/types';
 
@@ -81,7 +82,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
 
     const runner = new EvalRunner({
-      apiBaseUrl: body.apiUrl || 'http://localhost:7392',
+      apiBaseUrl: body.apiUrl || APP_URL,
       apiKey: body.apiKey,
       includeAnswer: body.includeAnswer ?? true,
     });

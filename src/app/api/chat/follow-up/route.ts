@@ -61,8 +61,7 @@ Rules:
 
     try {
       const result = await generateText({
-        // biome-ignore lint/suspicious/noExplicitAny: openrouter SDK type mismatch with ai SDK
-        model: openrouter(defaultAIConfig.model) as any,
+        model: openrouter(defaultAIConfig.model),
         messages: [
           { role: 'system', content: systemContent },
           { role: 'user', content: userContent },

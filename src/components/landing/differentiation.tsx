@@ -131,8 +131,7 @@ export function Differentiation(): React.ReactElement {
             <a
               href="/demo"
               onClick={() => {
-                const w = window as unknown as { plausible?: (e: string, o?: object) => void };
-                w.plausible?.('differentiation_cta_click', {
+                window.plausible?.('differentiation_cta_click', {
                   props: { cta: 'try_demo', location: 'differentiation' },
                 });
               }}
@@ -159,8 +158,7 @@ export function Differentiation(): React.ReactElement {
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => {
-                const w = window as unknown as { plausible?: (e: string, o?: object) => void };
-                w.plausible?.('differentiation_cta_click', {
+                window.plausible?.('differentiation_cta_click', {
                   props: { cta: 'clone_github', location: 'differentiation' },
                 });
               }}

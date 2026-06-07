@@ -122,28 +122,14 @@ export function HeroSection(): React.ReactElement {
           </motion.div>
 
           {/* Headline — outcome-centric */}
-          <div className="overflow-hidden mb-4">
-            <motion.h1
-              variants={textReveal}
-              className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl xl:text-[5.5rem] leading-[1.1]"
-            >
-              Ship Your AI
-            </motion.h1>
-          </div>
-          <div className="overflow-hidden mb-4">
-            <motion.h1
-              variants={textReveal}
-              className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl xl:text-[5.5rem] leading-[1.1]"
-            >
-              <span className="text-gradient">Document Chatbot</span>
-            </motion.h1>
-          </div>
           <div className="overflow-hidden mb-8">
             <motion.h1
               variants={textReveal}
               className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl xl:text-[5.5rem] leading-[1.1]"
             >
-              This Weekend
+              <span className="block">Ship Your AI</span>
+              <span className="block text-gradient">Document Chatbot</span>
+              <span className="block">This Weekend</span>
             </motion.h1>
           </div>
 

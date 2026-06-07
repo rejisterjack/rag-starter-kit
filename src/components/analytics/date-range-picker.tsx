@@ -104,7 +104,7 @@ const defaultPresets: DateRangePreset[] = [
 ];
 
 function formatDateRange(range: DateRange | undefined): string {
-  if (!range || !range.from) return '';
+  if (!range?.from) return '';
 
   if (!range.to || range.from.getTime() === range.to.getTime()) {
     return format(range.from, 'MMM d, yyyy');

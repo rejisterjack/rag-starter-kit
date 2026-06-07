@@ -1,14 +1,15 @@
 /**
- * Prisma Client Singleton (Prisma 7 + Accelerate)
+ * Prisma Client Singleton (Prisma 7 + Neon)
  *
- * Uses Prisma Accelerate for connection pooling, edge compatibility,
- * and query caching. The DATABASE_URL points to Prisma's accelerate endpoint.
+ * Connects to Neon PostgreSQL using @prisma/adapter-neon with the
+ * Neon serverless driver — supports edge/serverless runtimes.
  *
  * Pattern:
  * - In development, store client on globalThis to prevent hot-reload exhaustion.
  * - In production, module-level singleton (one per process).
  */
 
+import { PrismaNeon } from '@prisma/adapter-neon';
 import { PrismaClient } from '@/generated/prisma/client';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
@@ -27,8 +28,9 @@ type GlobalWithPrisma = typeof globalThis & {
 // ---------------------------------------------------------------------------
 
 function createPrismaClient(url?: string): PrismaClient {
+  const adapter = new PrismaNeon({ connectionString: url ?? env.DATABASE_URL });
   return new PrismaClient({
-    accelerateUrl: url ?? env.DATABASE_URL,
+    adapter,
     log: env.NODE_ENV === 'development' ? ['query', 'warn', 'error'] : ['warn', 'error'],
   });
 }
@@ -62,7 +64,7 @@ function extendWithSlowQueryMiddleware<T extends PrismaClient>(client: T): T {
         },
       },
     },
-  }) as unknown as T;
+  }) as T;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,8 +106,9 @@ export async function disconnectDatabase(): Promise<void> {
 const READ_REPLICA_URL = env.DATABASE_READ_REPLICA_URL;
 
 function createReadClient(): PrismaClient {
+  const adapter = new PrismaNeon({ connectionString: READ_REPLICA_URL! });
   return new PrismaClient({
-    accelerateUrl: READ_REPLICA_URL as string,
+    adapter,
     log: ['warn', 'error'],
   });
 }

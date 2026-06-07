@@ -8,11 +8,12 @@
 import crypto from 'node:crypto';
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { APP_URL } from '@/lib/constants';
 import { prisma } from '@/lib/db';
 import { emailService } from '@/lib/notifications/email';
 
 function getAppUrl(): string {
-  return process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392';
+  return APP_URL;
 }
 
 // ---------------------------------------------------------------------------

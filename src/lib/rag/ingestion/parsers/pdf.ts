@@ -40,16 +40,7 @@ export async function parsePDF(buffer: Buffer): Promise<ParsedPDF> {
   try {
     // Dynamic import to handle module format issues
     const pdfModule = await import('pdf-parse');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parseFn = (
-      pdfModule as unknown as {
-        default: (
-          buffer: Buffer,
-          opts?: { max?: number }
-        ) => Promise<{ text: string; numpages: number; info: Record<string, unknown> }>;
-      }
-    ).default;
-    const data = await parseFn(buffer, {
+    const data = await pdfModule.default(buffer, {
       // Enable max pages limit if needed for very large PDFs
       max: 0, // 0 = no limit
     });

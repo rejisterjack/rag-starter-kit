@@ -136,8 +136,6 @@ export function DocumentCard({
   const FileIcon = getFileIcon(document.type);
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: Interactive element with conditional role, tabIndex, and keyboard handler
-    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: Conditional ARIA props based on interactive state
     <div
       style={{ boxSizing: 'border-box', width: '100%', maxWidth: '100%' }}
       className={cn(

@@ -264,7 +264,7 @@ export function BulkExportButton({
   const handleExport = useCallback(
     async (options: ExportOptions): Promise<Blob> => {
       if (!onExport) return new Blob([]);
-      await onExport(options as ExportDialogOptions);
+      await onExport(options);
       return new Blob([]);
     },
     [onExport]

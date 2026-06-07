@@ -95,8 +95,7 @@ export class OpenRouterProvider implements LLMProvider {
 
     try {
       const result = await generateText({
-        // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
-        model: this.createModel(modelName) as any,
+        model: this.createModel(modelName),
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,
@@ -128,8 +127,7 @@ export class OpenRouterProvider implements LLMProvider {
 
     try {
       const result = streamText({
-        // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
-        model: this.createModel(modelName) as any,
+        model: this.createModel(modelName),
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,

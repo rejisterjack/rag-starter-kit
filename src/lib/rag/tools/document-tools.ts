@@ -159,7 +159,7 @@ Returns a concise summary highlighting key points.`,
       );
 
       const sources: Source[] = scrollResult.points.slice(0, 3).map((point) => {
-        const p = (point.payload ?? {}) as Record<string, unknown>;
+        const p = point.payload ?? {};
         return {
           id: String(point.id),
           content: String(p.content ?? ''),
@@ -466,7 +466,7 @@ ${aspect ? `4. Specific findings about "${aspect}":` : ''}`;
 
       const sources: Source[] = documents.flatMap((d, i) =>
         docChunks[i].points.slice(0, 2).map((point) => {
-          const p = (point.payload ?? {}) as Record<string, unknown>;
+          const p = point.payload ?? {};
           return {
             id: String(point.id),
             content: String(p.content ?? ''),

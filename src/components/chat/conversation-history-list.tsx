@@ -54,9 +54,8 @@ function formatDate(dateStr: string): string {
 function ConversationListSkeleton() {
   return (
     <div className="space-y-3 p-4">
-      {Array.from({ length: 6 }).map((_, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
-        <div key={i} className="flex items-start gap-3 rounded-xl p-3">
+      {['conv-1', 'conv-2', 'conv-3', 'conv-4', 'conv-5', 'conv-6'].map((k) => (
+        <div key={k} className="flex items-start gap-3 rounded-xl p-3">
           <Skeleton className="h-10 w-10 rounded-full shrink-0" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-3/4" />
@@ -300,7 +299,6 @@ export function ConversationHistoryList({
               const isConfirmingDelete = conversation.id === deleteConfirmId;
 
               return (
-                // biome-ignore lint/a11y/useSemanticElements: must use div (not button) because ConversationActions renders a nested DropdownMenu trigger button
                 <div
                   key={conversation.id}
                   role="button"
@@ -344,7 +342,6 @@ export function ConversationHistoryList({
                       </p>
 
                       {/* Actions - visible on hover */}
-                      {/* biome-ignore lint/a11y/noStaticElementInteractions: wrapper for stopPropagation only */}
                       <div
                         role="presentation"
                         className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -382,7 +379,6 @@ export function ConversationHistoryList({
 
                   {/* Delete confirmation overlay */}
                   {isConfirmingDelete && (
-                    /* biome-ignore lint/a11y/noStaticElementInteractions: overlay for stopPropagation only */
                     <div
                       role="presentation"
                       className="absolute inset-0 flex items-center justify-center gap-2 bg-background/95 backdrop-blur-sm rounded-xl z-10 border border-destructive/30"

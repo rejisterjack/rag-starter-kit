@@ -363,8 +363,9 @@ export function RAGChatWidget({
 
   // Auto-scroll to bottom
   useEffect(() => {
+    void messages;
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+  }, [messages]);
 
   // Focus input when opening
   useEffect(() => {
@@ -373,7 +374,10 @@ export function RAGChatWidget({
     }
   }, [isOpen]);
 
-  const generateId = () => `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const generateId = useCallback(
+    () => `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    []
+  );
 
   const buildHistory = useCallback((): { role: string; content: string }[] => {
     return messages.map((m) => ({ role: m.role, content: m.content }));
@@ -447,7 +451,6 @@ export function RAGChatWidget({
       },
       abortRef.current.signal
     );
-    // biome-ignore lint/correctness/useExhaustiveDependencies: stable refs and callbacks omitted
   }, [input, isLoading, apiKey, baseUrl, buildHistory, generateId]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

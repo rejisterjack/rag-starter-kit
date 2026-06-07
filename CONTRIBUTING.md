@@ -77,7 +77,7 @@ If either of these fails on a clean clone, that's a bug — please open an issue
 ```
 rag-starter-kit/
 ├── src/
-│   ├── app/                 # Next.js 15 App Router pages and layouts
+│   ├── app/                 # Next.js 16 App Router pages and layouts
 │   ├── components/          # Reusable React components (shadcn/ui based)
 │   ├── lib/
 │   │   ├── ai/             # LLM provider config (OpenRouter + Gemini)

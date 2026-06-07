@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Eye, GitFork, Github, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -55,13 +54,7 @@ export function GitHubStats(): React.ReactElement {
   ];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5 }}
-      className="flex flex-wrap items-center justify-center gap-4"
-    >
+    <div className="flex flex-wrap items-center justify-center gap-4 animate-fade-in-up">
       {statsItems.map((item) => (
         <Link
           key={item.label}
@@ -87,6 +80,6 @@ export function GitHubStats(): React.ReactElement {
         <Github className="h-4 w-4 text-foreground" />
         <span className="text-sm font-medium text-foreground">View Repository</span>
       </Link>
-    </motion.div>
+    </div>
   );
 }

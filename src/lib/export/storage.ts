@@ -376,8 +376,11 @@ export class ExportStorage {
     }, CLEANUP_INTERVAL_MS);
 
     // Initial cleanup
-    // biome-ignore lint/suspicious/noConsole: Error handling for background cleanup
-    this.cleanupExpired().catch(console.error);
+    this.cleanupExpired().catch((error: unknown) => {
+      logger.error('Export storage cleanup failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    });
   }
 }
 

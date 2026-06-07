@@ -82,14 +82,13 @@ export default function ChatPage(): React.ReactElement {
   });
 
   // On mount: load chat if we have a chatId from URL
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional mount-only effect
   useEffect(() => {
     const chatId = getUrlChatId();
     if (chatId) {
       setCurrentChatId(chatId);
       loadMessages(chatId);
     }
-  }, []);
+  }, [loadMessages]);
 
   const effectiveSources = chatSources.length > 0 ? chatSources : sources;
 
@@ -206,8 +205,7 @@ export default function ChatPage(): React.ReactElement {
       documentListProps={{
         documents,
         isLoading: documentsQuery.isLoading,
-        mutatingDocumentId:
-          (deleteMutation.variables as string) || (reingestMutation.variables as string),
+        mutatingDocumentId: deleteMutation.variables || reingestMutation.variables,
         onUpload: () => setIsUploadOpen(true),
         onDelete: (id: string) => deleteMutation.mutate(id),
         onReingest: (id: string) => reingestMutation.mutate(id),

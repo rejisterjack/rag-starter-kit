@@ -293,8 +293,10 @@ function RAGBotWidgetContent(): React.ReactElement {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on any message/streaming change
   useEffect(() => {
+    // messages and isStreaming trigger re-run for auto-scroll behavior
+    void messages;
+    void isStreaming;
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isStreaming]);
 

@@ -1,5 +1,3 @@
-import { getCsrfToken } from '@/hooks/use-csrf';
-
 export class ApiError extends Error {
   status: number;
   code: string;
@@ -12,13 +10,18 @@ export class ApiError extends Error {
   }
 }
 
+function getCsrfTokenFromMeta(): string | null {
+  if (typeof document === 'undefined') return null;
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta?.getAttribute('content') || null;
+}
+
 export async function apiClient<T>(url: string, options?: RequestInit): Promise<T> {
   const headers = new Headers(options?.headers);
 
-  // Include CSRF token for mutating requests
   const method = options?.method?.toUpperCase() || 'GET';
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-    const csrfToken = getCsrfToken();
+    const csrfToken = getCsrfTokenFromMeta();
     if (csrfToken) {
       headers.set('x-csrf-token', csrfToken);
     }

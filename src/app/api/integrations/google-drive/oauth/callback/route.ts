@@ -10,6 +10,7 @@
 import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { APP_URL } from '@/lib/constants';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
@@ -22,7 +23,7 @@ const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 function getGoogleOAuthConfig() {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392';
+  const appUrl = APP_URL;
 
   if (!clientId || !clientSecret) {
     return null;
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
     const state = searchParams.get('state');
     const error = searchParams.get('error');
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392';
+    const appUrl = APP_URL;
 
     // Handle OAuth errors from Google
     if (error) {
@@ -195,7 +196,7 @@ export async function GET(req: NextRequest) {
       `${appUrl}/settings/integrations?success=google_drive_connected&email=${encodeURIComponent(googleEmail)}`
     );
   } catch (error) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392';
+    const appUrl = APP_URL;
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
 
     logger.error('Failed to complete Google Drive OAuth flow', { error: errorMessage });

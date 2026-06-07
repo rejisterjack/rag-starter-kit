@@ -5,21 +5,22 @@
  */
 
 import { prisma } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import {
   checkPartitionHealth,
   detachOldPartitions,
   ensurePartitions,
 } from '@/lib/db/partition-manager';
 import { logger } from '@/lib/logger';
+import { dispatchAlert } from '@/lib/monitoring/alerting';
+import { detectAnomalies } from '@/lib/monitoring/anomaly-detector';
 import {
-  COLLECTION_DOCUMENT_CHUNKS,
   type ChunkPointData,
+  COLLECTION_DOCUMENT_CHUNKS,
   deleteByDocumentId,
   qdrant,
   upsertChunks,
 } from '@/lib/qdrant';
-import { dispatchAlert } from '@/lib/monitoring/alerting';
-import { detectAnomalies } from '@/lib/monitoring/anomaly-detector';
 import { ChunkingEngine } from '@/lib/rag/chunking';
 import { createEmbeddings } from '@/lib/rag/engine';
 import {
@@ -135,7 +136,7 @@ export const processDocumentJob = inngest.createFunction(
     // Step 2b: Re-check workspace document limit (guard against race conditions)
     if (document.workspaceId) {
       const docLimit = await step.run('check-doc-limit', async () => {
-        return checkDocumentLimit(document.workspaceId as string);
+        return checkDocumentLimit(document.workspaceId!);
       });
 
       if (!docLimit.allowed) {
@@ -169,7 +170,7 @@ export const processDocumentJob = inngest.createFunction(
 
     // Parse document based on type
     const parsedContent = await step.run('parse-document', async () => {
-      const metadata = (document.metadata as Record<string, unknown>) || {};
+      const metadata = fromJson<Record<string, unknown>>(document.metadata, {});
 
       // Case 1: File uploaded to Cloudinary — download and parse
       if (!document.content && document.storageUrl) {
@@ -257,7 +258,7 @@ export const processDocumentJob = inngest.createFunction(
           });
 
           if (workspace?.settings) {
-            const settings = workspace.settings as Record<string, unknown>;
+            const settings = fromJson<Record<string, unknown>>(workspace.settings, {});
             const ragSettings = settings.rag as Record<string, unknown> | undefined;
             const workspaceStrategy = ragSettings?.chunkingStrategy;
 
@@ -442,7 +443,7 @@ export const retryIngestionJob = inngest.createFunction(
         data: {
           status: 'PENDING',
           metadata: {
-            ...((existingDoc?.metadata as Record<string, unknown>) ?? {}),
+            ...fromJson<Record<string, unknown>>(existingDoc?.metadata ?? null, {}),
             retriedAt: new Date().toISOString(),
           },
         },
@@ -834,11 +835,14 @@ export const reEmbedWorkspaceJob = inngest.createFunction(
             with_payload: true,
             with_vector: false,
           });
-          const chunks = scrollResult.points.map((p) => ({
-            id: String(p.id),
-            content: ((p.payload as Record<string, unknown>)?.content as string) ?? '',
-            index: ((p.payload as Record<string, unknown>)?.index as number) ?? 0,
-          }));
+          const chunks = scrollResult.points.map((p) => {
+            const payload = p.payload ?? {};
+            return {
+              id: String(p.id),
+              content: String(payload.content ?? ''),
+              index: Number(payload.index ?? 0),
+            };
+          });
 
           if (chunks.length === 0) {
             return { documentId: doc.id, chunksProcessed: 0 };

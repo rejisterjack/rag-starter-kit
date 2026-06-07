@@ -138,8 +138,19 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
     }
 
     // Update workspace (with optimistic locking if If-Match provided)
-    let workspace: Record<string, unknown> | Awaited<ReturnType<typeof updateWorkspace>>;
     const expectedVersion = extractVersion(req.headers);
+    let responseData: {
+      id: string;
+      name: string;
+      slug: string;
+      description: string | null;
+      avatar: string | null;
+      plan: string;
+      settings: Record<string, unknown> | null;
+      version?: number;
+      updatedAt: string;
+    };
+
     try {
       if (expectedVersion !== null) {
         const updateData: Record<string, unknown> = {};
@@ -148,9 +159,40 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
           updateData.description = validatedInput.description;
         if (validatedInput.avatar !== undefined) updateData.logoUrl = validatedInput.avatar;
         if (validatedInput.settings !== undefined) updateData.settings = validatedInput.settings;
-        workspace = await updateWithVersion('workspace', workspaceId, updateData, expectedVersion);
+        const workspace = await updateWithVersion(
+          'workspace',
+          workspaceId,
+          updateData,
+          expectedVersion
+        );
+        responseData = {
+          id: String(workspace.id),
+          name: String(workspace.name),
+          slug: String(workspace.slug),
+          description: workspace.description != null ? String(workspace.description) : null,
+          avatar:
+            workspace.logoUrl != null
+              ? String(workspace.logoUrl)
+              : workspace.avatar != null
+                ? String(workspace.avatar)
+                : null,
+          plan: String(workspace.plan),
+          settings: workspace.settings as Record<string, unknown> | null,
+          version: workspace.version as number | undefined,
+          updatedAt: new Date(workspace.updatedAt as string | Date).toISOString(),
+        };
       } else {
-        workspace = await updateWorkspace(workspaceId, validatedInput);
+        const workspace = await updateWorkspace(workspaceId, validatedInput);
+        responseData = {
+          id: workspace.id,
+          name: workspace.name,
+          slug: workspace.slug,
+          description: workspace.description,
+          avatar: workspace.avatar,
+          plan: workspace.plan,
+          settings: workspace.settings,
+          updatedAt: workspace.updatedAt.toISOString(),
+        };
       }
     } catch (e) {
       if (e instanceof ConcurrentModificationError) {
@@ -162,21 +204,10 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
       throw e;
     }
 
-    const wsResult = workspace as unknown as Record<string, unknown>;
     return NextResponse.json({
       success: true,
       data: {
-        workspace: {
-          id: wsResult.id,
-          name: wsResult.name,
-          slug: wsResult.slug,
-          description: wsResult.description,
-          avatar: wsResult.logoUrl ?? wsResult.avatar,
-          plan: wsResult.plan,
-          settings: wsResult.settings,
-          version: wsResult.version,
-          updatedAt: (wsResult.updatedAt as Date).toISOString(),
-        },
+        workspace: responseData,
       },
     });
   } catch (error: unknown) {
@@ -278,7 +309,7 @@ function validateUpdateWorkspaceInput(body: unknown): UpdateWorkspaceInput {
     if (input.settings !== null && typeof input.settings !== 'object') {
       throw new Error('Invalid settings: must be an object or null');
     }
-    result.settings = (input.settings as Record<string, unknown>) ?? undefined;
+    result.settings = (input.settings ?? undefined) as Record<string, unknown> | undefined;
   }
 
   return result;

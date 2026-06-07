@@ -276,14 +276,16 @@ export async function POST(req: Request, { params }: RouteParams) {
             });
             throw new Error('Invalid URL provided in payload');
           }
-          docName = (payload.title as string) || new URL(url).hostname + new URL(url).pathname;
+          docName =
+            (typeof payload.title === 'string' ? payload.title : '') ||
+            new URL(url).hostname + new URL(url).pathname;
           contentType = 'HTML';
           contentValue = null;
           sourceUrl = url;
           docSize = 0;
         } else {
           // Raw text content mode
-          docName = (payload.title as string) || 'Webhook Document';
+          docName = (typeof payload.title === 'string' ? payload.title : '') || 'Webhook Document';
           contentType = 'TXT';
           contentValue = payload.content as string;
           docSize = Buffer.byteLength(contentValue, 'utf-8');

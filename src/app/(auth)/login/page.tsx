@@ -68,10 +68,15 @@ export default function LoginPage(): React.ReactElement {
   );
 }
 
+function sanitizeRedirectUrl(url: string): string {
+  if (url.startsWith('/') && !url.startsWith('//')) return url;
+  return '/chat';
+}
+
 function LoginContent(): React.ReactElement {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/chat';
+  const callbackUrl = sanitizeRedirectUrl(searchParams.get('callbackUrl') || '/chat');
   const error = searchParams.get('error');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -94,7 +99,7 @@ function LoginContent(): React.ReactElement {
 
   useEffect(() => {
     const checkDomain = async () => {
-      if (!email || !email.includes('@')) {
+      if (!email?.includes('@')) {
         setSsoDetected(null);
         return;
       }
@@ -265,7 +270,7 @@ function LoginContent(): React.ReactElement {
         <Button
           variant="outline"
           className="w-full interactive"
-          onClick={() => signIn('github', { callbackUrl: searchParams?.get('callbackUrl') ?? '/' })}
+          onClick={() => signIn('github', { callbackUrl })}
         >
           <Github className="mr-2 h-4 w-4" />
           Continue with GitHub
@@ -273,7 +278,7 @@ function LoginContent(): React.ReactElement {
         <Button
           variant="outline"
           className="w-full interactive"
-          onClick={() => signIn('google', { callbackUrl: searchParams?.get('callbackUrl') ?? '/' })}
+          onClick={() => signIn('google', { callbackUrl })}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" role="img" aria-label="Google logo">
             <title>Google</title>
@@ -352,9 +357,14 @@ function LoginContent(): React.ReactElement {
                   className="pl-10 bg-background/50 border-white/10 focus-visible:ring-primary/50"
                   disabled={isLoading}
                   aria-invalid={errors.email ? 'true' : 'false'}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
                 />
               </div>
-              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+              {errors.email && (
+                <p id="email-error" className="text-sm text-red-500" role="alert">
+                  {errors.email.message}
+                </p>
+              )}
               {isCheckingDomain && (
                 <p className="text-xs text-muted-foreground">
                   <Loader2 className="inline h-3 w-3 animate-spin mr-1" />
@@ -414,7 +424,7 @@ function LoginContent(): React.ReactElement {
       )}
 
       <motion.div variants={itemVariants}>
-        <p className="text-center text-xs text-muted-foreground/60 leading-relaxed max-w-[80%] mx-auto">
+        <p className="text-center text-xs text-muted-foreground leading-relaxed max-w-[80%] mx-auto">
           By continuing, you agree to our{' '}
           <Link href="/terms" className="hover:text-primary transition-colors">
             Terms of Service

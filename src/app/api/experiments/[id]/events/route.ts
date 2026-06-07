@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 
 const VALID_EVENT_TYPES = ['impression', 'conversion', 'custom'] as const;
@@ -67,7 +68,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     try {
       validatedInput = validateTrackEventInput(
         body,
-        experiment.variants as unknown as Array<{ id: string }>
+        fromJson<Array<{ id: string }>>(experiment.variants, [])
       );
     } catch (error) {
       if (error instanceof Error) {

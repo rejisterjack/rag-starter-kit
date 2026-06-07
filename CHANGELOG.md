@@ -68,7 +68,7 @@ This is the first stable release of `rag-starter-kit` — a production-ready RAG
 - Wake word detection ("Hey RAG")
 
 **UI & Frontend**
-- Next.js 15 App Router with React 19
+- Next.js 16 App Router with React 19
 - Tailwind CSS 4 with dark/light mode
 - shadcn/ui component library
 - Responsive design (mobile, tablet, desktop)

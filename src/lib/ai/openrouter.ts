@@ -15,13 +15,15 @@
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { generateText, streamText, type UIMessage } from 'ai';
+import { asModel } from '@/lib/ai/types';
+import { APP_URL } from '@/lib/constants';
 import type { RAGConfig } from '@/types';
 
 // Create OpenRouter client
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY || '',
   headers: {
-    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392',
+    'HTTP-Referer': APP_URL,
     'X-Title': 'RAG Starter Kit',
   },
 });
@@ -95,11 +97,11 @@ export async function streamOpenRouterCompletion(
   const modelLimits = MODEL_CONFIG[modelConfig.model] || { maxTokens: 8192 };
 
   const result = streamText({
-    model: openrouter(modelConfig.model),
+    model: asModel<Parameters<typeof streamText>[0]['model']>(openrouter(modelConfig.model)),
     messages: messages as UIMessage[],
     temperature: modelConfig.temperature,
     maxTokens: Math.min(modelConfig.maxTokens, modelLimits.maxTokens),
-  } as unknown as Parameters<typeof streamText>[0]);
+  });
 
   return result;
 }
@@ -117,11 +119,11 @@ export async function generateOpenRouterCompletion(
   const modelLimits = MODEL_CONFIG[modelConfig.model] || { maxTokens: 8192 };
 
   const result = generateText({
-    model: openrouter(modelConfig.model),
+    model: asModel<Parameters<typeof generateText>[0]['model']>(openrouter(modelConfig.model)),
     messages: messages as UIMessage[],
     temperature: modelConfig.temperature,
     maxTokens: Math.min(modelConfig.maxTokens, modelLimits.maxTokens),
-  } as unknown as Parameters<typeof generateText>[0]);
+  });
 
   return result;
 }

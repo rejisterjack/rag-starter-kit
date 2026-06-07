@@ -1,5 +1,7 @@
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { APP_URL } from '@/lib/constants';
 import { prisma } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 import { emailService } from '@/lib/notifications/email';
 
@@ -14,12 +16,11 @@ import type { MemberRole, Workspace, WorkspaceMember, WorkspacePlan } from './ty
  * Throws error in production if not configured
  */
 export function getAppUrl(): string {
-  const url = process.env.NEXT_PUBLIC_APP_URL;
-  if (url) return url;
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
 
   // Allow localhost fallback only in development
   if (process.env.NODE_ENV === 'development') {
-    return 'http://localhost:7392';
+    return APP_URL;
   }
 
   throw new Error('NEXT_PUBLIC_APP_URL environment variable is required in production');
@@ -132,7 +133,7 @@ export async function createWorkspace(
     avatar: workspace.logoUrl,
     ownerId: workspace.ownerId,
     plan: 'FREE',
-    settings: workspace.settings as Record<string, unknown> | null,
+    settings: fromJson<Record<string, unknown>>(workspace.settings, null),
     createdAt: workspace.createdAt,
     updatedAt: workspace.updatedAt,
   };
@@ -200,6 +201,7 @@ export async function getWorkspaceById(workspaceId: string): Promise<WorkspaceWi
 
   if (!result) return null;
 
+  const settings = fromJson<Record<string, unknown>>(result.settings, null);
   return {
     id: result.id,
     name: result.name,
@@ -208,11 +210,11 @@ export async function getWorkspaceById(workspaceId: string): Promise<WorkspaceWi
     logoUrl: result.logoUrl,
     avatar: result.logoUrl,
     ownerId: result.ownerId,
-    plan: ((result.settings as Record<string, unknown>)?.plan as WorkspacePlan) || 'FREE',
-    settings: result.settings as Record<string, unknown> | null,
+    plan: (settings?.plan as WorkspacePlan) || 'FREE',
+    settings,
     createdAt: result.createdAt,
     updatedAt: result.updatedAt,
-    members: result.members as unknown as WorkspaceWithMembers['members'],
+    members: result.members as WorkspaceWithMembers['members'],
     owner: result.owner,
     _count: result._count,
   };
@@ -265,10 +267,10 @@ export async function getWorkspaceBySlug(slug: string): Promise<WorkspaceWithMem
     avatar: result.logoUrl,
     ownerId: result.ownerId,
     plan: 'FREE',
-    settings: result.settings as Record<string, unknown> | null,
+    settings: fromJson<Record<string, unknown>>(result.settings, null),
     createdAt: result.createdAt,
     updatedAt: result.updatedAt,
-    members: result.members as unknown as WorkspaceWithMembers['members'],
+    members: result.members as WorkspaceWithMembers['members'],
     owner: result.owner,
     _count: result._count,
   };
@@ -324,10 +326,10 @@ export async function getUserWorkspaces(userId: string): Promise<WorkspaceWithMe
     avatar: m.workspace.logoUrl,
     ownerId: m.workspace.ownerId,
     plan: 'FREE',
-    settings: m.workspace.settings as Record<string, unknown> | null,
+    settings: fromJson<Record<string, unknown>>(m.workspace.settings, null),
     createdAt: m.workspace.createdAt,
     updatedAt: m.workspace.updatedAt,
-    members: m.workspace.members as unknown as WorkspaceWithMembers['members'],
+    members: m.workspace.members as WorkspaceWithMembers['members'],
     owner: m.workspace.owner,
     _count: m.workspace._count,
   }));
@@ -368,7 +370,7 @@ export async function updateWorkspace(
     avatar: workspace.logoUrl,
     ownerId: workspace.ownerId,
     plan: 'FREE',
-    settings: workspace.settings as Record<string, unknown> | null,
+    settings: fromJson<Record<string, unknown>>(workspace.settings, null),
     createdAt: workspace.createdAt,
     updatedAt: workspace.updatedAt,
   };
@@ -462,7 +464,7 @@ export async function getCurrentWorkspace(userId: string): Promise<Workspace | n
     avatar: membership.workspace.logoUrl,
     ownerId: membership.workspace.ownerId,
     plan: 'FREE',
-    settings: membership.workspace.settings as Record<string, unknown> | null,
+    settings: fromJson<Record<string, unknown>>(membership.workspace.settings, null),
     createdAt: membership.workspace.createdAt,
     updatedAt: membership.workspace.updatedAt,
   };

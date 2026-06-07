@@ -1,16 +1,16 @@
-import { Elysia } from 'elysia'
-import { auth } from '@/lib/auth'
-import { getServerSession } from '@/lib/auth/session'
+import type { Elysia } from 'elysia';
+import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth/session';
 
 export const requireAuth = (app: Elysia) =>
   app
     .derive(async () => {
-      const session = await auth()
+      const session = await auth();
       if (!session?.user?.id) {
-        return { session: null as unknown as undefined, workspace: null as unknown as undefined }
+        return { session: undefined, workspace: undefined };
       }
 
-      const workspace = await getServerSession()
+      const workspace = await getServerSession();
 
       return {
         session: {
@@ -20,15 +20,16 @@ export const requireAuth = (app: Elysia) =>
           workspaceRole: session.user.workspaceRole,
         },
         workspace,
-      }
+      };
     })
-    .onBeforeHandle(({ session }): Response | void => {
+    .onBeforeHandle(({ session }): Response | undefined => {
       if (!session) {
         return new Response(
           JSON.stringify({
             error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
           }),
           { status: 401, headers: { 'content-type': 'application/json' } }
-        )
+        );
       }
-    })
+      return undefined;
+    });

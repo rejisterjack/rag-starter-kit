@@ -158,6 +158,8 @@ function ResetPasswordContent(): React.ReactElement {
                   required
                   disabled={isLoading}
                   minLength={12}
+                  aria-invalid={error ? 'true' : 'false'}
+                  aria-describedby={error ? 'form-error' : undefined}
                 />
               </div>
             </div>
@@ -178,6 +180,8 @@ function ResetPasswordContent(): React.ReactElement {
                   required
                   disabled={isLoading}
                   minLength={12}
+                  aria-invalid={error ? 'true' : 'false'}
+                  aria-describedby={error ? 'form-error' : undefined}
                 />
               </div>
             </div>

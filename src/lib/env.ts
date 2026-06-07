@@ -7,6 +7,7 @@
  */
 
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 
 // =============================================================================
 // Environment Schema
@@ -29,7 +30,12 @@ const envSchema = z.object({
   // Optional variables with defaults
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
-  PORT: z.coerce.number().default(3000),
+  PORT: z.coerce.number().default(7392),
+
+  NEXT_PUBLIC_APP_URL: z.string().url().optional().default('http://localhost:7392'),
+  NEXT_PUBLIC_PLAUSIBLE_DOMAIN: z.string().optional(),
+  NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: z.string().optional(),
+  NEXT_PUBLIC_APP_VERSION: z.string().optional(),
 
   // Redis configuration
   UPSTASH_REDIS_REST_URL: z.string().optional(),
@@ -140,15 +146,13 @@ function validateEnv(): EnvSchema {
     return parsed;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      // biome-ignore lint/suspicious/noConsole: Intentional error logging at startup
-      console.error('❌ Invalid environment variables:');
-      for (const issue of error.issues) {
-        // biome-ignore lint/suspicious/noConsole: Intentional error logging at startup
-        console.error(`  - ${issue.path.join('.')}: ${issue.message}`);
-      }
+      logger.error('Invalid environment variables:', {
+        issues: error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`),
+      });
     } else {
-      // biome-ignore lint/suspicious/noConsole: Intentional error logging at startup
-      console.error('❌ Failed to validate environment variables:', error);
+      logger.error('Failed to validate environment variables:', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
     throw new Error(
       'Environment validation failed. Check the console output above for missing or invalid variables.'

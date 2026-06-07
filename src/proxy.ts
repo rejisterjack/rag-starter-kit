@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import NextAuth from 'next-auth';
 import { authConfig } from '@/lib/auth/auth.config';
+import { validateCsrfToken } from '@/lib/security/csrf';
 
 // =============================================================================
 // Env Access
@@ -45,20 +46,50 @@ const PROTECTED_API_ROUTES = ['/api/chat', '/api/ingest', '/api/documents', '/ap
 const ADMIN_ROUTES = ['/admin', '/api/admin'];
 
 // =============================================================================
+// Header Sanitization
+// =============================================================================
+
+const TRUSTED_HEADERS = [
+  'x-user-id',
+  'x-user-role',
+  'x-workspace-id',
+  'x-nonce',
+  'x-request-id',
+] as const;
+
+function stripTrustedHeaders(headers: Headers): void {
+  for (const key of TRUSTED_HEADERS) {
+    headers.delete(key);
+  }
+}
+
+// =============================================================================
 // CORS Helpers
 // =============================================================================
 
 function computeCorsOrigin(req: Request): string | null {
-  const origin = req.headers.get('origin') ?? '';
-  const allowedOrigins = (env.ALLOWED_ORIGINS ?? env.NEXTAUTH_URL).split(',').map((s) => s.trim());
-  return allowedOrigins.includes(origin) ? origin : null;
+  const origin = req.headers.get('origin');
+  if (!origin) return null;
+
+  const allowedOrigins = (env.ALLOWED_ORIGINS || env.NEXTAUTH_URL)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  try {
+    const url = new URL(origin);
+    return allowedOrigins.includes(url.origin) ? url.origin : null;
+  } catch {
+    return null;
+  }
 }
 
 function getCorsHeaders(req: Request) {
   const corsOrigin = computeCorsOrigin(req);
   const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Request-ID',
+    'Access-Control-Allow-Headers':
+      'Content-Type, Authorization, X-API-Key, X-Request-ID, X-CSRF-Token',
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Max-Age': '86400',
   };
@@ -125,6 +156,32 @@ export default auth(async function proxy(req) {
       return withRequestId(response, requestId, startTime);
     }
 
+    // CSRF protection for mutating API requests
+    const MUTATING_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
+    const CSRF_SKIP_PREFIXES = ['/api/auth/', '/api/csrf/', '/api/public/', '/api/webhooks/'];
+    const CSRF_SKIP_EXACT = ['/api/csp-report'];
+
+    if (
+      pathname.startsWith('/api/') &&
+      MUTATING_METHODS.has(req.method) &&
+      !CSRF_SKIP_PREFIXES.some((p) => pathname.startsWith(p)) &&
+      !CSRF_SKIP_EXACT.includes(pathname)
+    ) {
+      const csrfValid = await validateCsrfToken(req as NextRequest);
+      if (!csrfValid) {
+        const response = NextResponse.json(
+          {
+            error: 'Invalid CSRF token',
+            code: 'CSRF_INVALID',
+            message:
+              'The request did not include a valid CSRF token. Please refresh the page and try again.',
+          },
+          { status: 403, headers: getCorsHeaders(req) }
+        );
+        return withRequestId(response, requestId, startTime);
+      }
+    }
+
     // Public routes
     const isPublicRoute = PUBLIC_ROUTES.some(
       (route) => pathname === route || pathname.startsWith(`${route}/`)
@@ -132,6 +189,7 @@ export default auth(async function proxy(req) {
 
     if (isPublicRoute) {
       const headers = new Headers(req.headers);
+      stripTrustedHeaders(headers);
       headers.set('x-request-id', requestId);
       headers.set('x-nonce', cspNonce);
 
@@ -156,7 +214,8 @@ export default auth(async function proxy(req) {
     // Rate limiting has already been applied above
     const apiKey = req.headers.get('X-API-Key');
     if (apiKey && pathname.startsWith('/api/')) {
-      if (apiKey.length < 20 || apiKey.length > 200) {
+      const API_KEY_PATTERN = /^rsk_[A-Za-z0-9_-]{16,180}$/;
+      if (!API_KEY_PATTERN.test(apiKey)) {
         const response = NextResponse.json(
           { error: 'Invalid API key format', code: 'INVALID_API_KEY' },
           { status: 401, headers: getCorsHeaders(req) }
@@ -165,6 +224,7 @@ export default auth(async function proxy(req) {
       }
 
       const headers = new Headers(req.headers);
+      stripTrustedHeaders(headers);
       headers.set('x-request-id', requestId);
       headers.set('x-nonce', cspNonce);
 
@@ -207,14 +267,15 @@ export default auth(async function proxy(req) {
 
     // Authenticated request — forward with user context headers
     const requestHeaders = new Headers(req.headers);
+    stripTrustedHeaders(requestHeaders);
     requestHeaders.set('x-request-id', requestId);
     requestHeaders.set('x-nonce', cspNonce);
 
     if (isLoggedIn && user?.id) {
-      requestHeaders.set('x-user-id', user.id as string);
-      requestHeaders.set('x-user-role', (user.role as string) ?? 'USER');
+      requestHeaders.set('x-user-id', user.id);
+      requestHeaders.set('x-user-role', user.role ?? 'USER');
       if (user.workspaceId) {
-        requestHeaders.set('x-workspace-id', user.workspaceId as string);
+        requestHeaders.set('x-workspace-id', user.workspaceId);
       }
     }
 
@@ -257,6 +318,18 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
 
   response.headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
 
+  // Propagate CSP nonce to client-side scripts via a readable cookie.
+  // Not HttpOnly so client components can read it for inline script nonce attributes.
+  // The nonce only needs to be unguessable by remote attackers; same-origin JS
+  // reading it does not weaken CSP (an XSS attacker has already bypassed CSP).
+  if (nonce) {
+    const secureFlag = env.NODE_ENV === 'production' ? '; Secure' : '';
+    response.headers.append(
+      'Set-Cookie',
+      `__csp_nonce=${nonce}; Path=/; SameSite=Strict; Max-Age=60${secureFlag}`
+    );
+  }
+
   const n = nonce ?? '';
 
   const defaultConnectSrc = [
@@ -274,7 +347,7 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
     'https://*.vercel-scripts.com',
     'https://va.vercel-scripts.com',
     'https://*.plausible.io',
-    process.env.NEXT_PUBLIC_ANALYTICS_HOST,
+    env.NEXT_PUBLIC_ANALYTICS_HOST,
     'https://*.inngest.com',
     ...(env.NODE_ENV === 'development' ? ['http://localhost:*', 'ws://localhost:*'] : []),
     'wss://*.vercel.app',
@@ -294,10 +367,12 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
       ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:8000 https://*.vercel-scripts.com https://va.vercel-scripts.com https://vercel.live https://*.vercel.live`
       : `script-src 'self' 'nonce-${n}' https://*.vercel-scripts.com https://va.vercel-scripts.com https://vercel.live https://*.vercel.live https://cdn.jsdelivr.net`;
 
-  // NOTE: 'unsafe-inline' is ignored by browsers when a nonce is also present (CSP spec).
-  // For style-src, we use 'unsafe-inline' only — no nonce — so inline styles from
-  // third-party CSS (KaTeX, Vercel feedback widget) are not blocked.
-  const styleSrc = "style-src 'self' 'unsafe-inline'";
+  // CSP spec: when both a nonce and 'unsafe-inline' are present, browsers ignore 'unsafe-inline'.
+  // This effectively upgrades style security in production while keeping fallback for inline styles.
+  const styleSrc =
+    env.NODE_ENV === 'production'
+      ? `style-src 'self' 'nonce-${n}' 'unsafe-inline'`
+      : "style-src 'self' 'unsafe-inline'";
 
   const csp = [
     "default-src 'self'",

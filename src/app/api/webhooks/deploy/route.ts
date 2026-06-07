@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 
@@ -10,7 +11,13 @@ export async function POST(req: Request) {
 
   const authHeader = req.headers.get('authorization');
   const token = authHeader?.replace('Bearer ', '');
-  if (token !== DEPLOY_WEBHOOK_SECRET) {
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const tokenBuf = Buffer.from(token);
+  const expectedBuf = Buffer.from(DEPLOY_WEBHOOK_SECRET);
+  if (tokenBuf.length !== expectedBuf.length || !timingSafeEqual(tokenBuf, expectedBuf)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

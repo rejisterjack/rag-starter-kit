@@ -65,9 +65,9 @@ const features: Feature[] = [
     icon: Code2,
     title: '100% TypeScript',
     description:
-      'No Python, no context switching. Next.js 15 App Router, React 19, Tailwind CSS 4, shadcn/ui — all strictly typed end-to-end.',
+      'No Python, no context switching. Next.js 16 App Router, React 19, Tailwind CSS 4, shadcn/ui — all strictly typed end-to-end.',
     highlight: 'Type-safe',
-    tags: ['Next.js 15', 'React 19', 'Tailwind 4'],
+    tags: ['Next.js 16', 'React 19', 'Tailwind 4'],
   },
   {
     icon: Globe,

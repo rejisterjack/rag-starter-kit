@@ -130,12 +130,6 @@ function scoredPointToResult(point: QdrantScoredPoint): SearchResult {
 // ============================================================================
 
 export class VectorStore {
-  /**
-   * No constructor arguments — the Qdrant client is a singleton imported from
-   * @/lib/qdrant and Prisma is only used for auxiliary document lookups.
-   */
-  constructor() {}
-
   // ============================================================================
   // Core Operations
   // ============================================================================
@@ -239,7 +233,7 @@ export class VectorStore {
       throw new Error(`Chunk ${chunkId} not found in Qdrant`);
     }
 
-    const payload = existing[0]!.payload ?? {};
+    const payload = existing[0]?.payload ?? {};
     await qdrant.upsert(COLLECTION_DOCUMENT_CHUNKS, {
       wait: true,
       points: [

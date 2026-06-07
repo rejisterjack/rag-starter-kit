@@ -46,7 +46,7 @@ export default function QuickStartPage() {
 
       <div className="space-y-2">
         <Step number={1} title="Clone and install">
-          <Code>{`git clone https://github.com/nicholasgriffintn/rag-starter-kit.git my-rag-app
+          <Code>{`git clone https://github.com/rejisterjack/rag-starter-kit.git my-rag-app
 cd my-rag-app
 bun install`}</Code>
         </Step>
@@ -67,6 +67,7 @@ bun install`}</Code>
                 className="text-primary hover:underline"
               >
                 console.prisma.io
+                <span className="sr-only">(opens in new tab)</span>
               </a>
             </div>
             <div>
@@ -86,6 +87,7 @@ bun install`}</Code>
                 className="text-primary hover:underline"
               >
                 openrouter.ai/keys
+                <span className="sr-only">(opens in new tab)</span>
               </a>
             </div>
           </div>
@@ -109,6 +111,7 @@ bun install`}</Code>
               className="text-primary hover:underline"
             >
               http://localhost:7392
+              <span className="sr-only">(opens in new tab)</span>
             </a>{' '}
             and create an account.
           </p>

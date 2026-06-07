@@ -19,10 +19,13 @@ import { logger } from '@/lib/logger';
 // Configuration
 // =============================================================================
 
-const CSRF_SECRET =
-  process.env.CSRF_SECRET ||
-  process.env.NEXTAUTH_SECRET ||
-  'default-csrf-secret-change-in-production';
+const _csrfSecretSource = process.env.CSRF_SECRET || process.env.NEXTAUTH_SECRET;
+
+if (!_csrfSecretSource && process.env.NODE_ENV === 'production') {
+  throw new Error('CSRF_SECRET or NEXTAUTH_SECRET must be set in production');
+}
+
+const CSRF_SECRET = _csrfSecretSource || 'dev-only-insecure-csrf-secret';
 
 const CSRF_COOKIE_NAME = 'csrf_token';
 const TOKEN_VERSION = 'v2'; // For future upgrades
@@ -136,16 +139,24 @@ export function generateCsrfToken(req: Request, res: Response, sessionId?: strin
 
 /**
  * Generate CSRF token for App Router (Server Components)
- * Returns token and cookie header to be set
+ * Returns token and cookie header to be set.
+ * Uses the same HMAC-based format as generateCsrfToken() so tokens
+ * are compatible with validateCsrfToken().
+ *
+ * For authenticated users, callers should pass the actual user ID as `sessionId`
+ * (matching the `x-user-id` header that `validateCsrfToken` reads) so that the
+ * token is properly bound to the user's session. When omitted, the fallback
+ * matches the validation side's final fallback (`'anonymous'`).
  */
-export function generateCsrfTokenForAppRouter(): { token: string; cookieHeader: string } {
-  // For App Router, we need a different approach
-  // Generate a random token
-  const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex');
+export function generateCsrfTokenForAppRouter(sessionId?: string): {
+  token: string;
+  cookieHeader: string;
+} {
+  const effectiveSessionId = sessionId || 'anonymous';
 
-  // Create cookie header
-  const cookieValue = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex');
-  const cookieHeader = `csrf_token=${cookieValue}; HttpOnly; SameSite=Strict; Path=/; ${process.env.NODE_ENV === 'production' ? 'Secure;' : ''}`;
+  const { token, cookieValue } = generateHmacToken(effectiveSessionId);
+
+  const cookieHeader = `csrf_token=${cookieValue}; HttpOnly; SameSite=Strict; Path=/; ${process.env.NODE_ENV === 'production' ? 'Secure;' : ''}Max-Age=86400`;
 
   return { token, cookieHeader };
 }
@@ -290,7 +301,6 @@ export function CsrfTokenScript({ nonce }: CsrfTokenScriptProps): React.ReactEle
     <script
       nonce={nonce}
       suppressHydrationWarning
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: CSRF token initialization script requires inline execution
       dangerouslySetInnerHTML={{
         __html: `
           (function() {

@@ -248,7 +248,7 @@ const {
           },
         });
 
-        if (!user || !user.password) {
+        if (!user?.password) {
           // Record failed attempt
           // FIXED: Use Headers.get() instead of bracket notation
           const ipAddress = req?.headers?.get('x-forwarded-for') ?? undefined;

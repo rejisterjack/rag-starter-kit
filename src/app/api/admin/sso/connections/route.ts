@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { requireAdmin } from '@/lib/auth';
+import { APP_URL } from '@/lib/constants';
 import { prisma } from '@/lib/db';
 
 // =============================================================================
@@ -105,7 +106,7 @@ export async function POST(req: Request): Promise<Response> {
     }
 
     // Build the ACS URL
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:7392';
+    const baseUrl = APP_URL;
     const spAcsUrl = `${baseUrl}/api/auth/saml/${workspaceId}/acs`;
 
     // Create the connection

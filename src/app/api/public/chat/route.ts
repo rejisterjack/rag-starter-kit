@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { logger } from '@/lib/logger';
@@ -224,7 +224,12 @@ export async function POST(req: Request) {
         success: false,
         error: 'Failed to generate response',
         code: 'INTERNAL_ERROR',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details:
+          process.env.NODE_ENV === 'production'
+            ? 'An internal error occurred'
+            : error instanceof Error
+              ? error.message
+              : 'Unknown error',
       },
       { status: 500 }
     );
@@ -267,10 +272,18 @@ export async function GET() {
 // OPTIONS Handler - CORS
 // =============================================================================
 
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const origin = req.headers.get('origin') ?? '';
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? process.env.NEXTAUTH_URL ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const allowOrigin = allowedOrigins.includes(origin) ? origin : '';
+
   return new NextResponse(null, {
     status: 204,
     headers: {
+      ...(allowOrigin ? { 'Access-Control-Allow-Origin': allowOrigin } : {}),
       'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
       'Access-Control-Max-Age': '86400',

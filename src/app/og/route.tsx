@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
               justifyContent: 'center',
             }}
           >
-            {['Next.js 15', 'React 19', 'PostgreSQL', 'LangChain'].map((tech) => (
+            {['Next.js 16', 'React 19', 'PostgreSQL', 'LangChain'].map((tech) => (
               <span
                 key={tech}
                 style={{

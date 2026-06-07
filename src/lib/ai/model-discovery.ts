@@ -11,6 +11,8 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { generateText, type LanguageModel } from 'ai';
+import { asModel } from '@/lib/ai/types';
+import { APP_URL } from '@/lib/constants';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
 import { modelHealthCache } from './model-health-cache';
@@ -53,7 +55,7 @@ interface OpenRouterModel {
 const openrouter = createOpenRouter({
   apiKey: env.OPENROUTER_API_KEY,
   headers: {
-    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392',
+    'HTTP-Referer': APP_URL,
     'X-Title': 'RAG Starter Kit',
   },
 });
@@ -151,26 +153,26 @@ let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 export function resolveModel(modelId: string): LanguageModel | null {
   if (modelId.startsWith('groq/')) {
     if (!groq) return null;
-    return groq(modelId.slice(5)) as unknown as LanguageModel;
+    return asModel<LanguageModel>(groq(modelId.slice(5)));
   }
   if (modelId.startsWith('nvidia-nim/')) {
     if (!nvidia) return null;
-    return nvidia(modelId.slice(11)) as unknown as LanguageModel;
+    return asModel<LanguageModel>(nvidia(modelId.slice(11)));
   }
   if (modelId.startsWith('cerebras/')) {
     if (!cerebras) return null;
-    return cerebras(modelId.slice(9)) as unknown as LanguageModel;
+    return asModel<LanguageModel>(cerebras(modelId.slice(9)));
   }
   if (modelId.startsWith('sambanova/')) {
     if (!sambanova) return null;
-    return sambanova(modelId.slice(10)) as unknown as LanguageModel;
+    return asModel<LanguageModel>(sambanova(modelId.slice(10)));
   }
   if (modelId.startsWith('mistral/')) {
     if (!mistral) return null;
-    return mistral(modelId.slice(8)) as unknown as LanguageModel;
+    return asModel<LanguageModel>(mistral(modelId.slice(8)));
   }
   // Default: OpenRouter
-  return openrouter.chat(modelId) as unknown as LanguageModel;
+  return asModel<LanguageModel>(openrouter.chat(modelId));
 }
 
 /**
@@ -283,7 +285,7 @@ async function probeModels(modelIds: string[]): Promise<string[]> {
         if (!model) throw new Error(`No provider for ${id}`);
 
         const result = await generateText({
-          model: model as unknown as LanguageModel,
+          model: asModel<LanguageModel>(model),
           messages: [{ role: 'user', content: 'Say hello in one sentence.' }],
           maxTokens: 20,
           abortSignal: AbortSignal.timeout(PROBE_TIMEOUT_MS),

@@ -217,7 +217,13 @@ export function VoiceMessageItem({
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopy}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={handleCopy}
+                      aria-label="Copy message"
+                    >
                       {copied ? (
                         <Check className="h-4 w-4 text-green-500" />
                       ) : (

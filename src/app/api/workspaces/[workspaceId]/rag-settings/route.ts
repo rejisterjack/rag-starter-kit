@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withApiAuth } from '@/lib/auth';
 import { prisma, prismaRead } from '@/lib/db/client';
+import { fromJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 import { getWorkspaceResourceUsage } from '@/lib/workspace/resource-limits';
@@ -58,7 +59,7 @@ export const GET = withApiAuth(async (_req, session, { params }: RouteParams) =>
     }
 
     // Parse RAG settings from workspace settings JSON
-    const settings = workspace.settings as Record<string, unknown> | null;
+    const settings = fromJson<Record<string, unknown> | null>(workspace.settings, null);
     const ragSettings = settings?.rag || {};
 
     // Get current resource usage
@@ -118,7 +119,7 @@ export const PUT = withApiAuth(async (req, session, { params }: RouteParams) => 
     }
 
     // Merge with existing settings
-    const currentSettings = (workspace.settings as Record<string, unknown>) || {};
+    const currentSettings = fromJson<Record<string, unknown>>(workspace.settings, {});
     const updatedSettings = {
       ...currentSettings,
       rag: {

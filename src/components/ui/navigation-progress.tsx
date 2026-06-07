@@ -19,9 +19,11 @@ export function NavigationProgress() {
   const [state, setState] = useState<'idle' | 'loading' | 'completing'>('idle');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: re-trigger on any route change
   useEffect(() => {
     // On route change start: begin the loading animation
+    // pathname and searchParams trigger this effect on route changes
+    void pathname;
+    void searchParams;
     setState('loading');
 
     // After a short delay, mark as completing (simulates the finish)

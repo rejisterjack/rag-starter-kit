@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { defineConfig, env } from 'prisma/config';
 
-// Prisma 7 configuration
+// Prisma 7 configuration for Neon
 // - datasource.url: used by Prisma Migrate (CLI) for running migrations
 // - The PrismaClient at runtime uses @prisma/adapter-pg (see src/lib/db/client.ts)
 export default defineConfig({
@@ -11,6 +11,6 @@ export default defineConfig({
     seed: 'tsx prisma/seed.ts',
   },
   datasource: {
-    url: env('DIRECT_URL'),
+    url: env('DATABASE_URL'),
   },
 });

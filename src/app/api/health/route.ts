@@ -9,6 +9,8 @@
  */
 
 import { NextResponse } from 'next/server';
+import { APP_URL } from '@/lib/constants';
+import { logger } from '@/lib/logger';
 import { checkMemoryRateLimit } from '@/lib/security/rate-limiter';
 
 // =============================================================================
@@ -232,15 +234,16 @@ export async function GET(): Promise<NextResponse> {
   // ~1% of health checks trigger the cleanup endpoint
   if (Math.random() < 0.01) {
     try {
-      const cleanupUrl = new URL(
-        '/api/cron/cleanup',
-        process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392'
-      );
+      const cleanupUrl = new URL('/api/cron/cleanup', APP_URL);
       fetch(cleanupUrl.toString(), {
         method: 'POST',
         headers: { Authorization: `Bearer ${process.env.CRON_SECRET || 'dev'}` },
       }).catch(() => {}); // fire-and-forget
-    } catch {}
+    } catch (cleanupError) {
+      logger.warn('Failed to trigger cleanup cron', {
+        error: cleanupError instanceof Error ? cleanupError.message : 'Unknown',
+      });
+    }
   }
 
   return NextResponse.json(

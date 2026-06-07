@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "RAG Starter Kit - Chatbot RAG Listo para Producción",
-    "description": "Una plantilla de chatbot RAG (Generación Aumentada por Recuperación) lista para producción, impulsada por Next.js 15, LangChain y PostgreSQL pgvector."
+    "description": "Una plantilla de chatbot RAG (Generación Aumentada por Recuperación) lista para producción, impulsada por Next.js 16, LangChain y PostgreSQL pgvector."
   },
   "navigation": {
     "home": "Inicio",

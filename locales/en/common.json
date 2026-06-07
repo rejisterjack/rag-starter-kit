@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "RAG Starter Kit - Production-Ready RAG Chatbot",
-    "description": "A production-ready RAG (Retrieval-Augmented Generation) chatbot boilerplate powered by Next.js 15, LangChain, and PostgreSQL pgvector."
+    "description": "A production-ready RAG (Retrieval-Augmented Generation) chatbot boilerplate powered by Next.js 16, LangChain, and PostgreSQL pgvector."
   },
   "navigation": {
     "home": "Home",

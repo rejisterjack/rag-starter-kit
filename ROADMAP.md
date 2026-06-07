@@ -201,7 +201,7 @@ This phase is not code. It's the work that turns a good repo into a project peop
 | 4.1 | Deep-dive article: "Building a production RAG system in TypeScript" | 📋 Planned | The flagship piece of content. Target dev.to, Hashnode, and a Reddit post to r/LocalLLM |
 | 4.2 | Post to r/LocalLLM | 📋 Planned | "I built a TypeScript RAG chatbot — Next.js, pgvector, voice I/O, one-click Vercel" |
 | 4.3 | Post to r/selfhosted | 📋 Planned | Same project, different framing — focus on data privacy and cloud-native deployment |
-| 4.4 | Post to r/nextjs | 📋 Planned | Focus on the Next.js 15 + App Router + streaming implementation |
+| 4.4 | Post to r/nextjs | 📋 Planned | Focus on the Next.js 16 + App Router + streaming implementation |
 | 4.5 | Submit to "awesome-selfhosted" list | 📋 Planned | High-traffic GitHub list, permanent inbound traffic |
 | 4.6 | Submit to "awesome-langchain" or "awesome-llm" list | 📋 Planned | Developer discoverability |
 | 4.7 | GitHub Discussions enabled for Q&A | 📋 Planned | Let users ask questions publicly, builds a searchable knowledge base |

@@ -83,7 +83,7 @@ test.describe('Chat Rate Limiting', () => {
     }
   });
 
-  test('should reset rate limit after window', async ({ request }) => {
+  test('should reset rate limit after window', async () => {
     // This test would need to wait for the rate limit window
     // In practice, you might mock time or use a test-specific shorter window
     test.skip(true, 'Requires time manipulation or test-specific config');

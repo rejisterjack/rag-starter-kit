@@ -7,11 +7,11 @@
 
 import { logger } from '@/lib/logger';
 import {
-  COLLECTION_DOCUMENT_CHUNKS,
   type ChunkPointData,
-  type UpsertOptions,
+  COLLECTION_DOCUMENT_CHUNKS,
   deleteByDocumentId,
   qdrant,
+  type UpsertOptions,
   upsertChunks,
 } from '@/lib/qdrant';
 
@@ -172,14 +172,18 @@ export async function batchUpdateEmbeddings(
       retrieved.map((p) => [
         String(p.id),
         {
-          payload: (p.payload ?? {}) as Record<string, unknown>,
+          payload: p.payload ?? {},
           vector: p.vector as number[] | undefined,
         },
       ])
     );
 
     // Upsert each point with the new embedding
-    const pointsToUpsert: Array<{ id: string; vector: number[]; payload: Record<string, unknown> }> = [];
+    const pointsToUpsert: Array<{
+      id: string;
+      vector: number[];
+      payload: Record<string, unknown>;
+    }> = [];
     for (const update of batch) {
       const existing = pointMap.get(update.chunkId);
       if (!existing) {
@@ -267,13 +271,17 @@ export async function batchUpdateChunks(
       retrieved.map((p) => [
         String(p.id),
         {
-          payload: (p.payload ?? {}) as Record<string, unknown>,
+          payload: p.payload ?? {},
           vector: p.vector as number[] | undefined,
         },
       ])
     );
 
-    const pointsToUpsert: Array<{ id: string; vector: number[]; payload: Record<string, unknown> }> = [];
+    const pointsToUpsert: Array<{
+      id: string;
+      vector: number[];
+      payload: Record<string, unknown>;
+    }> = [];
     for (const update of batch) {
       const existing = pointMap.get(update.chunkId);
       if (!existing) {
@@ -404,9 +412,7 @@ export async function batchDeleteDocumentChunks(
 export async function streamProcessChunks<T>(
   _prisma: unknown,
   documentId: string,
-  processor: (
-    chunks: Array<{ id: string; content: string; index: number }>
-  ) => Promise<T[]>,
+  processor: (chunks: Array<{ id: string; content: string; index: number }>) => Promise<T[]>,
   options: { batchSize?: number; onProgress?: (processed: number) => void } = {}
 ): Promise<T[]> {
   const { batchSize = 100, onProgress } = options;

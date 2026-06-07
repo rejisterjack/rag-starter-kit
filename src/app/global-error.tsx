@@ -52,7 +52,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps): React.R
   }, [error]);
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
         <div
           style={{

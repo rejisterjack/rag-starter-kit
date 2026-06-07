@@ -10,6 +10,7 @@
 import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { APP_URL } from '@/lib/constants';
 import { getAuthorizationUrl, type NotionOAuthConfig } from '@/lib/integrations/notion-oauth';
 import { logger } from '@/lib/logger';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
@@ -21,7 +22,7 @@ import { checkPermission, Permission } from '@/lib/workspace/permissions';
 function getOAuthConfig(): NotionOAuthConfig | null {
   const clientId = process.env.NOTION_CLIENT_ID;
   const clientSecret = process.env.NOTION_CLIENT_SECRET;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392';
+  const appUrl = APP_URL;
 
   if (!clientId || !clientSecret) {
     return null;
