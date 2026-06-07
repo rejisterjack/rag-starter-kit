@@ -390,14 +390,10 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
       ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:8000 https://*.vercel-scripts.com https://va.vercel-scripts.com https://vercel.live https://*.vercel.live`
       : `script-src 'self' 'nonce-${n}' https://*.vercel-scripts.com https://va.vercel-scripts.com https://vercel.live https://*.vercel.live https://cdn.jsdelivr.net`;
 
-  // CSP spec: when both a nonce and 'unsafe-inline' are present, browsers ignore 'unsafe-inline'.
-  // This effectively upgrades style security in production while keeping fallback for inline styles.
-  // CSP spec: browsers ignore 'unsafe-inline' when a nonce is present.
-  // Keeping it as a no-op guard — DO NOT remove the nonce or this becomes a real vulnerability.
-  const styleSrc =
-    env.NODE_ENV === 'production'
-      ? `style-src 'self' 'nonce-${n}' 'unsafe-inline'`
-      : "style-src 'self' 'unsafe-inline'";
+  // NOTE: 'unsafe-inline' is ignored by browsers when a nonce is also present (CSP spec).
+  // For style-src, we use 'unsafe-inline' only — no nonce — so inline styles from
+  // React, Radix UI, Tailwind, and third-party CSS are not blocked.
+  const styleSrc = "style-src 'self' 'unsafe-inline'";
 
   const csp = [
     "default-src 'self'",

@@ -213,8 +213,8 @@ describe('useDocuments', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data).toHaveLength(2);
-      expect(result.current.data?.[0].text).toBe('First chunk content');
+      expect(result.current.data?.chunks).toHaveLength(2);
+      expect(result.current.data?.chunks?.[0].text).toBe('First chunk content');
     });
 
     it('does not fetch when documentId is null', () => {

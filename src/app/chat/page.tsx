@@ -118,6 +118,16 @@ export default function ChatPage(): React.ReactElement {
     return undefined;
   }, [uploadState.files, uploadState]);
 
+  // Reset previewDocumentId if the document is deleted or no longer exists in documents list
+  useEffect(() => {
+    if (previewDocumentId && documentsQuery.isSuccess) {
+      const exists = documents.some((d) => d.id === previewDocumentId);
+      if (!exists) {
+        setPreviewDocumentId(null);
+      }
+    }
+  }, [previewDocumentId, documents, documentsQuery.isSuccess]);
+
   const handleNewChat = useCallback(async () => {
     const newChatId = await createChatMutation.mutateAsync({
       title: 'New Chat',
@@ -207,7 +217,12 @@ export default function ChatPage(): React.ReactElement {
         isLoading: documentsQuery.isLoading,
         mutatingDocumentId: deleteMutation.variables || reingestMutation.variables,
         onUpload: () => setIsUploadOpen(true),
-        onDelete: (id: string) => deleteMutation.mutate(id),
+        onDelete: (id: string) => {
+          if (previewDocumentId === id) {
+            setPreviewDocumentId(null);
+          }
+          deleteMutation.mutate(id);
+        },
         onReingest: (id: string) => reingestMutation.mutate(id),
         onPreview: handlePreview,
         selectedDocumentId: previewDocumentId ?? undefined,
