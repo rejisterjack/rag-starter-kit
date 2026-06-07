@@ -248,6 +248,38 @@ export async function deleteImagePoints(documentId: string): Promise<number> {
   return countResult.count;
 }
 
+export interface DocumentChunk {
+  id: string;
+  text: string;
+  index: number;
+  page?: number | null;
+  section?: string | null;
+}
+
+export async function getChunksByDocumentId(
+  documentId: string,
+  limit = 200
+): Promise<DocumentChunk[]> {
+  const results = await qdrant.scroll(COLLECTION_DOCUMENT_CHUNKS, {
+    filter: {
+      must: [{ key: 'documentId', match: { value: documentId } }],
+    },
+    with_payload: true,
+    limit,
+    order_by: { key: 'index', direction: 'asc' },
+  });
+
+  return (results.points as Array<{ id: string | number; payload?: Record<string, unknown> }>).map(
+    (point) => ({
+      id: String(point.id),
+      text: (point.payload?.content as string) ?? '',
+      index: (point.payload?.index as number) ?? 0,
+      page: point.payload?.page as number | null,
+      section: point.payload?.section as string | null,
+    })
+  );
+}
+
 export async function getDocumentStats(documentId: string): Promise<{
   totalChunks: number;
   chunksWithEmbeddings: number;

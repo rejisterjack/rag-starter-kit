@@ -270,13 +270,8 @@ export default function ChatPage(): React.ReactElement {
         }
         isOpen={!!previewDocumentId}
         onClose={() => setPreviewDocumentId(null)}
-        chunks={
-          previewQuery.data?.map((chunk) => ({
-            id: chunk.id,
-            index: chunk.index,
-            text: chunk.text,
-          })) || []
-        }
+        content={previewQuery.data?.content}
+        chunks={previewQuery.data?.chunks || []}
       />
     </div>
   );

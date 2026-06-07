@@ -88,9 +88,9 @@ export async function processDocumentInline(
   let parsedText = document.content;
 
   if (!parsedText) {
-    if (document.storageUrl && document.storageKey) {
-      logger.info('Downloading from Cloudinary', { documentId, storageKey: document.storageKey });
-      const buffer = await getFile(document.storageKey);
+    if (document.storageUrl) {
+      logger.info('Downloading from Cloudinary', { documentId, storageUrl: document.storageUrl });
+      const buffer = await getFile(document.storageUrl);
       logger.info('Downloaded file from Cloudinary', { documentId, bufferSize: buffer.length });
       logger.info('Parsing document', { documentId, contentType: document.contentType });
       switch (document.contentType) {

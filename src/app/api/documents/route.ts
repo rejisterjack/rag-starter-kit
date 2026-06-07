@@ -146,6 +146,7 @@ export async function GET(req: NextRequest) {
         status: true,
         metadata: true,
         chunkCount: true,
+        storageUrl: true,
         createdAt: true,
         ingestionJob: { select: { progress: true, error: true, errorCategory: true } },
       },
@@ -165,6 +166,7 @@ export async function GET(req: NextRequest) {
         status: STATUS_MAP[doc.status] || 'pending',
         progress: doc.ingestionJob?.progress,
         chunkCount: doc.chunkCount,
+        storageUrl: doc.storageUrl,
         createdAt: doc.createdAt.toISOString(),
         errorMessage:
           doc.ingestionJob?.error ||

@@ -45,6 +45,8 @@ export interface Document {
   status: DocumentStatus;
   progress?: number;
   chunkCount?: number;
+  storageUrl?: string;
+  content?: string;
   createdAt: Date;
   errorMessage?: string;
   errorCategory?: ErrorCategory;

@@ -37,7 +37,11 @@ interface DocumentListResponse {
 
 interface DocumentDetailResponse {
   success: boolean;
-  data: { chunks: Array<{ id: string; index: number; text: string }> };
+  data: {
+    content?: string;
+    storageUrl?: string;
+    chunks: Array<{ id: string; index: number; text: string }>;
+  };
 }
 
 interface IngestResponse {
@@ -196,7 +200,7 @@ export function useDocumentPreview(documentId: string | null) {
     queryKey: documentKeys.detail(documentId || ''),
     queryFn: async () => {
       const data = await apiClient<DocumentDetailResponse>(`/api/documents/${documentId}`);
-      return data.data.chunks || [];
+      return data.data;
     },
     enabled: !!documentId,
   });

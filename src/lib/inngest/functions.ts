@@ -175,8 +175,7 @@ export const processDocumentJob = inngest.createFunction(
 
       // Case 1: File uploaded to Cloudinary — download and parse
       if (!document.content && document.storageUrl) {
-        const storageKey = document.storageKey || `documents/${documentId}`;
-        const buffer = await getFile(storageKey);
+        const buffer = await getFile(document.storageUrl);
 
         const parsed = await parseBuffer(buffer, document.contentType);
         await prisma.document.update({

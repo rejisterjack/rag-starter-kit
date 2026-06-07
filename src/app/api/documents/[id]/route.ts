@@ -20,6 +20,7 @@ import {
   updateWithVersion,
 } from '@/lib/db/optimistic-locking';
 import { logger } from '@/lib/logger';
+import { getChunksByDocumentId } from '@/lib/qdrant/points';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // Document status mapping from DB to UI
@@ -83,9 +84,24 @@ export const GET = withApiAuth(
           ? 'private, max-age=30, stale-while-revalidate=60'
           : 'no-cache';
 
-      // Step 4: Fetch chunk stats from Qdrant and format response
+      // Step 4: Fetch chunks from Qdrant and format response
       const metadata = fromJson<Record<string, unknown>>(document.metadata, {});
       const chunkCount = document.chunkCount;
+
+      let chunks: Array<{
+        id: string;
+        text: string;
+        index: number;
+        page?: number | null;
+        section?: string | null;
+      }> = [];
+      if (document.status === 'COMPLETED' && chunkCount > 0) {
+        try {
+          chunks = await getChunksByDocumentId(documentId);
+        } catch {
+          // Qdrant unavailable — preview will show "not available"
+        }
+      }
 
       const formattedDocument = {
         id: document.id,
@@ -95,6 +111,7 @@ export const GET = withApiAuth(
             ? 'text/html'
             : `application/${document.contentType.toLowerCase()}`,
         size: document.size,
+        storageUrl: document.storageUrl,
         status: STATUS_MAP[document.status] || 'pending',
         progress: document.ingestionJob?.progress,
         chunkCount,
@@ -112,7 +129,7 @@ export const GET = withApiAuth(
           ocrConfidence: document.ocrConfidence,
           ocrLanguage: document.ocrLanguage,
         },
-        chunks: [],
+        chunks,
         jobStatus: document.ingestionJob
           ? {
               status: document.ingestionJob.status,
