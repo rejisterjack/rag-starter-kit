@@ -10,6 +10,22 @@ import { prismaRead } from '@/lib/db';
 import { getFile } from '@/lib/storage';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+const ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'text/plain',
+  'text/markdown',
+  'text/csv',
+  'application/json',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+]);
+
 const MIME_TYPES: Record<string, string> = {
   PDF: 'application/pdf',
   DOCX: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -65,11 +81,30 @@ export const GET = withApiAuth(
         );
       }
 
-      // 4. Download file from storage backend
+      // 4. Validate MIME type before downloading
+      const contentType = MIME_TYPES[document.contentType] || 'application/octet-stream';
+      if (!ALLOWED_MIME_TYPES.has(contentType)) {
+        return NextResponse.json(
+          { success: false, error: { code: 'UNSUPPORTED_TYPE', message: 'Unsupported file type' } },
+          { status: 415 }
+        );
+      }
+
+      // 5. Download file from storage backend
       const buffer = await getFile(storageKey);
 
-      // 5. Stream back response with correct headers
-      const contentType = MIME_TYPES[document.contentType] || 'application/octet-stream';
+      // 6. Enforce file size limit
+      if (buffer.byteLength > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: 'PAYLOAD_TOO_LARGE', message: 'File exceeds maximum allowed size' },
+          },
+          { status: 413 }
+        );
+      }
+
+      // 7. Stream back response with correct headers
 
       const response = new NextResponse(new Uint8Array(buffer), {
         status: 200,

@@ -89,7 +89,9 @@ async function handler(req: NextRequest) {
         event: AuditEvent.PASSWORD_RESET_REQUESTED,
         userId: user.id,
         metadata: { email },
-      }).catch(() => {});
+      }).catch((error) => {
+        logger.error('Failed to log password reset audit event', { error });
+      });
     }
 
     // Always return the same response regardless of whether user exists

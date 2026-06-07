@@ -33,6 +33,7 @@ jobs:
           restore-keys: ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
       - run: bun run test:unit
+      - run: bun run test:integration
 
   build:
     runs-on: ubuntu-latest

@@ -4,6 +4,7 @@ import { ArrowRight, Bot, Send, Sparkles, User } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 
 export default function DemoPage(): React.ReactElement {
   const [messages, setMessages] = useState<Array<{ id: string; role: string; content: string }>>([
@@ -132,15 +133,21 @@ export default function DemoPage(): React.ReactElement {
       <div className="p-4 border-t border-border bg-background/80 backdrop-blur-md">
         <div className="max-w-4xl mx-auto relative">
           <form onSubmit={handleSubmit} className="relative flex items-center">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything about the RAG Starter Kit..."
-              aria-label="Chat message"
-              className="w-full bg-muted/50 border border-border rounded-full px-6 py-4 pr-14 focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground"
-              disabled={isLoading}
-            />
+            <div className="w-full">
+              <Label htmlFor="demo-chat-input" className="sr-only">
+                Chat message
+              </Label>
+              <input
+                id="demo-chat-input"
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask anything about the RAG Starter Kit..."
+                aria-label="Type your message"
+                className="w-full bg-muted/50 border border-border rounded-full px-6 py-4 pr-14 focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground"
+                disabled={isLoading}
+              />
+            </div>
             <Button
               type="submit"
               size="icon"

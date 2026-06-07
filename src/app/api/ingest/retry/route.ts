@@ -165,13 +165,17 @@ export const POST = withApiAuth(async (req, session) => {
             metadata: { error: errMsg, failedAt: new Date().toISOString() },
           },
         })
-        .catch(() => {});
+        .catch((error) => {
+          logger.error('Failed to mark document as FAILED on retry', { documentId, error });
+        });
       await prisma.ingestionJob
         .updateMany({
           where: { documentId },
           data: { status: 'FAILED', error: errMsg, completedAt: new Date() },
         })
-        .catch(() => {});
+        .catch((error) => {
+          logger.error('Failed to mark ingestion jobs as FAILED on retry', { documentId, error });
+        });
     });
 
     // Also notify Inngest (opportunistic — may or may not be running)

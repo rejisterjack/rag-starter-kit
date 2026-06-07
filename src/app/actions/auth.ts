@@ -1,8 +1,10 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { signIn } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { registerSchema, signInSchema } from '@/lib/validation';
 
 interface ActionResult {
@@ -27,6 +29,14 @@ export async function signInWithCredentials(
   const { email, password } = parsed.data;
 
   try {
+    const reqHeaders = await headers();
+    const ip =
+      reqHeaders.get('x-forwarded-for')?.split(',')[0] || reqHeaders.get('x-real-ip') || 'unknown';
+    const rl = await checkRateLimit(`signin:${ip}`, 'login');
+    if (!rl.success) {
+      return { success: false, error: 'Too many attempts. Please try again later.' };
+    }
+
     const result = await signIn('credentials', {
       email,
       password,

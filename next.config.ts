@@ -205,6 +205,13 @@ const nextConfig: NextConfig = {
 const isDev = process.env.NODE_ENV === 'development';
 const baseConfig = withBundleAnalyzer(withMDX(nextConfig));
 
+if (!isDev && !process.env.SENTRY_DSN) {
+	console.warn(
+		'[next.config] SENTRY_DSN is not set — error tracking is disabled in production. ' +
+		'Set the SENTRY_DSN environment variable to enable Sentry.'
+	);
+}
+
 export default !isDev && process.env.SENTRY_DSN
   ? withSentryConfig(baseConfig, { silent: true })
   : baseConfig;

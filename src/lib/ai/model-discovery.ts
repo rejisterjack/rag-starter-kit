@@ -348,7 +348,9 @@ export async function refreshDiscovery(): Promise<void> {
   if (!refreshTimer) {
     refreshTimer = setTimeout(() => {
       refreshTimer = null;
-      refreshDiscovery().catch(() => {});
+      refreshDiscovery().catch((error) => {
+        logger.error('Failed to refresh model discovery (scheduled)', { error });
+      });
     }, CACHE_TTL_MS);
     refreshTimer.unref?.();
   }
@@ -396,7 +398,9 @@ async function buildModelChain(
       discoveredModels = cachedDiscoveredModels;
       source = 'cache';
       // Trigger background refresh
-      refreshDiscovery().catch(() => {});
+      refreshDiscovery().catch((error) => {
+        logger.error('Failed to refresh model discovery (background)', { error });
+      });
     } else {
       // First run — do a blocking discovery attempt
       try {

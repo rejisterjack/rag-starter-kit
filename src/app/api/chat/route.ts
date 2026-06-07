@@ -1124,10 +1124,20 @@ export async function GET(req: NextRequest) {
 // =============================================================================
 
 export async function DELETE(req: NextRequest) {
+  const writeLog = (msg: string, meta?: unknown) => {
+    logger.debug(
+      msg,
+      typeof meta === 'object' && meta !== null ? (meta as Record<string, unknown>) : undefined
+    );
+  };
+
   try {
+    writeLog('DELETE CHAT - Handler entered');
     // Authenticate user
     const session = await auth();
+    writeLog('DELETE CHAT - Session retrieved', session);
     if (!session?.user?.id) {
+      writeLog('DELETE CHAT - Unauthorized');
       return NextResponse.json(
         { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
         { status: 401 }
@@ -1140,8 +1150,10 @@ export async function DELETE(req: NextRequest) {
     // Parse query parameters
     const { searchParams } = new URL(req.url);
     const chatId = searchParams.get('chatId');
+    writeLog('DELETE CHAT - Parsed params', { chatId, userId, workspaceId });
 
     if (!chatId) {
+      writeLog('DELETE CHAT - Missing chatId');
       return NextResponse.json(
         { success: false, error: { code: 'MISSING_ID', message: 'chatId is required' } },
         { status: 400 }
@@ -1149,14 +1161,21 @@ export async function DELETE(req: NextRequest) {
     }
 
     // Verify user has access to delete this chat
+    writeLog('DELETE CHAT - Querying database');
     const chat = await prismaRead.chat.findFirst({
       where: {
         id: chatId,
-        OR: [{ userId }, workspaceId ? { workspaceId } : {}],
+        ...(workspaceId ? { OR: [{ userId }, { workspaceId }] } : { userId }),
       },
+    });
+    writeLog('DELETE CHAT - Query result', {
+      chatFound: !!chat,
+      chatUserId: chat?.userId,
+      chatWorkspaceId: chat?.workspaceId,
     });
 
     if (!chat) {
+      writeLog('DELETE CHAT - Chat not found or access denied');
       return NextResponse.json(
         { success: false, error: { code: 'NOT_FOUND', message: 'Chat not found' } },
         { status: 404 }
@@ -1165,7 +1184,9 @@ export async function DELETE(req: NextRequest) {
 
     // Check delete permission for workspace chats
     if (chat.workspaceId && chat.userId !== userId) {
+      writeLog('DELETE CHAT - Checking permission for workspace chat owned by someone else');
       const canDelete = await checkPermission(userId, chat.workspaceId, Permission.DELETE_CHATS);
+      writeLog('DELETE CHAT - Permission check result', { canDelete });
       if (!canDelete) {
         return NextResponse.json(
           { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
@@ -1175,9 +1196,11 @@ export async function DELETE(req: NextRequest) {
     }
 
     // Delete chat (cascade will handle messages)
+    writeLog('DELETE CHAT - Executing prisma delete');
     await prisma.chat.delete({
       where: { id: chatId },
     });
+    writeLog('DELETE CHAT - Database delete succeeded');
 
     // Log deletion (fire-and-forget)
     logAuditEvent({
@@ -1192,8 +1215,9 @@ export async function DELETE(req: NextRequest) {
       data: { message: 'Chat deleted successfully' },
     });
   } catch (error) {
-    logger.warn('Failed to delete chat', {
+    writeLog('DELETE CHAT - Error caught', {
       error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
     });
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to delete chat' } },
@@ -1264,7 +1288,7 @@ export async function PATCH(req: NextRequest) {
     const chat = await prismaRead.chat.findFirst({
       where: {
         id: chatId,
-        OR: [{ userId }, workspaceId ? { workspaceId } : {}],
+        ...(workspaceId ? { OR: [{ userId }, { workspaceId }] } : { userId }),
       },
     });
 

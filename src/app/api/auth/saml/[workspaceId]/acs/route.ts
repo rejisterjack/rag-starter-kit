@@ -346,7 +346,9 @@ async function createSession(userId: string, workspaceId: string): Promise<strin
     },
   });
 
-  await trackSession(userId, jti).catch(() => {});
+  await trackSession(userId, jti).catch((error) => {
+    logger.error('Failed to track SAML session', { userId, jti, error });
+  });
 
   return token;
 }

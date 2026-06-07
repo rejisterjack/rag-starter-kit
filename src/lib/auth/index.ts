@@ -146,6 +146,20 @@ const {
     maxAge: 7 * 24 * 60 * 60, // 7 days - reduced from 30 for security
     updateAge: 24 * 60 * 60, // 24 hours
   },
+  cookies: {
+    sessionToken: {
+      name:
+        process.env.NODE_ENV === 'production'
+          ? '__Secure-next-auth.session-token'
+          : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+  },
   providers: [
     // GitHub OAuth Provider
     GitHub({

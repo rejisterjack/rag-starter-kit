@@ -591,7 +591,12 @@ export const cleanupStaleJobs = inngest.createFunction(
         });
 
         // Remove vector chunks but keep the Cloudinary file so the user can retry
-        await deleteByDocumentId(job.documentId).catch(() => {});
+        await deleteByDocumentId(job.documentId).catch((error) => {
+          logger.error('Failed to delete vectors for stale job', {
+            documentId: job.documentId,
+            error,
+          });
+        });
       });
     }
 

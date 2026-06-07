@@ -2,7 +2,6 @@
 
 import dynamic from 'next/dynamic';
 import React from 'react';
-import 'katex/dist/katex.min.css';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';

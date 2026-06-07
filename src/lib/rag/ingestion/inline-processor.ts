@@ -59,7 +59,9 @@ export async function processDocumentInline(
   logger.info('Inline processor started', { documentId });
 
   // Create/update ingestion job
-  await prisma.ingestionJob.deleteMany({ where: { documentId } }).catch(() => {});
+  await prisma.ingestionJob.deleteMany({ where: { documentId } }).catch((error) => {
+    logger.error('Failed to delete existing ingestion jobs', { documentId, error });
+  });
   let job = await prisma.ingestionJob.findFirst({ where: { documentId } });
   if (!job) {
     job = await prisma.ingestionJob.create({
@@ -235,7 +237,9 @@ export async function processDocumentInline(
           completedAt: new Date(),
         },
       })
-      .catch(() => {});
+      .catch((error) => {
+        logger.error('Failed to create completed ingestion job record', { documentId, error });
+      });
 
     logger.info('Document processed directly', {
       documentId,
@@ -256,14 +260,24 @@ export async function processDocumentInline(
           metadata: { ...metadata, error: errMsg, failedAt: new Date().toISOString() },
         },
       })
-      .catch(() => {});
+      .catch((error) => {
+        logger.error('Failed to mark document as FAILED in inline processor', {
+          documentId,
+          error,
+        });
+      });
 
     await prisma.ingestionJob
       .updateMany({
         where: { documentId },
         data: { status: 'FAILED', error: errMsg, completedAt: new Date() },
       })
-      .catch(() => {});
+      .catch((error) => {
+        logger.error('Failed to mark ingestion jobs as FAILED in inline processor', {
+          documentId,
+          error,
+        });
+      });
 
     logger.error('Inline processor failed', { documentId, error: errMsg });
     throw error;

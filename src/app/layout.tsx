@@ -74,7 +74,7 @@ export const metadata: Metadata = {
         url: '/og',
         width: 1200,
         height: 630,
-        alt: 'RAG Starter Kit - Production-Ready RAG Chatbot Boilerplate',
+        alt: 'RAG Starter Kit — AI-Powered Document Search',
       },
     ],
   },

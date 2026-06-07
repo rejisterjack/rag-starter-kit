@@ -286,7 +286,9 @@ function handleUnknownError(
     severity: 'ERROR',
     ipAddress: context.ipAddress,
     userAgent: context.userAgent,
-  }).catch(() => {});
+  }).catch((error) => {
+    logger.error('Failed to log error audit event', { requestId, error });
+  });
 
   return NextResponse.json(
     {

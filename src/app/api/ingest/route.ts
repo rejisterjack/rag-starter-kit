@@ -1043,13 +1043,17 @@ function dispatchOrProcessDirect(documentId: string, userId: string) {
         where: { id: documentId },
         data: { status: 'FAILED', metadata: { error: errMsg, failedAt: new Date().toISOString() } },
       })
-      .catch(() => {});
+      .catch((error) => {
+        logger.error('Failed to mark document as FAILED', { documentId, error });
+      });
     await prisma.ingestionJob
       .updateMany({
         where: { documentId },
         data: { status: 'FAILED', error: errMsg, completedAt: new Date() },
       })
-      .catch(() => {});
+      .catch((error) => {
+        logger.error('Failed to mark ingestion jobs as FAILED', { documentId, error });
+      });
   });
 }
 

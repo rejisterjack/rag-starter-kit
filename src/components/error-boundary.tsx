@@ -5,6 +5,7 @@ import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { clientLogger } from '@/lib/client-logger';
 
 interface ErrorBoundaryProps {
   error: Error & { digest?: string };
@@ -50,7 +51,9 @@ export function ErrorBoundary({
             new Blob([JSON.stringify(payload)], { type: 'application/json' })
           );
         }
-      } catch {}
+      } catch (error) {
+        clientLogger.error('Failed to report error via beacon', { error });
+      }
     }
   }, [error, sentryTag]);
 
