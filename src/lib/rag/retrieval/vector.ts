@@ -5,8 +5,8 @@
  * pre-filtering by metadata and score threshold.
  */
 
-import { buildQdrantFilterFromRetrievalOptions } from '@/lib/qdrant/filters';
-import { batchSearch, searchSimilar } from '@/lib/qdrant/points';
+import { buildQdrantFilterFromRetrievalOptions } from '@/lib/vector/filters';
+import { batchSearch, searchSimilar } from '@/lib/vector/points';
 import type { RetrievalOptions, RetrievedChunk, VectorSearchConfig } from './types';
 
 /**

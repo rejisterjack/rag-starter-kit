@@ -7,6 +7,7 @@
 
 import path from 'node:path';
 import { expect, test as setup } from '@playwright/test';
+import { TEST_EMAIL, TEST_PASSWORD } from './fixtures/credentials';
 
 const authFile = path.join(__dirname, '../playwright/.auth/user.json');
 
@@ -17,8 +18,8 @@ setup('authenticate', async ({ page }) => {
   await page.goto('/login');
 
   // Fill in credentials
-  await page.fill('[data-testid="email-input"]', 'test@example.com');
-  await page.fill('[data-testid="password-input"]', 'TestPassword123!');
+  await page.fill('[data-testid="email-input"]', TEST_EMAIL);
+  await page.fill('[data-testid="password-input"]', TEST_PASSWORD);
 
   // Click login button
   await page.click('[data-testid="login-button"]');

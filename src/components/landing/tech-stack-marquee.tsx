@@ -10,7 +10,7 @@ const techStack: Tech[] = [
   { name: 'TypeScript', category: 'Language', color: '#3178C6' },
   { name: 'Tailwind CSS 4', category: 'Styling', color: '#38B2AC' },
   { name: 'PostgreSQL', category: 'Database', color: '#4169E1' },
-  { name: 'pgvector', category: 'Vectors', color: '#E69138' },
+  { name: 'pgvector', category: 'Vectors', color: '#336791' },
   { name: 'Prisma', category: 'ORM', color: '#2D3748' },
   { name: 'LangChain.js', category: 'AI', color: '#1C3C3C' },
   { name: 'Vercel AI SDK', category: 'AI', color: '#000000' },

@@ -14,13 +14,6 @@ import {
 import { logger } from '@/lib/logger';
 import { dispatchAlert } from '@/lib/monitoring/alerting';
 import { detectAnomalies } from '@/lib/monitoring/anomaly-detector';
-import {
-  type ChunkPointData,
-  COLLECTION_DOCUMENT_CHUNKS,
-  deleteByDocumentId,
-  qdrant,
-  upsertChunks,
-} from '@/lib/qdrant';
 import { ChunkingEngine } from '@/lib/rag/chunking';
 import { createEmbeddings } from '@/lib/rag/engine';
 import {
@@ -36,6 +29,13 @@ import {
 import { scrapeURL } from '@/lib/rag/ingestion/parsers/url';
 import { isYouTubeUrl, parseYouTube } from '@/lib/rag/ingestion/parsers/youtube';
 import { getFile } from '@/lib/storage/cloudinary-storage';
+import {
+  type ChunkPointData,
+  deleteByDocumentId,
+  listChunksByDocumentId,
+  updateChunkEmbeddings,
+  upsertChunks,
+} from '@/lib/vector';
 import { checkDocumentLimit } from '@/lib/workspace/resource-limits';
 import { inngest } from './client';
 
@@ -829,20 +829,7 @@ export const reEmbedWorkspaceJob = inngest.createFunction(
     for (const doc of documents) {
       const result = await step.run(`re-embed-doc-${doc.id}`, async () => {
         try {
-          const scrollResult = await qdrant.scroll(COLLECTION_DOCUMENT_CHUNKS, {
-            filter: { must: [{ key: 'documentId', match: { value: doc.id } }] },
-            limit: 100,
-            with_payload: true,
-            with_vector: false,
-          });
-          const chunks = scrollResult.points.map((p) => {
-            const payload = p.payload ?? {};
-            return {
-              id: String(p.id),
-              content: String(payload.content ?? ''),
-              index: Number(payload.index ?? 0),
-            };
-          });
+          const chunks = await listChunksByDocumentId(doc.id, { limit: 500 });
 
           if (chunks.length === 0) {
             return { documentId: doc.id, chunksProcessed: 0 };
@@ -856,31 +843,13 @@ export const reEmbedWorkspaceJob = inngest.createFunction(
             const batch = chunks.slice(i, i + BATCH_SIZE);
             const texts = batch.map((c) => c.content);
             const vectors = await embeddingEngine.embedDocuments(texts);
-
-            for (let j = 0; j < batch.length; j++) {
+            const updates = batch.flatMap((chunk, j) => {
               const vector = vectors[j];
-              if (vector) {
-                const existingPoints = await qdrant.retrieve(COLLECTION_DOCUMENT_CHUNKS, {
-                  ids: [batch[j].id],
-                  with_payload: true,
-                  with_vector: false,
-                });
-                const existing = existingPoints[0];
-                if (existing) {
-                  await qdrant.upsert(COLLECTION_DOCUMENT_CHUNKS, {
-                    wait: true,
-                    points: [
-                      {
-                        id: existing.id,
-                        vector: vector,
-                        payload: existing.payload ?? {},
-                      },
-                    ],
-                  });
-                }
-              }
+              return vector ? [{ chunkId: chunk.id, embedding: vector }] : [];
+            });
+            if (updates.length > 0) {
+              await updateChunkEmbeddings(updates);
             }
-
             processed += batch.length;
           }
 

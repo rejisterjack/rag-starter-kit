@@ -1,0 +1,78 @@
+---
+title: "RAG vs Fine-Tuning: When to Use Each (and When Both)"
+description: "A decision framework for choosing between retrieval-augmented generation and fine-tuning LLMs — cost, latency, freshness, and capability tradeoffs with concrete examples."
+author: "Rupam Das"
+publishedAt: "2026-08-26"
+tags: ["rag", "fine-tuning", "llm", "strategy"]
+---
+
+"Should we fine-tune or use RAG?" is the most common architecture question in applied LLM work. The honest answer is that they solve different problems, they compose well, and most teams that fine-tune first should have started with retrieval.
+
+## What each actually does
+
+**RAG** injects relevant knowledge into the model's context at query time. The model reads retrieved chunks and answers. Knowledge changes when your documents change.
+
+**Fine-tuning** changes the model's weights through training. It teaches *behavior* — format, style, domain vocabulary, tool-use patterns — not facts.
+
+The confusion comes from treating them as knowledge techniques. Only one of them is.
+
+## The comparison
+
+| Axis | RAG | Fine-tuning |
+|---|---|---|
+| Best for | Fresh, changing, sourced knowledge | Stable behavior, format, style |
+| Knowledge updates | Instant (re-index documents) | Re-train and re-deploy |
+| Hallucination control | High — citations to sources | Lower — no provenance |
+| Latency | Adds retrieval (~10–50ms) | Baseline |
+| Cost profile | Storage + embeddings (cheap) | Training compute + hosting |
+| Data requirement | Documents you already have | Thousands of quality examples |
+| Debuggability | Inspect retrieved chunks | Opaque |
+| Access to private data | Native | Risk of memorization/leakage |
+
+## When RAG is the right call
+
+Use RAG when the knowledge is:
+
+- **Changing.** Product docs, policies, tickets, codebases. Re-indexing beats re-training.
+- **Sourced.** Users need citations — legal, medical, internal knowledge bases. RAG gives provenance; fine-tuning cannot.
+- **Permissioned.** Multi-tenant systems where user A must not see user B's documents. Retrieval filters enforce this; baked weights cannot.
+- **Large.** Anything beyond a few million tokens does not fit in any context window. Retrieval is the only option.
+
+This covers nearly every "chat with our documents" use case, which is why [RAG-first architectures](https://rag.rejisterjack.com) dominate.
+
+## When fine-tuning is the right call
+
+Fine-tune when the problem is *behavior*, not knowledge:
+
+- **Consistent output format.** The model must always emit your exact JSON schema, with no prompt drift.
+- **Domain style.** Writing in your brand voice, or a classifier over your taxonomy.
+- **Latency and cost at scale.** A small fine-tuned model can match a large prompted model on a narrow task, cutting per-token cost dramatically.
+- **Teaching tool use.** Reliable adherence to a complex tool-calling protocol.
+
+## When you need both
+
+The strongest production systems layer them: a fine-tuned model for format and tone, RAG for the facts. A support agent that always writes in brand voice (fine-tuned) and always cites the current policy (retrieval) is the canonical composite.
+
+## A concrete decision test
+
+Ask one question: **is the problem that the model doesn't know something, or that it doesn't act right?**
+
+- Doesn't know → RAG.
+- Doesn't act right → fine-tuning (or often, better prompting and few-shot examples first).
+- Both → RAG for knowledge, fine-tuning for behavior, in that order.
+
+## Cost reality
+
+A typical corporate knowledge base — say 50k documents, 2M chunks:
+
+- **RAG:** embedding 2M chunks once (~$5–20 with free tiers covering development), pgvector storage in your existing Postgres, retrieval at effectively $0.
+- **Fine-tuning:** producing 5–10k quality training examples is the real cost — weeks of human labeling — plus training runs and a hosted checkpoint for every update.
+
+RAG's iteration loop is minutes (re-index); fine-tuning's is days-to-weeks. When in doubt, prototype with RAG and let measured failure modes tell you if fine-tuning is warranted.
+
+## Takeaways
+
+- RAG solves knowledge; fine-tuning solves behavior. Decide on that axis first.
+- Cited, permissioned, fresh knowledge is RAG territory, full stop.
+- Most "we need to fine-tune" conclusions are actually retrieval-quality or prompt-engineering problems in disguise.
+- If you do need both, build RAG first — it is where the measurable wins are, and it makes fine-tuning data collection easier.

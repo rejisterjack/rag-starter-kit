@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -31,22 +31,15 @@ export async function POST(req: Request, { params }: RouteParams) {
     });
 
     if (!experiment) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Experiment not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Experiment not found', 404);
     }
 
     // Only allow events for RUNNING experiments
     if (experiment.status !== 'RUNNING') {
-      return NextResponse.json(
-        {
-          error: {
-            code: 'CONFLICT',
-            message: `Cannot track events for experiment in ${experiment.status} status`,
-          },
-        },
-        { status: 409 }
+      return apiError(
+        'CONFLICT',
+        `Cannot track events for experiment in ${experiment.status} status`,
+        409
       );
     }
 
@@ -58,10 +51,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       logger.debug('Invalid JSON body in track event request', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     let validatedInput: ReturnType<typeof validateTrackEventInput>;
@@ -72,10 +62,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       );
     } catch (error) {
       if (error instanceof Error) {
-        return NextResponse.json(
-          { error: { code: 'VALIDATION_ERROR', message: error.message } },
-          { status: 400 }
-        );
+        return apiError('VALIDATION_ERROR', error.message, 400);
       }
       throw error;
     }
@@ -92,32 +79,26 @@ export async function POST(req: Request, { params }: RouteParams) {
       },
     });
 
-    return NextResponse.json(
+    return apiSuccess(
       {
-        success: true,
-        data: {
-          event: {
-            id: event.id,
-            experimentId: event.experimentId,
-            variantId: event.variantId,
-            eventType: event.eventType,
-            userId: event.userId,
-            sessionId: event.sessionId,
-            metadata: event.metadata,
-            createdAt: event.createdAt.toISOString(),
-          },
+        event: {
+          id: event.id,
+          experimentId: event.experimentId,
+          variantId: event.variantId,
+          eventType: event.eventType,
+          userId: event.userId,
+          sessionId: event.sessionId,
+          metadata: event.metadata,
+          createdAt: event.createdAt.toISOString(),
         },
       },
-      { status: 201 }
+      201
     );
   } catch (error: unknown) {
     logger.error('Failed to track experiment event', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to track event' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to track event', 500);
   }
 }
 

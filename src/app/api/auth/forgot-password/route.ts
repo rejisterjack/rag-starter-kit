@@ -1,5 +1,6 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
@@ -19,10 +20,7 @@ async function handler(req: NextRequest) {
     const identifier = getRateLimitIdentifier(req);
     const rateLimitResult = await checkApiRateLimit(identifier, 'passwordReset');
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { error: { code: 'RATE_LIMIT', message: 'Too many requests. Please try again later.' } },
-        { status: 429 }
-      );
+      return apiError('RATE_LIMIT', 'Too many requests. Please try again later.', 429);
     }
 
     // Parse and validate
@@ -30,18 +28,12 @@ async function handler(req: NextRequest) {
     try {
       body = await req.json();
     } catch {
-      return NextResponse.json(
-        { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     const parsed = forgotPasswordSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: { code: 'VALIDATION_ERROR', message: 'Please provide a valid email address.' } },
-        { status: 400 }
-      );
+      return apiError('VALIDATION_ERROR', 'Please provide a valid email address.', 400);
     }
 
     const { email } = parsed.data;
@@ -95,18 +87,14 @@ async function handler(req: NextRequest) {
     }
 
     // Always return the same response regardless of whether user exists
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       message: 'If an account with that email exists, a reset link has been sent.',
     });
   } catch (error) {
     logger.error('Forgot password error', {
       error: error instanceof Error ? error.message : 'Unknown',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'An unexpected error occurred', 500);
   }
 }
 

@@ -17,9 +17,9 @@ const features: Feature[] = [
     icon: Bot,
     title: 'Intelligent RAG',
     description:
-      'Context-aware responses using LangChain.js and pgvector. Hybrid search combines vector similarity with keyword matching for unprecedented accuracy.',
+      'Context-aware responses using LangChain.js and Qdrant. Hybrid search combines vector similarity with keyword matching for unprecedented accuracy.',
     highlight: 'Hybrid Search',
-    tags: ['LangChain.js', 'pgvector', 'OpenRouter'],
+    tags: ['LangChain.js', 'Qdrant', 'OpenRouter'],
   },
   {
     icon: Upload,

@@ -10,7 +10,7 @@
  * - Audit logging
  */
 
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -38,21 +38,12 @@ export const POST = withApiAuth(async (req, session) => {
     });
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'RATE_LIMIT',
-            message: 'Rate limit exceeded. Please try again later.',
-          },
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
+      const response = apiError('RATE_LIMIT', 'Rate limit exceeded. Please try again later.', 429);
+      response.headers.set(
+        'Retry-After',
+        Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString()
       );
+      return response;
     }
 
     // Step 3: Parse request body
@@ -63,22 +54,13 @@ export const POST = withApiAuth(async (req, session) => {
       logger.debug('Failed to parse request body in retry endpoint', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     const { documentId } = body;
 
     if (!documentId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'MISSING_DOCUMENT_ID', message: 'Document ID is required' },
-        },
-        { status: 400 }
-      );
+      return apiError('MISSING_DOCUMENT_ID', 'Document ID is required', 400);
     }
 
     // Step 4: Get document and verify access
@@ -90,10 +72,7 @@ export const POST = withApiAuth(async (req, session) => {
     });
 
     if (!document) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Document not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Document not found', 404);
     }
 
     // Step 5: Check permission
@@ -112,25 +91,13 @@ export const POST = withApiAuth(async (req, session) => {
           severity: 'WARNING',
         });
 
-        return NextResponse.json(
-          { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Access denied', 403);
       }
     }
 
     // Step 6: Check if document can be retried
     if (document.status === 'PROCESSING') {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'ALREADY_PROCESSING',
-            message: 'Document is already being processed',
-          },
-        },
-        { status: 409 }
-      );
+      return apiError('ALREADY_PROCESSING', 'Document is already being processed', 409);
     }
 
     // Step 7: Reset document status
@@ -200,13 +167,10 @@ export const POST = withApiAuth(async (req, session) => {
       },
     });
 
-    const response = NextResponse.json({
-      success: true,
-      data: {
-        documentId,
-        status: 'PENDING',
-        message: 'Document ingestion retry queued successfully',
-      },
+    const response = apiSuccess({
+      documentId,
+      status: 'PENDING',
+      message: 'Document ingestion retry queued successfully',
     });
 
     // Add rate limit headers
@@ -217,15 +181,6 @@ export const POST = withApiAuth(async (req, session) => {
     logger.error('Failed to retry document ingestion', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Failed to retry document ingestion',
-        },
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to retry document ingestion', 500);
   }
 });

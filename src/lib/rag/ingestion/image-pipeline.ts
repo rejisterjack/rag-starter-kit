@@ -18,7 +18,7 @@ import {
   deleteImagePoints,
   searchSimilarImages as qdrantSearchSimilarImages,
   upsertImageEmbedding,
-} from '@/lib/qdrant';
+} from '@/lib/vector';
 
 /**
  * Image metadata extracted from documents
@@ -272,7 +272,7 @@ export async function processImage(
         },
       });
 
-      // Upsert image embedding into Qdrant
+      // Upsert image embedding into pgvector
       const contentHash = createHash('sha256').update(image.buffer).digest('hex');
       const doc = await tx.document.findUnique({
         where: { id: documentId },
@@ -411,7 +411,7 @@ export async function searchSimilarImages(
     // Generate query embedding
     const queryEmbedding = await generateImageEmbedding(queryImage);
 
-    // Search for similar images using Qdrant
+    // Search for similar images using pgvector
     const results = await qdrantSearchSimilarImages(queryEmbedding, {
       userId: workspaceId,
       topK,
@@ -458,7 +458,7 @@ export async function searchImagesByText(
     // Generate text embedding
     const textEmbedding = await generateTextEmbeddingForImageSearch(query);
 
-    // Search for similar images using Qdrant
+    // Search for similar images using pgvector
     const results = await qdrantSearchSimilarImages(textEmbedding, {
       userId: workspaceId,
       topK,
@@ -533,11 +533,11 @@ export async function deleteDocumentImages(documentId: string): Promise<void> {
     }
   }
 
-  // Delete from Qdrant
+  // Delete from pgvector
   try {
     await deleteImagePoints(documentId);
   } catch (error) {
-    logger.warn('Failed to delete image points from Qdrant', {
+    logger.warn('Failed to delete image points from pgvector', {
       documentId,
       error: error instanceof Error ? error.message : String(error),
     });

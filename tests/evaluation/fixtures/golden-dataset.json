@@ -6,7 +6,7 @@
     {
       "id": "q001",
       "query": "What is RAG Starter Kit?",
-      "expectedAnswer": "RAG Starter Kit is an open-source TypeScript document chatbot platform built with Next.js, React, and PostgreSQL with pgvector for building AI-powered document Q&A systems.",
+      "expectedAnswer": "RAG Starter Kit is an open-source TypeScript document chatbot platform built with Next.js, React, and PostgreSQL with Qdrant for building AI-powered document Q&A systems.",
       "tags": ["overview", "basic"]
     },
     {
@@ -30,7 +30,7 @@
     {
       "id": "q005",
       "query": "How does the vector search work?",
-      "expectedAnswer": "Vector search uses HNSW indexes with cosine similarity via pgvector in PostgreSQL to find the most relevant document chunks.",
+      "expectedAnswer": "Vector search uses HNSW indexes with cosine similarity via Qdrant in PostgreSQL to find the most relevant document chunks.",
       "tags": ["search", "vector", "technical"]
     },
     {
@@ -66,7 +66,7 @@
     {
       "id": "q011",
       "query": "What database is used?",
-      "expectedAnswer": "PostgreSQL with the pgvector extension is used for storing documents, embeddings, and performing vector similarity search.",
+      "expectedAnswer": "PostgreSQL with the Qdrant extension is used for storing documents, embeddings, and performing vector similarity search.",
       "tags": ["database", "infrastructure"]
     },
     {
@@ -162,7 +162,7 @@
     {
       "id": "q027",
       "query": "Can I use my own database?",
-      "expectedAnswer": "Yes, any PostgreSQL database with the pgvector extension is supported. Neon, Supabase, Railway, and self-hosted PostgreSQL all work.",
+      "expectedAnswer": "Yes, any PostgreSQL database with the Qdrant extension is supported. Neon, Supabase, Railway, and self-hosted PostgreSQL all work.",
       "tags": ["database", "configuration"]
     },
     {
@@ -252,7 +252,7 @@
     {
       "id": "q042",
       "query": "What are the system requirements?",
-      "expectedAnswer": "Node.js 18+, PostgreSQL with pgvector extension, and a Redis instance (optional but recommended for caching and rate limiting).",
+      "expectedAnswer": "Node.js 18+, PostgreSQL with Qdrant extension, and a Redis instance (optional but recommended for caching and rate limiting).",
       "tags": ["setup", "requirements"]
     },
     {

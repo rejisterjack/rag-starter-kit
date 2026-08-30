@@ -1,18 +1,19 @@
 /**
- * MFA Verify - Verifies TOTP code during login when MFA is required
+ * MFA Verify - Verifies TOTP/backup code using an MFA challenge token (no session required).
  */
 
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { z } from 'zod';
-
-import { auth } from '@/lib/auth';
+import { apiError, apiSuccess } from '@/lib/api-response';
+import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { createMfaCompletionToken, verifyMfaChallengeToken } from '@/lib/auth/mfa-challenge';
 import { prisma } from '@/lib/db';
 import { removeUsedBackupCode, verifyBackupCode, verifyTotpCode } from '@/lib/security/mfa';
 import { withIpRateLimit } from '@/lib/security/with-ip-rate-limit';
 
 const verifySchema = z.object({
   code: z.string().min(6).max(8),
-  userId: z.string(),
+  challengeToken: z.string().min(1),
 });
 
 async function handler(req: NextRequest) {
@@ -20,27 +21,22 @@ async function handler(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return apiError('INVALID_JSON', 'Invalid JSON', 400);
   }
 
   const parsed = verifySchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid input', details: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return apiError('VALIDATION_ERROR', 'Invalid input', 400, parsed.error.flatten());
   }
 
-  const { code, userId } = parsed.data;
+  const { code, challengeToken } = parsed.data;
 
-  // Verify the requesting user is authenticated and matches the userId in the body
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  const challenge = verifyMfaChallengeToken(challengeToken);
+  if (!challenge) {
+    return apiError('INVALID_CHALLENGE', 'Invalid or expired MFA challenge', 401);
   }
-  if (userId !== session.user.id) {
-    return NextResponse.json({ error: 'User ID mismatch' }, { status: 403 });
-  }
+
+  const userId = challenge.userId;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -48,7 +44,7 @@ async function handler(req: NextRequest) {
   });
 
   if (!user?.mfaEnabled || !user.mfaSecret) {
-    return NextResponse.json({ error: 'MFA not configured' }, { status: 400 });
+    return apiError('MFA_NOT_CONFIGURED', 'MFA not configured', 400);
   }
 
   // Try TOTP code first
@@ -58,7 +54,13 @@ async function handler(req: NextRequest) {
       where: { id: userId },
       data: { mfaVerifiedAt: new Date() },
     });
-    return NextResponse.json({ success: true });
+    const completionToken = createMfaCompletionToken(userId);
+    await logAuditEvent({
+      event: AuditEvent.USER_LOGIN,
+      userId,
+      metadata: { method: 'credentials', mfa: true, step: 'totp' },
+    });
+    return apiSuccess({ completionToken });
   }
 
   // Try backup code
@@ -72,13 +74,19 @@ async function handler(req: NextRequest) {
         mfaVerifiedAt: new Date(),
       },
     });
-    return NextResponse.json({
-      success: true,
+    const completionToken = createMfaCompletionToken(userId);
+    await logAuditEvent({
+      event: AuditEvent.USER_LOGIN,
+      userId,
+      metadata: { method: 'credentials', mfa: true, step: 'backup' },
+    });
+    return apiSuccess({
+      completionToken,
       warning: `Backup code used. ${updatedCodes.length} remaining.`,
     });
   }
 
-  return NextResponse.json({ error: 'Invalid code' }, { status: 400 });
+  return apiError('INVALID_CODE', 'Invalid code', 400);
 }
 
 export const POST = withIpRateLimit(handler);

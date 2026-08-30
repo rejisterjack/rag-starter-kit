@@ -82,6 +82,9 @@ function LoginContent(): React.ReactElement {
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(error);
+  const [mfaChallengeToken, setMfaChallengeToken] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [pendingCredentials, setPendingCredentials] = useState<LoginFormData | null>(null);
   const [ssoDetected, setSsoDetected] = useState<DomainLookupResult | null>(null);
   const [isCheckingDomain, setIsCheckingDomain] = useState(false);
 
@@ -127,6 +130,30 @@ function LoginContent(): React.ReactElement {
     setLoginError(null);
 
     try {
+      const challengeRes = await fetch('/api/auth/mfa/challenge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email, password: data.password }),
+      });
+
+      if (challengeRes.status === 401 || challengeRes.status === 423) {
+        setLoginError('Invalid email or password');
+        return;
+      }
+
+      if (challengeRes.ok) {
+        const challengeData = (await challengeRes.json()) as {
+          mfaRequired?: boolean;
+          challengeToken?: string;
+        };
+
+        if (challengeData.mfaRequired && challengeData.challengeToken) {
+          setPendingCredentials(data);
+          setMfaChallengeToken(challengeData.challengeToken);
+          return;
+        }
+      }
+
       const result = await signIn('credentials', {
         email: data.email,
         password: data.password,
@@ -135,6 +162,12 @@ function LoginContent(): React.ReactElement {
       });
 
       if (result?.error) {
+        if (result.error.includes('MFA_REQUIRED:')) {
+          const token = result.error.split('MFA_REQUIRED:')[1];
+          setPendingCredentials(data);
+          setMfaChallengeToken(token);
+          return;
+        }
         setLoginError('Invalid email or password');
       } else {
         router.push(callbackUrl);
@@ -142,6 +175,55 @@ function LoginContent(): React.ReactElement {
       }
     } catch (_error: unknown) {
       setLoginError('An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaChallengeToken || mfaCode.length < 6) return;
+
+    setIsLoading(true);
+    setLoginError(null);
+
+    try {
+      const verifyRes = await fetch('/api/auth/mfa/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: mfaCode, challengeToken: mfaChallengeToken }),
+      });
+
+      const verifyData = (await verifyRes.json()) as {
+        success?: boolean;
+        completionToken?: string;
+        error?: string;
+        warning?: string;
+      };
+
+      if (!verifyRes.ok || !verifyData.success || !verifyData.completionToken) {
+        setLoginError(verifyData.error || 'Invalid code');
+        return;
+      }
+
+      if (verifyData.warning) {
+        toast.warning(verifyData.warning);
+      }
+
+      const result = await signIn('credentials', {
+        mfaCompletionToken: verifyData.completionToken,
+        redirect: false,
+        callbackUrl,
+      });
+
+      if (result?.error) {
+        setLoginError('Unable to complete sign in. Please try again.');
+      } else {
+        router.push(callbackUrl);
+        router.refresh();
+      }
+    } catch {
+      setLoginError('Verification failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -330,7 +412,57 @@ function LoginContent(): React.ReactElement {
         </m.div>
       )}
 
-      {!showSSOOnly && (
+      {mfaChallengeToken && (
+        <m.div variants={itemVariants}>
+          <div className="text-center mb-4">
+            <h2 className="text-xl font-semibold">Two-Factor Authentication</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Enter the 6-digit code from your authenticator app
+              {pendingCredentials?.email ? ` for ${pendingCredentials.email}` : ''}
+            </p>
+          </div>
+          <form onSubmit={onMfaSubmit} className="space-y-4">
+            <Input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={8}
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="000000"
+              className="text-center text-2xl tracking-widest bg-background/50 border-white/10"
+              disabled={isLoading}
+              aria-label="MFA code"
+              data-testid="mfa-code-input"
+            />
+            <Button type="submit" className="w-full" disabled={isLoading || mfaCode.length < 6}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                'Verify and sign in'
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              disabled={isLoading}
+              onClick={() => {
+                setMfaChallengeToken(null);
+                setMfaCode('');
+                setPendingCredentials(null);
+              }}
+            >
+              Back to login
+            </Button>
+          </form>
+        </m.div>
+      )}
+
+      {!showSSOOnly && !mfaChallengeToken && (
         <m.div variants={itemVariants}>
           <div className="relative mb-6 mt-2">
             <div className="absolute inset-0 flex items-center">
@@ -351,6 +483,7 @@ function LoginContent(): React.ReactElement {
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="email"
+                  data-testid="email-input"
                   type="email"
                   placeholder="name@example.com"
                   {...register('email')}
@@ -386,6 +519,7 @@ function LoginContent(): React.ReactElement {
               </div>
               <Input
                 id="password"
+                data-testid="password-input"
                 type="password"
                 placeholder="Enter your password"
                 {...register('password')}
@@ -395,7 +529,12 @@ function LoginContent(): React.ReactElement {
               />
               {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
             </div>
-            <Button type="submit" className="w-full font-medium" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full font-medium"
+              disabled={isLoading}
+              data-testid="login-button"
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

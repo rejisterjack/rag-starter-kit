@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -33,10 +33,7 @@ export async function GET(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     // Parse query params
@@ -47,10 +44,7 @@ export async function GET(req: Request) {
     const status = searchParams.get('status') as ExperimentStatus | null;
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { error: { code: 'BAD_REQUEST', message: 'workspaceId is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'workspaceId is required', 400);
     }
 
     // Check if user has access to workspace
@@ -63,10 +57,7 @@ export async function GET(req: Request) {
     });
 
     if (!membership) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Build where clause
@@ -102,26 +93,23 @@ export async function GET(req: Request) {
 
     const totalPages = Math.ceil(total / limit);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        experiments: experiments.map((e) => ({
-          id: e.id,
-          name: e.name,
-          description: e.description,
-          type: e.type,
-          status: e.status,
-          variants: fromJson<ExperimentVariant[]>(e.variants, []),
-          trafficAllocation: fromJson<TrafficAllocation>(e.trafficAllocation, {}),
-          workspaceId: e.workspaceId,
-          createdById: e.createdById,
-          startDate: e.startDate?.toISOString() ?? null,
-          endDate: e.endDate?.toISOString() ?? null,
-          eventCount: eventCountMap.get(e.id) ?? 0,
-          createdAt: e.createdAt.toISOString(),
-          updatedAt: e.updatedAt.toISOString(),
-        })),
-      },
+    return apiSuccess({
+      experiments: experiments.map((e) => ({
+        id: e.id,
+        name: e.name,
+        description: e.description,
+        type: e.type,
+        status: e.status,
+        variants: fromJson<ExperimentVariant[]>(e.variants, []),
+        trafficAllocation: fromJson<TrafficAllocation>(e.trafficAllocation, {}),
+        workspaceId: e.workspaceId,
+        createdById: e.createdById,
+        startDate: e.startDate?.toISOString() ?? null,
+        endDate: e.endDate?.toISOString() ?? null,
+        eventCount: eventCountMap.get(e.id) ?? 0,
+        createdAt: e.createdAt.toISOString(),
+        updatedAt: e.updatedAt.toISOString(),
+      })),
       pagination: {
         page,
         limit,
@@ -135,10 +123,7 @@ export async function GET(req: Request) {
     logger.error('Failed to get experiments', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to get experiments' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to get experiments', 500);
   }
 }
 
@@ -150,10 +135,7 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     // Parse and validate body
@@ -164,10 +146,7 @@ export async function POST(req: Request) {
       logger.debug('Invalid JSON body in create experiment request', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     let validatedInput: ReturnType<typeof validateCreateExperimentInput>;
@@ -175,10 +154,7 @@ export async function POST(req: Request) {
       validatedInput = validateCreateExperimentInput(body);
     } catch (error) {
       if (error instanceof Error) {
-        return NextResponse.json(
-          { error: { code: 'VALIDATION_ERROR', message: error.message } },
-          { status: 400 }
-        );
+        return apiError('VALIDATION_ERROR', error.message, 400);
       }
       throw error;
     }
@@ -186,10 +162,7 @@ export async function POST(req: Request) {
     // Check if user can manage workspace
     const canManage = await canManageWorkspace(session.user.id, validatedInput.workspaceId);
     if (!canManage) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Create experiment
@@ -206,41 +179,32 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json(
+    return apiSuccess(
       {
-        success: true,
-        data: {
-          experiment: {
-            id: experiment.id,
-            name: experiment.name,
-            description: experiment.description,
-            type: experiment.type,
-            status: experiment.status,
-            variants: fromJson<ExperimentVariant[]>(experiment.variants, []),
-            trafficAllocation: fromJson<TrafficAllocation>(experiment.trafficAllocation, {}),
-            workspaceId: experiment.workspaceId,
-            createdById: experiment.createdById,
-            startDate: null,
-            endDate: null,
-            createdAt: experiment.createdAt.toISOString(),
-            updatedAt: experiment.updatedAt.toISOString(),
-          },
+        experiment: {
+          id: experiment.id,
+          name: experiment.name,
+          description: experiment.description,
+          type: experiment.type,
+          status: experiment.status,
+          variants: fromJson<ExperimentVariant[]>(experiment.variants, []),
+          trafficAllocation: fromJson<TrafficAllocation>(experiment.trafficAllocation, {}),
+          workspaceId: experiment.workspaceId,
+          createdById: experiment.createdById,
+          startDate: null,
+          endDate: null,
+          createdAt: experiment.createdAt.toISOString(),
+          updatedAt: experiment.updatedAt.toISOString(),
         },
       },
-      { status: 201 }
+      201
     );
   } catch (error) {
     if (error instanceof Error && error.message.includes('Foreign key constraint')) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Workspace not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Workspace not found', 404);
     }
 
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to create experiment' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to create experiment', 500);
   }
 }
 

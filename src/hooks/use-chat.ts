@@ -606,7 +606,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
   const fetchConversations = useCallback(async (limit = 50): Promise<ConversationSummary[]> => {
     try {
-      const response = await fetch(`/api/v1/chats?limit=${limit}`, {
+      const response = await fetch(`/api/chats?limit=${limit}`, {
         credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to fetch conversations');

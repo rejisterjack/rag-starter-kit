@@ -1,3 +1,4 @@
+import { apiError, apiSuccess } from '@/lib/api-response';
 /**
  * Email Verification API
  *
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest) {
 export async function POST() {
   const session = await auth();
   if (!session?.user?.id || !session.user.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return apiError('UNAUTHORIZED', 'Unauthorized', 401);
   }
 
   const { id: userId, email, name } = session.user;
@@ -82,11 +83,11 @@ export async function POST() {
   });
 
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    return apiError('NOT_FOUND', 'User not found', 404);
   }
 
   if (user.emailVerified) {
-    return NextResponse.json({ error: 'Email is already verified' }, { status: 400 });
+    return apiError('BAD_REQUEST', 'Email is already verified', 400);
   }
 
   // Delete any existing tokens for this email
@@ -109,5 +110,5 @@ export async function POST() {
     template: emailService.verificationEmail(name || email.split('@')[0], verifyUrl),
   });
 
-  return NextResponse.json({ success: true, message: 'Verification email sent' });
+  return apiSuccess({ message: 'Verification email sent' });
 }

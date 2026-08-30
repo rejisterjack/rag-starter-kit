@@ -13,9 +13,9 @@
  * The token must have the scope: https://www.googleapis.com/auth/drive.readonly
  */
 
-import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generateEmbedding } from '@/lib/ai';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { auth } from '@/lib/auth';
 import { getServerSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db';
@@ -85,7 +85,7 @@ async function ingestFile(
 
   const chunks = simpleChunk(file.content, 1000, 200);
 
-  const { upsertChunks } = await import('@/lib/qdrant');
+  const { upsertChunks } = await import('@/lib/vector');
   const chunkPoints = await Promise.all(
     chunks.map(async ({ content, start, end }, i) => {
       const embedding = await generateEmbedding(content);
@@ -119,33 +119,31 @@ export async function POST(req: Request) {
     // App session
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     // Google OAuth token from Authorization header
     const authHeader = req.headers.get('Authorization') ?? '';
     const googleToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
     if (!googleToken) {
-      return NextResponse.json(
-        {
-          error:
-            'Google OAuth access token required. Pass it as: Authorization: Bearer <google_access_token>',
-        },
-        { status: 400 }
+      return apiError(
+        'MISSING_TOKEN',
+        'Google OAuth access token required. Pass it as: Authorization: Bearer <google_access_token>',
+        400
       );
     }
 
     const body = await req.json();
     const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      return apiError('VALIDATION_ERROR', 'Invalid input', 400, parsed.error.flatten());
     }
 
     const { fileId, folderId, recursive, mimeTypes, maxFiles } = parsed.data;
 
     const workspace = await getServerSession();
     if (!workspace) {
-      return NextResponse.json({ error: 'No workspace found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'No workspace found', 404);
     }
 
     const parser = new GoogleDriveParser(googleToken);
@@ -166,13 +164,12 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       documentsCreated: results.length,
       documents: results,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Google Drive ingestion failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError('INTERNAL_ERROR', message, 500);
   }
 }

@@ -162,7 +162,7 @@ export function ConversationHistoryList({
       setIsSearching(true);
       try {
         const response = await fetch(
-          `/api/v1/chats?limit=50&search=${encodeURIComponent(searchQuery.trim())}`
+          `/api/chats?limit=50&search=${encodeURIComponent(searchQuery.trim())}`
         );
         if (!response.ok) throw new Error('Search failed');
         const json = await response.json();

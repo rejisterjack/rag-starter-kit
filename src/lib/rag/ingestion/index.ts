@@ -457,8 +457,8 @@ export async function reprocessDocument(
   documentId: string,
   options: IngestionOptions & { embeddingModel?: string } = {}
 ): Promise<void> {
-  // Delete existing chunks from Qdrant
-  const { deleteByDocumentId } = await import('@/lib/qdrant');
+  // Delete existing chunks from pgvector
+  const { deleteByDocumentId } = await import('@/lib/vector');
   await deleteByDocumentId(documentId);
 
   // Reset document status

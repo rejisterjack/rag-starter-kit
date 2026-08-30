@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * Notion OAuth Start Endpoint
  *
@@ -43,10 +44,7 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     // Get workspace ID from query params
@@ -54,10 +52,7 @@ export async function GET(req: NextRequest) {
     const workspaceId = searchParams.get('workspaceId') || session.user.workspaceId;
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Workspace ID is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Workspace ID is required', 400);
     }
 
     // Check workspace permission
@@ -67,10 +62,7 @@ export async function GET(req: NextRequest) {
       Permission.MANAGE_WORKSPACE
     );
     if (!hasAccess) {
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Check if OAuth is configured

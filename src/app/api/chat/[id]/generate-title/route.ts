@@ -1,3 +1,4 @@
+import { apiError, apiSuccess } from '@/lib/api-response';
 /**
  * Chat Title Generation API
  * POST /api/chat/[id]/generate-title
@@ -7,7 +8,6 @@
 
 import { openrouter } from '@openrouter/ai-sdk-provider';
 import { generateText } from 'ai';
-import { NextResponse } from 'next/server';
 import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
@@ -41,24 +41,18 @@ export const POST = withApiAuth(async (_req: Request, session, { params }: Route
     });
 
     if (!chat) {
-      return NextResponse.json({ error: 'Chat not found', code: 'NOT_FOUND' }, { status: 404 });
+      return apiError('NOT_FOUND', 'Chat not found', 404);
     }
 
     // Get the first user message
     const firstMessage = chat.messages[0];
     if (!firstMessage) {
-      return NextResponse.json(
-        { error: 'No messages found in chat', code: 'NO_MESSAGES' },
-        { status: 400 }
-      );
+      return apiError('NO_MESSAGES', 'No messages found in chat', 400);
     }
 
     // Skip if title is already set and not "New Chat"
     if (chat.title && chat.title !== 'New Chat') {
-      return NextResponse.json({
-        success: true,
-        data: { title: chat.title, generated: false },
-      });
+      return apiSuccess({ title: chat.title, generated: false });
     }
 
     // Generate title using LLM
@@ -99,20 +93,14 @@ Message: "${firstMessage.content.slice(0, 500)}"`;
       title: generatedTitle,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        title: generatedTitle,
-        generated: true,
-      },
+    return apiSuccess({
+      title: generatedTitle,
+      generated: true,
     });
   } catch (error) {
     logger.warn('Failed to generate chat title', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json(
-      { error: 'Failed to generate title', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to generate title', 500);
   }
 });

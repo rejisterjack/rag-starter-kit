@@ -5,13 +5,9 @@
  * Supports multiple query parsing methods and filtering.
  */
 
-import { searchKeyword as qdrantKeywordSearch } from '@/lib/qdrant';
-import { buildQdrantFilter } from '@/lib/qdrant/filters';
-import type {
-  KeywordSearchConfig,
-  RetrievalOptions,
-  RetrievedChunk,
-} from './types';
+import { searchKeyword as qdrantKeywordSearch } from '@/lib/vector';
+import { buildQdrantFilter } from '@/lib/vector/filters';
+import type { KeywordSearchConfig, RetrievalOptions, RetrievedChunk } from './types';
 
 /**
  * Default configuration for keyword search

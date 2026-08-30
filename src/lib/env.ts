@@ -16,6 +16,9 @@ import { logger } from '@/lib/logger';
 const envSchema = z.object({
   // Required variables
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  // Prisma Postgres Accelerate uses prisma+postgres://. Runtime adapters need a
+  // postgres:// TCP URL; .env ships that as DIRECT_URL.
+  DIRECT_URL: z.string().optional(),
   // NextAuth v5 uses AUTH_SECRET; NEXTAUTH_SECRET is the legacy name.
   // At least one must be set with 32+ characters.
   AUTH_SECRET: z.string().optional(),
@@ -64,21 +67,17 @@ const envSchema = z.object({
   // Ollama configuration
   OLLAMA_BASE_URL: z.string().optional(),
 
-  // Qdrant vector database
-  QDRANT_URL: z
-    .string()
-    .url('QDRANT_URL must be a valid URL')
-    .optional()
-    .default('http://localhost:6333'),
-  QDRANT_API_KEY: z.string().optional(),
-
-  // Embedding configuration — dimensions must match the Qdrant collection vector size.
+  // Embedding configuration — dimensions must match pgvector column size.
   // Default: 768 (Google Gemini text-embedding-004).
   EMBEDDING_PROVIDER: z.enum(['google', 'openai', 'ollama']).default('google'),
   EMBEDDING_MODEL: z.string().optional(),
   EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(768),
 
-  // Plausible analytics
+  // PostHog analytics (optional)
+  NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
+  NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
+
+  // Plausible analytics (optional)
   NEXT_PUBLIC_ANALYTICS_HOST: z.string().optional(),
   NEXT_PUBLIC_ANALYTICS_SCRIPT_URL: z.string().optional(),
 
@@ -99,6 +98,19 @@ const envSchema = z.object({
 
   // Encryption key for sensitive data at rest
   ENCRYPTION_MASTER_KEY: z.string().optional(),
+
+  // Cron job authentication
+  CRON_SECRET: z.string().optional(),
+
+  // OAuth providers (required unless credentials-only auth)
+  AUTH_GITHUB_ID: z.string().optional(),
+  AUTH_GITHUB_SECRET: z.string().optional(),
+  AUTH_GOOGLE_ID: z.string().optional(),
+  AUTH_GOOGLE_SECRET: z.string().optional(),
+  AUTH_CREDENTIALS_ONLY: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
 });
 
 // =============================================================================
@@ -139,6 +151,25 @@ function validateEnv(): EnvSchema {
       if (!parsed.ENCRYPTION_MASTER_KEY || parsed.ENCRYPTION_MASTER_KEY.length < 32) {
         throw new Error(
           'ENCRYPTION_MASTER_KEY is required in production (min 32 chars). Generate: openssl rand -base64 32'
+        );
+      }
+      if (!parsed.CRON_SECRET || parsed.CRON_SECRET.length < 16) {
+        throw new Error(
+          'CRON_SECRET is required in production (min 16 chars). Generate: openssl rand -base64 24'
+        );
+      }
+    }
+
+    const credentialsOnly = parsed.AUTH_CREDENTIALS_ONLY === true;
+    if (!credentialsOnly && parsed.NODE_ENV === 'production') {
+      if (!parsed.AUTH_GITHUB_ID || !parsed.AUTH_GITHUB_SECRET) {
+        throw new Error(
+          'AUTH_GITHUB_ID and AUTH_GITHUB_SECRET are required in production (set AUTH_CREDENTIALS_ONLY=true to skip OAuth)'
+        );
+      }
+      if (!parsed.AUTH_GOOGLE_ID || !parsed.AUTH_GOOGLE_SECRET) {
+        throw new Error(
+          'AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET are required in production (set AUTH_CREDENTIALS_ONLY=true to skip OAuth)'
         );
       }
     }

@@ -6,8 +6,8 @@
  */
 
 import { generateEmbedding } from '@/lib/ai';
-import { searchSimilar } from '@/lib/qdrant';
-import { buildQdrantFilter } from '@/lib/qdrant/filters';
+import { searchSimilar } from '@/lib/vector';
+import { buildQdrantFilter } from '@/lib/vector/filters';
 import type { RAGConfig, Source } from '@/types';
 
 // Default RAG configuration

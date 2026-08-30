@@ -1,6 +1,7 @@
 import { hash } from 'bcryptjs';
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { ZodError } from 'zod';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
@@ -21,15 +22,7 @@ async function handler(req: NextRequest) {
     const rateLimitResult = await checkApiRateLimit(rateLimitIdentifier, 'register');
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        {
-          error: {
-            code: 'RATE_LIMIT',
-            message: 'Too many registration attempts. Please try again later.',
-          },
-        },
-        { status: 429 }
-      );
+      return apiError('RATE_LIMIT', 'Too many registration attempts. Please try again later.', 429);
     }
 
     let body: unknown;
@@ -39,10 +32,7 @@ async function handler(req: NextRequest) {
       logger.debug('Invalid JSON body in registration request', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     let validatedInput: ReturnType<typeof validateRegisterUserInput>;
@@ -52,13 +42,10 @@ async function handler(req: NextRequest) {
       if (error instanceof ZodError) {
         const issues = formatValidationErrors(error);
         const message = issues.map((i) => i.message).join(' ');
-        return NextResponse.json({ error: { code: 'VALIDATION_ERROR', message } }, { status: 400 });
+        return apiError('VALIDATION_ERROR', message, 400);
       }
       if (error instanceof Error) {
-        return NextResponse.json(
-          { error: { code: 'VALIDATION_ERROR', message: error.message } },
-          { status: 400 }
-        );
+        return apiError('VALIDATION_ERROR', error.message, 400);
       }
       throw error;
     }
@@ -67,10 +54,7 @@ async function handler(req: NextRequest) {
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return NextResponse.json(
-        { error: { code: 'REGISTRATION_FAILED', message: 'User already exists' } },
-        { status: 400 }
-      );
+      return apiError('REGISTRATION_FAILED', 'User already exists', 400);
     }
 
     const hashedPassword = await hash(password, 12);
@@ -109,18 +93,12 @@ async function handler(req: NextRequest) {
       });
     }
 
-    return NextResponse.json(
-      { success: true, data: { message: 'Account created successfully' } },
-      { status: 201 }
-    );
+    return apiSuccess({ message: 'Account created successfully' }, 201);
   } catch (error: unknown) {
     logger.error('Failed to register user', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'An unexpected error occurred', 500);
   }
 }
 

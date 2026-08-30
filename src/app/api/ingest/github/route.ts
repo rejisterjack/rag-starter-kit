@@ -15,9 +15,9 @@
  * Requires GITHUB_TOKEN env var for private repos and higher rate limits.
  */
 
-import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generateEmbedding } from '@/lib/ai';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { auth } from '@/lib/auth';
 import { getServerSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db';
@@ -54,13 +54,13 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const body = await req.json();
     const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      return apiError('VALIDATION_ERROR', 'Invalid input', 400, parsed.error.flatten());
     }
 
     const { repo, branch, directory, extensions, maxFiles } = parsed.data;
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     // Resolve workspace
     const workspace = await getServerSession();
     if (!workspace) {
-      return NextResponse.json({ error: 'No workspace found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'No workspace found', 404);
     }
 
     const githubToken = process.env.GITHUB_TOKEN;
@@ -77,8 +77,7 @@ export async function POST(req: Request) {
     const files = await parser.parseRepo(repo, { branch, directory, extensions, maxFiles });
 
     if (files.length === 0) {
-      return NextResponse.json({
-        success: true,
+      return apiSuccess({
         message: 'No matching files found in repository',
         documentsCreated: 0,
       });
@@ -112,7 +111,7 @@ export async function POST(req: Request) {
 
       const chunks = simpleChunk(file.content, 1000, 200);
 
-      const { upsertChunks } = await import('@/lib/qdrant');
+      const { upsertChunks } = await import('@/lib/vector');
       const chunkPoints = await Promise.all(
         chunks.map(async ({ content, start, end }, i) => {
           const embedding = await generateEmbedding(content);
@@ -141,14 +140,13 @@ export async function POST(req: Request) {
       results.push({ path: file.path, documentId: document.id, chunks: chunks.length });
     }
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       repo,
       documentsCreated: results.length,
       documents: results,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'GitHub ingestion failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError('INTERNAL_ERROR', message, 500);
   }
 }

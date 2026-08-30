@@ -32,7 +32,6 @@ export class ApiClient {
       },
       body: JSON.stringify({
         question,
-        workspaceId: this.workspaceId,
         history,
       }),
     });
@@ -74,7 +73,6 @@ export class ApiClient {
         },
         body: JSON.stringify({
           question,
-          workspaceId: this.workspaceId,
           history,
         }),
         signal,
@@ -93,8 +91,12 @@ export class ApiClient {
         return;
       }
 
-      // The public chat endpoint returns a single JSON response (not SSE streaming).
-      // We handle both the JSON response format and potential future SSE streaming.
+      // Real SSE stream from /api/public/chat
+      if (response.headers.get('content-type')?.includes('text/event-stream') && response.body) {
+        await this.processSseStream(response.body, callbacks, signal);
+        return;
+      }
+
       if (response.body) {
         await this.processResponseBody(response.body, callbacks, signal);
       } else {
@@ -111,7 +113,82 @@ export class ApiClient {
   }
 
   /**
-   * Process a ReadableStream response body, handling both SSE and JSON formats.
+   * Process SSE events from the public chat API.
+   */
+  private async processSseStream(
+    body: ReadableStream<Uint8Array>,
+    callbacks: {
+      onToken: (token: string) => void;
+      onSources: (sources: Citation[]) => void;
+      onDone: (fullText: string) => void;
+      onError: (error: Error) => void;
+    },
+    signal: AbortSignal
+  ): Promise<void> {
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+
+    try {
+      while (true) {
+        if (signal.aborted) {
+          reader.cancel();
+          break;
+        }
+
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          const line = part
+            .split('\n')
+            .map((l) => l.trim())
+            .find((l) => l.startsWith('data: '));
+          if (!line) continue;
+
+          try {
+            const data = JSON.parse(line.slice(6)) as {
+              type?: string;
+              content?: string;
+              citations?: Citation[];
+              message?: string;
+            };
+
+            if (data.type === 'sources' && data.citations) {
+              callbacks.onSources(data.citations);
+            } else if (data.type === 'content' && data.content) {
+              callbacks.onToken(data.content);
+              fullText += data.content;
+            } else if (data.type === 'done') {
+              callbacks.onDone(fullText);
+              return;
+            } else if (data.type === 'error') {
+              callbacks.onError(new Error(data.message || 'Streaming error'));
+              return;
+            }
+          } catch {
+            // skip malformed frames
+          }
+        }
+      }
+
+      callbacks.onDone(fullText);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        callbacks.onDone(fullText);
+        return;
+      }
+      callbacks.onError(err instanceof Error ? err : new Error(String(err)));
+    }
+  }
+
+  /**
+   * Process a ReadableStream response body, handling legacy JSON formats.
    */
   private async processResponseBody(
     body: ReadableStream<Uint8Array>,
@@ -195,14 +272,17 @@ export class ApiClient {
         return '';
       }
 
-      // Full JSON response from public chat API
+      // Full JSON response (legacy fallback)
       if (data.success === true && data.data) {
         const answer = data.data.answer || '';
         if (data.data.citations) {
           callbacks.onSources(data.data.citations);
         }
-        callbacks.onToken(answer);
-        return answer;
+        if (answer) {
+          callbacks.onToken(answer);
+          return answer;
+        }
+        return '';
       }
 
       if (data.success === false) {

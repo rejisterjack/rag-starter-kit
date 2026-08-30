@@ -121,16 +121,10 @@ Returns a concise summary highlighting key points.`,
         return createErrorResult(`Document not found: ${documentId}`);
       }
 
-      // Get chunks from Qdrant
-      const { qdrant, COLLECTION_DOCUMENT_CHUNKS } = await import('@/lib/qdrant');
-      const scrollResult = await qdrant.scroll(COLLECTION_DOCUMENT_CHUNKS, {
-        filter: { must: [{ key: 'documentId', match: { value: documentId } }] },
-        limit: 1000,
-        with_payload: true,
-      });
-      const fullText = scrollResult.points
-        .map((p) => String((p.payload as Record<string, unknown>)?.content ?? ''))
-        .join('\n\n');
+      // Get chunks from pgvector
+      const { getChunksByDocumentId } = await import('@/lib/vector');
+      const chunks = await getChunksByDocumentId(documentId, 1000);
+      const fullText = chunks.map((c) => c.text).join('\n\n');
 
       if (!fullText) {
         return createErrorResult('Document has no content to summarize');
@@ -158,20 +152,17 @@ Returns a concise summary highlighting key points.`,
         { model: 'auto', temperature: 0.3, maxTokens: 600 }
       );
 
-      const sources: Source[] = scrollResult.points.slice(0, 3).map((point) => {
-        const p = point.payload ?? {};
-        return {
-          id: String(point.id),
-          content: String(p.content ?? ''),
-          metadata: {
-            documentId: document.id,
-            documentName: document.name,
-            page: typeof p.page === 'number' ? p.page : undefined,
-            chunkIndex: typeof p.index === 'number' ? p.index : 0,
-            totalChunks: scrollResult.points.length,
-          },
-        };
-      });
+      const sources: Source[] = chunks.slice(0, 3).map((chunk) => ({
+        id: chunk.id,
+        content: chunk.text,
+        metadata: {
+          documentId: document.id,
+          documentName: document.name,
+          page: chunk.page ?? undefined,
+          chunkIndex: chunk.index,
+          totalChunks: chunks.length,
+        },
+      }));
 
       return createSuccessResult(
         {
@@ -179,7 +170,7 @@ Returns a concise summary highlighting key points.`,
           documentName: document.name,
           summary: response.content.trim(),
           wordCount: response.content.split(/\s+/).length,
-          totalChunks: scrollResult.points.length,
+          totalChunks: chunks.length,
           focus,
         },
         sources
@@ -231,7 +222,7 @@ Returns document metadata including names, types, sizes, and status.`,
           return createErrorResult(`Document not found: ${documentId}`);
         }
 
-        const { getDocumentStats } = await import('@/lib/qdrant');
+        const { getDocumentStats } = await import('@/lib/vector');
         const stats = await getDocumentStats(documentId).catch(() => ({ totalChunks: 0 }));
 
         return createSuccessResult({
@@ -257,7 +248,7 @@ Returns document metadata including names, types, sizes, and status.`,
         orderBy: { createdAt: 'desc' },
       });
 
-      const { getDocumentStats } = await import('@/lib/qdrant');
+      const { getDocumentStats } = await import('@/lib/vector');
       const allStats = await Promise.all(
         documents.map((d) => getDocumentStats(d.id).catch(() => ({ totalChunks: 0 })))
       );
@@ -315,9 +306,9 @@ Returns semantically similar chunks ranked by relevance.`,
       // Generate embedding for the query
       const queryEmbedding = await generateQueryEmbedding(query);
 
-      // Perform semantic search using Qdrant
-      const { searchSimilar } = await import('@/lib/qdrant');
-      const { buildQdrantFilter } = await import('@/lib/qdrant/filters');
+      // Perform semantic search using pgvector
+      const { searchSimilar } = await import('@/lib/vector');
+      const { buildQdrantFilter } = await import('@/lib/vector/filters');
       const qdrantFilter = buildQdrantFilter({ workspaceId });
       const qdrantResults = await searchSimilar(queryEmbedding, {
         filter: qdrantFilter,
@@ -413,24 +404,16 @@ Returns a comparison analysis with similarities and differences.`,
         return createErrorResult(`Documents not found: ${missingIds.join(', ')}`);
       }
 
-      const { qdrant, COLLECTION_DOCUMENT_CHUNKS } = await import('@/lib/qdrant');
-      const docChunks = await Promise.all(
-        documents.map((d) =>
-          qdrant.scroll(COLLECTION_DOCUMENT_CHUNKS, {
-            filter: { must: [{ key: 'documentId', match: { value: d.id } }] },
-            limit: 20,
-            with_payload: true,
-          })
-        )
-      );
+      const { getChunksByDocumentId } = await import('@/lib/vector');
+      const docChunks = await Promise.all(documents.map((d) => getChunksByDocumentId(d.id, 20)));
 
       const llm = createProviderFromEnv();
 
       const docTexts = documents.map((d, i) => ({
         name: d.name,
         id: d.id,
-        content: docChunks[i].points
-          .map((p) => String((p.payload as Record<string, unknown>)?.content ?? ''))
+        content: (docChunks[i] ?? [])
+          .map((chunk) => chunk.text)
           .join('\n\n')
           .slice(0, 3000),
       }));
@@ -465,20 +448,17 @@ ${aspect ? `4. Specific findings about "${aspect}":` : ''}`;
       );
 
       const sources: Source[] = documents.flatMap((d, i) =>
-        docChunks[i].points.slice(0, 2).map((point) => {
-          const p = point.payload ?? {};
-          return {
-            id: String(point.id),
-            content: String(p.content ?? ''),
-            metadata: {
-              documentId: d.id,
-              documentName: d.name,
-              page: typeof p.page === 'number' ? p.page : undefined,
-              chunkIndex: typeof p.index === 'number' ? p.index : 0,
-              totalChunks: docChunks[i].points.length,
-            },
-          };
-        })
+        (docChunks[i] ?? []).slice(0, 2).map((chunk) => ({
+          id: chunk.id,
+          content: chunk.text,
+          metadata: {
+            documentId: d.id,
+            documentName: d.name,
+            page: chunk.page ?? undefined,
+            chunkIndex: chunk.index,
+            totalChunks: docChunks[i]?.length ?? 0,
+          },
+        }))
       );
 
       return createSuccessResult(

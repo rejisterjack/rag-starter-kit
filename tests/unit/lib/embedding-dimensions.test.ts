@@ -14,7 +14,7 @@ describe('Embedding Dimension Validation', () => {
 
   it('returns valid for default Google Gemini (768D)', async () => {
     process.env.EMBEDDING_PROVIDER = 'google';
-    process.env.EMBEDDING_MODEL = undefined;
+    process.env.EMBEDDING_MODEL = 'gemini-embedding-2';
 
     const { validateEmbeddingDimensions } = await import('@/lib/ai/embeddings');
     const result = validateEmbeddingDimensions();

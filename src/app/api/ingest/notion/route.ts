@@ -9,9 +9,9 @@
  * Requires NOTION_API_KEY in environment variables.
  */
 
-import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generateEmbedding } from '@/lib/ai';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { auth } from '@/lib/auth';
 import { getServerSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db';
@@ -44,13 +44,13 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const body = await req.json();
     const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      return apiError('VALIDATION_ERROR', 'Invalid input', 400, parsed.error.flatten());
     }
 
     const { url } = parsed.data;
@@ -58,16 +58,13 @@ export async function POST(req: Request) {
     // Resolve workspace
     const workspace = await getServerSession();
     if (!workspace) {
-      return NextResponse.json({ error: 'No workspace found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'No workspace found', 404);
     }
 
     // Get Notion API key
     const notionApiKey = process.env.NOTION_API_KEY;
     if (!notionApiKey) {
-      return NextResponse.json(
-        { error: 'NOTION_API_KEY is not configured on this server' },
-        { status: 503 }
-      );
+      return apiError('NOT_CONFIGURED', 'NOTION_API_KEY is not configured on this server', 503);
     }
 
     const parser = new NotionParser(notionApiKey);
@@ -98,7 +95,7 @@ export async function POST(req: Request) {
     // Chunk and embed
     const chunks = simpleChunk(result.content, 1000, 200);
 
-    const { upsertChunks } = await import('@/lib/qdrant');
+    const { upsertChunks } = await import('@/lib/vector');
     const chunkPoints = await Promise.all(
       chunks.map(async ({ content, start, end }, i) => {
         const embedding = await generateEmbedding(content);
@@ -124,8 +121,7 @@ export async function POST(req: Request) {
       data: { status: 'COMPLETED' },
     });
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       documentId: document.id,
       title: result.title,
       chunks: chunks.length,
@@ -133,6 +129,6 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Notion ingestion failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError('INTERNAL_ERROR', message, 500);
   }
 }

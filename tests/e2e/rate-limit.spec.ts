@@ -6,6 +6,7 @@
  */
 
 import { expect, test } from '@playwright/test';
+import { TEST_PASSWORD } from './fixtures/credentials';
 
 // =============================================================================
 // Configuration
@@ -86,14 +87,17 @@ test.describe('Chat Rate Limiting', () => {
   test('should reset rate limit after window', async () => {
     // This test would need to wait for the rate limit window
     // In practice, you might mock time or use a test-specific shorter window
-    test.skip(true, 'Requires time manipulation or test-specific config');
+    test.skip(
+      process.env.E2E_SKIP_RATE_LIMIT_WINDOW !== 'true',
+      'Set E2E_SKIP_RATE_LIMIT_WINDOW=true to run window reset test'
+    );
   });
 
   test('should track rate limits per user', async ({ page, request }) => {
     // Login as user 1
     await page.goto('/login');
     await page.fill('input[name="email"]', 'user1@example.com');
-    await page.fill('input[name="password"]', 'password123');
+    await page.fill('input[name="password"]', TEST_PASSWORD);
     await page.click('button[type="submit"]');
 
     await page.waitForURL('/chat');
@@ -115,7 +119,7 @@ test.describe('Chat Rate Limiting', () => {
     await page.goto('/logout');
     await page.goto('/login');
     await page.fill('input[name="email"]', 'user2@example.com');
-    await page.fill('input[name="password"]', 'password123');
+    await page.fill('input[name="password"]', TEST_PASSWORD);
     await page.click('button[type="submit"]');
 
     await page.waitForURL('/chat');
@@ -288,7 +292,10 @@ test.describe('Rate Limit Headers', () => {
 test.describe('Rate Limit Recovery', () => {
   test('should allow requests after rate limit window', async ({ request }) => {
     // This test is skipped by default as it requires waiting
-    test.skip(true, 'Requires time manipulation or long test duration');
+    test.skip(
+      process.env.E2E_SKIP_RATE_LIMIT_BURST !== 'true',
+      'Set E2E_SKIP_RATE_LIMIT_BURST=true to run burst window test'
+    );
 
     // Trigger rate limit
     await makeRequests(request, '/api/health', 200, 'GET');

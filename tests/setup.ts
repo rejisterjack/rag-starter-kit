@@ -174,6 +174,34 @@ Object.defineProperty(navigator, 'clipboard', {
   },
 });
 
+// Mock EventSource (used by ingestion progress SSE)
+class MockEventSource {
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSED = 2;
+  url: string;
+  readyState = MockEventSource.CONNECTING;
+  onopen: ((event: Event) => void) | null = null;
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+  addEventListener = vi.fn();
+  removeEventListener = vi.fn();
+  close = vi.fn(() => {
+    this.readyState = MockEventSource.CLOSED;
+  });
+  constructor(url: string) {
+    this.url = url;
+    queueMicrotask(() => {
+      this.readyState = MockEventSource.OPEN;
+      this.onopen?.(new Event('open'));
+    });
+  }
+}
+Object.defineProperty(globalThis, 'EventSource', {
+  writable: true,
+  value: MockEventSource,
+});
+
 // ============================================================================
 // Global Test Hooks
 // ============================================================================

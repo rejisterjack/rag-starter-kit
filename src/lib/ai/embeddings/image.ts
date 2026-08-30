@@ -77,7 +77,7 @@ async function getCachedEmbedding(cacheKey: string): Promise<number[] | null> {
     const result = await prisma.$queryRaw<{ embedding: number[] }[]>`
       SELECT embedding::float[] as embedding
       FROM image_embeddings
-      WHERE content_hash = ${cacheKey}
+      WHERE "contentHash" = ${cacheKey}
       AND "createdAt" > NOW() - INTERVAL '7 days'
       LIMIT 1
     `;

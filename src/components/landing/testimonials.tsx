@@ -14,7 +14,7 @@ const TESTIMONIALS = [
     name: 'Marcus T.',
     role: 'Senior Developer, Consulting Firm',
     quote:
-      "Finally a RAG kit that doesn't require Python. The pgvector integration is rock solid and the multi-provider AI support saved us weeks.",
+      "Finally a RAG kit that doesn't require Python. The Qdrant integration is rock solid and the multi-provider AI support saved us weeks.",
     stars: 5,
   },
   {

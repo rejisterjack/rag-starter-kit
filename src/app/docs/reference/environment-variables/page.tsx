@@ -1,5 +1,8 @@
+export const dynamic = 'force-static';
+
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { DocsShell } from '@/components/docs/docs-shell';
 
 export const metadata: Metadata = {
   title: 'Environment Variables',
@@ -20,7 +23,7 @@ const sections: { title: string; vars: EnvVar[] }[] = [
       {
         name: 'DATABASE_URL',
         required: true,
-        description: 'PostgreSQL connection string (must have pgvector extension)',
+        description: 'PostgreSQL connection string for relational metadata',
       },
       {
         name: 'NEXTAUTH_SECRET',
@@ -190,67 +193,74 @@ const sections: { title: string; vars: EnvVar[] }[] = [
 
 export default function EnvironmentVariablesPage() {
   return (
-    <div>
-      <h1 className="text-3xl font-bold tracking-tight mb-4">Environment Variables</h1>
-      <p className="text-lg text-muted-foreground mb-8">
-        All environment variables are validated at startup using Zod. Missing required variables
-        cause the app to fail with a clear error message.
-      </p>
+    <DocsShell
+      path="/docs/reference/environment-variables"
+      title="Environment Variables"
+      description="Complete list of environment variables with defaults and descriptions."
+      lastModified="2026-08-25"
+    >
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight mb-4">Environment Variables</h1>
+        <p className="text-lg text-muted-foreground mb-8">
+          All environment variables are validated at startup using Zod. Missing required variables
+          cause the app to fail with a clear error message.
+        </p>
 
-      <div className="space-y-8">
-        {sections.map((section) => (
-          <section key={section.title}>
-            <h2 className="text-xl font-semibold mb-3">{section.title}</h2>
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-muted/50">
-                  <tr className="border-b border-border">
-                    <th className="px-4 py-2 font-semibold">Variable</th>
-                    <th className="px-4 py-2 font-semibold">Required</th>
-                    <th className="px-4 py-2 font-semibold">Default</th>
-                    <th className="px-4 py-2 font-semibold">Description</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {section.vars.map((v) => (
-                    <tr key={v.name}>
-                      <td className="px-4 py-2 font-mono text-xs text-primary whitespace-nowrap">
-                        {v.name}
-                      </td>
-                      <td className="px-4 py-2">
-                        {v.required ? (
-                          <span className="text-red-500 font-medium">Yes</span>
-                        ) : (
-                          <span className="text-muted-foreground">No</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
-                        {v.default || '—'}
-                      </td>
-                      <td className="px-4 py-2 text-muted-foreground">{v.description}</td>
+        <div className="space-y-8">
+          {sections.map((section) => (
+            <section key={section.title}>
+              <h2 className="text-xl font-semibold mb-3">{section.title}</h2>
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-muted/50">
+                    <tr className="border-b border-border">
+                      <th className="px-4 py-2 font-semibold">Variable</th>
+                      <th className="px-4 py-2 font-semibold">Required</th>
+                      <th className="px-4 py-2 font-semibold">Default</th>
+                      <th className="px-4 py-2 font-semibold">Description</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        ))}
-      </div>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {section.vars.map((v) => (
+                      <tr key={v.name}>
+                        <td className="px-4 py-2 font-mono text-xs text-primary whitespace-nowrap">
+                          {v.name}
+                        </td>
+                        <td className="px-4 py-2">
+                          {v.required ? (
+                            <span className="text-red-500 font-medium">Yes</span>
+                          ) : (
+                            <span className="text-muted-foreground">No</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
+                          {v.default || '—'}
+                        </td>
+                        <td className="px-4 py-2 text-muted-foreground">{v.description}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ))}
+        </div>
 
-      <div className="flex justify-between pt-8 border-t border-border">
-        <Link
-          href="/docs/reference"
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          &larr; Reference
-        </Link>
-        <Link
-          href="/docs/reference/database-schema"
-          className="text-sm text-primary hover:underline"
-        >
-          Database Schema &rarr;
-        </Link>
+        <div className="flex justify-between pt-8 border-t border-border">
+          <Link
+            href="/docs/reference"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            &larr; Reference
+          </Link>
+          <Link
+            href="/docs/reference/database-schema"
+            className="text-sm text-primary hover:underline"
+          >
+            Database Schema &rarr;
+          </Link>
+        </div>
       </div>
-    </div>
+    </DocsShell>
   );
 }

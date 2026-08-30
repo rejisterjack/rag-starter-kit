@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>RAG Extension Settings</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 480px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      label {
+        display: block;
+        margin-top: 1rem;
+        font-weight: 600;
+      }
+      input {
+        width: 100%;
+        margin-top: 0.25rem;
+        padding: 0.5rem;
+        box-sizing: border-box;
+      }
+      button {
+        margin-top: 1.5rem;
+        padding: 0.5rem 1rem;
+      }
+      #status {
+        margin-top: 1rem;
+        color: green;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>RAG Knowledge Assistant</h1>
+    <p>Configure your RAG Starter Kit instance and API key.</p>
+    <form id="settings-form">
+      <label for="apiUrl">API URL</label>
+      <input id="apiUrl" type="url" placeholder="http://localhost:7392" required />
+
+      <label for="apiKey">API Key</label>
+      <input id="apiKey" type="password" placeholder="rsk_..." autocomplete="off" />
+
+      <button type="submit">Save</button>
+    </form>
+    <p id="status" hidden>Saved.</p>
+    <script src="options.js"></script>
+  </body>
+</html>

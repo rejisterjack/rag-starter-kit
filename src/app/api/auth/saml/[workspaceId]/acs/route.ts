@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * SAML Assertion Consumer Service (ACS) Endpoint
  *
@@ -45,14 +46,14 @@ export async function POST(
     const relayState = formData.get('RelayState') as string | undefined;
 
     if (!samlResponse) {
-      return NextResponse.json({ error: 'SAMLResponse not found' }, { status: 400 });
+      return apiError('BAD_REQUEST', 'SAMLResponse not found', 400);
     }
 
     // Get and validate SAML configuration
     const config = await getWorkspaceSamlConfig(workspaceId);
 
     if (!config) {
-      return NextResponse.json({ error: 'SAML configuration not found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'SAML configuration not found', 404);
     }
 
     // Process SAML response
@@ -65,7 +66,7 @@ export async function POST(
 
     // Check for replay attacks
     if (profile.assertionId && isAssertionUsed(profile.assertionId)) {
-      return NextResponse.json({ error: 'SAML assertion has already been used' }, { status: 401 });
+      return apiError('UNAUTHORIZED', 'SAML assertion has already been used', 401);
     }
 
     // Mark assertion as used
@@ -98,10 +99,7 @@ export async function POST(
           severity: 'WARNING',
         });
 
-        return NextResponse.json(
-          { error: 'Email domain not authorized for this workspace' },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Email domain not authorized for this workspace', 403);
       }
     }
 
@@ -114,7 +112,7 @@ export async function POST(
     const userResult = await findOrCreateUser(profile, resolvedWorkspaceId);
 
     if (!userResult.success) {
-      return NextResponse.json({ error: userResult.error }, { status: 500 });
+      return apiError('INTERNAL_ERROR', userResult.error ?? 'Failed to provision user', 500);
     }
 
     // Log successful login
@@ -199,13 +197,10 @@ export async function POST(
     });
 
     if (error instanceof SamlError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.statusCode }
-      );
+      return apiError(error.code, error.message, error.statusCode);
     }
 
-    return NextResponse.json({ error: 'SAML authentication failed' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'SAML authentication failed', 500);
   }
 }
 
@@ -347,7 +342,11 @@ async function createSession(userId: string, workspaceId: string): Promise<strin
   });
 
   await trackSession(userId, jti).catch((error) => {
-    logger.error('Failed to track SAML session', { userId, jti, error });
+    logger.warn('Failed to track SAML session', {
+      userId,
+      jti,
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
   });
 
   return token;

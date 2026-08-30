@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * Slack Integration Status API
  *
@@ -18,10 +19,7 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const integration = await prisma.integrationAccount.findFirst({
@@ -89,10 +87,7 @@ export async function DELETE() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const integration = await prisma.integrationAccount.findFirst({

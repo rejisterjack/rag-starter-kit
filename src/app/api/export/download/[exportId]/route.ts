@@ -4,6 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { apiError } from '@/lib/api-response';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { withApiAuth } from '@/lib/auth';
 import { formatFileSize, getExportService, getExportStorage } from '@/lib/export';
@@ -31,7 +32,7 @@ export const GET = withApiAuth(async (_req: Request, session, { params }: RouteP
     const job = exportService.getJobStatus(exportId);
 
     if (!job) {
-      return NextResponse.json({ error: 'Export not found', code: 'NOT_FOUND' }, { status: 404 });
+      return apiError('NOT_FOUND', 'Export not found', 404);
     }
 
     // Verify user owns this export
@@ -47,25 +48,17 @@ export const GET = withApiAuth(async (_req: Request, session, { params }: RouteP
         severity: 'WARNING',
       });
 
-      return NextResponse.json({ error: 'Access denied', code: 'FORBIDDEN' }, { status: 403 });
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Check if export is completed
     if (job.status !== 'completed') {
-      return NextResponse.json(
-        {
-          error: 'Export not ready',
-          code: 'NOT_READY',
-          status: job.status,
-          progress: job.progress,
-        },
-        { status: 400 }
-      );
+      return apiError('NOT_READY', 'Export not ready', 400);
     }
 
     // Check if export has expired
     if (new Date() > job.expiresAt) {
-      return NextResponse.json({ error: 'Export has expired', code: 'EXPIRED' }, { status: 410 });
+      return apiError('EXPIRED', 'Export has expired', 410);
     }
 
     // Retrieve file from storage
@@ -73,10 +66,7 @@ export const GET = withApiAuth(async (_req: Request, session, { params }: RouteP
     const fileInfo = await storage.getFileInfo(exportId);
 
     if (!fileInfo) {
-      return NextResponse.json(
-        { error: 'File not found', code: 'FILE_NOT_FOUND' },
-        { status: 404 }
-      );
+      return apiError('FILE_NOT_FOUND', 'File not found', 404);
     }
 
     // Get file buffer
@@ -114,13 +104,11 @@ export const GET = withApiAuth(async (_req: Request, session, { params }: RouteP
 
     return new NextResponse(new Uint8Array(buffer), { headers });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        code: 'INTERNAL_ERROR',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
+    return apiError(
+      'INTERNAL_ERROR',
+      'Internal server error',
+      500,
+      error instanceof Error ? error.message : 'Unknown error'
     );
   }
 });

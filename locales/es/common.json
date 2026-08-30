@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "RAG Starter Kit - Chatbot RAG Listo para Producción",
-    "description": "Una plantilla de chatbot RAG (Generación Aumentada por Recuperación) lista para producción, impulsada por Next.js 16, LangChain y PostgreSQL pgvector."
+    "description": "Una plantilla de chatbot RAG (Generación Aumentada por Recuperación) lista para producción, impulsada por Next.js 16, LangChain, PostgreSQL y pgvector."
   },
   "navigation": {
     "home": "Inicio",
@@ -41,7 +41,7 @@
     },
     "memory": {
       "title": "Memoria Persistente",
-      "description": "Memoria semántica de última generación impulsada por PostgreSQL con extensión pgvector."
+      "description": "Memoria semántica de última generación impulsada por PostgreSQL con la extensión pgvector."
     },
     "enterprise": {
       "title": "Listo para Empresas",

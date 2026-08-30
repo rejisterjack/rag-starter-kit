@@ -148,7 +148,7 @@ describe('Authentication Flow Integration', () => {
       expect(response.status).toBe(201);
       const body = await response.json();
       expect(body.success).toBe(true);
-      expect(body.data.userId).toBe('user-123');
+      expect(body.data.message).toBe('Account created successfully');
     });
 
     it('should reject registration with weak password', async () => {

@@ -82,8 +82,19 @@ export default defineConfig({
     env: {
       NODE_ENV: 'test',
       NEXT_PUBLIC_API_URL: 'http://localhost:7392',
+      AUTH_SECRET: 'test-secret-for-vitest-exactly-32c',
       NEXTAUTH_SECRET: 'test-secret-for-vitest-exactly-32c',
+      NEXTAUTH_URL: 'http://localhost:7392',
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+      DIRECT_URL: 'postgresql://test:test@localhost:5432/test',
+      OPENROUTER_API_KEY: 'test-openrouter-key',
+      GOOGLE_GENERATIVE_AI_API_KEY: 'test-google-api-key',
       ENCRYPTION_MASTER_KEY: 'test-encryption-key-for-vitest-32c',
+      AUTH_CREDENTIALS_ONLY: 'true',
+      AUTH_GITHUB_ID: 'test-github-id',
+      AUTH_GITHUB_SECRET: 'test-github-secret',
+      AUTH_GOOGLE_ID: 'test-google-id',
+      AUTH_GOOGLE_SECRET: 'test-google-secret',
     },
     
     // Snapshot format

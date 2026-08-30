@@ -568,7 +568,7 @@ describe('useChat', () => {
 
       expect(conversations).toEqual(mockConversations);
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/chats'),
+        expect.stringContaining('/api/chats'),
         expect.objectContaining({ credentials: 'include' })
       );
     });

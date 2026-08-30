@@ -4,6 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -42,7 +43,7 @@ export const POST = withApiAuth(async (req, session) => {
     });
 
     if (!rateLimitResult.success) {
-      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+      return apiError('RATE_LIMIT', 'Rate limit exceeded', 429);
     }
 
     // Parse request
@@ -53,7 +54,7 @@ export const POST = withApiAuth(async (req, session) => {
       logger.debug('Invalid JSON body in conversation export', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     const { conversationId, format, includeCitations, includeSources, citationStyle } = body as {
@@ -65,10 +66,7 @@ export const POST = withApiAuth(async (req, session) => {
     };
 
     if (!conversationId || !format) {
-      return NextResponse.json(
-        { error: 'Missing required fields: conversationId, format' },
-        { status: 400 }
-      );
+      return apiError('ERROR', 'Missing required fields: conversationId, format', 400);
     }
 
     // Verify access to conversation
@@ -85,14 +83,14 @@ export const POST = withApiAuth(async (req, session) => {
     });
 
     if (!chat) {
-      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'Conversation not found', 404);
     }
 
     // Check export permission for workspace chats
     if (chat.workspaceId && chat.userId !== userId) {
       const canExport = await checkPermission(userId, chat.workspaceId, Permission.READ_DOCUMENTS);
       if (!canExport) {
-        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+        return apiError('FORBIDDEN', 'Access denied', 403);
       }
     }
 
@@ -181,22 +179,19 @@ export const POST = withApiAuth(async (req, session) => {
       case 'pdf':
         // For PDF, we return JSON that the client will use to generate PDF
         // Actual PDF generation happens client-side with @react-pdf/renderer
-        return NextResponse.json({
-          success: true,
-          data: {
-            title,
-            workspaceName,
-            messages,
-            options: {
-              includeCitations,
-              includeSources,
-              citationStyle,
-            },
+        return apiSuccess({
+          title,
+          workspaceName,
+          messages,
+          options: {
+            includeCitations,
+            includeSources,
+            citationStyle,
           },
         });
 
       default:
-        return NextResponse.json({ error: 'Unsupported format' }, { status: 400 });
+        return apiError('BAD_REQUEST', 'Unsupported format', 400);
     }
 
     // Return file content
@@ -211,7 +206,7 @@ export const POST = withApiAuth(async (req, session) => {
     logger.error('Failed to export conversation', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json({ error: 'Failed to export conversation' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to export conversation', 500);
   }
 });
 

@@ -1,45 +1,26 @@
 import type { Metadata } from 'next';
-import { prisma } from '@/lib/db';
+import type { ReactNode } from 'react';
 
-interface ShareLayoutProps {
-  children: React.ReactNode;
+type Props = {
+  children: ReactNode;
   params: Promise<{ token: string }>;
-}
+};
 
-export async function generateMetadata({ params }: ShareLayoutProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params;
-
-  try {
-    const share = await prisma.chatShare.findUnique({
-      where: { shareToken: token },
-      include: {
-        chat: {
-          select: { title: true },
-        },
-      },
-    });
-
-    if (share?.chat?.title) {
-      return {
-        title: `${share.chat.title} — Shared Chat`,
-        description: `View this shared AI conversation: ${share.chat.title}`,
-        openGraph: {
-          title: share.chat.title,
-          description: `Shared via RAG Starter Kit`,
-          type: 'article',
-        },
-      };
-    }
-  } catch {
-    // Database unavailable — use fallback metadata
-  }
-
   return {
-    title: 'Shared Chat — RAG Starter Kit',
-    description: 'View a shared AI conversation',
+    title: 'Shared conversation',
+    description: 'View a shared RAG Starter Kit conversation.',
+    openGraph: {
+      title: 'Shared conversation | RAG Starter Kit',
+      description: 'View a shared AI conversation powered by RAG Starter Kit.',
+      type: 'article',
+    },
+    robots: { index: false, follow: false },
+    other: { 'share-token': token.slice(0, 8) },
   };
 }
 
-export default function ShareLayout({ children }: ShareLayoutProps) {
+export default function ShareLayout({ children }: { children: ReactNode }) {
   return children;
 }

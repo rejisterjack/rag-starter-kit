@@ -93,7 +93,6 @@ function App() {
 |---|---|---|---|
 | `apiUrl` | `string` | *(required)* | Base URL of your RAG Starter Kit deployment |
 | `apiKey` | `string` | `""` | API key for authenticating with the public chat endpoint |
-| `workspaceId` | `string` | `""` | Target workspace ID (uses the API key's default if omitted) |
 | `title` | `string` | `"Chat"` | Title displayed in the widget header |
 | `placeholder` | `string` | `"Ask a question..."` | Placeholder text for the input field |
 | `primaryColor` | `string` | `"#7c3aed"` | Primary theme color (hex) for bubbles, header, and accents |

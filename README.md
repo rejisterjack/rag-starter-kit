@@ -196,20 +196,22 @@ bun dev
 
 ### Docker (Self-Hosted)
 
+Requires **Node.js 24+**. The app listens on port **7392**.
+
 ```bash
-# Start PostgreSQL + Redis locally
+# Start PostgreSQL and Redis
 docker compose up -d
 
-# Update .env with local database URL:
-# DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ragdb
-
-# Run migrations and seed
+# Copy .env.example → .env and set API keys, then migrate + seed
 bun db:migrate
 bun db:seed
 
-# Build and run production container
+# Development
+bun dev   # http://localhost:7392
+
+# Production container
 docker build -t rag-starter-kit .
-docker run -p 3000:3000 --env-file .env --network host rag-starter-kit
+docker run -p 7392:7392 --env-file .env rag-starter-kit
 ```
 
 ### One-Click Deploy
@@ -275,7 +277,7 @@ graph TB
 | **API** | Next.js API Routes | RESTful endpoints, type-safe APIs |
 | **AI/ML** | Vercel AI SDK, OpenRouter, Gemini | LLM inference, embeddings |
 | **RAG** | LangChain, custom pipeline | Document processing, retrieval |
-| **Data** | PostgreSQL, pgvector, Redis | Persistent storage, caching |
+| **Data** | PostgreSQL + pgvector, Redis | Persistent storage, vector search, caching |
 | **Storage** | Cloudinary | Document files |
 | **Queue** | Inngest | Background job processing |
 | **Real-time** | Ably | WebSocket connections |

@@ -6,6 +6,7 @@ import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider } from 'next-themes';
 import { type ReactNode, useState } from 'react';
 import { Toaster } from 'sonner';
+import { PostHogProvider } from '@/components/analytics/posthog-provider';
 import { PWAProvider } from '@/components/pwa';
 import { PlausibleProvider } from './providers/plausible-provider';
 
@@ -56,7 +57,9 @@ export function Providers({ children }: ProvidersProps): React.ReactElement {
             installPromptDelay={10000}
           >
             <LazyMotion features={domAnimation} strict>
-              <PlausibleProvider>{children}</PlausibleProvider>
+              <PostHogProvider>
+                <PlausibleProvider>{children}</PlausibleProvider>
+              </PostHogProvider>
             </LazyMotion>
           </PWAProvider>
           <Toaster richColors closeButton />

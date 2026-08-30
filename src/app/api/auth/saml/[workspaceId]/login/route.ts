@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * SAML Login Initiation Endpoint
  *
@@ -40,14 +41,11 @@ export async function GET(
     const config = await getWorkspaceSamlConfig(workspaceId);
 
     if (!config) {
-      return NextResponse.json(
-        { error: 'SAML SSO not configured for this workspace' },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'SAML SSO not configured for this workspace', 404);
     }
 
     if (!config.active) {
-      return NextResponse.json({ error: 'SAML SSO is currently disabled' }, { status: 403 });
+      return apiError('FORBIDDEN', 'SAML SSO is currently disabled', 403);
     }
 
     // Validate email domain if provided
@@ -66,10 +64,7 @@ export async function GET(
       const ssoDomain = workspaceSettings?.ssoDomain;
 
       if (ssoDomain && domain !== ssoDomain.toLowerCase()) {
-        return NextResponse.json(
-          { error: 'Email domain does not match workspace SSO domain' },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Email domain does not match workspace SSO domain', 403);
       }
     }
 
@@ -89,13 +84,10 @@ export async function GET(
     });
   } catch (error) {
     if (error instanceof SamlError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.statusCode }
-      );
+      return apiError(error.code, error.message, error.statusCode);
     }
 
-    return NextResponse.json({ error: 'Failed to initiate SAML login' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to initiate SAML login', 500);
   }
 }
 

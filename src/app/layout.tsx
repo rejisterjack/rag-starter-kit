@@ -6,10 +6,11 @@ import { Suspense } from 'react';
 import { Navbar } from '@/components/navbar';
 import { NonceScripts } from '@/components/nonce-scripts';
 import { Providers } from '@/components/providers';
-import { StructuredData } from '@/components/seo';
+import { buildOrganizationJsonLd, buildWebSiteJsonLd, JsonLd } from '@/components/seo';
 import { NavigationProgress } from '@/components/ui/navigation-progress';
 import { Toaster } from '@/components/ui/toaster';
 import { logger } from '@/lib/logger';
+import { SITE } from '@/lib/seo/content-registry';
 import '@/styles/globals.css';
 
 const geistSans = Geist({
@@ -26,7 +27,7 @@ const geistMono = Geist_Mono({
   adjustFontFallback: true,
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rag.rejisterjack.com';
+const siteUrl = SITE.url;
 
 if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_APP_URL) {
   logger.warn(
@@ -36,27 +37,27 @@ if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_APP_URL) {
 
 export const metadata: Metadata = {
   title: {
-    default: 'RAG Starter Kit - Production-Ready RAG Chatbot',
-    template: '%s | RAG Starter Kit',
+    default: `${SITE.name} — Production-Ready RAG Chatbot`,
+    template: `%s | ${SITE.name}`,
   },
-  description:
-    'A production-ready RAG (Retrieval-Augmented Generation) chatbot boilerplate powered by Next.js 16, LangChain, and PostgreSQL pgvector. Build AI-powered document chatbots in minutes.',
+  description: SITE.description,
   keywords: [
     'RAG',
-    'chatbot',
-    'AI',
+    'RAG starter kit',
+    'AI chatbot boilerplate',
     'Next.js',
-    'LangChain',
-    'OpenAI',
+    'TypeScript',
     'pgvector',
     'PostgreSQL',
+    'Prisma',
+    'Vercel AI SDK',
     'retrieval-augmented generation',
     'document chatbot',
-    'AI boilerplate',
+    'open source',
   ],
-  authors: [{ name: 'RAG Starter Kit Team' }],
-  creator: 'RAG Starter Kit Team',
-  publisher: 'RAG Starter Kit',
+  authors: [{ name: 'Rupam Das' }],
+  creator: 'Rupam Das',
+  publisher: SITE.name,
   metadataBase: new URL(siteUrl),
   alternates: {
     canonical: '/',
@@ -65,10 +66,9 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: siteUrl,
-    siteName: 'RAG Starter Kit',
-    title: 'RAG Starter Kit - Production-Ready RAG Chatbot',
-    description:
-      'Build AI-powered document chatbots with Next.js, LangChain, and PostgreSQL pgvector.',
+    siteName: SITE.name,
+    title: `${SITE.name} — Production-Ready RAG Chatbot`,
+    description: SITE.description,
     images: [
       {
         url: '/og',
@@ -80,11 +80,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'RAG Starter Kit - Production-Ready RAG Chatbot',
-    description:
-      'Build AI-powered document chatbots with Next.js, LangChain, and PostgreSQL pgvector.',
+    title: `${SITE.name} — Production-Ready RAG Chatbot`,
+    description: SITE.description,
     images: ['/og'],
-    creator: '@ragstarterkit',
+    creator: SITE.twitter,
   },
   robots: {
     index: true,
@@ -171,7 +170,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
           </div>
           <Toaster />
         </Providers>
-        <StructuredData />
+        <JsonLd data={buildWebSiteJsonLd()} />
+        <JsonLd data={buildOrganizationJsonLd()} />
         {/* PWA Scripts & CSRF — client component, no Suspense needed */}
         <NonceScripts />
         {/* Vercel Analytics & Core Web Vitals */}

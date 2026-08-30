@@ -287,7 +287,8 @@ graph TD
 | Styling | Tailwind CSS 4, shadcn/ui |
 | State | React Query, Zustand |
 | Backend | Next.js API Routes |
-| Database | PostgreSQL 16 + pgvector (HNSW index) |
+| Database | PostgreSQL 16 |
+| Vector store | PostgreSQL + pgvector (HNSW cosine similarity) |
 | Cache | Redis |
 | Storage | Cloudinary |
 | AI | Vercel AI SDK, OpenRouter |
@@ -295,28 +296,16 @@ graph TD
 | Queue | Inngest |
 | Real-time | Ably |
 
-## Vector Search: HNSW Index Parameters
+## Vector Search: pgvector
 
-The `document_chunks.embedding` column is indexed using **pgvector's HNSW** (Hierarchical Navigable Small World) algorithm for approximate nearest-neighbour search.
+Embeddings are stored in PostgreSQL via the **pgvector** extension. Chunk text, metadata, and vectors live in `document_chunks`. Image embeddings live in `image_embeddings`. Similarity search uses HNSW with cosine distance (`<=>`). Keyword search uses a generated `tsvector` column and `websearch_to_tsquery`.
 
-### Index definition
+### Table configuration
 
-```sql
-SET hnsw.ef_construction = 128;
-
-CREATE INDEX CONCURRENTLY IF NOT EXISTS document_chunks_embedding_hnsw_idx
-  ON document_chunks
-  USING hnsw (embedding vector_cosine_ops);
-```
-
-### Parameter reference
-
-| Parameter | Value | Effect |
-|-----------|-------|--------|
-| `m` | 16 (pgvector default) | Number of bi-directional links per node. Higher = better recall but more memory. Typical range: 8–64. |
-| `ef_construction` | 128 | Queue size during index build. Higher = better recall at the cost of slower builds. Minimum recommended: 64. |
-| `hnsw.ef_search` | 40 (pgvector default) | Queue size at query time. Raise to `100`–`200` for high-recall querying: `SET hnsw.ef_search = 100;` |
-| Distance function | `vector_cosine_ops` | Cosine similarity — correct for normalised text embeddings from OpenAI / Gemini. Use `vector_l2_ops` for un-normalised models. |
+- Text vectors: `vector(768)` (Google Gemini `text-embedding-004` / `gemini-embedding-2`)
+- Image vectors: `vector(512)` (CLIP `Xenova/clip-vit-base-patch32`)
+- Distance: Cosine
+- Managed via `src/lib/vector/` and `prisma/migrations/`
 
 ### Tuning guidance
 

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -26,10 +26,7 @@ export async function POST(_req: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const { id } = await params;
@@ -40,10 +37,7 @@ export async function POST(_req: Request, { params }: RouteParams) {
     });
 
     if (!webhook) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Webhook not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Webhook not found', 404);
     }
 
     // Check if user has permission to manage API keys in this workspace
@@ -54,18 +48,12 @@ export async function POST(_req: Request, { params }: RouteParams) {
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Check if webhook is active
     if (webhook.status !== 'ACTIVE') {
-      return NextResponse.json(
-        { error: { code: 'WEBHOOK_INACTIVE', message: 'Webhook is not active' } },
-        { status: 400 }
-      );
+      return apiError('WEBHOOK_INACTIVE', 'Webhook is not active', 400);
     }
 
     // Send test webhook
@@ -93,17 +81,14 @@ export async function POST(_req: Request, { params }: RouteParams) {
       durationMs: result.durationMs,
     });
 
-    return NextResponse.json({
-      success: result.success,
-      data: {
-        testResult: {
-          success: result.success,
-          statusCode: result.statusCode,
-          responseBody: result.responseBody,
-          error: result.error,
-          durationMs: result.durationMs,
-          attemptCount: result.attemptCount,
-        },
+    return apiSuccess({
+      testResult: {
+        success: result.success,
+        statusCode: result.statusCode,
+        responseBody: result.responseBody,
+        error: result.error,
+        durationMs: result.durationMs,
+        attemptCount: result.attemptCount,
       },
     });
   } catch (error) {
@@ -111,9 +96,6 @@ export async function POST(_req: Request, { params }: RouteParams) {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
 
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to test webhook' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to test webhook', 500);
   }
 }

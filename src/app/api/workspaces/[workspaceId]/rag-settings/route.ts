@@ -4,8 +4,8 @@
  * PUT /api/workspaces/[workspaceId]/rag-settings - Update RAG settings
  */
 
-import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { withApiAuth } from '@/lib/auth';
 import { prisma, prismaRead } from '@/lib/db/client';
 import { fromJson } from '@/lib/db/json';
@@ -45,7 +45,7 @@ export const GET = withApiAuth(async (_req, session, { params }: RouteParams) =>
     );
 
     if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return apiError('FORBIDDEN', 'Forbidden', 403);
     }
 
     // Get workspace settings
@@ -55,7 +55,7 @@ export const GET = withApiAuth(async (_req, session, { params }: RouteParams) =>
     });
 
     if (!workspace) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'Workspace not found', 404);
     }
 
     // Parse RAG settings from workspace settings JSON
@@ -65,8 +65,7 @@ export const GET = withApiAuth(async (_req, session, { params }: RouteParams) =>
     // Get current resource usage
     const resourceUsage = await getWorkspaceResourceUsage(workspaceId);
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       settings: ragSettings,
       llmProvider: workspace.llmProvider,
       llmModel: workspace.llmModel,
@@ -76,7 +75,7 @@ export const GET = withApiAuth(async (_req, session, { params }: RouteParams) =>
     logger.error('Failed to fetch RAG settings', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to fetch settings', 500);
   }
 });
 
@@ -92,7 +91,7 @@ export const PUT = withApiAuth(async (req, session, { params }: RouteParams) => 
     );
 
     if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return apiError('FORBIDDEN', 'Forbidden', 403);
     }
 
     // Parse and validate body
@@ -100,10 +99,7 @@ export const PUT = withApiAuth(async (req, session, { params }: RouteParams) => 
     const validation = ragSettingsSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
-        { error: 'Invalid settings', details: validation.error.errors },
-        { status: 400 }
-      );
+      return apiError('VALIDATION_ERROR', 'Invalid settings', 400, validation.error.errors);
     }
 
     const ragSettings = validation.data;
@@ -115,7 +111,7 @@ export const PUT = withApiAuth(async (req, session, { params }: RouteParams) => 
     });
 
     if (!workspace) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'Workspace not found', 404);
     }
 
     // Merge with existing settings
@@ -151,8 +147,7 @@ export const PUT = withApiAuth(async (req, session, { params }: RouteParams) => 
       data: updateData,
     });
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       settings: updatedSettings.rag,
       llmProvider: ragSettings.llmProvider ?? null,
       llmModel: ragSettings.llmModel ?? null,
@@ -161,6 +156,6 @@ export const PUT = withApiAuth(async (req, session, { params }: RouteParams) => 
     logger.error('Failed to update RAG settings', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to update settings', 500);
   }
 });

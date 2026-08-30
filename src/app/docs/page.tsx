@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { buildBreadcrumbJsonLd } from '@/components/seo';
+
+export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
   title: 'Documentation',
@@ -126,11 +129,15 @@ const sections = [
 export default function DocsHomePage() {
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildBreadcrumbJsonLd('/docs')) }}
+      />
       <div className="mb-12">
         <h1 className="text-4xl font-bold tracking-tight mb-4">Documentation</h1>
         <p className="text-lg text-muted-foreground max-w-2xl">
           Everything you need to build, deploy, and scale AI-powered document chatbots with the RAG
-          Starter Kit. Built on Next.js 16, LangChain, and PostgreSQL with pgvector.
+          Starter Kit. Built on Next.js 16, the Vercel AI SDK, PostgreSQL, and pgvector.
         </p>
       </div>
 

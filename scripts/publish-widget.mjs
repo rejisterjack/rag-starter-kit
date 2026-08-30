@@ -2,17 +2,12 @@
 /**
  * scripts/publish-widget.mjs
  *
- * Build and publish the embeddable RAG widget package to npm.
+ * Build and publish the embeddable RAG chat-widget package to npm.
  *
  * Usage:
  *   node scripts/publish-widget.mjs              # dry-run (prints commands only)
  *   node scripts/publish-widget.mjs --publish     # real publish
  *   node scripts/publish-widget.mjs --publish --tag next   # publish with dist-tag
- *
- * Prerequisites:
- *   - bun install already run
- *   - npm login (or NPM_TOKEN env var set for CI)
- *   - packages/widget/package.json has the correct name, version, files fields
  */
 
 import { execSync } from 'node:child_process';
@@ -22,10 +17,9 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
-const WIDGET_DIR = resolve(ROOT, 'packages', 'widget');
+const WIDGET_DIR = resolve(ROOT, 'packages', 'chat-widget');
 const WIDGET_PKG = resolve(WIDGET_DIR, 'package.json');
 
-// ── CLI flags ──────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
 const doPublish = args.includes('--publish');
 const tag = (() => {
@@ -33,7 +27,6 @@ const tag = (() => {
   return idx !== -1 && args[idx + 1] ? args[idx + 1] : 'latest';
 })();
 
-// ── Colours ────────────────────────────────────────────────────────────────
 const c = {
   reset: '\x1b[0m',
   bold: '\x1b[1m',
@@ -62,7 +55,6 @@ function run(cmd, opts = {}) {
   }
 }
 
-// ── Pre-flight checks ──────────────────────────────────────────────────────
 step('Pre-flight checks', () => {
   if (!existsSync(WIDGET_PKG)) {
     log(`${c.red}✖ Cannot find ${WIDGET_PKG}${c.reset}`);
@@ -75,51 +67,28 @@ step('Pre-flight checks', () => {
   log(`  Tag     : ${c.bold}${tag}${c.reset}`);
   log(`  Mode    : ${doPublish ? `${c.green}PUBLISH${c.reset}` : `${c.yellow}DRY RUN${c.reset}`}`);
 
-  if (!pkg.name) {
-    log(`${c.red}✖ package.json is missing "name"${c.reset}`);
-    process.exit(1);
-  }
-  if (!pkg.version) {
-    log(`${c.red}✖ package.json is missing "version"${c.reset}`);
-    process.exit(1);
-  }
-  if (!pkg.files || pkg.files.length === 0) {
-    log(`${c.yellow}⚠  No "files" field — entire package will be published${c.reset}`);
-  }
-
-  // Check npm auth in publish mode
   if (doPublish) {
     try {
-      execSync('npm whoami', { stdio: 'pipe' });
       const user = execSync('npm whoami', { encoding: 'utf-8' }).trim();
       log(`  npm user: ${c.bold}${user}${c.reset}`);
     } catch {
-      if (process.env.NPM_TOKEN) {
-        log(`  ${c.dim}Using NPM_TOKEN from environment${c.reset}`);
-      } else {
+      if (!process.env.NPM_TOKEN) {
         log(`${c.red}✖ Not logged in to npm. Run "npm login" or set NPM_TOKEN.${c.reset}`);
         process.exit(1);
       }
+      log(`  ${c.dim}Using NPM_TOKEN from environment${c.reset}`);
     }
   }
 });
 
-// ── Install dependencies ───────────────────────────────────────────────────
-step('Install widget dependencies', () => {
+step('Install dependencies', () => {
   run('bun install --frozen-lockfile', { always: true, cwd: ROOT });
 });
 
-// ── Type-check ─────────────────────────────────────────────────────────────
-step('TypeScript type-check', () => {
-  run(`bun --filter @rag-starter-kit/widget exec tsc --noEmit`, { always: true });
+step('Build chat-widget (tsup)', () => {
+  run('bun --filter @rag-starter-kit/chat-widget run build', { always: true });
 });
 
-// ── Build ──────────────────────────────────────────────────────────────────
-step('Build widget package (tsup)', () => {
-  run(`bun --filter @rag-starter-kit/widget run build`, { always: true });
-});
-
-// ── Verify dist ────────────────────────────────────────────────────────────
 step('Verify dist output', () => {
   const distDir = resolve(WIDGET_DIR, 'dist');
   if (!existsSync(distDir)) {
@@ -129,15 +98,10 @@ step('Verify dist output', () => {
   log(`  ${c.green}✔${c.reset} dist/ exists`);
 });
 
-// ── Publish ────────────────────────────────────────────────────────────────
 step(`Publish to npm (tag: ${tag})`, () => {
-  const npmToken = process.env.NPM_TOKEN;
-  const tokenFlag = npmToken ? `--//registry.npmjs.org/:_authToken=${npmToken}` : '';
-  const tokenSetup = tokenFlag ? `npm config set ${tokenFlag} && ` : '';
-  run(`${tokenSetup}npm publish --access public --tag ${tag}`, { cwd: WIDGET_DIR });
+  run(`npm publish --access public --tag ${tag}`, { cwd: WIDGET_DIR });
 });
 
-// ── Done ───────────────────────────────────────────────────────────────────
 log(`\n${c.green}${c.bold}✔ Done!${c.reset}`);
 if (!doPublish) {
   log(

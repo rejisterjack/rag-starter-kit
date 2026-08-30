@@ -8,7 +8,6 @@
 import { prisma } from '@/lib/db';
 import { fromJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
-import { ensureDocumentChunksCollection } from '@/lib/qdrant';
 import { createEmbeddings } from '@/lib/rag/engine';
 import {
   parseAudio,
@@ -22,6 +21,7 @@ import {
 } from '@/lib/rag/ingestion';
 import { isYouTubeUrl } from '@/lib/rag/ingestion/parsers/youtube';
 import { getFile } from '@/lib/storage/cloudinary-storage';
+import { ensureDocumentChunksCollection } from '@/lib/vector';
 
 async function updateJob(jobId: string, data: Record<string, unknown>) {
   try {
@@ -163,11 +163,11 @@ export async function processDocumentInline(
 
     await updateJob(job.id, { documentId, progress: 40 });
 
-    // Ensure Qdrant collection exists before upserting
+    // Ensure pgvector tables exist before upserting
     try {
       await ensureDocumentChunksCollection();
     } catch (err) {
-      logger.error('Failed to ensure Qdrant collection exists', {
+      logger.error('Failed to ensure pgvector tables exist', {
         documentId,
         error: err instanceof Error ? err.message : String(err),
       });
@@ -178,7 +178,7 @@ export async function processDocumentInline(
     const embeddings = createEmbeddings();
     const batchSize = 100;
 
-    const { upsertChunks } = await import('@/lib/qdrant');
+    const { upsertChunks } = await import('@/lib/vector');
 
     for (let i = 0; i < chunks.length; i += batchSize) {
       const batch = chunks.slice(i, i + batchSize);

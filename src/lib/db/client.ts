@@ -10,9 +10,28 @@
  */
 
 import { PrismaNeon } from '@prisma/adapter-neon';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@/generated/prisma/client';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
+
+function resolveConnectionString(): string {
+  const databaseUrl = env.DATABASE_URL;
+  if (databaseUrl.startsWith('prisma+') && env.DIRECT_URL) {
+    return env.DIRECT_URL;
+  }
+  return databaseUrl;
+}
+
+function createAdapter(connectionString: string) {
+  if (connectionString.includes('neon.tech')) {
+    return new PrismaNeon({ connectionString });
+  }
+  return new PrismaPg({
+    connectionString,
+    max: env.DB_POOL_MAX ?? 10,
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -28,7 +47,8 @@ type GlobalWithPrisma = typeof globalThis & {
 // ---------------------------------------------------------------------------
 
 function createPrismaClient(url?: string): PrismaClient {
-  const adapter = new PrismaNeon({ connectionString: url ?? env.DATABASE_URL });
+  const connectionString = url ?? resolveConnectionString();
+  const adapter = createAdapter(connectionString);
   return new PrismaClient({
     adapter,
     log: env.NODE_ENV === 'development' ? ['query', 'warn', 'error'] : ['warn', 'error'],
@@ -109,7 +129,7 @@ function createReadClient(): PrismaClient {
   if (!READ_REPLICA_URL) {
     throw new Error('DATABASE_READ_REPLICA_URL is required for read replica client');
   }
-  const adapter = new PrismaNeon({ connectionString: READ_REPLICA_URL });
+  const adapter = createAdapter(READ_REPLICA_URL);
   return new PrismaClient({
     adapter,
     log: ['warn', 'error'],

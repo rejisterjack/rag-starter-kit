@@ -5,8 +5,9 @@
  * JIT provisioning, and default roles.
  */
 
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { invalidateDomainCache } from '@/lib/auth/domain-routing';
@@ -28,7 +29,7 @@ export async function GET(
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     // Check permission
@@ -39,7 +40,7 @@ export async function GET(
     );
 
     if (!hasPermission) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+      return apiError('FORBIDDEN', 'Permission denied', 403);
     }
 
     // Get workspace
@@ -48,13 +49,13 @@ export async function GET(
     });
 
     if (!workspace) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'Workspace not found', 404);
     }
 
     // Parse settings
     const settings = fromJson<Record<string, unknown>>(workspace.settings, {});
 
-    return NextResponse.json({
+    return apiSuccess({
       ssoEnabled: workspace.ssoEnabled,
       ssoDomains: workspace.ssoDomain ? [workspace.ssoDomain] : [],
       forceSSO: settings.forceSSO === true,
@@ -68,7 +69,7 @@ export async function GET(
     logger.error('Failed to retrieve SSO settings', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json({ error: 'Failed to retrieve SSO settings' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to retrieve SSO settings', 500);
   }
 }
 
@@ -85,7 +86,7 @@ export async function PUT(
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const hasPermission = await checkPermission(
@@ -95,7 +96,7 @@ export async function PUT(
     );
 
     if (!hasPermission) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+      return apiError('FORBIDDEN', 'Permission denied', 403);
     }
 
     const body = await request.json();
@@ -104,9 +105,11 @@ export async function PUT(
     const validationResult = WorkspaceSSOSettingsSchema.safeParse(body);
 
     if (!validationResult.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: validationResult.error.format() },
-        { status: 400 }
+      return apiError(
+        'VALIDATION_ERROR',
+        'Validation failed',
+        400,
+        validationResult.error.format()
       );
     }
 
@@ -118,7 +121,7 @@ export async function PUT(
     });
 
     if (!workspace) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'Workspace not found', 404);
     }
 
     // Check if domain is being changed
@@ -138,10 +141,7 @@ export async function PUT(
       });
 
       if (existing) {
-        return NextResponse.json(
-          { error: 'Domain is already claimed by another workspace' },
-          { status: 409 }
-        );
+        return apiError('ERROR', 'Domain is already claimed by another workspace', 409);
       }
     }
 
@@ -188,8 +188,7 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       settings: {
         ssoEnabled: data.ssoEnabled,
         ssoDomains: newDomain ? [newDomain] : [],
@@ -203,12 +202,9 @@ export async function PUT(
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: error.format() },
-        { status: 400 }
-      );
+      return apiError('VALIDATION_ERROR', 'Validation failed', 400, error.format());
     }
 
-    return NextResponse.json({ error: 'Failed to update SSO settings' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to update SSO settings', 500);
   }
 }

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiError } from '@/lib/api-response';
 import { exportAuditLogs } from '@/lib/audit/audit-logger';
 import { requireAdmin } from '@/lib/auth';
 
@@ -9,14 +9,11 @@ import { requireAdmin } from '@/lib/auth';
 
 export async function GET(): Promise<Response> {
   try {
-    // Verify admin access
     await requireAdmin();
 
-    // Export last 90 days of logs
     const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
     const logs = await exportAuditLogs({ startDate });
 
-    // Create JSON response with proper headers for download
     const blob = new Blob([JSON.stringify(logs, null, 2)], {
       type: 'application/json',
     });
@@ -29,15 +26,9 @@ export async function GET(): Promise<Response> {
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Forbidden') {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Admin access required' },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Admin access required', 403);
     }
 
-    return NextResponse.json(
-      { error: 'Internal Server Error', message: 'Failed to export audit logs' },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to export audit logs', 500);
   }
 }

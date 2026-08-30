@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import { Suspense, useState } from 'react';
 
 export default function MfaPage() {
@@ -14,7 +15,7 @@ export default function MfaPage() {
 function MfaContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const userId = searchParams.get('userId') ?? '';
+  const challengeToken = searchParams.get('token') ?? '';
 
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -22,6 +23,11 @@ function MfaContent() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!challengeToken) {
+      setError('Missing MFA challenge. Please sign in again.');
+      return;
+    }
+
     setError('');
     setLoading(true);
 
@@ -29,15 +35,31 @@ function MfaContent() {
       const res = await fetch('/api/auth/mfa/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, userId }),
+        body: JSON.stringify({ code, challengeToken }),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as {
+        success?: boolean;
+        completionToken?: string;
+        error?: string;
+      };
 
-      if (data.success) {
-        router.push('/chat');
-      } else {
+      if (!data.success || !data.completionToken) {
         setError(data.error || 'Invalid code');
+        return;
+      }
+
+      const result = await signIn('credentials', {
+        mfaCompletionToken: data.completionToken,
+        redirect: false,
+        callbackUrl: '/chat',
+      });
+
+      if (result?.error) {
+        setError('Unable to complete sign in. Please try again.');
+      } else {
+        router.push('/chat');
+        router.refresh();
       }
     } catch {
       setError('Verification failed. Please try again.');
@@ -62,7 +84,7 @@ function MfaContent() {
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={6}
+              maxLength={8}
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
               placeholder="000000"
@@ -75,7 +97,7 @@ function MfaContent() {
 
           <button
             type="submit"
-            disabled={code.length !== 6 || loading}
+            disabled={code.length < 6 || loading || !challengeToken}
             className="w-full rounded-md bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50"
           >
             {loading ? 'Verifying...' : 'Verify'}

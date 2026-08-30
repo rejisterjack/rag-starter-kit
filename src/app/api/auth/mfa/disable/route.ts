@@ -3,9 +3,9 @@
  */
 
 import { compare } from 'bcryptjs';
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { z } from 'zod';
-
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
@@ -20,15 +20,12 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return apiError('INVALID_JSON', 'Invalid JSON', 400);
   }
 
   const parsed = disableSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid input', details: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return apiError('VALIDATION_ERROR', 'Invalid input', 400, parsed.error.flatten());
   }
 
   const { password } = parsed.data;
@@ -39,16 +36,16 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
   });
 
   if (!user?.password) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    return apiError('NOT_FOUND', 'User not found', 404);
   }
 
   if (!user.mfaEnabled) {
-    return NextResponse.json({ error: 'MFA is not enabled' }, { status: 400 });
+    return apiError('MFA_NOT_ENABLED', 'MFA is not enabled', 400);
   }
 
   const valid = await compare(password, user.password);
   if (!valid) {
-    return NextResponse.json({ error: 'Incorrect password' }, { status: 401 });
+    return apiError('INVALID_PASSWORD', 'Incorrect password', 401);
   }
 
   await prisma.user.update({
@@ -77,5 +74,5 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
     });
   }
 
-  return NextResponse.json({ success: true, message: 'MFA disabled' });
+  return apiSuccess({ message: 'MFA disabled' });
 });

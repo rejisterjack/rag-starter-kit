@@ -38,16 +38,16 @@ const stages: Stage[] = [
     title: 'Embed',
     description: 'Google Gemini vectors',
     detail:
-      'Free Google Gemini embedding tier (1,500 req/day). Generates 768-dimensional dense vectors stored in PostgreSQL pgvector extension.',
+      'Free Google Gemini embedding tier (1,500 req/day). Generates 768-dimensional dense vectors stored in PostgreSQL with pgvector.',
     color: '236, 72, 153', // Pink
   },
   {
     id: 'store',
     icon: Database,
     title: 'Store',
-    description: 'pgvector + PostgreSQL',
+    description: 'PostgreSQL + pgvector',
     detail:
-      'Vectors stored with HNSW index for approximate nearest neighbor search. Cosine similarity for fast semantic retrieval with sub-millisecond latency.',
+      'Embeddings stored in PostgreSQL with pgvector HNSW indexing. The same database holds document metadata and relational data.',
     color: '45, 212, 191', // Teal
   },
   {

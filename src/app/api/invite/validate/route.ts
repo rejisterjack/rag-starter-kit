@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const token = searchParams.get('token');
 
     if (!token) {
-      return NextResponse.json({ success: false, error: 'Token is required' }, { status: 400 });
+      return apiError('BAD_REQUEST', 'Token is required', 400);
     }
 
     // Find the invitation
@@ -23,16 +23,14 @@ export async function GET(req: Request) {
     });
 
     if (!invitation) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid invitation token' },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Invalid invitation token', 404);
     }
 
     if (invitation.status !== 'PENDING') {
-      return NextResponse.json(
-        { success: false, error: `Invitation is already ${invitation.status.toLowerCase()}` },
-        { status: 400 }
+      return apiError(
+        'BAD_REQUEST',
+        `Invitation is already ${invitation.status.toLowerCase()}`,
+        400
       );
     }
 
@@ -43,14 +41,10 @@ export async function GET(req: Request) {
         data: { status: 'EXPIRED' },
       });
 
-      return NextResponse.json(
-        { success: false, error: 'Invitation has expired' },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Invitation has expired', 400);
     }
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       workspace: {
         id: invitation.workspace.id,
         name: invitation.workspace.name,
@@ -62,9 +56,6 @@ export async function GET(req: Request) {
     logger.error('Error validating invitation', {
       error: error instanceof Error ? error.message : 'Unknown',
     });
-    return NextResponse.json(
-      { success: false, error: 'Failed to validate invitation' },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to validate invitation', 500);
   }
 }

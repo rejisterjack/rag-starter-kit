@@ -1,0 +1,46 @@
+export {
+  COLLECTION_DOCUMENT_CHUNKS,
+  COLLECTION_IMAGE_EMBEDDINGS,
+  checkQdrantHealth,
+  checkVectorStoreHealth,
+  ensureDocumentChunksCollection,
+  ensureImageEmbeddingsCollection,
+  getCollectionInfo,
+  initializeQdrantCollections,
+  initializeVectorStore,
+  resetCollectionCache,
+} from './collections';
+export {
+  buildQdrantFilter,
+  buildQdrantFilterFromRetrievalOptions,
+  buildVectorFilter,
+  buildVectorFilterFromRetrievalOptions,
+} from './filters';
+export {
+  batchSearch,
+  deleteByDocumentId,
+  deleteChunksByIds,
+  deleteImagePoints,
+  getChunksByDocumentId,
+  getChunksByIds,
+  getDocumentStats,
+  listChunksByDocumentId,
+  searchHybrid,
+  searchKeyword,
+  searchSimilar,
+  searchSimilarImages,
+  updateChunkEmbeddings,
+  updateChunkFields,
+  upsertChunks,
+  upsertImageEmbedding,
+} from './points';
+export type {
+  ChunkPointData,
+  ChunkRow,
+  DocumentChunk,
+  ScoredPoint,
+  SearchOptions,
+  SearchOptions as QdrantSearchOptions,
+  UpsertOptions,
+  VectorFilter,
+} from './types';

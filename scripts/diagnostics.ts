@@ -22,10 +22,15 @@ async function testLocalPostgres(dbName: string) {
     const res = await prisma.$queryRaw`SELECT 1`;
     console.log(`[Prisma DB] SUCCESS for "${dbName}"! Query res:`, JSON.stringify(res));
     console.log(`[Prisma DB] Latency: ${Date.now() - start}ms`);
-    
-    // Check if pgvector is enabled
-    const vectorRes = await prisma.$queryRaw`SELECT 1 FROM pg_extension WHERE extname = 'vector'`;
-    console.log(`[Prisma DB] PGVector is enabled on "${dbName}"! Query res:`, JSON.stringify(vectorRes));
+
+    const ext = await prisma.$queryRaw<Array<{ extname: string }>>`
+      SELECT extname FROM pg_extension WHERE extname = 'vector'
+    `;
+    console.log(
+      ext[0]
+        ? `[Prisma DB] pgvector extension is installed`
+        : `[Prisma DB] WARNING: pgvector extension not found`
+    );
     
     await prisma.$disconnect();
     await pool.end();

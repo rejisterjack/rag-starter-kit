@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * Slack OAuth Initiation Endpoint
  *
@@ -21,10 +22,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const clientId = process.env.SLACK_CLIENT_ID;

@@ -49,6 +49,7 @@ import GitHub from 'next-auth/providers/github';
 import Google from 'next-auth/providers/google';
 import { cache } from 'react';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { consumeMfaCompletionToken, createMfaChallengeToken } from '@/lib/auth/mfa-challenge';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { emailService } from '@/lib/notifications/email';
@@ -225,8 +226,42 @@ const {
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
+        mfaCompletionToken: { label: 'MFA Completion Token', type: 'text' },
       },
       async authorize(credentials, req) {
+        // Complete MFA login with one-time completion token (after TOTP verified)
+        if (credentials?.mfaCompletionToken) {
+          const userId = consumeMfaCompletionToken(credentials.mfaCompletionToken as string);
+          if (!userId) return null;
+
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+              workspaceMembers: {
+                include: { workspace: true },
+                take: 1,
+                orderBy: { joinedAt: 'asc' },
+              },
+            },
+          });
+
+          if (!user) return null;
+
+          await logAuditEvent({
+            event: AuditEvent.USER_LOGIN,
+            userId: user.id,
+            metadata: { method: 'credentials', mfa: true },
+          });
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            role: user.role,
+          };
+        }
+
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
@@ -300,9 +335,10 @@ const {
         // Record successful login (resets failed attempts)
         await recordSuccessfulLogin(email);
 
-        // Check if MFA is required
+        // Check if MFA is required — block session until TOTP verified
         if (user.mfaEnabled) {
-          throw new Error(`MFA_REQUIRED:${user.id}`);
+          const challengeToken = createMfaChallengeToken(user.id);
+          throw new Error(`MFA_REQUIRED:${challengeToken}`);
         }
 
         // Log successful login

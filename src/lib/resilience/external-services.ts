@@ -47,13 +47,16 @@ export const storageCircuitBreaker = new CircuitBreaker({
   },
 });
 
-export const qdrantCircuitBreaker = new CircuitBreaker({
+export const vectorSearchCircuitBreaker = new CircuitBreaker({
   failureThreshold: 5,
   resetTimeoutMs: 60_000,
   halfOpenMaxCalls: 1,
   onOpen: () => {
     markFeatureDegraded('vector_search', 120_000).catch((error) => {
-      logger.error('Failed to mark vector_search as degraded (qdrant)', { error });
+      logger.error('Failed to mark vector_search as degraded (pgvector)', { error });
     });
   },
 });
+
+/** @deprecated Use vectorSearchCircuitBreaker */
+export const qdrantCircuitBreaker = vectorSearchCircuitBreaker;

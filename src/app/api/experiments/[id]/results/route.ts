@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import type { Prisma } from '@/generated/prisma/client';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -46,10 +46,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const { id } = await params;
@@ -59,10 +56,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
     });
 
     if (!experiment) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Experiment not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Experiment not found', 404);
     }
 
     // Check if user has access to workspace
@@ -75,10 +69,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
     });
 
     if (!membership) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Get all events for this experiment
@@ -95,18 +86,12 @@ export async function GET(_req: Request, { params }: RouteParams) {
       events,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: results,
-    });
+    return apiSuccess(results);
   } catch (error: unknown) {
     logger.error('Failed to get experiment results', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to get experiment results' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to get experiment results', 500);
   }
 }
 

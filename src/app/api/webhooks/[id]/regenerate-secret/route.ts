@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -26,10 +26,7 @@ export async function POST(_req: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const { id } = await params;
@@ -40,10 +37,7 @@ export async function POST(_req: Request, { params }: RouteParams) {
     });
 
     if (!webhook) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Webhook not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Webhook not found', 404);
     }
 
     // Check if user has permission to manage API keys in this workspace
@@ -54,10 +48,7 @@ export async function POST(_req: Request, { params }: RouteParams) {
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Generate new secret
@@ -92,26 +83,20 @@ export async function POST(_req: Request, { params }: RouteParams) {
       userId: session.user.id,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        webhook: {
-          ...updatedWebhook,
-          createdAt: updatedWebhook.createdAt.toISOString(),
-          updatedAt: updatedWebhook.updatedAt.toISOString(),
-          lastTriggeredAt: updatedWebhook.lastTriggeredAt?.toISOString() ?? null,
-        },
-        warning: 'Please save this secret now. It will not be shown again.',
+    return apiSuccess({
+      webhook: {
+        ...updatedWebhook,
+        createdAt: updatedWebhook.createdAt.toISOString(),
+        updatedAt: updatedWebhook.updatedAt.toISOString(),
+        lastTriggeredAt: updatedWebhook.lastTriggeredAt?.toISOString() ?? null,
       },
+      warning: 'Please save this secret now. It will not be shown again.',
     });
   } catch (error) {
     logger.error('Failed to regenerate webhook secret', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
 
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to regenerate webhook secret' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to regenerate webhook secret', 500);
   }
 }

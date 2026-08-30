@@ -28,9 +28,7 @@ export function WhatsIncluded(): React.ReactElement {
   return (
     <section className="py-24 lg:py-32 relative overflow-hidden bg-muted/10 border-y border-border/50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div
-          className="text-center mb-16 animate-in fade-in slide-in-from-bottom-8 duration-700"
-        >
+        <div className="text-center mb-16 animate-in fade-in slide-in-from-bottom-8 duration-700">
           <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl lg:text-5xl mb-6">
             What's <span className="text-gradient">Included</span>
           </h2>

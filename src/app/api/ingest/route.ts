@@ -14,7 +14,8 @@
  * - Audit logging
  */
 
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { withApiAuth } from '@/lib/auth';
 import { prisma, prismaRead } from '@/lib/db';
@@ -60,16 +61,13 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
 
     // Step 1b: Check if file upload is degraded
     if (await isFeatureDegraded('file_upload')) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'SERVICE_DEGRADED',
-            message: 'File uploads are temporarily unavailable. Please try again later.',
-          },
-        },
-        { status: 503, headers: { 'X-Degraded-Features': 'file_upload' } }
+      const response = apiError(
+        'SERVICE_DEGRADED',
+        'File uploads are temporarily unavailable. Please try again later.',
+        503
       );
+      response.headers.set('X-Degraded-Features', 'file_upload');
+      return response;
     }
 
     // Step 2: Check rate limit
@@ -83,22 +81,14 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
     });
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'RATE_LIMIT',
-            message: 'Rate limit exceeded. Please try again later.',
-            resetAt: new Date(rateLimitResult.reset).toISOString(),
-          },
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
+      const response = apiError('RATE_LIMIT', 'Rate limit exceeded. Please try again later.', 429, {
+        resetAt: new Date(rateLimitResult.reset).toISOString(),
+      });
+      response.headers.set(
+        'Retry-After',
+        Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString()
       );
+      return response;
     }
 
     // Step 3: Parse multipart form data (support both FormData and JSON body)
@@ -110,13 +100,7 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
       // Check content-length header before parsing to prevent oversized payloads
       const contentLength = parseInt(req.headers.get('content-length') || '0', 10);
       if (contentLength > MAX_FILE_SIZE) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: { code: 'PAYLOAD_TOO_LARGE', message: 'Request body exceeds 50MB limit' },
-          },
-          { status: 413 }
-        );
+        return apiError('PAYLOAD_TOO_LARGE', 'Request body exceeds 50MB limit', 413);
       }
 
       let jsonBody: Record<string, unknown>;
@@ -126,10 +110,7 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
         logger.debug('Failed to parse JSON body', {
           error: error instanceof Error ? error.message : 'Unknown error',
         });
-        return NextResponse.json(
-          { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-          { status: 400 }
-        );
+        return apiError('INVALID_BODY', 'Invalid JSON body', 400);
       }
 
       const jsonUrl = jsonBody.url as string | undefined;
@@ -138,13 +119,7 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
       const jsonWorkspaceId = (jsonBody.workspaceId as string) || session.user.workspaceId;
 
       if (jsonWorkspaceId && !isValidCUID(jsonWorkspaceId)) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: { code: 'INVALID_WORKSPACE_ID', message: 'Invalid workspace ID format' },
-          },
-          { status: 400 }
-        );
+        return apiError('INVALID_WORKSPACE_ID', 'Invalid workspace ID format', 400);
       }
 
       if (jsonUrl) {
@@ -156,13 +131,7 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
             Permission.WRITE_DOCUMENTS
           );
           if (!hasAccess) {
-            return NextResponse.json(
-              {
-                success: false,
-                error: { code: 'FORBIDDEN', message: 'Access denied to workspace' },
-              },
-              { status: 403 }
-            );
+            return apiError('FORBIDDEN', 'Access denied to workspace', 403);
           }
         }
         return handleURLIngestion(jsonUrl, userId, jsonWorkspaceId, startTime, rateLimitResult);
@@ -177,13 +146,7 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
             Permission.WRITE_DOCUMENTS
           );
           if (!hasAccess) {
-            return NextResponse.json(
-              {
-                success: false,
-                error: { code: 'FORBIDDEN', message: 'Access denied to workspace' },
-              },
-              { status: 403 }
-            );
+            return apiError('FORBIDDEN', 'Access denied to workspace', 403);
           }
         }
         return handleRawContentIngestion(
@@ -196,13 +159,7 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
         );
       }
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'NO_CONTENT', message: 'JSON body must contain "url" or "content" field' },
-        },
-        { status: 400 }
-      );
+      return apiError('NO_CONTENT', 'JSON body must contain "url" or "content" field', 400);
     }
 
     try {
@@ -211,10 +168,7 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
       logger.debug('Failed to parse form data', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { success: false, error: { code: 'INVALID_FORM', message: 'Invalid form data' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_FORM', 'Invalid form data', 400);
     }
 
     // Step 4: Get file or URL
@@ -223,13 +177,7 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
     let workspaceId = (formData.get('workspaceId') as string) || session.user.workspaceId;
 
     if (workspaceId && !isValidCUID(workspaceId)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'INVALID_WORKSPACE_ID', message: 'Invalid workspace ID format' },
-        },
-        { status: 400 }
-      );
+      return apiError('INVALID_WORKSPACE_ID', 'Invalid workspace ID format', 400);
     }
 
     // Step 5: Validate workspace access and permissions
@@ -268,22 +216,10 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
             if (existing) {
               workspaceId = existing.id;
             } else {
-              return NextResponse.json(
-                {
-                  success: false,
-                  error: { code: 'FORBIDDEN', message: 'Access denied to workspace' },
-                },
-                { status: 403 }
-              );
+              return apiError('FORBIDDEN', 'Access denied to workspace', 403);
             }
           } else {
-            return NextResponse.json(
-              {
-                success: false,
-                error: { code: 'FORBIDDEN', message: 'Access denied to workspace' },
-              },
-              { status: 403 }
-            );
+            return apiError('FORBIDDEN', 'Access denied to workspace', 403);
           }
         }
       }
@@ -291,10 +227,7 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
       // Step 5b: Check workspace resource limits
       const docLimit = await checkDocumentLimit(workspaceId);
       if (!docLimit.allowed) {
-        return NextResponse.json(
-          { success: false, error: { code: 'LIMIT_EXCEEDED', message: docLimit.reason } },
-          { status: 403 }
-        );
+        return apiError('LIMIT_EXCEEDED', docLimit.reason ?? 'Resource limit exceeded', 403);
       }
     }
 
@@ -305,28 +238,20 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
 
     // Step 7: Handle file ingestion
     if (!file) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NO_CONTENT', message: 'No file or URL provided' } },
-        { status: 400 }
-      );
+      return apiError('NO_CONTENT', 'No file or URL provided', 400);
     }
 
     return handleFileIngestion(file, userId, workspaceId, startTime, rateLimitResult);
   } catch (error) {
     const isDev = process.env.NODE_ENV === 'development';
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: isDev
-            ? error instanceof Error
-              ? error.message
-              : 'Internal server error'
-            : 'Failed to process document',
-        },
-      },
-      { status: 500 }
+    return apiError(
+      'INTERNAL_ERROR',
+      isDev
+        ? error instanceof Error
+          ? error.message
+          : 'Internal server error'
+        : 'Failed to process document',
+      500
     );
   }
 });
@@ -343,15 +268,10 @@ async function handleFileIngestion(
 ) {
   // Step 1: Validate file size
   if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'FILE_TOO_LARGE',
-          message: `File size (${formatBytes(file.size)}) exceeds 50MB limit`,
-        },
-      },
-      { status: 413 }
+    return apiError(
+      'FILE_TOO_LARGE',
+      `File size (${formatBytes(file.size)}) exceeds 50MB limit`,
+      413
     );
   }
 
@@ -359,10 +279,7 @@ async function handleFileIngestion(
   if (workspaceId) {
     const storageLimit = await checkStorageLimit(workspaceId, file.size);
     if (!storageLimit.allowed) {
-      return NextResponse.json(
-        { success: false, error: { code: 'LIMIT_EXCEEDED', message: storageLimit.reason } },
-        { status: 403 }
-      );
+      return apiError('LIMIT_EXCEEDED', storageLimit.reason ?? 'Storage limit exceeded', 403);
     }
   }
 
@@ -370,26 +287,14 @@ async function handleFileIngestion(
   if (!workspaceId) {
     const userStorageLimit = await checkUserStorageLimit(userId, file.size);
     if (!userStorageLimit.allowed) {
-      return NextResponse.json(
-        { success: false, error: { code: 'LIMIT_EXCEEDED', message: userStorageLimit.reason } },
-        { status: 403 }
-      );
+      return apiError('LIMIT_EXCEEDED', userStorageLimit.reason ?? 'Storage limit exceeded', 403);
     }
   }
 
   // Step 2: Validate file type
   const fileValidation = validateFile(file, { maxSize: MAX_FILE_SIZE });
   if (!fileValidation.valid) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INVALID_FILE_TYPE',
-          message: fileValidation.error,
-        },
-      },
-      { status: 400 }
-    );
+    return apiError('INVALID_FILE_TYPE', fileValidation.error ?? 'Invalid file type', 400);
   }
 
   // Step 3: Read file into buffer once (used for virus scan, magic bytes, and parsing)
@@ -398,15 +303,10 @@ async function handleFileIngestion(
   // Validate file bytes using magic byte detection
   const magicBytesValidation = validateFileBytes(bytes, file.type);
   if (!magicBytesValidation.valid) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INVALID_FILE_CONTENT',
-          message: magicBytesValidation.error ?? 'File content does not match expected type',
-        },
-      },
-      { status: 400 }
+    return apiError(
+      'INVALID_FILE_CONTENT',
+      magicBytesValidation.error ?? 'File content does not match expected type',
+      400
     );
   }
 
@@ -428,16 +328,7 @@ async function handleFileIngestion(
         severity: 'CRITICAL',
       });
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VIRUS_DETECTED',
-            message: 'File contains malicious content and was rejected',
-          },
-        },
-        { status: 400 }
-      );
+      return apiError('VIRUS_DETECTED', 'File contains malicious content and was rejected', 400);
     }
   }
 
@@ -461,19 +352,14 @@ async function handleFileIngestion(
       storageUrl = uploadResult.url;
     } catch (error) {
       const isDev = process.env.NODE_ENV === 'development';
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'UPLOAD_FAILED',
-            message: isDev
-              ? error instanceof Error
-                ? error.message
-                : 'Failed to upload file to storage'
-              : 'Failed to upload file',
-          },
-        },
-        { status: 500 }
+      return apiError(
+        'UPLOAD_FAILED',
+        isDev
+          ? error instanceof Error
+            ? error.message
+            : 'Failed to upload file to storage'
+          : 'Failed to upload file',
+        500
       );
     }
   }
@@ -517,23 +403,20 @@ async function handleFileIngestion(
   });
 
   // Step 9: Return response with rate limit headers
-  const response = NextResponse.json(
+  const response = apiSuccess(
     {
-      success: true,
-      data: {
-        document: {
-          id: document.id,
-          name: document.name,
-          type: document.contentType,
-          size: document.size,
-          status: 'pending',
-          createdAt: document.createdAt.toISOString(),
-        },
-        message: 'Document uploaded and queued for processing',
-        processingTimeMs: Date.now() - startTime,
+      document: {
+        id: document.id,
+        name: document.name,
+        type: document.contentType,
+        size: document.size,
+        status: 'pending',
+        createdAt: document.createdAt.toISOString(),
       },
+      message: 'Document uploaded and queued for processing',
+      processingTimeMs: Date.now() - startTime,
     },
-    { status: 201 }
+    201
   );
 
   addRateLimitHeaders(response.headers, rateLimitResult);
@@ -558,15 +441,10 @@ async function handleURLIngestion(
   });
 
   if (!urlRateLimitResult.success) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'RATE_LIMIT',
-          message: 'URL ingestion rate limit exceeded. Please try again later.',
-        },
-      },
-      { status: 429 }
+    return apiError(
+      'RATE_LIMIT',
+      'URL ingestion rate limit exceeded. Please try again later.',
+      429
     );
   }
 
@@ -584,16 +462,7 @@ async function handleURLIngestion(
     const ssrfCheck = await validateUrlSafety(url);
     if (!ssrfCheck.safe) {
       logger.warn('SSRF attempt blocked', { url, reason: ssrfCheck.reason, userId });
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'URL_BLOCKED',
-            message: ssrfCheck.reason || 'URL is not allowed',
-          },
-        },
-        { status: 403 }
-      );
+      return apiError('URL_BLOCKED', ssrfCheck.reason || 'URL is not allowed', 403);
     }
 
     // Check against allowed domains if configured
@@ -603,32 +472,14 @@ async function handleURLIngestion(
         (domain) => validatedUrl.hostname === domain || validatedUrl.hostname.endsWith(`.${domain}`)
       );
       if (!isAllowed) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: 'DOMAIN_NOT_ALLOWED',
-              message: 'This domain is not allowed for URL ingestion',
-            },
-          },
-          { status: 403 }
-        );
+        return apiError('DOMAIN_NOT_ALLOWED', 'This domain is not allowed for URL ingestion', 403);
       }
     }
   } catch (error: unknown) {
     logger.debug('Invalid URL provided for ingestion', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INVALID_URL',
-          message: 'Invalid or unsupported URL provided',
-        },
-      },
-      { status: 400 }
-    );
+    return apiError('INVALID_URL', 'Invalid or unsupported URL provided', 400);
   }
 
   // Create document record (content will be fetched in background)
@@ -672,25 +523,22 @@ async function handleURLIngestion(
     },
   });
 
-  const response = NextResponse.json(
+  const response = apiSuccess(
     {
-      success: true,
-      data: {
-        document: {
-          id: document.id,
-          name: document.name,
-          type: docContentType,
-          url: url,
-          status: 'pending',
-          createdAt: document.createdAt.toISOString(),
-        },
-        message: isYT
-          ? 'YouTube video queued for transcript extraction'
-          : 'URL queued for scraping and processing',
-        processingTimeMs: Date.now() - startTime,
+      document: {
+        id: document.id,
+        name: document.name,
+        type: docContentType,
+        url: url,
+        status: 'pending',
+        createdAt: document.createdAt.toISOString(),
       },
+      message: isYT
+        ? 'YouTube video queued for transcript extraction'
+        : 'URL queued for scraping and processing',
+      processingTimeMs: Date.now() - startTime,
     },
-    { status: 201 }
+    201
   );
 
   addRateLimitHeaders(response.headers, rateLimitResult);
@@ -710,10 +558,7 @@ export const GET = withApiAuth(async (req: NextRequest, session) => {
     const documentId = searchParams.get('id');
 
     if (!documentId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'MISSING_ID', message: 'Document ID is required' } },
-        { status: 400 }
-      );
+      return apiError('MISSING_ID', 'Document ID is required', 400);
     }
 
     // Fetch document
@@ -725,10 +570,7 @@ export const GET = withApiAuth(async (req: NextRequest, session) => {
     });
 
     if (!document) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Document not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Document not found', 404);
     }
 
     // Check access - user can only see their own documents or workspace documents
@@ -736,10 +578,7 @@ export const GET = withApiAuth(async (req: NextRequest, session) => {
       document.userId === userId || document.workspaceId === session.user.workspaceId;
 
     if (!hasAccess) {
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Get job details
@@ -797,25 +636,17 @@ export const GET = withApiAuth(async (req: NextRequest, session) => {
       },
     };
 
-    return NextResponse.json({
-      success: true,
-      data: status,
-    });
+    return apiSuccess(status);
   } catch (error) {
     const isDev = process.env.NODE_ENV === 'development';
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: isDev
-            ? error instanceof Error
-              ? error.message
-              : 'Internal server error'
-            : 'Failed to retrieve document status',
-        },
-      },
-      { status: 500 }
+    return apiError(
+      'INTERNAL_ERROR',
+      isDev
+        ? error instanceof Error
+          ? error.message
+          : 'Internal server error'
+        : 'Failed to retrieve document status',
+      500
     );
   }
 });
@@ -833,10 +664,7 @@ export const DELETE = withApiAuth(async (req: NextRequest, session) => {
     const documentId = searchParams.get('id');
 
     if (!documentId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'MISSING_ID', message: 'Document ID is required' } },
-        { status: 400 }
-      );
+      return apiError('MISSING_ID', 'Document ID is required', 400);
     }
 
     // Fetch document
@@ -845,10 +673,7 @@ export const DELETE = withApiAuth(async (req: NextRequest, session) => {
     });
 
     if (!document) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Document not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Document not found', 404);
     }
 
     // Check access
@@ -858,10 +683,7 @@ export const DELETE = withApiAuth(async (req: NextRequest, session) => {
       (await checkPermission(userId, document.workspaceId, Permission.DELETE_DOCUMENTS));
 
     if (!hasDirectAccess && !hasWorkspaceAccess) {
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Log document deletion
@@ -878,8 +700,8 @@ export const DELETE = withApiAuth(async (req: NextRequest, session) => {
 
     // Can only cancel pending or processing documents
     if (document.status !== 'PENDING' && document.status !== 'PROCESSING') {
-      // Delete chunks from Qdrant
-      const { deleteByDocumentId } = await import('@/lib/qdrant');
+      // Delete chunks from pgvector
+      const { deleteByDocumentId } = await import('@/lib/vector');
       const chunksRemoved = await deleteByDocumentId(documentId);
 
       // Delete the document record
@@ -887,14 +709,11 @@ export const DELETE = withApiAuth(async (req: NextRequest, session) => {
         where: { id: documentId },
       });
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          documentId,
-          status: 'deleted',
-          chunksRemoved,
-          message: 'Document and associated data deleted successfully',
-        },
+      return apiSuccess({
+        documentId,
+        status: 'deleted',
+        chunksRemoved,
+        message: 'Document and associated data deleted successfully',
       });
     }
 
@@ -921,29 +740,21 @@ export const DELETE = withApiAuth(async (req: NextRequest, session) => {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        documentId,
-        status: 'cancelled',
-        message: 'Processing cancelled successfully',
-      },
+    return apiSuccess({
+      documentId,
+      status: 'cancelled',
+      message: 'Processing cancelled successfully',
     });
   } catch (error) {
     const isDev = process.env.NODE_ENV === 'development';
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: isDev
-            ? error instanceof Error
-              ? error.message
-              : 'Internal server error'
-            : 'Failed to cancel document processing',
-        },
-      },
-      { status: 500 }
+    return apiError(
+      'INTERNAL_ERROR',
+      isDev
+        ? error instanceof Error
+          ? error.message
+          : 'Internal server error'
+        : 'Failed to cancel document processing',
+      500
     );
   }
 });
@@ -1071,15 +882,10 @@ async function handleRawContentIngestion(
   const docSize = Buffer.byteLength(content, 'utf-8');
 
   if (docSize > MAX_FILE_SIZE) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'CONTENT_TOO_LARGE',
-          message: `Content size (${formatBytes(docSize)}) exceeds 50MB limit`,
-        },
-      },
-      { status: 413 }
+    return apiError(
+      'CONTENT_TOO_LARGE',
+      `Content size (${formatBytes(docSize)}) exceeds 50MB limit`,
+      413
     );
   }
 
@@ -1087,10 +893,7 @@ async function handleRawContentIngestion(
   if (workspaceId) {
     const storageLimit = await checkStorageLimit(workspaceId, docSize);
     if (!storageLimit.allowed) {
-      return NextResponse.json(
-        { success: false, error: { code: 'LIMIT_EXCEEDED', message: storageLimit.reason } },
-        { status: 403 }
-      );
+      return apiError('LIMIT_EXCEEDED', storageLimit.reason ?? 'Storage limit exceeded', 403);
     }
   }
 
@@ -1098,10 +901,7 @@ async function handleRawContentIngestion(
   if (!workspaceId) {
     const userStorageLimit = await checkUserStorageLimit(userId, docSize);
     if (!userStorageLimit.allowed) {
-      return NextResponse.json(
-        { success: false, error: { code: 'LIMIT_EXCEEDED', message: userStorageLimit.reason } },
-        { status: 403 }
-      );
+      return apiError('LIMIT_EXCEEDED', userStorageLimit.reason ?? 'Storage limit exceeded', 403);
     }
   }
 
@@ -1116,17 +916,9 @@ async function handleRawContentIngestion(
   });
 
   if (existingDoc) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'DUPLICATE_CONTENT',
-          message: 'A document with similar content already exists',
-          details: { existingDocumentId: existingDoc.id },
-        },
-      },
-      { status: 409 }
-    );
+    return apiError('DUPLICATE_CONTENT', 'A document with similar content already exists', 409, {
+      existingDocumentId: existingDoc.id,
+    });
   }
 
   // Create document record
@@ -1164,23 +956,20 @@ async function handleRawContentIngestion(
     },
   });
 
-  const response = NextResponse.json(
+  const response = apiSuccess(
     {
-      success: true,
-      data: {
-        document: {
-          id: document.id,
-          name: document.name,
-          type: 'TXT',
-          size: docSize,
-          status: 'pending',
-          createdAt: document.createdAt.toISOString(),
-        },
-        message: 'Document queued for processing',
-        processingTimeMs: Date.now() - startTime,
+      document: {
+        id: document.id,
+        name: document.name,
+        type: 'TXT',
+        size: docSize,
+        status: 'pending',
+        createdAt: document.createdAt.toISOString(),
       },
+      message: 'Document queued for processing',
+      processingTimeMs: Date.now() - startTime,
     },
-    { status: 201 }
+    201
   );
 
   addRateLimitHeaders(response.headers, rateLimitResult);

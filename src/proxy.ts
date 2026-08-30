@@ -1,7 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import NextAuth from 'next-auth';
 import { authConfig } from '@/lib/auth/auth.config';
+import { logger } from '@/lib/logger';
+import { getApiKeyFormatRegex } from '@/lib/security/api-key-constants';
 import { validateCsrfToken } from '@/lib/security/csrf';
+import { detectAICrawler } from '@/lib/seo/ai-agents';
 
 // =============================================================================
 // Env Access
@@ -47,6 +50,10 @@ const PUBLIC_ROUTES = [
   '/favicon.ico',
   '/robots.txt',
   '/sitemap.xml',
+  '/llms.txt',
+  '/llms-full.txt',
+  '/feed.xml',
+  '/blog',
 ];
 
 const PROTECTED_API_ROUTES = ['/api/chat', '/api/ingest', '/api/documents', '/api/workspaces'];
@@ -179,7 +186,9 @@ export default auth(async function proxy(req) {
       const origin = req.headers.get('origin');
       const hasSessionCookie =
         req.cookies.has('next-auth.session-token') ||
-        req.cookies.has('__Secure-next-auth.session-token');
+        req.cookies.has('__Secure-next-auth.session-token') ||
+        req.cookies.has('authjs.session-token') ||
+        req.cookies.has('__Secure-authjs.session-token');
       const isSameOrigin =
         !origin || origin === env.NEXTAUTH_URL || origin === new URL(env.NEXTAUTH_URL).origin;
 
@@ -214,6 +223,17 @@ export default auth(async function proxy(req) {
       headers.set('x-request-id', requestId);
       headers.set('x-nonce', cspNonce);
 
+      // AI crawler observability: tag request + structured log for measurement
+      const { isCrawler, crawlerName } = detectAICrawler(req.headers.get('user-agent'));
+      if (isCrawler && crawlerName) {
+        headers.set('x-ai-crawler', crawlerName);
+        logger.info('ai_crawler_hit', {
+          crawler: crawlerName,
+          path: pathname,
+          requestId,
+        });
+      }
+
       const response = NextResponse.next({ request: { headers } });
       addSecurityHeaders(response, requestId, cspNonce);
 
@@ -235,8 +255,7 @@ export default auth(async function proxy(req) {
     // Rate limiting has already been applied above
     const apiKey = req.headers.get('X-API-Key');
     if (apiKey && pathname.startsWith('/api/')) {
-      const API_KEY_PATTERN = /^rsk_[A-Za-z0-9_-]{16,180}$/;
-      if (!API_KEY_PATTERN.test(apiKey)) {
+      if (!getApiKeyFormatRegex().test(apiKey)) {
         const response = NextResponse.json(
           { error: 'Invalid API key format', code: 'INVALID_API_KEY' },
           { status: 401, headers: getCorsHeaders(req) }

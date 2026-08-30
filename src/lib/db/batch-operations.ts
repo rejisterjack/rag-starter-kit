@@ -1,19 +1,20 @@
 /**
  * Batch Operations
  *
- * Efficient bulk operations for vector data stored in Qdrant.
- * Optimized for high-throughput scenarios.
+ * Efficient bulk operations for vector data stored in PostgreSQL + pgvector.
  */
 
 import { logger } from '@/lib/logger';
 import {
   type ChunkPointData,
-  COLLECTION_DOCUMENT_CHUNKS,
   deleteByDocumentId,
-  qdrant,
+  deleteChunksByIds,
+  listChunksByDocumentId,
   type UpsertOptions,
+  updateChunkEmbeddings,
+  updateChunkFields,
   upsertChunks,
-} from '@/lib/qdrant';
+} from '@/lib/vector';
 
 // ============================================================================
 // Types
@@ -62,7 +63,7 @@ export interface BulkUpdateResult {
   errors: Array<{ chunkId: string; error: string }>;
 }
 
-/** Metadata required for Qdrant upsert operations */
+/** Metadata required for chunk upsert operations */
 export interface DocumentMetadata {
   userId: string;
   workspaceId?: string;
@@ -75,13 +76,13 @@ export interface DocumentMetadata {
 // ============================================================================
 
 /**
- * Insert document chunks in batches via Qdrant
+ * Insert document chunks in batches via pgvector
  *
  * This is the recommended way to insert large numbers of chunks as it:
  * - Prevents memory issues
  * - Handles partial failures gracefully
  * - Provides progress tracking
- * - Uses Qdrant batched upserts for throughput
+ * - Uses batched SQL upserts for throughput
  */
 export async function batchInsertChunks(
   chunks: ChunkInsertData[],
@@ -129,9 +130,6 @@ export async function batchInsertChunks(
 
 /**
  * Update embeddings for existing chunks in batches
- *
- * Qdrant uses upsert semantics: we retrieve current points to preserve
- * payloads, then upsert with the new embedding vector.
  */
 export async function batchUpdateEmbeddings(
   _prisma: unknown,
@@ -146,75 +144,16 @@ export async function batchUpdateEmbeddings(
 
   for (let i = 0; i < updates.length; i += batchSize) {
     const batch = updates.slice(i, i + batchSize);
-
-    // Retrieve current points to preserve their payloads
-    const pointIds = batch.map((u) => u.chunkId);
-
-    let retrieved: Awaited<ReturnType<typeof qdrant.retrieve>>;
     try {
-      retrieved = await qdrant.retrieve(COLLECTION_DOCUMENT_CHUNKS, {
-        ids: pointIds,
-        with_payload: true,
-        with_vector: true,
-      });
+      await updateChunkEmbeddings(batch);
+      successCount += batch.length;
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
       for (const update of batch) {
         failureCount++;
-        errors.push({ chunkId: update.chunkId, error: `Failed to retrieve points: ${msg}` });
+        errors.push({ chunkId: update.chunkId, error: msg });
       }
       if (!continueOnError) break;
-      continue;
-    }
-
-    // Build a map for quick lookup, normalizing Qdrant types
-    const pointMap = new Map(
-      retrieved.map((p) => [
-        String(p.id),
-        {
-          payload: p.payload ?? {},
-          vector: p.vector as number[] | undefined,
-        },
-      ])
-    );
-
-    // Upsert each point with the new embedding
-    const pointsToUpsert: Array<{
-      id: string;
-      vector: number[];
-      payload: Record<string, unknown>;
-    }> = [];
-    for (const update of batch) {
-      const existing = pointMap.get(update.chunkId);
-      if (!existing) {
-        failureCount++;
-        errors.push({ chunkId: update.chunkId, error: 'Point not found in Qdrant' });
-        if (!continueOnError) break;
-        continue;
-      }
-
-      pointsToUpsert.push({
-        id: update.chunkId,
-        vector: update.embedding,
-        payload: existing.payload,
-      });
-    }
-
-    if (pointsToUpsert.length > 0) {
-      try {
-        await qdrant.upsert(COLLECTION_DOCUMENT_CHUNKS, {
-          wait: true,
-          points: pointsToUpsert,
-        });
-        successCount += pointsToUpsert.length;
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : 'Unknown error';
-        for (const point of pointsToUpsert) {
-          failureCount++;
-          errors.push({ chunkId: point.id, error: msg });
-        }
-        if (!continueOnError) break;
-      }
     }
   }
 
@@ -223,9 +162,6 @@ export async function batchUpdateEmbeddings(
 
 /**
  * Update chunk content and embeddings in batches
- *
- * Retrieves existing points from Qdrant, merges the updated fields into
- * the payload, and upserts them back.
  */
 export async function batchUpdateChunks(
   _prisma: unknown,
@@ -246,89 +182,21 @@ export async function batchUpdateChunks(
 
   for (let i = 0; i < updates.length; i += batchSize) {
     const batch = updates.slice(i, i + batchSize);
-
-    // Retrieve current points
-    const pointIds = batch.map((u) => u.chunkId);
-
-    let retrieved: Awaited<ReturnType<typeof qdrant.retrieve>>;
     try {
-      retrieved = await qdrant.retrieve(COLLECTION_DOCUMENT_CHUNKS, {
-        ids: pointIds,
-        with_payload: true,
-        with_vector: true,
-      });
+      const { updated, missing } = await updateChunkFields(batch);
+      successCount += updated.length;
+      for (const chunkId of missing) {
+        failureCount++;
+        errors.push({ chunkId, error: 'Chunk not found' });
+      }
+      if (missing.length > 0 && !continueOnError) break;
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
       for (const update of batch) {
         failureCount++;
-        errors.push({ chunkId: update.chunkId, error: `Failed to retrieve points: ${msg}` });
+        errors.push({ chunkId: update.chunkId, error: msg });
       }
       if (!continueOnError) break;
-      continue;
-    }
-
-    const pointMap = new Map(
-      retrieved.map((p) => [
-        String(p.id),
-        {
-          payload: p.payload ?? {},
-          vector: p.vector as number[] | undefined,
-        },
-      ])
-    );
-
-    const pointsToUpsert: Array<{
-      id: string;
-      vector: number[];
-      payload: Record<string, unknown>;
-    }> = [];
-    for (const update of batch) {
-      const existing = pointMap.get(update.chunkId);
-      if (!existing) {
-        failureCount++;
-        errors.push({ chunkId: update.chunkId, error: 'Point not found in Qdrant' });
-        if (!continueOnError) break;
-        continue;
-      }
-
-      const payload = { ...existing.payload };
-
-      if (update.content !== undefined) {
-        payload.content = update.content;
-        // Adjust end position if content changed and no explicit end provided
-        if (payload.end !== undefined && payload.end !== null) {
-          payload.end = update.content.length;
-        }
-      }
-      if (update.page !== undefined) {
-        payload.page = update.page;
-      }
-      if (update.section !== undefined) {
-        payload.section = update.section;
-      }
-
-      pointsToUpsert.push({
-        id: update.chunkId,
-        vector: update.embedding ?? existing.vector ?? [],
-        payload,
-      });
-    }
-
-    if (pointsToUpsert.length > 0) {
-      try {
-        await qdrant.upsert(COLLECTION_DOCUMENT_CHUNKS, {
-          wait: true,
-          points: pointsToUpsert,
-        });
-        successCount += pointsToUpsert.length;
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : 'Unknown error';
-        for (const point of pointsToUpsert) {
-          failureCount++;
-          errors.push({ chunkId: point.id, error: msg });
-        }
-        if (!continueOnError) break;
-      }
     }
   }
 
@@ -356,13 +224,10 @@ export async function batchDeleteChunks(
     const batch = chunkIds.slice(i, i + batchSize);
 
     try {
-      await qdrant.delete(COLLECTION_DOCUMENT_CHUNKS, {
-        wait: true,
-        points: batch,
-      });
+      await deleteChunksByIds(batch);
       successCount += batch.length;
     } catch (error) {
-      logger.error('Failed to delete batch of Qdrant points', {
+      logger.error('Failed to delete batch of chunks', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       failureCount += batch.length;
@@ -386,7 +251,7 @@ export async function batchDeleteDocumentChunks(
       const deleted = await deleteByDocumentId(documentId);
       totalDeleted += deleted;
     } catch (error) {
-      logger.error('Failed to delete Qdrant points for document', {
+      logger.error('Failed to delete chunks for document', {
         documentId,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -404,10 +269,7 @@ export async function batchDeleteDocumentChunks(
 // ============================================================================
 
 /**
- * Process chunks in a streaming fashion using Qdrant scroll API
- *
- * Useful for very large datasets that don't fit in memory.
- * Scrolls through all points belonging to a document in batches.
+ * Process chunks in a streaming fashion using offset pagination.
  */
 export async function streamProcessChunks<T>(
   _prisma: unknown,
@@ -417,39 +279,18 @@ export async function streamProcessChunks<T>(
 ): Promise<T[]> {
   const { batchSize = 100, onProgress } = options;
   const results: T[] = [];
-  let offset: string | undefined;
+  let offset = 0;
 
   while (true) {
-    const scrollResult = await qdrant.scroll(COLLECTION_DOCUMENT_CHUNKS, {
-      filter: {
-        must: [{ key: 'documentId', match: { value: documentId } }],
-      },
-      limit: batchSize,
-      offset,
-      with_payload: true,
-      with_vector: false,
-    });
-
-    if (scrollResult.points.length === 0) {
-      break;
-    }
-
-    const chunks = scrollResult.points.map((point) => ({
-      id: String(point.id),
-      content: String(point.payload?.content ?? ''),
-      index: Number(point.payload?.index ?? 0),
-    }));
+    const chunks = await listChunksByDocumentId(documentId, { limit: batchSize, offset });
+    if (chunks.length === 0) break;
 
     const batchResults = await processor(chunks);
     results.push(...batchResults);
-
     onProgress?.(results.length);
 
-    // Check if there are more pages
-    if (!scrollResult.next_page_offset) {
-      break;
-    }
-    offset = String(scrollResult.next_page_offset);
+    if (chunks.length < batchSize) break;
+    offset += batchSize;
   }
 
   return results;

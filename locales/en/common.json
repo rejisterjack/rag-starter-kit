@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "RAG Starter Kit - Production-Ready RAG Chatbot",
-    "description": "A production-ready RAG (Retrieval-Augmented Generation) chatbot boilerplate powered by Next.js 16, LangChain, and PostgreSQL pgvector."
+    "description": "A production-ready RAG (Retrieval-Augmented Generation) chatbot boilerplate powered by Next.js 16, LangChain, PostgreSQL, and pgvector."
   },
   "navigation": {
     "home": "Home",
@@ -41,7 +41,7 @@
     },
     "memory": {
       "title": "Persistent Memory",
-      "description": "State-of-the-art semantic memory powered by PostgreSQL with pgvector extension."
+      "description": "State-of-the-art semantic memory powered by pgvector search with PostgreSQL metadata."
     },
     "enterprise": {
       "title": "Enterprise Ready",

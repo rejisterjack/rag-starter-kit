@@ -67,7 +67,6 @@ const nextConfig: NextConfig = {
 			'@hookform/resolvers',
 			'react-hook-form',
 			'react-day-picker',
-			'elysia',
 			'@sentry/nextjs',
 			'zod',
 		],
@@ -189,16 +188,52 @@ const nextConfig: NextConfig = {
 					},
 				],
 			},
-			{
-				source: "/icons/:path*",
-				headers: [
-					{
-						key: "Cache-Control",
-						value: "public, max-age=31536000, immutable",
-					},
-				],
-			},
-		];
+		{
+			source: "/icons/:path*",
+			headers: [
+				{
+					key: "Cache-Control",
+					value: "public, max-age=31536000, immutable",
+				},
+			],
+		},
+		{
+			source: "/llms.txt",
+			headers: [
+				{
+					key: "Cache-Control",
+					value: "public, max-age=3600, stale-while-revalidate=86400",
+				},
+			],
+		},
+		{
+			source: "/llms-full.txt",
+			headers: [
+				{
+					key: "Cache-Control",
+					value: "public, max-age=3600, stale-while-revalidate=86400",
+				},
+			],
+		},
+		{
+			source: "/feed.xml",
+			headers: [
+				{
+					key: "Cache-Control",
+					value: "public, max-age=3600, stale-while-revalidate=86400",
+				},
+			],
+		},
+		{
+			source: "/sitemap.xml",
+			headers: [
+				{
+					key: "Cache-Control",
+					value: "public, max-age=3600, stale-while-revalidate=86400",
+				},
+			],
+		},
+	];
 	},
 };
 

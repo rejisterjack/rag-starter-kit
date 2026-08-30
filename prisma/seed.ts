@@ -46,7 +46,7 @@ RAG Starter Kit is a production-ready, TypeScript-native Retrieval-Augmented Gen
 - OCR support for image-heavy PDFs via Tesseract.js
 
 ### Vector Search
-- Embeddings stored in PostgreSQL using the pgvector extension
+- Embeddings stored in Qdrant vector database
 - HNSW index for sub-millisecond approximate nearest-neighbour search
 - Hybrid search combines vector similarity with full-text keyword matching
 - Configurable similarity threshold and top-K retrieval count
@@ -247,13 +247,13 @@ Browser → CDN/Edge → Next.js Middleware → App Router → API Routes
 3. Text extracted (PDF: pdf-parse, DOCX: mammoth, URL: cheerio scraping)
 4. Text split into chunks (configurable size + overlap)
 5. Each chunk embedded via Google Gemini text-embedding-004 (768 dimensions)
-6. Embeddings + metadata stored in PostgreSQL/pgvector
+6. Embeddings + metadata stored in PostgreSQL/Qdrant
 7. Document status updated to COMPLETED
 
 ### Query Flow
 1. User message received at API route
 2. Message embedded using same model as ingestion
-3. HNSW approximate nearest-neighbour search on pgvector
+3. HNSW approximate nearest-neighbour search on Qdrant
 4. Hybrid re-ranking: combine vector scores with BM25 keyword scores
 5. Top-K chunks assembled into context window
 6. System prompt + context + user message sent to LLM
@@ -271,7 +271,7 @@ Browser → CDN/Edge → Next.js Middleware → App Router → API Routes
 - audit_logs: immutable security event log
 - rate_limits: sliding window rate limiting
 
-### pgvector Index
+### Qdrant Index
 \`\`\`sql
 CREATE INDEX document_chunks_embedding_idx
 ON document_chunks
@@ -487,7 +487,7 @@ async function main() {
       }
 
       if (chunkData.length > 0) {
-        const { upsertChunks } = await import('../src/lib/qdrant');
+        const { upsertChunks } = await import('../src/lib/vector');
         await upsertChunks(chunkData, {
           userId: adminUser.id,
           workspaceId: workspace.id,
@@ -528,7 +528,7 @@ async function main() {
             {
               role: 'ASSISTANT',
               content:
-                'RAG Starter Kit is a production-ready, TypeScript-native Retrieval-Augmented Generation platform. Here are its main features:\n\n**Core capabilities:**\n- 📄 **Document Ingestion** — Upload PDFs, DOCX, Markdown, TXT, or URLs. Background processing via Inngest handles chunking and embedding automatically.\n- 🔍 **Hybrid Search** — Combines pgvector similarity search with full-text keyword matching for better retrieval accuracy.\n- 💬 **Streaming Chat** — Real-time token streaming via SSE with source citations for every answer.\n- 🎙️ **Voice I/O** — Speech-to-text and text-to-speech built in.\n- 👥 **Multi-user Workspaces** — Team collaboration with role-based access control.\n- 🤖 **Agent Mode** — Tool-using AI with web search, calculator, and code execution.\n\n**Infrastructure included:**\n- NextAuth.js v5 authentication (OAuth + credentials)\n- Rate limiting via Upstash Redis\n- Audit logging with tamper-detection\n- PWA support for offline use\n- One-click deploy to Vercel\n\nThe default configuration uses **free AI models** — OpenRouter for chat and Google Gemini for embeddings — so it costs $0 to run.',
+                'RAG Starter Kit is a production-ready, TypeScript-native Retrieval-Augmented Generation platform. Here are its main features:\n\n**Core capabilities:**\n- 📄 **Document Ingestion** — Upload PDFs, DOCX, Markdown, TXT, or URLs. Background processing via Inngest handles chunking and embedding automatically.\n- 🔍 **Hybrid Search** — Combines Qdrant similarity search with full-text keyword matching for better retrieval accuracy.\n- 💬 **Streaming Chat** — Real-time token streaming via SSE with source citations for every answer.\n- 🎙️ **Voice I/O** — Speech-to-text and text-to-speech built in.\n- 👥 **Multi-user Workspaces** — Team collaboration with role-based access control.\n- 🤖 **Agent Mode** — Tool-using AI with web search, calculator, and code execution.\n\n**Infrastructure included:**\n- NextAuth.js v5 authentication (OAuth + credentials)\n- Rate limiting via Upstash Redis\n- Audit logging with tamper-detection\n- PWA support for offline use\n- One-click deploy to Vercel\n\nThe default configuration uses **free AI models** — OpenRouter for chat and Google Gemini for embeddings — so it costs $0 to run.',
               sources: JSON.stringify([
                 {
                   documentName: 'RAG Starter Kit — Product Overview',

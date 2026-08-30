@@ -12,8 +12,8 @@
 export { type PrismaClient, prisma, prismaRead } from './client';
 
 import type { Prisma } from '@/generated/prisma/client';
-import { deleteByDocumentId, searchSimilar as qdrantSearchSimilar } from '@/lib/qdrant';
-import { buildQdrantFilter } from '@/lib/qdrant/filters';
+import { deleteByDocumentId, searchSimilar } from '@/lib/vector';
+import { buildVectorFilter } from '@/lib/vector/filters';
 import { prisma } from './client';
 
 // ---------------------------------------------------------------------------
@@ -284,7 +284,7 @@ export async function deleteDocument(id: string) {
 }
 
 // ============================================================================
-// Document Chunk Queries (backed by Qdrant)
+// Document Chunk Queries (backed by pgvector)
 // ============================================================================
 
 export async function searchSimilarChunks(
@@ -293,8 +293,8 @@ export async function searchSimilarChunks(
   limit = 5,
   threshold = 0.7
 ) {
-  const filter = buildQdrantFilter({ userId });
-  const results = await qdrantSearchSimilar(embedding, {
+  const filter = buildVectorFilter({ userId });
+  const results = await searchSimilar(embedding, {
     filter,
     topK: limit,
     minScore: threshold,
