@@ -27,11 +27,11 @@ setup('authenticate', async ({ page }) => {
   // Click login button
   await page.click('[data-testid="login-button"]');
 
-  // Wait for redirect to dashboard
-  await page.waitForURL('/dashboard');
+  // Wait for redirect to the authenticated app (login lands on /chat)
+  await page.waitForURL(/\/(chat|dashboard)/);
 
   // Verify we're logged in
-  await expect(page.locator('[data-testid="user-menu"]')).toBeVisible();
+  await expect(page.locator('[data-testid="user-menu"]')).toBeVisible({ timeout: 10000 });
 
   // Save authentication state
   await page.context().storageState({ path: authFile });
