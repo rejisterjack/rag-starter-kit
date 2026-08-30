@@ -5,7 +5,7 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { authenticator } from 'otpauth';
+import * as OTPAuth from 'otpauth';
 import { TEST_EMAIL, TEST_PASSWORD } from './fixtures/credentials';
 
 const mfaSecret = process.env.E2E_MFA_TOTP_SECRET;
@@ -25,7 +25,13 @@ test.describe('MFA login flow', () => {
 
     await expect(page.getByText('Two-Factor Authentication')).toBeVisible({ timeout: 15000 });
 
-    const totp = new authenticator({ secret: mfaSecret, digits: 6, period: 30 });
+    const totp = new OTPAuth.TOTP({
+      issuer: 'RAG Starter Kit',
+      label: process.env.E2E_MFA_EMAIL || TEST_EMAIL,
+      secret: OTPAuth.Secret.fromBase32(mfaSecret),
+      digits: 6,
+      period: 30,
+    });
     const code = totp.generate();
 
     await page.getByTestId('mfa-code-input').fill(code);
