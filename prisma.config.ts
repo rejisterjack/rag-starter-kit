@@ -1,11 +1,12 @@
 import 'dotenv/config';
-import { defineConfig, env } from 'prisma/config';
+import { defineConfig } from 'prisma/config';
 
 // Prisma 7 configuration for Neon
 // - datasource.url: used by Prisma Migrate (CLI) for running migrations
 // - The PrismaClient at runtime uses @prisma/adapter-pg (see src/lib/db/client.ts)
-// `prisma generate` (postinstall) loads this file but never connects; allow it to
-// run in CI and fresh clones where DATABASE_URL is not yet set.
+// NOTE: do not use `env()` from 'prisma/config' here — it throws when the
+// variable is unset, which breaks `prisma generate` during postinstall in CI
+// and fresh clones where DATABASE_URL is not configured yet.
 const databaseUrl =
   process.env.DATABASE_URL ?? 'postgresql://user:pass@localhost:5432/placeholder';
 
@@ -16,6 +17,6 @@ export default defineConfig({
     seed: 'tsx prisma/seed.ts',
   },
   datasource: {
-    url: env('DATABASE_URL') ?? databaseUrl,
+    url: databaseUrl,
   },
 });
