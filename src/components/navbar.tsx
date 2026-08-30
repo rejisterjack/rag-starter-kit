@@ -169,6 +169,7 @@ export function Navbar(): React.ReactElement {
                       type="button"
                       aria-label="User menu"
                       aria-haspopup="true"
+                      data-testid="user-menu"
                       className="flex items-center gap-2.5 pl-1 pr-3 py-1 rounded-full hover:bg-muted/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
                       <Avatar className="h-8 w-8 border border-border/50">

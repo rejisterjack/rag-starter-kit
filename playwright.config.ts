@@ -214,8 +214,9 @@ export default defineConfig({
     },
   },
   
-  // Timeout for each test
-  timeout: 30000,
+  // Timeout for each test. Login flows run bcrypt + DB queries that can take
+  // 10-15s against remote databases, so keep headroom above the default 30s.
+  timeout: 90000,
   
   // Grace period for workers to shutdown
   globalTimeout: 60 * 60 * 1000, // 1 hour

@@ -27,11 +27,13 @@ setup('authenticate', async ({ page }) => {
   // Click login button
   await page.click('[data-testid="login-button"]');
 
-  // Wait for redirect to the authenticated app (login lands on /chat)
-  await page.waitForURL(/\/(chat|dashboard)/);
+  // Wait for redirect to the authenticated app (login lands on /chat).
+  // Credentials login runs bcrypt (cost 12) plus several DB queries; against a
+  // remote database this legitimately takes 10-15s, so allow a generous budget.
+  await page.waitForURL(/\/(chat|dashboard)/, { timeout: 60000 });
 
   // Verify we're logged in
-  await expect(page.locator('[data-testid="user-menu"]')).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('[data-testid="user-menu"]')).toBeVisible({ timeout: 30000 });
 
   // Save authentication state
   await page.context().storageState({ path: authFile });
