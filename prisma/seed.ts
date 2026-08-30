@@ -11,6 +11,7 @@
  * Note: Bun auto-loads .env files before script execution.
  */
 
+import { PrismaPg } from '@prisma/adapter-pg';
 import { hash } from 'bcryptjs';
 import { PrismaClient } from '../src/generated/prisma/client';
 
@@ -20,7 +21,9 @@ if (!process.env.DATABASE_URL) {
 }
 
 const prisma = new PrismaClient({
-  accelerateUrl: process.env.DATABASE_URL,
+  // Same driver strategy as the app runtime (src/lib/db/client.ts): direct pg
+  // adapter over DATABASE_URL. Accelerate URLs (prisma://) are not used here.
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
 
 // ---------------------------------------------------------------------------
@@ -362,6 +365,23 @@ async function main() {
     },
   });
   console.log(`✅ Demo user: ${demoUser.email}`);
+
+  // -------------------------------------------------------------------------
+  // 3. E2E test user — credentials kept in sync with tests/e2e/fixtures/credentials.ts
+  // -------------------------------------------------------------------------
+  const e2ePassword = await hash(process.env.E2E_TEST_PASSWORD || 'TestPassword123!', 12);
+  const e2eUser = await prisma.user.upsert({
+    where: { email: process.env.E2E_TEST_EMAIL || 'test@example.com' },
+    update: {},
+    create: {
+      name: 'E2E Test User',
+      email: process.env.E2E_TEST_EMAIL || 'test@example.com',
+      password: e2ePassword,
+      emailVerified: new Date(),
+      role: 'USER',
+    },
+  });
+  console.log(`✅ E2E test user: ${e2eUser.email}`);
 
   // -------------------------------------------------------------------------
   // 3. Demo workspace
