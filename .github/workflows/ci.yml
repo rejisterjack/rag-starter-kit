@@ -115,6 +115,20 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     needs: [unit, integration]
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rag_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -131,9 +145,11 @@ jobs:
           NEXTAUTH_URL: http://localhost:7392
           AUTH_CREDENTIALS_ONLY: 'true'
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rag_test
+          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/rag_test
           OPENROUTER_API_KEY: ci-openrouter-key
           GOOGLE_GENERATIVE_AI_API_KEY: ci-google-key
           CRON_SECRET: ci-cron-secret-0123456789ab
+          SEED_TEST_DATA: 'true'
 
   build:
     runs-on: ubuntu-latest
