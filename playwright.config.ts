@@ -154,25 +154,39 @@ export default defineConfig({
     },
   ],
   
-  // Run local dev server before starting the tests
-  webServer: [
-    {
-      command: 'bun dev',
-      url: 'http://localhost:7392',
-      reuseExistingServer: !process.env.CI,
-      timeout: 120 * 1000, // 2 minutes
-      env: {
-        NODE_ENV: 'test',
-      },
-    },
-    // Optional: Start Inngest dev server if needed
-    {
-      command: 'bun inngest:dev',
-      url: 'http://localhost:8288',
-      reuseExistingServer: !process.env.CI,
-      timeout: 30 * 1000,
-    },
-  ],
+  // Run local dev server before starting the tests.
+  // In CI, only the Next.js dev server is started: the optional Inngest dev
+  // server downloads its binary via a postinstall script that Bun skips in CI,
+  // which makes it exit 1 and abort the whole e2e run.
+  webServer: process.env.CI
+    ? [
+        {
+          command: 'bun dev',
+          url: 'http://localhost:7392',
+          timeout: 120 * 1000, // 2 minutes
+          env: {
+            NODE_ENV: 'test',
+          },
+        },
+      ]
+    : [
+        {
+          command: 'bun dev',
+          url: 'http://localhost:7392',
+          reuseExistingServer: true,
+          timeout: 120 * 1000, // 2 minutes
+          env: {
+            NODE_ENV: 'test',
+          },
+        },
+        // Optional: Start Inngest dev server if needed
+        {
+          command: 'bun inngest:dev',
+          url: 'http://localhost:8288',
+          reuseExistingServer: true,
+          timeout: 30 * 1000,
+        },
+      ],
   
   // Global setup and teardown
   globalSetup: './tests/e2e/global-setup.ts',

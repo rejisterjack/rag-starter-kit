@@ -23,6 +23,9 @@ export default defineConfig({
       '.next',
       'tests/e2e/**/*', // E2E tests run separately with Playwright
       'tests/performance/**/*', // Performance tests run separately
+      // Retrieval-quality evals call live AI provider APIs and are skipped in
+      // CI (no real keys); keep them out of CI coverage runs entirely.
+      ...(process.env.CI ? ['tests/evaluation/retrieval-quality.test.ts'] : []),
     ],
     
     // Coverage configuration
