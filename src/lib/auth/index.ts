@@ -162,63 +162,76 @@ const {
     },
   },
   providers: [
-    // GitHub OAuth Provider
-    GitHub({
-      clientId: requireEnv('AUTH_GITHUB_ID'),
-      clientSecret: requireEnv('AUTH_GITHUB_SECRET'),
-      allowDangerousEmailAccountLinking: true,
-      authorization: {
-        params: {
-          scope: 'read:user user:email',
-        },
-      },
-      userinfo: {
-        url: 'https://api.github.com/user',
-        async request({ tokens }: { tokens: { access_token: string } }) {
-          const headers = { Authorization: `Bearer ${tokens.access_token}` };
+    // OAuth providers are only registered when credentials are configured.
+    // This keeps AUTH_CREDENTIALS_ONLY=true environments (CI, credentials-only
+    // deployments) bootable instead of crashing on missing env vars at import.
+    ...(process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET
+      ? [
+          // GitHub OAuth Provider
+          GitHub({
+            clientId: requireEnv('AUTH_GITHUB_ID'),
+            clientSecret: requireEnv('AUTH_GITHUB_SECRET'),
+            allowDangerousEmailAccountLinking: true,
+            authorization: {
+              params: {
+                scope: 'read:user user:email',
+              },
+            },
+            userinfo: {
+              url: 'https://api.github.com/user',
+              async request({ tokens }: { tokens: { access_token: string } }) {
+                const headers = { Authorization: `Bearer ${tokens.access_token}` };
 
-          const profileRes = await fetch('https://api.github.com/user', { headers });
-          const profile = await profileRes.json();
+                const profileRes = await fetch('https://api.github.com/user', { headers });
+                const profile = await profileRes.json();
 
-          // Fetch emails if profile doesn't have a public one
-          if (!profile.email) {
-            try {
-              const emailsRes = await fetch('https://api.github.com/user/emails', { headers });
-              const emails = await emailsRes.json();
-              if (Array.isArray(emails)) {
-                const primary = emails.find(
-                  (e: { primary: boolean; verified: boolean }) => e.primary && e.verified
-                );
-                if (primary) profile.email = primary.email;
-              }
-            } catch {
-              // Email endpoint unavailable — will be caught by missing email check below
-            }
-          }
+                // Fetch emails if profile doesn't have a public one
+                if (!profile.email) {
+                  try {
+                    const emailsRes = await fetch('https://api.github.com/user/emails', {
+                      headers,
+                    });
+                    const emails = await emailsRes.json();
+                    if (Array.isArray(emails)) {
+                      const primary = emails.find(
+                        (e: { primary: boolean; verified: boolean }) => e.primary && e.verified
+                      );
+                      if (primary) profile.email = primary.email;
+                    }
+                  } catch {
+                    // Email endpoint unavailable — will be caught by missing email check below
+                  }
+                }
 
-          // Last resort: use login@users.noreply.github.com if email still missing
-          if (!profile.email && profile.login) {
-            profile.email = `${profile.login}@users.noreply.github.com`;
-          }
+                // Last resort: use login@users.noreply.github.com if email still missing
+                if (!profile.email && profile.login) {
+                  profile.email = `${profile.login}@users.noreply.github.com`;
+                }
 
-          return profile;
-        },
-      },
-    }),
+                return profile;
+              },
+            },
+          }),
+        ]
+      : []),
 
-    // Google OAuth Provider
-    Google({
-      clientId: requireEnv('AUTH_GOOGLE_ID'),
-      clientSecret: requireEnv('AUTH_GOOGLE_SECRET'),
-      allowDangerousEmailAccountLinking: true,
-      authorization: {
-        params: {
-          prompt: 'consent',
-          access_type: 'offline',
-          response_type: 'code',
-        },
-      },
-    }),
+    ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
+      ? [
+          // Google OAuth Provider
+          Google({
+            clientId: requireEnv('AUTH_GOOGLE_ID'),
+            clientSecret: requireEnv('AUTH_GOOGLE_SECRET'),
+            allowDangerousEmailAccountLinking: true,
+            authorization: {
+              params: {
+                prompt: 'consent',
+                access_type: 'offline',
+                response_type: 'code',
+              },
+            },
+          }),
+        ]
+      : []),
 
     // Email/Password Credentials Provider with Account Lockout
     Credentials({
