@@ -10,6 +10,7 @@
  * so the application can serve reduced responses instead of errors.
  */
 
+import { logger } from '@/lib/logger';
 import { markFeatureDegraded } from '@/lib/resilience/degradation';
 import { CircuitBreaker } from '@/lib/utils/retry';
 
@@ -18,7 +19,9 @@ export const llmCircuitBreaker = new CircuitBreaker({
   resetTimeoutMs: 30_000,
   halfOpenMaxCalls: 2,
   onOpen: () => {
-    markFeatureDegraded('llm_generation', 60_000).catch(() => {});
+    markFeatureDegraded('llm_generation', 60_000).catch((error) => {
+      logger.error('Failed to mark llm_generation as degraded', { error });
+    });
   },
 });
 
@@ -27,7 +30,9 @@ export const embeddingCircuitBreaker = new CircuitBreaker({
   resetTimeoutMs: 60_000,
   halfOpenMaxCalls: 1,
   onOpen: () => {
-    markFeatureDegraded('vector_search', 120_000).catch(() => {});
+    markFeatureDegraded('vector_search', 120_000).catch((error) => {
+      logger.error('Failed to mark vector_search as degraded (embedding)', { error });
+    });
   },
 });
 
@@ -36,15 +41,22 @@ export const storageCircuitBreaker = new CircuitBreaker({
   resetTimeoutMs: 30_000,
   halfOpenMaxCalls: 1,
   onOpen: () => {
-    markFeatureDegraded('file_upload', 60_000).catch(() => {});
+    markFeatureDegraded('file_upload', 60_000).catch((error) => {
+      logger.error('Failed to mark file_upload as degraded', { error });
+    });
   },
 });
 
-export const qdrantCircuitBreaker = new CircuitBreaker({
+export const vectorSearchCircuitBreaker = new CircuitBreaker({
   failureThreshold: 5,
   resetTimeoutMs: 60_000,
   halfOpenMaxCalls: 1,
   onOpen: () => {
-    markFeatureDegraded('vector_search', 120_000).catch(() => {});
+    markFeatureDegraded('vector_search', 120_000).catch((error) => {
+      logger.error('Failed to mark vector_search as degraded (pgvector)', { error });
+    });
   },
 });
+
+/** @deprecated Use vectorSearchCircuitBreaker */
+export const qdrantCircuitBreaker = vectorSearchCircuitBreaker;

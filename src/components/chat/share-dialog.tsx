@@ -15,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { ApiError, apiFetch } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
 interface ShareDialogProps {
@@ -24,6 +25,14 @@ interface ShareDialogProps {
 }
 
 interface ShareSettings {
+  isPublic: boolean;
+  allowComments: boolean;
+  expiresAt: string | null;
+}
+
+interface ShareInfo {
+  isShared: boolean;
+  shareUrl: string | null;
   isPublic: boolean;
   allowComments: boolean;
   expiresAt: string | null;
@@ -43,16 +52,15 @@ export function ShareDialog({ chatId, chatTitle, className }: ShareDialogProps) 
 
   const fetchShareSettings = async () => {
     try {
-      const response = await fetch(`/api/chat/${chatId}/share`);
-      const data = await response.json();
+      const data = await apiFetch<ShareInfo>(`/api/chat/${chatId}/share`);
 
-      if (data.success && data.data.isShared) {
+      if (data.isShared) {
         setIsShared(true);
-        setShareUrl(data.data.shareUrl);
+        setShareUrl(data.shareUrl ?? '');
         setSettings({
-          isPublic: data.data.isPublic,
-          allowComments: data.data.allowComments,
-          expiresAt: data.data.expiresAt,
+          isPublic: data.isPublic,
+          allowComments: data.allowComments,
+          expiresAt: data.expiresAt,
         });
       } else {
         setIsShared(false);
@@ -71,18 +79,16 @@ export function ShareDialog({ chatId, chatTitle, className }: ShareDialogProps) 
   const handleShare = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/chat/${chatId}/share`, {
+      const data = await apiFetch<{ shareUrl: string }>(`/api/chat/${chatId}/share`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        setIsShared(true);
-        setShareUrl(data.data.shareUrl);
-      }
+      setIsShared(true);
+      setShareUrl(data.shareUrl);
+    } catch (error: unknown) {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to create share link');
     } finally {
       setIsLoading(false);
     }
@@ -91,9 +97,11 @@ export function ShareDialog({ chatId, chatTitle, className }: ShareDialogProps) 
   const handleUnshare = async () => {
     setIsLoading(true);
     try {
-      await fetch(`/api/chat/${chatId}/share`, { method: 'DELETE' });
+      await apiFetch(`/api/chat/${chatId}/share`, { method: 'DELETE' });
       setIsShared(false);
       setShareUrl('');
+    } catch (error: unknown) {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to remove share link');
     } finally {
       setIsLoading(false);
     }

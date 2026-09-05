@@ -6,7 +6,7 @@
  * Handles errors for shared conversation links.
  */
 
-import { Home, Link2 } from 'lucide-react';
+import { Home, Link2, RefreshCw } from 'lucide-react';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,7 @@ interface ShareErrorProps {
   reset: () => void;
 }
 
-export default function ShareError({ error }: ShareErrorProps) {
+export default function ShareError({ error, reset }: ShareErrorProps) {
   useEffect(() => {
     logger.error('Share route error', { error: error.message, digest: error.digest });
   }, [error]);
@@ -45,7 +45,15 @@ export default function ShareError({ error }: ShareErrorProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-2">
-            <Button className="w-full" onClick={() => (window.location.href = '/')}>
+            <Button className="w-full" onClick={reset}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => (window.location.href = '/')}
+            >
               <Home className="mr-2 h-4 w-4" />
               Go to Homepage
             </Button>

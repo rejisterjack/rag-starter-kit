@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import { Bot, FileText, RefreshCw, Sparkles, User, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -107,7 +107,7 @@ export function ChatSimulator(): React.ReactElement {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-primary/5 rounded-[100%] blur-[100px] -z-10 pointer-events-none" />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -121,9 +121,9 @@ export function ChatSimulator(): React.ReactElement {
             Watch a real document query with streaming responses, source citations, and instant
             retrieval.
           </p>
-        </motion.div>
+        </m.div>
 
-        <motion.div
+        <m.div
           initial={{ opacity: 0, scale: 0.95, y: 40 }}
           whileInView={{ opacity: 1, scale: 1, y: 0 }}
           viewport={{ once: true, margin: '-100px' }}
@@ -140,7 +140,7 @@ export function ChatSimulator(): React.ReactElement {
                     <Bot className="h-5 w-5 text-primary" />
                   </div>
                   {isTyping && (
-                    <motion.div
+                    <m.div
                       className="absolute inset-0 rounded-xl border-2 border-primary"
                       animate={{ scale: [1, 1.2, 1], opacity: [1, 0, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
@@ -176,7 +176,7 @@ export function ChatSimulator(): React.ReactElement {
             >
               <AnimatePresence mode="popLayout">
                 {messages.map((message) => (
-                  <motion.div
+                  <m.div
                     layout
                     key={message.id}
                     initial={{
@@ -198,7 +198,7 @@ export function ChatSimulator(): React.ReactElement {
                     )}
 
                     {/* Bubble */}
-                    <motion.div
+                    <m.div
                       layout
                       className={`max-w-[80%] rounded-2xl px-5 py-4 text-[15px] leading-relaxed shadow-md ${
                         message.role === 'user'
@@ -210,7 +210,7 @@ export function ChatSimulator(): React.ReactElement {
                         <span>
                           {streamingText}
                           {isTyping && (
-                            <motion.span
+                            <m.span
                               className="inline-block w-2 h-4 bg-primary ml-1.5 align-middle rounded-sm shadow-[0_0_8px_hsl(var(--primary))]"
                               animate={{ opacity: [1, 0.2, 1] }}
                               transition={{ duration: 0.8, repeat: Infinity }}
@@ -220,7 +220,7 @@ export function ChatSimulator(): React.ReactElement {
                       ) : (
                         message.content
                       )}
-                    </motion.div>
+                    </m.div>
 
                     {/* Avatar User */}
                     {message.role === 'user' && (
@@ -228,14 +228,14 @@ export function ChatSimulator(): React.ReactElement {
                         <User className="h-5 w-5 text-white/80" />
                       </div>
                     )}
-                  </motion.div>
+                  </m.div>
                 ))}
               </AnimatePresence>
 
               {/* Source citations */}
               <AnimatePresence>
                 {showSources && (
-                  <motion.div
+                  <m.div
                     initial={{ opacity: 0, height: 0, y: -10 }}
                     animate={{ opacity: 1, height: 'auto', y: 0 }}
                     exit={{ opacity: 0, height: 0 }}
@@ -250,7 +250,7 @@ export function ChatSimulator(): React.ReactElement {
                     </div>
                     <div className="flex flex-wrap gap-3">
                       {demoMessages[1].sources?.map((source, index) => (
-                        <motion.div
+                        <m.div
                           key={source.title}
                           initial={{ opacity: 0, scale: 0.8, x: -10 }}
                           animate={{ opacity: 1, scale: 1, x: 0 }}
@@ -269,10 +269,10 @@ export function ChatSimulator(): React.ReactElement {
                               {source.page}
                             </div>
                           </div>
-                        </motion.div>
+                        </m.div>
                       ))}
                     </div>
-                  </motion.div>
+                  </m.div>
                 )}
               </AnimatePresence>
             </div>
@@ -315,7 +315,7 @@ export function ChatSimulator(): React.ReactElement {
               </Link>
             </div>
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </section>
   );

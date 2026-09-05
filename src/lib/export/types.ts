@@ -229,11 +229,7 @@ export interface CitationFormatter {
 // =============================================================================
 
 export type ExportEventType =
-  | 'export:started'
-  | 'export:progress'
-  | 'export:completed'
-  | 'export:failed'
-  | 'export:cancelled';
+  'export:started' | 'export:progress' | 'export:completed' | 'export:failed' | 'export:cancelled';
 
 export interface ExportEvent {
   type: ExportEventType;

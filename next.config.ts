@@ -22,8 +22,6 @@ const nextConfig: NextConfig = {
 
 	pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'md', 'mdx'],
 
-	cacheComponents: true,
-
 	turbopack: {
 		resolveAlias: {
 			nodemailer: './src/lib/empty-module.ts',
@@ -45,6 +43,11 @@ const nextConfig: NextConfig = {
 		optimizePackageImports: [
 			'recharts',
 			'd3',
+			'd3-drag',
+			'd3-force',
+			'd3-selection',
+			'd3-transition',
+			'd3-zoom',
 			'@react-pdf/renderer',
 			'lucide-react',
 			'date-fns',
@@ -64,7 +67,8 @@ const nextConfig: NextConfig = {
 			'@hookform/resolvers',
 			'react-hook-form',
 			'react-day-picker',
-			'elysia',
+			'@sentry/nextjs',
+			'zod',
 		],
 	},
 	webpack: (config, { isServer }): webpack.Configuration => {
@@ -121,6 +125,10 @@ const nextConfig: NextConfig = {
 				protocol: "https",
 				hostname: "lh3.googleusercontent.com",
 			},
+			{
+				protocol: "https",
+				hostname: "res.cloudinary.com",
+			},
 		],
 		formats: ["image/avif", "image/webp"],
 	},
@@ -146,33 +154,12 @@ const nextConfig: NextConfig = {
 				headers: [
 					{ key: "X-Frame-Options", value: "DENY" },
 					{ key: "X-Content-Type-Options", value: "nosniff" },
-					{ key: "X-XSS-Protection", value: "0" },
 					{ key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+				{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
 					{ key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 					{ key: "Cross-Origin-Resource-Policy", value: "same-origin" },
 					{ key: "X-Permitted-Cross-Domain-Policies", value: "none" },
 					{ key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), browsing-topics=(), interest-cohort=()" },
-				],
-			},
-			{
-				source: "/api/:path*",
-				headers: [
-					{
-						key: "Access-Control-Allow-Methods",
-						value: "GET, POST, PUT, DELETE, OPTIONS",
-					},
-					{
-						key: "Access-Control-Allow-Headers",
-						value: "Content-Type, Authorization, X-Requested-With, X-Request-ID, X-API-Key, X-CSRF-Token",
-					},
-					{
-						key: "Access-Control-Allow-Credentials",
-						value: "true",
-					},
-					{
-						key: "Access-Control-Max-Age",
-						value: "86400",
-					},
 				],
 			},
 			{
@@ -201,22 +188,65 @@ const nextConfig: NextConfig = {
 					},
 				],
 			},
-			{
-				source: "/icons/:path*",
-				headers: [
-					{
-						key: "Cache-Control",
-						value: "public, max-age=31536000, immutable",
-					},
-				],
-			},
-		];
+		{
+			source: "/icons/:path*",
+			headers: [
+				{
+					key: "Cache-Control",
+					value: "public, max-age=31536000, immutable",
+				},
+			],
+		},
+		{
+			source: "/llms.txt",
+			headers: [
+				{
+					key: "Cache-Control",
+					value: "public, max-age=3600, stale-while-revalidate=86400",
+				},
+			],
+		},
+		{
+			source: "/llms-full.txt",
+			headers: [
+				{
+					key: "Cache-Control",
+					value: "public, max-age=3600, stale-while-revalidate=86400",
+				},
+			],
+		},
+		{
+			source: "/feed.xml",
+			headers: [
+				{
+					key: "Cache-Control",
+					value: "public, max-age=3600, stale-while-revalidate=86400",
+				},
+			],
+		},
+		{
+			source: "/sitemap.xml",
+			headers: [
+				{
+					key: "Cache-Control",
+					value: "public, max-age=3600, stale-while-revalidate=86400",
+				},
+			],
+		},
+	];
 	},
 };
 
 const isDev = process.env.NODE_ENV === 'development';
+const baseConfig = withBundleAnalyzer(withMDX(nextConfig));
+
+if (!isDev && !process.env.SENTRY_DSN) {
+	console.warn(
+		'[next.config] SENTRY_DSN is not set — error tracking is disabled in production. ' +
+		'Set the SENTRY_DSN environment variable to enable Sentry.'
+	);
+}
+
 export default !isDev && process.env.SENTRY_DSN
-  ? withSentryConfig(withBundleAnalyzer(withMDX(nextConfig)), {
-      silent: true,
-    })
-  : withBundleAnalyzer(withMDX(nextConfig));
+  ? withSentryConfig(baseConfig, { silent: true })
+  : baseConfig;

@@ -4,8 +4,8 @@
   "description": "A production-ready, self-hosted RAG chatbot with agentic capabilities",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0f172a",
+  "background_color": "#18181b",
+  "theme_color": "#18181b",
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "en",
@@ -62,24 +62,7 @@
       "purpose": "maskable any"
     }
   ],
-  
-  "screenshots": [
-    {
-      "src": "/screenshots/chat-wide.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Chat Interface"
-    },
-    {
-      "src": "/screenshots/chat-narrow.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Mobile Chat"
-    }
-  ],
-  
+
   "shortcuts": [
     {
       "name": "New Chat",

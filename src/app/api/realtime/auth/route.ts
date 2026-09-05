@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * Ably Token Authentication Endpoint
  *
@@ -14,23 +15,16 @@ export async function POST(_req: Request): Promise<Response> {
   const apiKey = process.env.ABLY_API_KEY;
 
   if (!apiKey) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'REALTIME_NOT_CONFIGURED',
-          message: 'Real-time features are not configured. Set ABLY_API_KEY to enable.',
-        },
-      },
-      { status: 501 }
+    return apiError(
+      'REALTIME_NOT_CONFIGURED',
+      'Real-time features are not configured. Set ABLY_API_KEY to enable.',
+      501
     );
   }
 
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-      { status: 401 }
-    );
+    return apiError('UNAUTHORIZED', 'Authentication required', 401);
   }
 
   const userId = session.user.id;
@@ -62,6 +56,6 @@ export async function POST(_req: Request): Promise<Response> {
         ? error.message
         : 'Token generation failed'
       : 'Token generation failed';
-    return NextResponse.json({ error: { code: 'TOKEN_ERROR', message } }, { status: 500 });
+    return apiError('TOKEN_ERROR', message, 500);
   }
 }

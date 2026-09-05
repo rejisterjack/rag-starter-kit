@@ -101,13 +101,27 @@ Rate limit headers are included in responses:
 
 ## Error Responses
 
-All errors follow a consistent format:
+All JSON API errors follow a consistent envelope:
 
 ```json
 {
-  "error": "Human-readable error message",
-  "code": "MACHINE_READABLE_CODE",
-  "details": {}
+  "success": false,
+  "error": {
+    "code": "MACHINE_READABLE_CODE",
+    "message": "Human-readable error message",
+    "details": {}
+  }
+}
+```
+
+The `details` field is optional and may contain validation errors or other structured context.
+
+Successful responses use:
+
+```json
+{
+  "success": true,
+  "data": {}
 }
 ```
 

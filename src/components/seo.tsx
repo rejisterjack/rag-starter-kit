@@ -1,11 +1,15 @@
 /**
  * SEO Component
  *
- * Shared SEO component for consistent meta tags across pages.
- * Use this in page components to override default metadata.
+ * Shared SEO helpers for consistent meta tags across pages.
+ * Use `generateSEO` in page components to override default metadata,
+ * and the JSON-LD builders below for structured data.
+ *
+ * Stack facts live in `src/lib/seo/content-registry.ts` — keep them in sync.
  */
 
 import type { Metadata } from 'next';
+import { getBreadcrumbTrail, SITE } from '@/lib/seo/content-registry';
 
 interface SEOProps {
   title?: string;
@@ -19,20 +23,34 @@ interface SEOProps {
   modifiedTime?: string;
 }
 
+const DEFAULT_KEYWORDS = [
+  'RAG',
+  'RAG starter kit',
+  'AI chatbot boilerplate',
+  'Next.js',
+  'TypeScript',
+  'pgvector',
+  'PostgreSQL',
+  'Prisma',
+  'Vercel AI SDK',
+  'retrieval-augmented generation',
+  'document chatbot',
+  'open source',
+];
+
 export function generateSEO({
-  title = 'RAG Starter Kit',
-  description = 'A production-ready RAG (Retrieval-Augmented Generation) chatbot powered by Next.js, LangChain, and PostgreSQL pgvector.',
-  image = '/og-image.png',
+  title = SITE.name,
+  description = SITE.description,
+  image = '/og',
   url = '/',
   type = 'website',
-  keywords = ['RAG', 'chatbot', 'AI', 'Next.js', 'LangChain', 'OpenAI', 'pgvector', 'PostgreSQL'],
-  author = 'RAG Starter Kit Team',
+  keywords = DEFAULT_KEYWORDS,
+  author = 'Rupam Das',
   publishedTime,
   modifiedTime,
 }: SEOProps): Metadata {
-  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rag-starter-kit.vercel.app';
-  const fullUrl = `${siteUrl}${url}`;
-  const fullImage = image.startsWith('http') ? image : `${siteUrl}${image}`;
+  const fullUrl = `${SITE.url}${url}`;
+  const fullImage = image.startsWith('http') ? image : `${SITE.url}${image}`;
 
   return {
     title,
@@ -40,15 +58,14 @@ export function generateSEO({
     keywords,
     authors: [{ name: author }],
     creator: author,
-    metadataBase: new URL(siteUrl),
     alternates: {
-      canonical: url,
+      canonical: fullUrl,
     },
     openGraph: {
       type,
       locale: 'en_US',
       url: fullUrl,
-      siteName: 'RAG Starter Kit',
+      siteName: SITE.name,
       title,
       description,
       images: [
@@ -67,7 +84,7 @@ export function generateSEO({
       title,
       description,
       images: [fullImage],
-      creator: '@ragstarterkit',
+      creator: SITE.twitter,
     },
     robots: {
       index: true,
@@ -83,48 +100,192 @@ export function generateSEO({
   };
 }
 
+// =============================================================================
+// JSON-LD Structured Data
+// =============================================================================
+
+type StructuredDataType =
+  | 'WebSite'
+  | 'WebPage'
+  | 'SoftwareApplication'
+  | 'Organization'
+  | 'FAQPage'
+  | 'BreadcrumbList'
+  | 'HowTo'
+  | 'TechArticle'
+  | 'BlogPosting';
+
+interface FAQItem {
+  question: string;
+  answer: string;
+}
+
+export function buildWebSiteJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE.name,
+    description: SITE.description,
+    url: SITE.url,
+  };
+}
+
+export function buildOrganizationJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: SITE.name,
+    url: SITE.url,
+    logo: `${SITE.url}/icons/icon-512x512.png`,
+    sameAs: [SITE.github],
+  };
+}
+
+export function buildSoftwareApplicationJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: SITE.name,
+    description: SITE.description,
+    url: SITE.url,
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Any',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+    author: {
+      '@type': 'Organization',
+      name: SITE.name,
+      url: SITE.url,
+    },
+  };
+}
+
+export function buildFAQJsonLd(faqs: FAQItem[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  };
+}
+
+export function buildBreadcrumbJsonLd(path: string) {
+  const trail = getBreadcrumbTrail(path);
+  if (trail.length < 2) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: trail.map((entry, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: entry.title,
+      item: `${SITE.url}${entry.path}`,
+    })),
+  };
+}
+
+export function buildTechArticleJsonLd(opts: {
+  headline: string;
+  description: string;
+  path: string;
+  datePublished: string;
+  dateModified?: string;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'TechArticle',
+    headline: opts.headline,
+    description: opts.description,
+    url: `${SITE.url}${opts.path}`,
+    datePublished: opts.datePublished,
+    ...(opts.dateModified && { dateModified: opts.dateModified }),
+    author: { '@type': 'Person', name: 'Rupam Das' },
+    publisher: { '@type': 'Organization', name: SITE.name, url: SITE.url },
+  };
+}
+
+export function buildBlogPostingJsonLd(opts: {
+  headline: string;
+  description: string;
+  path: string;
+  datePublished: string;
+  dateModified?: string;
+  keywords?: string[];
+  wordCount?: number;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: opts.headline,
+    description: opts.description,
+    url: `${SITE.url}${opts.path}`,
+    mainEntityOfPage: `${SITE.url}${opts.path}`,
+    datePublished: opts.datePublished,
+    ...(opts.dateModified && { dateModified: opts.dateModified }),
+    ...(opts.keywords?.length && { keywords: opts.keywords.join(', ') }),
+    ...(opts.wordCount && { wordCount: opts.wordCount }),
+    author: { '@type': 'Person', name: 'Rupam Das' },
+    publisher: { '@type': 'Organization', name: SITE.name, url: SITE.url },
+    image: `${SITE.url}/og`,
+  };
+}
+
+export function buildHowToJsonLd(opts: { name: string; description: string; steps: string[] }) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: opts.name,
+    description: opts.description,
+    step: opts.steps.map((s, i) => ({
+      '@type': 'HowToStep',
+      position: i + 1,
+      text: s,
+    })),
+  };
+}
+
+/** Renders any JSON-LD object as a script tag. */
+export function JsonLd({ data }: { data: Record<string, unknown> | null }) {
+  if (!data) return null;
+  return (
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />
+  );
+}
+
 /**
- * JSON-LD Structured Data for rich snippets
+ * Backwards-compatible site-level structured data. New code should prefer the
+ * `build*JsonLd` builders + `JsonLd` renderer for richer per-page markup.
  */
 export function StructuredData({
   type = 'WebSite',
-  name = 'RAG Starter Kit',
-  description = 'A production-ready RAG chatbot boilerplate',
-  url = 'https://rag-starter-kit.vercel.app',
+  name = SITE.name,
+  description = SITE.description,
+  url = SITE.url,
 }: {
-  type?: 'WebSite' | 'WebPage' | 'SoftwareApplication';
+  type?: StructuredDataType;
   name?: string;
   description?: string;
   url?: string;
 }) {
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': type,
-    name,
-    description,
-    url,
-    ...(type === 'SoftwareApplication' && {
-      applicationCategory: 'DeveloperApplication',
-      operatingSystem: 'Any',
-      offers: {
-        '@type': 'Offer',
-        price: '0',
-        priceCurrency: 'USD',
-      },
-      author: {
-        '@type': 'Organization',
-        name: 'RAG Starter Kit Team',
-      },
-    }),
-  };
+  const structuredData =
+    type === 'SoftwareApplication'
+      ? buildSoftwareApplicationJsonLd()
+      : {
+          '@context': 'https://schema.org',
+          '@type': type,
+          name,
+          description,
+          url,
+        };
 
-  return (
-    <script
-      type="application/ld+json"
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: Required for SEO JSON-LD structured data
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify(structuredData),
-      }}
-    />
-  );
+  return <JsonLd data={structuredData} />;
 }

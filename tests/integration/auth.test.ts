@@ -96,6 +96,18 @@ vi.mock('@/lib/notifications/email', () => ({
   },
 }));
 
+const { mockAuth, mockSignIn, mockSignOut } = vi.hoisted(() => ({
+  mockAuth: vi.fn(),
+  mockSignIn: vi.fn(),
+  mockSignOut: vi.fn(),
+}));
+
+vi.mock('@/lib/auth', () => ({
+  auth: mockAuth,
+  signIn: mockSignIn,
+  signOut: mockSignOut,
+}));
+
 vi.mock('@/lib/env', () => ({
   env: {
     NODE_ENV: 'test',
@@ -126,9 +138,9 @@ describe('Authentication', () => {
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       };
 
-      const { auth } = await import('@/lib/auth');
-      vi.mocked(auth).mockResolvedValue(mockSession);
+      mockAuth.mockResolvedValue(mockSession);
 
+      const { auth } = await import('@/lib/auth');
       const session = await auth();
 
       expect(session).toBeDefined();
@@ -137,7 +149,7 @@ describe('Authentication', () => {
 
     it('returns null for unauthenticated users', async () => {
       const { auth } = await import('@/lib/auth');
-      vi.mocked(auth).mockResolvedValue(null);
+      mockAuth.mockResolvedValue(null);
 
       const session = await auth();
 
@@ -147,14 +159,12 @@ describe('Authentication', () => {
     it('handles GitHub OAuth sign in', async () => {
       const { signIn } = await import('@/lib/auth');
 
-      const mockSignIn = vi.fn().mockResolvedValue({
+      mockSignIn.mockResolvedValue({
         error: null,
         status: 200,
         ok: true,
         url: null,
       });
-
-      vi.mocked(signIn).mockImplementation(mockSignIn);
 
       const result = await signIn('github', {
         callbackUrl: '/dashboard',
@@ -169,14 +179,12 @@ describe('Authentication', () => {
     it('handles Google OAuth sign in', async () => {
       const { signIn } = await import('@/lib/auth');
 
-      const mockSignIn = vi.fn().mockResolvedValue({
+      mockSignIn.mockResolvedValue({
         error: null,
         status: 200,
         ok: true,
         url: null,
       });
-
-      vi.mocked(signIn).mockImplementation(mockSignIn);
 
       const result = await signIn('google');
 
@@ -187,14 +195,12 @@ describe('Authentication', () => {
     it('handles sign in errors', async () => {
       const { signIn } = await import('@/lib/auth');
 
-      const mockSignIn = vi.fn().mockResolvedValue({
+      mockSignIn.mockResolvedValue({
         error: 'OAuthAccountNotLinked',
         status: 401,
         ok: false,
         url: null,
       });
-
-      vi.mocked(signIn).mockImplementation(mockSignIn);
 
       const result = await signIn('github');
 
@@ -205,13 +211,11 @@ describe('Authentication', () => {
     it('handles credentials sign in', async () => {
       const { signIn } = await import('@/lib/auth');
 
-      const mockSignIn = vi.fn().mockResolvedValue({
+      mockSignIn.mockResolvedValue({
         error: null,
         status: 200,
         ok: true,
       });
-
-      vi.mocked(signIn).mockImplementation(mockSignIn);
 
       const result = await signIn('credentials', {
         email: 'test@example.com',
@@ -228,8 +232,7 @@ describe('Authentication', () => {
     it('signs out user', async () => {
       const { signOut } = await import('@/lib/auth');
 
-      const mockSignOut = vi.fn().mockResolvedValue({ url: 'http://localhost:7392' });
-      vi.mocked(signOut).mockImplementation(mockSignOut);
+      mockSignOut.mockResolvedValue({ url: 'http://localhost:7392' });
 
       await signOut({ callbackUrl: '/' });
 
@@ -426,12 +429,11 @@ describe('Authentication', () => {
     it('handles OAuth provider errors', async () => {
       const { signIn } = await import('@/lib/auth');
 
-      const mockSignIn = vi.fn().mockResolvedValue({
+      mockSignIn.mockResolvedValue({
         error: 'OAuthCallback',
         status: 401,
         ok: false,
       });
-      vi.mocked(signIn).mockImplementation(mockSignIn);
 
       const result = await signIn('github');
 
@@ -469,7 +471,7 @@ describe('Authentication', () => {
         expires: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
       };
 
-      vi.mocked(auth).mockResolvedValue(nearExpirySession);
+      mockAuth.mockResolvedValue(nearExpirySession);
 
       const session = await auth();
       const expiresAt = new Date(session?.expires || '');
@@ -626,33 +628,29 @@ describe('Authentication', () => {
       { role: 'viewer', canDelete: false, canInvite: false, canManageBilling: false },
     ];
 
-    it.each(
-      permissionMatrix
-    )('$role canDelete: $canDelete, canInvite: $canInvite, canManageBilling: $canManageBilling', async ({
-      role,
-      canDelete,
-      canInvite,
-      canManageBilling,
-    }) => {
-      mockPrisma.membership.findFirst = vi.fn().mockResolvedValue({
-        userId: 'user-001',
-        workspaceId: 'ws-1',
-        role,
-      });
-
-      const membership = await mockPrisma.membership.findFirst({
-        where: {
+    it.each(permissionMatrix)(
+      '$role canDelete: $canDelete, canInvite: $canInvite, canManageBilling: $canManageBilling',
+      async ({ role, canDelete, canInvite, canManageBilling }) => {
+        mockPrisma.membership.findFirst = vi.fn().mockResolvedValue({
           userId: 'user-001',
           workspaceId: 'ws-1',
-        },
-      });
+          role,
+        });
 
-      const permissions = getPermissions(membership.role);
+        const membership = await mockPrisma.membership.findFirst({
+          where: {
+            userId: 'user-001',
+            workspaceId: 'ws-1',
+          },
+        });
 
-      expect(permissions.canDelete).toBe(canDelete);
-      expect(permissions.canInvite).toBe(canInvite);
-      expect(permissions.canManageBilling).toBe(canManageBilling);
-    });
+        const permissions = getPermissions(membership.role);
+
+        expect(permissions.canDelete).toBe(canDelete);
+        expect(permissions.canInvite).toBe(canInvite);
+        expect(permissions.canManageBilling).toBe(canManageBilling);
+      }
+    );
 
     it('checks document access permissions', async () => {
       const mockDocument = {

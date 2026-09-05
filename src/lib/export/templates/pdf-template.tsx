@@ -3,8 +3,6 @@
  * React-pdf template for professional PDF generation
  */
 
-'use client';
-
 import { Document, Font, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
 // Extract types from @react-pdf/renderer components
@@ -288,31 +286,26 @@ function MessageContent({ content, isRTL }: MessageContentProps) {
 
   return (
     <View style={isRTL ? styles.rtl : undefined}>
-      {parts.map((part, index) => {
+      {parts.map((part) => {
         if (part.startsWith('```')) {
           // Code block
           const code = part.replace(/```(\w+)?\n?/, '').replace(/```$/, '');
           return (
-            // biome-ignore lint/suspicious/noArrayIndexKey: Stable array from split operation, index is safe
-            <View key={`code-${part.slice(0, 20)}-${index}`} style={styles.codeBlock}>
+            <View key={`code-${part.slice(0, 30)}`} style={styles.codeBlock}>
               <Text>{code}</Text>
             </View>
           );
         } else if (part.startsWith('`') && part.endsWith('`')) {
           // Inline code
           return (
-            // biome-ignore lint/suspicious/noArrayIndexKey: Stable array from split operation, index is safe
-            <Text key={`inline-${part.slice(0, 20)}-${index}`} style={styles.inlineCode}>
+            <Text key={`inline-${part.slice(0, 30)}`} style={styles.inlineCode}>
               {part.slice(1, -1)}
             </Text>
           );
         } else {
           // Regular text with bold formatting
           const textWithBold = part.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
-          return (
-            // biome-ignore lint/suspicious/noArrayIndexKey: Stable array from split operation, index is safe
-            <Text key={`text-${part.slice(0, 20)}-${index}`}>{textWithBold}</Text>
-          );
+          return <Text key={`text-${part.slice(0, 30)}`}>{textWithBold}</Text>;
         }
       })}
     </View>

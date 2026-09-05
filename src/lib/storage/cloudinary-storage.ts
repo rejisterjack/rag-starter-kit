@@ -101,8 +101,8 @@ export async function uploadFile(
 // Download Operations
 // =============================================================================
 
-export async function getFile(key: string): Promise<Buffer> {
-  const url = await getPresignedUrl(key);
+export async function getFile(keyOrUrl: string): Promise<Buffer> {
+  const url = keyOrUrl.startsWith('https://') ? keyOrUrl : await getPresignedUrl(keyOrUrl);
 
   try {
     const response = await fetch(url);
@@ -113,7 +113,7 @@ export async function getFile(key: string): Promise<Buffer> {
     return Buffer.from(arrayBuffer);
   } catch (error) {
     logger.error('Cloudinary download failed', {
-      key,
+      key: keyOrUrl,
       error: error instanceof Error ? error.message : 'Unknown',
     });
     throw error;
@@ -260,10 +260,10 @@ export async function checkCloudinaryHealth(): Promise<{
 // =============================================================================
 
 function keyToPublicId(key: string): string {
-  const normalized = key.replace(/^\/+/, '').replace(/\.{2,}/g, '');
-  const lastDot = normalized.lastIndexOf('.');
-  if (lastDot > 0) {
-    return `rag/${normalized.slice(0, lastDot)}`;
+  let normalized = key.replace(/^\/+/, '').replace(/\.{2,}/g, '');
+  const lower = normalized.toLowerCase();
+  if (lower.endsWith('.pdf') || lower.endsWith('.zip')) {
+    normalized = `${normalized}.tmp`;
   }
   return `rag/${normalized}`;
 }

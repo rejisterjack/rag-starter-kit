@@ -3,7 +3,7 @@
  * Supports: type, dateFrom, dateTo filters
  */
 
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const { searchParams } = new URL(req.url);
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
     const hasDateFilter = Object.keys(dateFilter).length > 0;
 
     if (!query || query.length < 2) {
-      return NextResponse.json({ results: [], filters: { types, dateFrom, dateTo } });
+      return apiSuccess({ results: [], filters: { types, dateFrom, dateTo } });
     }
 
     const userId = session.user.id;
@@ -238,19 +238,15 @@ export async function GET(req: Request) {
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
 
-    return NextResponse.json({
+    return apiSuccess({
       results: scoredResults.slice(0, limit),
       total: scoredResults.length,
-      filters: {
-        types,
-        dateFrom,
-        dateTo,
-      },
+      filters: { types, dateFrom, dateTo },
     });
   } catch (error: unknown) {
     logger.error('Search failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json({ error: 'Search failed' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Search failed', 500);
   }
 }

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { withApiAuth } from '@/lib/auth';
 import { prismaRead } from '@/lib/db';
@@ -33,57 +33,45 @@ export const GET = withApiAuth(async (_req, session, { params }: RouteParams) =>
     });
 
     if (!membership) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     const workspace = await getWorkspaceById(workspaceId);
 
     if (!workspace) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Workspace not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Workspace not found', 404);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        workspace: {
-          id: workspace.id,
-          name: workspace.name,
-          slug: workspace.slug,
-          description: workspace.description,
-          avatar: workspace.avatar,
-          plan: workspace.plan,
-          settings: workspace.settings,
-          owner: workspace.owner,
-          members: workspace.members.map((m) => ({
-            id: m.id,
-            userId: m.userId,
-            role: m.role,
-            status: m.status,
-            user: m.user,
-          })),
-          memberCount: workspace.members.length,
-          documentCount: workspace._count.documents,
-          chatCount: workspace._count.chats,
-          createdAt: workspace.createdAt.toISOString(),
-          updatedAt: workspace.updatedAt.toISOString(),
-        },
-        currentUserRole: membership.role,
+    return apiSuccess({
+      workspace: {
+        id: workspace.id,
+        name: workspace.name,
+        slug: workspace.slug,
+        description: workspace.description,
+        avatar: workspace.avatar,
+        plan: workspace.plan,
+        settings: workspace.settings,
+        owner: workspace.owner,
+        members: workspace.members.map((m) => ({
+          id: m.id,
+          userId: m.userId,
+          role: m.role,
+          status: m.status,
+          user: m.user,
+        })),
+        memberCount: workspace.members.length,
+        documentCount: workspace._count.documents,
+        chatCount: workspace._count.chats,
+        createdAt: workspace.createdAt.toISOString(),
+        updatedAt: workspace.updatedAt.toISOString(),
       },
+      currentUserRole: membership.role,
     });
   } catch (error: unknown) {
     logger.error('Failed to get workspace', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to get workspace' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to get workspace', 500);
   }
 });
 
@@ -98,10 +86,7 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
     // Check if user can manage workspace
     const canManage = await canManageWorkspace(session.user.id, workspaceId);
     if (!canManage) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Parse and validate body
@@ -112,10 +97,7 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
       logger.debug('Failed to parse request body for workspace update', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     let validatedInput: ReturnType<typeof validateUpdateWorkspaceInput>;
@@ -124,22 +106,25 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
       validatedInput = validateUpdateWorkspaceInput(body);
     } catch (error) {
       if (error instanceof Error) {
-        return NextResponse.json(
-          {
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: isDev ? error.message : 'Validation failed',
-            },
-          },
-          { status: 400 }
-        );
+        return apiError('VALIDATION_ERROR', isDev ? error.message : 'Validation failed', 400);
       }
       throw error;
     }
 
     // Update workspace (with optimistic locking if If-Match provided)
-    let workspace: Record<string, unknown> | Awaited<ReturnType<typeof updateWorkspace>>;
     const expectedVersion = extractVersion(req.headers);
+    let responseData: {
+      id: string;
+      name: string;
+      slug: string;
+      description: string | null;
+      avatar: string | null;
+      plan: string;
+      settings: Record<string, unknown> | null;
+      version?: number;
+      updatedAt: string;
+    };
+
     try {
       if (expectedVersion !== null) {
         const updateData: Record<string, unknown> = {};
@@ -148,45 +133,56 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
           updateData.description = validatedInput.description;
         if (validatedInput.avatar !== undefined) updateData.logoUrl = validatedInput.avatar;
         if (validatedInput.settings !== undefined) updateData.settings = validatedInput.settings;
-        workspace = await updateWithVersion('workspace', workspaceId, updateData, expectedVersion);
+        const workspace = await updateWithVersion(
+          'workspace',
+          workspaceId,
+          updateData,
+          expectedVersion
+        );
+        responseData = {
+          id: String(workspace.id),
+          name: String(workspace.name),
+          slug: String(workspace.slug),
+          description: workspace.description != null ? String(workspace.description) : null,
+          avatar:
+            workspace.logoUrl != null
+              ? String(workspace.logoUrl)
+              : workspace.avatar != null
+                ? String(workspace.avatar)
+                : null,
+          plan: String(workspace.plan),
+          settings: workspace.settings as Record<string, unknown> | null,
+          version: workspace.version as number | undefined,
+          updatedAt: new Date(workspace.updatedAt as string | Date).toISOString(),
+        };
       } else {
-        workspace = await updateWorkspace(workspaceId, validatedInput);
+        const workspace = await updateWorkspace(workspaceId, validatedInput);
+        responseData = {
+          id: workspace.id,
+          name: workspace.name,
+          slug: workspace.slug,
+          description: workspace.description,
+          avatar: workspace.avatar,
+          plan: workspace.plan,
+          settings: workspace.settings,
+          updatedAt: workspace.updatedAt.toISOString(),
+        };
       }
     } catch (e) {
       if (e instanceof ConcurrentModificationError) {
-        return NextResponse.json(
-          { error: { code: 'CONFLICT', message: e.message } },
-          { status: 409 }
-        );
+        return apiError('CONFLICT', e.message, 409);
       }
       throw e;
     }
 
-    const wsResult = workspace as unknown as Record<string, unknown>;
-    return NextResponse.json({
-      success: true,
-      data: {
-        workspace: {
-          id: wsResult.id,
-          name: wsResult.name,
-          slug: wsResult.slug,
-          description: wsResult.description,
-          avatar: wsResult.logoUrl ?? wsResult.avatar,
-          plan: wsResult.plan,
-          settings: wsResult.settings,
-          version: wsResult.version,
-          updatedAt: (wsResult.updatedAt as Date).toISOString(),
-        },
-      },
+    return apiSuccess({
+      workspace: responseData,
     });
   } catch (error: unknown) {
     logger.error('Failed to update workspace', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to update workspace' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to update workspace', 500);
   }
 });
 
@@ -203,31 +199,19 @@ export const DELETE = withApiAuth(async (_req, session, { params }: RouteParams)
       await deleteWorkspace(workspaceId, session.user.id);
     } catch (error) {
       if (error instanceof Error) {
-        return NextResponse.json(
-          {
-            error: {
-              code: 'DELETE_FAILED',
-              message: isDev ? error.message : 'Failed to delete workspace',
-            },
-          },
-          { status: 400 }
-        );
+        return apiError('DELETE_FAILED', isDev ? error.message : 'Failed to delete workspace', 400);
       }
       throw error;
     }
 
-    return NextResponse.json({
-      success: true,
-      data: { message: 'Workspace deleted successfully' },
+    return apiSuccess({
+      message: 'Workspace deleted successfully',
     });
   } catch (error: unknown) {
     logger.error('Failed to delete workspace', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to delete workspace' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to delete workspace', 500);
   }
 });
 
@@ -278,7 +262,7 @@ function validateUpdateWorkspaceInput(body: unknown): UpdateWorkspaceInput {
     if (input.settings !== null && typeof input.settings !== 'object') {
       throw new Error('Invalid settings: must be an object or null');
     }
-    result.settings = (input.settings as Record<string, unknown>) ?? undefined;
+    result.settings = (input.settings ?? undefined) as Record<string, unknown> | undefined;
   }
 
   return result;

@@ -19,10 +19,11 @@ export function useConversations(options: UseConversationsOptions = {}) {
   return useOfflineQuery<ConversationSummary[]>({
     key: `conversations:list:${limit}`,
     fetcher: async () => {
-      const response = await fetch(`/api/v1/chats?limit=${limit}`);
+      const response = await fetch(`/api/chats?limit=${limit}`);
       if (!response.ok) throw new Error('Failed to fetch conversations');
       const json = await response.json();
-      return (json.data ?? []) as ConversationSummary[];
+      const payload = json?.data?.items;
+      return (Array.isArray(payload) ? payload : []) as ConversationSummary[];
     },
     ttl: 2 * 60 * 1000, // 2 minutes
     staleWhileRevalidate: true,

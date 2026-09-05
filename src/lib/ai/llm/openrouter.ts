@@ -23,36 +23,21 @@ import {
  * All available at: https://openrouter.ai/models?max_price=0
  */
 export const OPENROUTER_FREE_MODELS = {
-  // Mistral - Good balance of quality and speed
-  MISTRAL_7B: 'mistralai/mistral-7b-instruct:free',
+  // NVIDIA Nemotron 3.5 Lightning — fast and reliable default
+  NEMOTRON_LIGHTNING: 'nvidia/nemotron-3.5-lightning:free',
 
-  // Google - Strong performance
-  GEMMA_2_9B: 'google/gemma-2-9b-it:free',
+  // NVIDIA Nemotron 3 Super 120B — larger, high-quality fallback
+  NEMOTRON_SUPER: 'nvidia/nemotron-3-super-120b-a12b:free',
 
-  // Meta - Open source, good quality
-  LLAMA_3_1_8B: 'meta-llama/llama-3.1-8b-instruct:free',
-  LLAMA_3_2_1B: 'meta-llama/llama-3.2-1b-instruct:free',
-  LLAMA_3_2_3B: 'meta-llama/llama-3.2-3b-instruct:free',
-
-  // DeepSeek - Strong reasoning
-  DEEPSEEK_CHAT: 'meta-llama/llama-3.3-70b-instruct:free',
-
-  // Nous Research - Very capable but slower
-  HERMES_405B: 'nousresearch/hermes-3-llama-3.1-405b:free',
-
-  // Microsoft - Solid performance
-  PHI_3_MINI: 'microsoft/phi-3-mini:free',
-  PHI_3_MEDIUM: 'microsoft/phi-3-medium:free',
-
-  // Qwen - Alibaba's model
-  QWEN_2_5_7B: 'qwen/qwen-2.5-7b-instruct:free',
+  // Z.AI GLM 5.2 — capable general model
+  GLM_5_2: 'z-ai/glm-5.2:free',
 } as const;
 
 // Default fallback models (prioritize speed and availability)
 const DEFAULT_FALLBACK_MODELS = [
-  OPENROUTER_FREE_MODELS.MISTRAL_7B,
-  OPENROUTER_FREE_MODELS.LLAMA_3_1_8B,
-  OPENROUTER_FREE_MODELS.GEMMA_2_9B,
+  OPENROUTER_FREE_MODELS.NEMOTRON_LIGHTNING,
+  OPENROUTER_FREE_MODELS.NEMOTRON_SUPER,
+  OPENROUTER_FREE_MODELS.GLM_5_2,
 ];
 
 export class OpenRouterProvider implements LLMProvider {
@@ -66,7 +51,7 @@ export class OpenRouterProvider implements LLMProvider {
   constructor(config: OpenRouterConfig = { provider: 'openrouter' }) {
     this.apiKey = config.apiKey ?? process.env.OPENROUTER_API_KEY ?? '';
     this.defaultModel =
-      config.defaultModel ?? process.env.DEFAULT_MODEL ?? OPENROUTER_FREE_MODELS.MISTRAL_7B;
+      config.defaultModel ?? process.env.DEFAULT_MODEL ?? OPENROUTER_FREE_MODELS.NEMOTRON_LIGHTNING;
     this.fallbackModels = DEFAULT_FALLBACK_MODELS.filter((m) => m !== this.defaultModel);
     this.referer = config.referer ?? process.env.OPENROUTER_REFERER;
     this.title = config.title ?? process.env.OPENROUTER_TITLE;
@@ -95,8 +80,7 @@ export class OpenRouterProvider implements LLMProvider {
 
     try {
       const result = await generateText({
-        // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
-        model: this.createModel(modelName) as any,
+        model: this.createModel(modelName),
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,
@@ -128,8 +112,7 @@ export class OpenRouterProvider implements LLMProvider {
 
     try {
       const result = streamText({
-        // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
-        model: this.createModel(modelName) as any,
+        model: this.createModel(modelName),
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,

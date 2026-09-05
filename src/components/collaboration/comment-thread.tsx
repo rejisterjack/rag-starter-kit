@@ -105,17 +105,15 @@ export function CommentThread({
 
   const renderContent = (content: string) => {
     const parts = content.split(/(@[\w-]+)/g);
-    return parts.map((part, idx) => {
+    return parts.map((part) => {
       if (part.startsWith('@')) {
         return (
-          // biome-ignore lint/suspicious/noArrayIndexKey: Mention rendering uses content-based key
-          <span key={`mention-${part.slice(1)}-${idx}`} className="font-medium text-blue-500">
+          <span key={`mention-${part}`} className="font-medium text-blue-500">
             {part}
           </span>
         );
       }
-      // biome-ignore lint/suspicious/noArrayIndexKey: Text parts use index as stable identifier
-      return <span key={`text-${idx}`}>{part}</span>;
+      return <span key={`text-${part.slice(0, 20)}`}>{part}</span>;
     });
   };
 

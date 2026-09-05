@@ -5,18 +5,9 @@
  * pre-filtering by metadata and score threshold.
  */
 
-import {
-  searchSimilar,
-  batchSearch,
-} from '@/lib/qdrant/points';
-import {
-  buildQdrantFilterFromRetrievalOptions,
-} from '@/lib/qdrant/filters';
-import type {
-  RetrievalOptions,
-  RetrievedChunk,
-  VectorSearchConfig,
-} from './types';
+import { buildQdrantFilterFromRetrievalOptions } from '@/lib/vector/filters';
+import { batchSearch, searchSimilar } from '@/lib/vector/points';
+import type { RetrievalOptions, RetrievedChunk, VectorSearchConfig } from './types';
 
 /**
  * Default configuration for vector search
@@ -30,9 +21,9 @@ export const defaultVectorSearchConfig: VectorSearchConfig = {
  */
 function mapScoredPointToChunk(
   point: { id: string | number; score: number; payload?: Record<string, unknown> | null },
-  distanceMetric: string,
+  distanceMetric: string
 ): RetrievedChunk {
-  const p = (point.payload ?? {}) as Record<string, unknown>;
+  const p = point.payload ?? {};
   const getString = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v : fallback);
   const getNumber = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined);
 

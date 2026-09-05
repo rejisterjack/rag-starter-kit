@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -21,10 +21,7 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
     // Check if user can manage members
     const canManage = await canManageMembers(session.user.id, workspaceId);
     if (!canManage) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Parse body
@@ -35,19 +32,13 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
       logger.debug('Failed to parse request body for member update', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     const { role } = body as { role: string };
 
     if (!role || !['ADMIN', 'MEMBER', 'VIEWER'].includes(role)) {
-      return NextResponse.json(
-        { error: { code: 'INVALID_ROLE', message: 'Invalid role specified' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_ROLE', 'Invalid role specified', 400);
     }
 
     // Get the member's user ID
@@ -56,10 +47,7 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
     });
 
     if (!member || member.workspaceId !== workspaceId) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Member not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Member not found', 404);
     }
 
     // Update member role
@@ -71,27 +59,20 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
     );
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: { code: 'UPDATE_FAILED', message: result.error } },
-        { status: 400 }
-      );
+      return apiError('UPDATE_FAILED', result.error ?? 'Failed to update member', 400);
     }
 
     // Invalidate cached permissions for the affected member
     await invalidatePermissionCache(member.userId, workspaceId);
 
-    return NextResponse.json({
-      success: true,
-      data: { message: 'Member role updated successfully' },
+    return apiSuccess({
+      message: 'Member role updated successfully',
     });
   } catch (error: unknown) {
     logger.error('Failed to update member', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to update member' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to update member', 500);
   }
 });
 
@@ -106,10 +87,7 @@ export const DELETE = withApiAuth(async (_req, session, { params }: RouteParams)
     // Check if user can manage members
     const canManage = await canManageMembers(session.user.id, workspaceId);
     if (!canManage) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Get the member's user ID
@@ -118,44 +96,31 @@ export const DELETE = withApiAuth(async (_req, session, { params }: RouteParams)
     });
 
     if (!member || member.workspaceId !== workspaceId) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Member not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Member not found', 404);
     }
 
     // Cannot remove yourself through this endpoint
     if (member.userId === session.user.id) {
-      return NextResponse.json(
-        { error: { code: 'CANNOT_REMOVE_SELF', message: 'Use leave workspace instead' } },
-        { status: 400 }
-      );
+      return apiError('CANNOT_REMOVE_SELF', 'Use leave workspace instead', 400);
     }
 
     // Remove member
     const result = await removeMember(workspaceId, member.userId, session.user.id);
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: { code: 'REMOVE_FAILED', message: result.error } },
-        { status: 400 }
-      );
+      return apiError('REMOVE_FAILED', result.error ?? 'Failed to remove member', 400);
     }
 
     // Invalidate cached permissions for the removed member
     await invalidatePermissionCache(member.userId, workspaceId);
 
-    return NextResponse.json({
-      success: true,
-      data: { message: 'Member removed successfully' },
+    return apiSuccess({
+      message: 'Member removed successfully',
     });
   } catch (error: unknown) {
     logger.error('Failed to remove member', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to remove member' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to remove member', 500);
   }
 });

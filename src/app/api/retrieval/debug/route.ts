@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * GET /api/retrieval/debug?q=<query>&workspaceId=<id>&limit=<n>
  *
@@ -22,15 +23,16 @@ import { getServerSession } from '@/lib/auth/session';
 export async function GET(req: Request) {
   // Gate on RETRIEVAL_DEBUG env var
   if (process.env.RETRIEVAL_DEBUG !== 'true') {
-    return NextResponse.json(
-      { error: 'Retrieval debug mode is disabled. Set RETRIEVAL_DEBUG=true to enable.' },
-      { status: 403 }
+    return apiError(
+      'FORBIDDEN',
+      'Retrieval debug mode is disabled. Set RETRIEVAL_DEBUG=true to enable.',
+      403
     );
   }
 
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return apiError('UNAUTHORIZED', 'Unauthorized', 401);
   }
 
   const { searchParams } = new URL(req.url);
@@ -38,12 +40,12 @@ export async function GET(req: Request) {
   const limitParam = Math.min(parseInt(searchParams.get('limit') ?? '10', 10) || 10, 50);
 
   if (!query) {
-    return NextResponse.json({ error: 'q parameter is required' }, { status: 400 });
+    return apiError('BAD_REQUEST', 'q parameter is required', 400);
   }
 
   const workspace = await getServerSession();
   if (!workspace) {
-    return NextResponse.json({ error: 'No workspace found' }, { status: 404 });
+    return apiError('NOT_FOUND', 'No workspace found', 404);
   }
 
   const timings: Record<string, number> = {};
@@ -65,18 +67,21 @@ export async function GET(req: Request) {
     documentName: string;
   };
 
-  const { searchSimilar } = await import('@/lib/qdrant');
-  const { buildQdrantFilter } = await import('@/lib/qdrant/filters');
+  const { searchSimilar } = await import('@/lib/vector');
+  const { buildQdrantFilter } = await import('@/lib/vector/filters');
   const qdrantFilter = buildQdrantFilter({ workspaceId: workspace.id });
   const qdrantResults = await searchSimilar(embedding, { filter: qdrantFilter, topK: limitParam });
-  const chunks: ChunkRow[] = qdrantResults.map((point) => ({
-    id: String(point.id),
-    content: ((point.payload as Record<string, unknown>)?.content as string) ?? '',
-    documentId: ((point.payload as Record<string, unknown>)?.documentId as string) ?? '',
-    index: ((point.payload as Record<string, unknown>)?.index as number) ?? 0,
-    similarity: point.score ?? 0,
-    documentName: ((point.payload as Record<string, unknown>)?.documentName as string) ?? '',
-  }));
+  const chunks: ChunkRow[] = qdrantResults.map((point) => {
+    const p = point.payload ?? {};
+    return {
+      id: String(point.id),
+      content: String(p.content ?? ''),
+      documentId: String(p.documentId ?? ''),
+      index: Number(p.index ?? 0),
+      similarity: point.score ?? 0,
+      documentName: String(p.documentName ?? ''),
+    };
+  });
   timings.vector_search_ms = Date.now() - searchStart;
 
   // Step 3: Keyword BM25-style scoring (simple term overlap, no external dep)

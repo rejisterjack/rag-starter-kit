@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { apiFetch } from '@/lib/api-client';
 
 interface Member {
   id: string;
@@ -79,15 +80,11 @@ export function MemberList({
   const handleRoleChange = async (memberId: string, newRole: string) => {
     setIsLoading(memberId);
     try {
-      const response = await fetch(`/api/workspaces/${workspaceId}/members/${memberId}`, {
+      await apiFetch(`/api/workspaces/${workspaceId}/members/${memberId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole }),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update role');
-      }
 
       toast.success('Role updated');
       onUpdate?.();
@@ -105,13 +102,9 @@ export function MemberList({
 
     setIsLoading(memberId);
     try {
-      const response = await fetch(`/api/workspaces/${workspaceId}/members/${memberId}`, {
+      await apiFetch(`/api/workspaces/${workspaceId}/members/${memberId}`, {
         method: 'DELETE',
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to remove member');
-      }
 
       toast.success('Member removed');
       onUpdate?.();

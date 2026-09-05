@@ -51,8 +51,10 @@ describe('useDocuments', () => {
       },
     });
 
-    return ({ children }: { children: React.ReactNode }) =>
+    const Wrapper = ({ children }: { children: React.ReactNode }) =>
       React.createElement(QueryClientProvider, { client: queryClient }, children);
+    Wrapper.displayName = 'QueryClientTestWrapper';
+    return Wrapper;
   };
 
   beforeEach(() => {
@@ -94,8 +96,8 @@ describe('useDocuments', () => {
       });
 
       expect(result.current.data).toHaveLength(2);
-      expect(result.current.data![0].name).toBe('doc1.pdf');
-      expect(result.current.data![0].createdAt).toBeInstanceOf(Date);
+      expect(result.current.data?.[0].name).toBe('doc1.pdf');
+      expect(result.current.data?.[0].createdAt).toBeInstanceOf(Date);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });
@@ -213,8 +215,8 @@ describe('useDocuments', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data).toHaveLength(2);
-      expect(result.current.data![0].text).toBe('First chunk content');
+      expect(result.current.data?.chunks).toHaveLength(2);
+      expect(result.current.data?.chunks?.[0].text).toBe('First chunk content');
     });
 
     it('does not fetch when documentId is null', () => {

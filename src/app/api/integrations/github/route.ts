@@ -1,3 +1,4 @@
+import { apiError, apiSuccess } from '@/lib/api-response';
 /**
  * GitHub Integration API Routes
  *
@@ -11,6 +12,7 @@ import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
+import { APP_URL } from '@/lib/constants';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
@@ -25,7 +27,7 @@ const GITHUB_SCOPES = ['repo', 'read:org'];
 function getGitHubOAuthConfig() {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392';
+  const appUrl = APP_URL;
 
   if (!clientId || !clientSecret) {
     return null;
@@ -46,20 +48,14 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get('workspaceId') || session.user.workspaceId;
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Workspace ID is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Workspace ID is required', 400);
     }
 
     const hasAccess = await checkPermission(
@@ -68,10 +64,7 @@ export async function GET(req: NextRequest) {
       Permission.MANAGE_WORKSPACE
     );
     if (!hasAccess) {
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     const config = getGitHubOAuthConfig();
@@ -147,36 +140,24 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     let body: { repos?: Array<{ owner: string; repo: string }>; workspaceId?: string };
     try {
       body = await req.json();
     } catch (_error: unknown) {
-      return NextResponse.json(
-        { success: false, error: { code: 'INVALID_JSON', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_JSON', 'Invalid JSON body', 400);
     }
 
     const { repos, workspaceId = session.user.workspaceId } = body;
 
     if (!repos || !Array.isArray(repos) || repos.length === 0) {
-      return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Repos array is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Repos array is required', 400);
     }
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Workspace ID is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Workspace ID is required', 400);
     }
 
     const hasAccess = await checkPermission(
@@ -185,10 +166,7 @@ export async function POST(req: NextRequest) {
       Permission.WRITE_DOCUMENTS
     );
     if (!hasAccess) {
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Get GitHub integration
@@ -318,13 +296,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        documents: syncedDocuments,
-        total: syncedDocuments.length,
-        processingTimeMs: Date.now() - startTime,
-      },
+    return apiSuccess({
+      documents: syncedDocuments,
+      total: syncedDocuments.length,
+      processingTimeMs: Date.now() - startTime,
     });
   } catch (error) {
     logger.error('Failed to sync GitHub repos', {
@@ -351,20 +326,14 @@ export async function DELETE(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get('workspaceId') || session.user.workspaceId;
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Workspace ID is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Workspace ID is required', 400);
     }
 
     const hasAccess = await checkPermission(
@@ -373,10 +342,7 @@ export async function DELETE(req: NextRequest) {
       Permission.MANAGE_WORKSPACE
     );
     if (!hasAccess) {
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     const existing = await prisma.integrationAccount.findFirst({
@@ -384,10 +350,7 @@ export async function DELETE(req: NextRequest) {
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'GitHub integration not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'GitHub integration not found', 404);
     }
 
     await prisma.integrationAccount.delete({ where: { id: existing.id } });

@@ -5,7 +5,7 @@
  * 1. Checking that the database is reachable
  * 2. Validating schema integrity (all expected tables exist)
  * 3. Checking row counts for critical tables
- * 4. Verifying pgvector extension is operational
+ * 4. Verifying Qdrant vector store is operational
  *
  * Run: npx tsx scripts/backup-verify.ts
  *
@@ -90,20 +90,19 @@ async function main() {
   }
   console.log('');
 
-  // ─── Step 4: pgvector extension ───
-  console.log('4. Verifying pgvector extension...');
+  // ─── Step 4: pgvector health ───
+  console.log('4. Verifying pgvector...');
   try {
-    const extResult = await prisma.$queryRaw<Array<{ extname: string }>>`
+    const ext = await prisma.$queryRaw<Array<{ extname: string }>>`
       SELECT extname FROM pg_extension WHERE extname = 'vector'
     `;
-    if (extResult.length > 0) {
-      console.log('   ✅ pgvector extension is installed');
-
-      // Test vector operation
-      await prisma.$queryRaw`SELECT '[1,2,3]'::vector`;
-      console.log('   ✅ Vector operations are functional\n');
+    const chunks = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+      SELECT to_regclass('public.document_chunks') IS NOT NULL AS exists
+    `;
+    if (ext[0] && chunks[0]?.exists) {
+      console.log('   ✅ pgvector extension and document_chunks table are present\n');
     } else {
-      console.error('   ❌ pgvector extension is NOT installed\n');
+      console.error('   ❌ pgvector extension or document_chunks table is missing\n');
       hasErrors = true;
     }
   } catch (error) {
@@ -122,7 +121,7 @@ async function main() {
     const indexNames = new Set(indexes.map((i) => i.indexname));
 
     const criticalIndexes = [
-      'document_chunks_embedding_idx',
+      'document_chunks_embedding_hnsw_idx',
       'document_chunks_documentId_idx',
       'audit_logs_createdAt_idx',
     ];

@@ -11,9 +11,9 @@ import {
   generateImageEmbedding,
   generateTextEmbeddingForImageSearch,
 } from '@/lib/ai/embeddings/image';
-import { searchSimilar, searchSimilarImages } from '@/lib/qdrant';
-import { buildQdrantFilter } from '@/lib/qdrant/filters';
 import { prisma } from '@/lib/db';
+import { searchSimilar, searchSimilarImages } from '@/lib/vector';
+import { buildQdrantFilter } from '@/lib/vector/filters';
 import type { RetrievalOptions, RetrievedChunk } from './types';
 
 /**

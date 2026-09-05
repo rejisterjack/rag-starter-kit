@@ -62,7 +62,7 @@ export function ConversationActions({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-48 rounded-xl border border-white/10 bg-[#1a1a2e] shadow-2xl backdrop-blur-xl p-1"
+        className="w-48 rounded-lg border border-white/10 bg-[#1a1a2e] shadow-2xl backdrop-blur-xl p-1"
       >
         <DropdownMenuItem
           className="rounded-lg px-3 py-2 text-sm cursor-pointer gap-2 focus:bg-white/8"

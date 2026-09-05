@@ -16,10 +16,11 @@ A comprehensive set of React components for building a modern, responsive RAG (R
 ### Main Components
 
 #### `ChatContainer`
+
 The main chat layout component that orchestrates the entire chat interface.
 
 ```tsx
-import { ChatContainer } from "@/components/chat";
+import { ChatContainer } from '@/components/chat';
 
 <ChatContainer
   messages={messages}
@@ -29,24 +30,26 @@ import { ChatContainer } from "@/components/chat";
   onSendMessage={handleSend}
   onCancelStreaming={handleCancel}
   sidebar={<DocumentList />}
-/>
+/>;
 ```
 
 #### `MessageList`
+
 Displays a scrollable list of messages with auto-scroll and load-more functionality.
 
 ```tsx
-import { MessageList } from "@/components/chat";
+import { MessageList } from '@/components/chat';
 
 <MessageList
   messages={messages}
   isStreaming={isStreaming}
   streamingContent={streamingContent}
   onLoadMore={loadMore}
-/>
+/>;
 ```
 
 #### `MessageItem`
+
 Individual message component with support for user/assistant styling, markdown rendering, and actions.
 
 ```tsx
@@ -68,45 +71,39 @@ const message: Message = {
 ```
 
 #### `MessageInput`
+
 Auto-resizing input area with file attachment support.
 
 ```tsx
-import { MessageInput } from "@/components/chat";
+import { MessageInput } from '@/components/chat';
 
-<MessageInput
-  onSend={handleSend}
-  placeholder="Type your message..."
-  isLoading={isLoading}
-/>
+<MessageInput onSend={handleSend} placeholder="Type your message..." isLoading={isLoading} />;
 ```
 
 #### `StreamingMessage`
+
 Displays streaming content with animated typing indicator.
 
 ```tsx
-import { StreamingMessage } from "@/components/chat";
+import { StreamingMessage } from '@/components/chat';
 
-<StreamingMessage
-  content={streamingContent}
-  onCancel={handleCancel}
-/>
+<StreamingMessage content={streamingContent} onCancel={handleCancel} />;
 ```
 
 #### `EmptyState`
+
 Welcome screen with suggested questions and upload zone.
 
 ```tsx
-import { EmptyState } from "@/components/chat";
+import { EmptyState } from '@/components/chat';
 
-<EmptyState
-  onSuggestionClick={handleSuggestion}
-  onUploadClick={handleUpload}
-/>
+<EmptyState onSuggestionClick={handleSuggestion} onUploadClick={handleUpload} />;
 ```
 
 ### Source & Citation Components
 
 #### `SourcesPanel` / `InlineSourcesPanel`
+
 Display retrieved sources in a slide-out panel or inline sidebar.
 
 ```tsx
@@ -128,6 +125,7 @@ import { SourcesPanel, InlineSourcesPanel } from "@/components/chat";
 ```
 
 #### `CitationLink`, `CitationList`, `CitationCard`
+
 Components for displaying inline citations and source cards.
 
 ```tsx
@@ -146,35 +144,33 @@ import { CitationLink, CitationList, CitationCard } from "@/components/chat";
 ### Markdown & Code Components
 
 #### `Markdown`
+
 Renders markdown content with syntax highlighting and citation support.
 
 ```tsx
-import { Markdown } from "@/components/chat";
+import { Markdown } from '@/components/chat';
 
-<Markdown
-  content="# Hello\n\nThis is **bold** and `code`."
-  onCitationClick={handleCitation}
-/>
+<Markdown content="# Hello\n\nThis is **bold** and `code`." onCitationClick={handleCitation} />;
 ```
 
 #### `CodeBlock`
+
 Syntax-highlighted code blocks with copy button.
 
 ```tsx
-import { CodeBlock } from "@/components/chat";
+import { CodeBlock } from '@/components/chat';
 
-<CodeBlock language="typescript">
-  const greeting = "Hello World";
-</CodeBlock>
+<CodeBlock language="typescript">const greeting = "Hello World";</CodeBlock>;
 ```
 
 ## Hooks
 
 ### `useChat`
+
 Manages chat state, message history, and streaming.
 
 ```tsx
-import { useChat } from "@/hooks/use-chat";
+import { useChat } from '@/hooks/use-chat';
 
 const {
   messages,
@@ -187,36 +183,37 @@ const {
   stop,
   reload,
 } = useChat({
-  conversationId: "conv-123",
+  conversationId: 'conv-123',
   onError: (error) => console.error(error),
-  onFinish: (message) => console.log("Done:", message),
+  onFinish: (message) => console.log('Done:', message),
 });
 ```
 
 ### `useStreaming`
+
 Low-level hook for handling streaming responses.
 
 ```tsx
-import { useStreaming, createStreamingRequest } from "@/hooks/use-streaming";
+import { useStreaming, createStreamingRequest } from '@/hooks/use-streaming';
 
 const { content, isStreaming, startStream, stopStream } = useStreaming({
   onToken: (token) => console.log(token),
   onSources: (sources) => console.log(sources),
 });
 
-const response = await createStreamingRequest("/api/chat", { message });
+const response = await createStreamingRequest('/api/chat', { message });
 await startStream(response);
 ```
 
 ## Types
 
 ```tsx
-import type { Message, Source, Document } from "@/components/chat";
+import type { Message, Source, Document } from '@/components/chat';
 
 // Message from user or assistant
 interface Message {
   id: string;
-  role: "user" | "assistant" | "system";
+  role: 'user' | 'assistant' | 'system';
   content: string;
   createdAt: Date;
   sources?: Source[];

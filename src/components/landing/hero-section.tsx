@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, useMotionValue, useSpring, useTransform, type Variants } from 'framer-motion';
+import { m, useMotionValue, useSpring, useTransform, type Variants } from 'framer-motion';
 import { ArrowRight, Github, Sparkles, Terminal, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
@@ -83,30 +83,30 @@ export function HeroSection(): React.ReactElement {
     >
       {/* Animated interactive background orbs */}
       <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden">
-        <motion.div
+        <m.div
           style={{ x: bgX, y: bgY }}
           className="absolute top-[10%] left-[15%] w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] rounded-full"
         >
           <div className="w-full h-full rounded-full bg-[radial-gradient(circle,hsl(var(--primary)/0.15),transparent_60%)] blur-[80px]" />
-        </motion.div>
+        </m.div>
 
-        <motion.div
+        <m.div
           style={{ x: useTransform(bgX, (v) => -v), y: useTransform(bgY, (v) => -v) }}
           className="absolute bottom-[10%] right-[10%] w-[50vw] h-[50vw] max-w-[500px] max-h-[500px] rounded-full"
         >
           <div className="w-full h-full rounded-full bg-[radial-gradient(circle,hsl(320_100%_60%/0.1),transparent_60%)] blur-[80px]" />
-        </motion.div>
+        </m.div>
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full z-10">
-        <motion.div
+        <m.div
           className="text-center max-w-5xl mx-auto"
           initial="initial"
           animate="animate"
           variants={staggerContainer}
         >
           {/* Badge */}
-          <motion.div variants={fadeUp} className="mb-8 flex justify-center">
+          <m.div variants={fadeUp} className="mb-8 flex justify-center">
             <Link
               href="https://github.com/rejisterjack/rag-starter-kit"
               target="_blank"
@@ -119,36 +119,22 @@ export function HeroSection(): React.ReactElement {
                 MIT License
               </span>
             </Link>
-          </motion.div>
+          </m.div>
 
           {/* Headline — outcome-centric */}
-          <div className="overflow-hidden mb-4">
-            <motion.h1
-              variants={textReveal}
-              className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl xl:text-[5.5rem] leading-[1.1]"
-            >
-              Ship Your AI
-            </motion.h1>
-          </div>
-          <div className="overflow-hidden mb-4">
-            <motion.h1
-              variants={textReveal}
-              className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl xl:text-[5.5rem] leading-[1.1]"
-            >
-              <span className="text-gradient">Document Chatbot</span>
-            </motion.h1>
-          </div>
           <div className="overflow-hidden mb-8">
-            <motion.h1
+            <m.h1
               variants={textReveal}
               className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl xl:text-[5.5rem] leading-[1.1]"
             >
-              This Weekend
-            </motion.h1>
+              <span className="block">Ship Your AI</span>
+              <span className="block text-gradient">Document Chatbot</span>
+              <span className="block">This Weekend</span>
+            </m.h1>
           </div>
 
           {/* Subheadline — pain-first */}
-          <motion.p
+          <m.p
             variants={fadeUp}
             className="mx-auto mt-6 max-w-2xl text-lg sm:text-xl text-muted-foreground leading-relaxed"
           >
@@ -157,10 +143,10 @@ export function HeroSection(): React.ReactElement {
             <br className="hidden sm:block" />
             Not anymore. Full production RAG in your stack — streaming, voice, auth, background
             jobs. Zero API costs to start.
-          </motion.p>
+          </m.p>
 
           {/* CTA Buttons */}
-          <motion.div
+          <m.div
             variants={fadeUp}
             className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
@@ -209,17 +195,17 @@ export function HeroSection(): React.ReactElement {
                 Clone on GitHub
               </Link>
             </Button>
-          </motion.div>
+          </m.div>
 
           {/* GitHub Stats — above the fold for social proof */}
-          <motion.div variants={fadeUp} className="mt-10 flex justify-center">
+          <m.div variants={fadeUp} className="mt-10 flex justify-center">
             <div className="glass-panel border-border/30 inline-block rounded-2xl p-2">
               <GitHubStats />
             </div>
-          </motion.div>
+          </m.div>
 
           {/* Stats Row */}
-          <motion.div
+          <m.div
             variants={fadeUp}
             className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-6 py-8 relative"
           >
@@ -232,7 +218,7 @@ export function HeroSection(): React.ReactElement {
               { value: '100%', label: 'TypeScript' },
               { value: 'MIT', label: 'License' },
             ].map((stat, i) => (
-              <motion.div
+              <m.div
                 key={stat.label}
                 className="text-center"
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -245,14 +231,14 @@ export function HeroSection(): React.ReactElement {
                 <div className="mt-2 text-sm text-muted-foreground font-medium uppercase tracking-wider">
                   {stat.label}
                 </div>
-              </motion.div>
+              </m.div>
             ))}
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
 
         {/* 3D Floating Terminal Preview */}
         <div className="relative mt-16 max-w-4xl mx-auto [perspective:1000px]">
-          <motion.div
+          <m.div
             className="glass-heavy rounded-2xl p-1 relative z-10 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border border-white/10"
             style={{ rotateX, rotateY }}
             initial={{ opacity: 0, y: 100, rotateX: 20 }}
@@ -271,7 +257,7 @@ export function HeroSection(): React.ReactElement {
                 </span>
               </div>
               <div className="font-mono text-sm sm:text-base space-y-2 text-muted-foreground">
-                <motion.p
+                <m.p
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 1.5 }}
@@ -279,8 +265,8 @@ export function HeroSection(): React.ReactElement {
                   <span className="text-primary font-bold">➜</span>{' '}
                   <span className="text-blue-400">~</span> git clone
                   https://github.com/rejisterjack/rag-starter-kit.git
-                </motion.p>
-                <motion.p
+                </m.p>
+                <m.p
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 2.0 }}
@@ -288,53 +274,53 @@ export function HeroSection(): React.ReactElement {
                   <span className="text-primary font-bold">➜</span>{' '}
                   <span className="text-blue-400">rag-starter-kit</span> cp .env.example .env && bun
                   dev
-                </motion.p>
-                <motion.p
+                </m.p>
+                <m.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 2.5 }}
                   className="text-foreground"
                 >
                   [+] Installing dependencies...
-                </motion.p>
-                <motion.p
+                </m.p>
+                <m.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 2.6 }}
                   className="text-green-400/80 pl-4"
                 >
                   ✔ Connecting to Prisma Postgres...
-                </motion.p>
-                <motion.p
+                </m.p>
+                <m.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 2.7 }}
                   className="text-green-400/80 pl-4"
                 >
                   ✔ Connecting to Upstash Redis...
-                </motion.p>
-                <motion.p
+                </m.p>
+                <m.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 2.8 }}
                   className="text-green-400/80 pl-4"
                 >
                   ✔ Inngest dev server started...
-                </motion.p>
-                <motion.p
+                </m.p>
+                <m.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 3.0 }}
                   className="text-primary font-medium mt-4"
                 >
                   🚀 Ready at http://localhost:7392
-                </motion.p>
+                </m.p>
               </div>
             </div>
-          </motion.div>
+          </m.div>
 
           {/* Decorative floating elements */}
-          <motion.div
+          <m.div
             className="absolute -top-6 -right-6 sm:-top-10 sm:-right-10 glass-panel rounded-2xl p-4 z-20 shadow-2xl hidden sm:block"
             style={{ y: prefersReducedMotion ? 0 : badgeTopY }}
             initial={{ opacity: 0, scale: 0.8 }}
@@ -350,9 +336,9 @@ export function HeroSection(): React.ReactElement {
                 SSE Streaming
               </span>
             </div>
-          </motion.div>
+          </m.div>
 
-          <motion.div
+          <m.div
             className="absolute -bottom-6 -left-6 sm:-bottom-10 sm:-left-10 glass-panel rounded-2xl p-4 z-20 shadow-2xl hidden sm:block"
             style={{ y: prefersReducedMotion ? 0 : badgeBottomY }}
             initial={{ opacity: 0, scale: 0.8 }}
@@ -365,7 +351,7 @@ export function HeroSection(): React.ReactElement {
               </div>
               <span className="text-sm font-semibold text-foreground tracking-wide">pgvector</span>
             </div>
-          </motion.div>
+          </m.div>
         </div>
       </div>
     </section>

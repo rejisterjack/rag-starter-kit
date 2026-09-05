@@ -3,15 +3,15 @@
 # =============================================================================
 # Stage 1: Dependencies
 # =============================================================================
-FROM node:22-alpine AS deps
+FROM node:24-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml* bun.lockb* ./
+COPY package.json pnpm-lock.yaml* bun.lock* ./
 COPY prisma ./prisma/
 
 RUN \
-  if [ -f bun.lockb ]; then \
+  if [ -f bun.lock ]; then \
     npm install -g bun && bun install --frozen-lockfile --production=false; \
   elif [ -f pnpm-lock.yaml ]; then \
     npm install -g pnpm && pnpm install --frozen-lockfile; \
@@ -22,7 +22,7 @@ RUN \
 # =============================================================================
 # Stage 2: Build
 # =============================================================================
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -34,7 +34,7 @@ ENV NODE_ENV=production
 RUN npx prisma generate
 
 RUN \
-  if [ -f bun.lockb ]; then \
+  if [ -f bun.lock ]; then \
     npx next build; \
   elif [ -f pnpm-lock.yaml ]; then \
     pnpm build; \
@@ -45,7 +45,7 @@ RUN \
 # =============================================================================
 # Stage 3: Production Runner
 # =============================================================================
-FROM node:22-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -68,5 +68,8 @@ COPY --from=builder /app/src/generated ./src/generated
 USER nextjs
 
 EXPOSE 7392
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:7392/api/health || exit 1
 
 CMD ["node", "server.js"]

@@ -7,6 +7,7 @@
  */
 
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 
 // =============================================================================
 // Environment Schema
@@ -15,21 +16,29 @@ import { z } from 'zod';
 const envSchema = z.object({
   // Required variables
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  // Prisma Postgres Accelerate uses prisma+postgres://. Runtime adapters need a
+  // postgres:// TCP URL; .env ships that as DIRECT_URL.
+  DIRECT_URL: z.string().optional(),
   // NextAuth v5 uses AUTH_SECRET; NEXTAUTH_SECRET is the legacy name.
   // At least one must be set with 32+ characters.
   AUTH_SECRET: z.string().optional(),
   NEXTAUTH_SECRET: z.string().optional(),
+  CSRF_SECRET: z.string().optional(),
   AUTH_URL: z.string().url().optional(),
   NEXTAUTH_URL: z.string().url().optional(),
   OPENROUTER_API_KEY: z.string().min(1, 'OPENROUTER_API_KEY is required'),
   GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1, 'GOOGLE_GENERATIVE_AI_API_KEY is required'),
-  GROQ_API_KEY: z.string().optional(),
   COHERE_API_KEY: z.string().optional(),
 
   // Optional variables with defaults
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
-  PORT: z.coerce.number().default(3000),
+  PORT: z.coerce.number().default(7392),
+
+  NEXT_PUBLIC_APP_URL: z.string().url().optional().default('http://localhost:7392'),
+  NEXT_PUBLIC_PLAUSIBLE_DOMAIN: z.string().optional(),
+  NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: z.string().optional(),
+  NEXT_PUBLIC_APP_VERSION: z.string().optional(),
 
   // Redis configuration
   UPSTASH_REDIS_REST_URL: z.string().optional(),
@@ -58,21 +67,17 @@ const envSchema = z.object({
   // Ollama configuration
   OLLAMA_BASE_URL: z.string().optional(),
 
-  // Qdrant vector database
-  QDRANT_URL: z
-    .string()
-    .url('QDRANT_URL must be a valid URL')
-    .optional()
-    .default('http://localhost:6333'),
-  QDRANT_API_KEY: z.string().optional(),
-
-  // Embedding configuration — dimensions must match the Qdrant collection vector size.
+  // Embedding configuration — dimensions must match pgvector column size.
   // Default: 768 (Google Gemini text-embedding-004).
   EMBEDDING_PROVIDER: z.enum(['google', 'openai', 'ollama']).default('google'),
   EMBEDDING_MODEL: z.string().optional(),
   EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(768),
 
-  // Plausible analytics
+  // PostHog analytics (optional)
+  NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
+  NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
+
+  // Plausible analytics (optional)
   NEXT_PUBLIC_ANALYTICS_HOST: z.string().optional(),
   NEXT_PUBLIC_ANALYTICS_SCRIPT_URL: z.string().optional(),
 
@@ -93,6 +98,19 @@ const envSchema = z.object({
 
   // Encryption key for sensitive data at rest
   ENCRYPTION_MASTER_KEY: z.string().optional(),
+
+  // Cron job authentication
+  CRON_SECRET: z.string().optional(),
+
+  // OAuth providers (required unless credentials-only auth)
+  AUTH_GITHUB_ID: z.string().optional(),
+  AUTH_GITHUB_SECRET: z.string().optional(),
+  AUTH_GOOGLE_ID: z.string().optional(),
+  AUTH_GOOGLE_SECRET: z.string().optional(),
+  AUTH_CREDENTIALS_ONLY: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
 });
 
 // =============================================================================
@@ -124,6 +142,11 @@ function validateEnv(): EnvSchema {
 
     // Production-only checks
     if (parsed.NODE_ENV === 'production') {
+      if (!parsed.CSRF_SECRET || parsed.CSRF_SECRET.length < 32) {
+        throw new Error(
+          'CSRF_SECRET is required in production (min 32 chars). Generate: openssl rand -base64 32'
+        );
+      }
       if (!parsed.UPSTASH_REDIS_REST_URL) {
         throw new Error('UPSTASH_REDIS_REST_URL is required in production');
       }
@@ -135,20 +158,37 @@ function validateEnv(): EnvSchema {
           'ENCRYPTION_MASTER_KEY is required in production (min 32 chars). Generate: openssl rand -base64 32'
         );
       }
+      if (!parsed.CRON_SECRET || parsed.CRON_SECRET.length < 16) {
+        throw new Error(
+          'CRON_SECRET is required in production (min 16 chars). Generate: openssl rand -base64 24'
+        );
+      }
+    }
+
+    const credentialsOnly = parsed.AUTH_CREDENTIALS_ONLY === true;
+    if (!credentialsOnly && parsed.NODE_ENV === 'production') {
+      if (!parsed.AUTH_GITHUB_ID || !parsed.AUTH_GITHUB_SECRET) {
+        throw new Error(
+          'AUTH_GITHUB_ID and AUTH_GITHUB_SECRET are required in production (set AUTH_CREDENTIALS_ONLY=true to skip OAuth)'
+        );
+      }
+      if (!parsed.AUTH_GOOGLE_ID || !parsed.AUTH_GOOGLE_SECRET) {
+        throw new Error(
+          'AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET are required in production (set AUTH_CREDENTIALS_ONLY=true to skip OAuth)'
+        );
+      }
     }
 
     return parsed;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      // biome-ignore lint/suspicious/noConsole: Intentional error logging at startup
-      console.error('❌ Invalid environment variables:');
-      for (const issue of error.issues) {
-        // biome-ignore lint/suspicious/noConsole: Intentional error logging at startup
-        console.error(`  - ${issue.path.join('.')}: ${issue.message}`);
-      }
+      logger.error('Invalid environment variables:', {
+        issues: error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`),
+      });
     } else {
-      // biome-ignore lint/suspicious/noConsole: Intentional error logging at startup
-      console.error('❌ Failed to validate environment variables:', error);
+      logger.error('Failed to validate environment variables:', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
     throw new Error(
       'Environment validation failed. Check the console output above for missing or invalid variables.'

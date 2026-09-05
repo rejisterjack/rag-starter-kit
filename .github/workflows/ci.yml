@@ -1,0 +1,184 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - run: bun run db:generate
+      - run: bun run lint
+      - run: bun run type-check
+
+  unit:
+    runs-on: ubuntu-latest
+    needs: [lint-typecheck]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run db:generate
+      - run: bun run test:unit
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: [lint-typecheck]
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rag_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rag_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/rag_test
+      AUTH_SECRET: ci-test-auth-secret-with-32-characters-min
+      CSRF_SECRET: ci-test-csrf-secret-with-32-characters-min
+      NEXTAUTH_URL: http://localhost:7392
+      OPENROUTER_API_KEY: ci-openrouter-key
+      GOOGLE_GENERATIVE_AI_API_KEY: ci-google-key
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run db:generate
+      - run: bunx prisma migrate deploy
+      - run: bun run test:integration
+
+  integration-real:
+    runs-on: ubuntu-latest
+    needs: [integration]
+    # These tests hit real external infrastructure (live Postgres/AI providers).
+    # Run only when the repo has real credentials configured as secrets.
+    if: ${{ vars.RUN_REAL_DB_TESTS == 'true' }}
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rag_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rag_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/rag_test
+      AUTH_SECRET: ci-test-auth-secret-with-32-characters-min
+      NEXTAUTH_URL: http://localhost:7392
+      OPENROUTER_API_KEY: ci-openrouter-key
+      GOOGLE_GENERATIVE_AI_API_KEY: ci-google-key
+      NODE_ENV: test
+      RUN_REAL_DB_TESTS: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run db:generate
+      - run: bunx prisma migrate deploy
+      - run: bun vitest run tests/integration-real
+
+  coverage:
+    runs-on: ubuntu-latest
+    needs: [unit, integration]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run db:generate
+      - run: bunx vitest run --coverage
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [unit, integration]
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rag_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: bun install --frozen-lockfile
+      - run: bun run db:generate
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:e2e --project=chromium
+        env:
+          NODE_ENV: test
+          AUTH_SECRET: ci-e2e-auth-secret-with-32-characters-min
+          NEXTAUTH_URL: http://localhost:7392
+          AUTH_CREDENTIALS_ONLY: 'true'
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rag_test
+          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/rag_test
+          OPENROUTER_API_KEY: ci-openrouter-key
+          GOOGLE_GENERATIVE_AI_API_KEY: ci-google-key
+          CRON_SECRET: ci-cron-secret-0123456789ab
+          SEED_TEST_DATA: 'true'
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint-typecheck, unit, integration, integration-real, coverage, e2e]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: bun install --frozen-lockfile
+      - run: bun run db:generate
+      - run: bun run build
+        env:
+          AUTH_SECRET: ci-build-auth-secret-with-32-characters-minimum
+          NEXTAUTH_URL: http://localhost:7392
+          OPENROUTER_API_KEY: ci-openrouter-key
+          GOOGLE_GENERATIVE_AI_API_KEY: ci-google-key
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'

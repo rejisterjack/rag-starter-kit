@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * Slack Event Subscription Handler
  *
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
       logger.warn('Invalid JSON payload from Slack event', {
         error: error instanceof Error ? error.message : 'Unknown',
       });
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+      return apiError('BAD_REQUEST', 'Invalid JSON', 400);
     }
 
     // Handle URL verification challenge
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
     const isValid = await verifySlackEvent(request, payload);
     if (!isValid) {
       logger.warn('Invalid Slack event signature');
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      return apiError('UNAUTHORIZED', 'Invalid signature', 401);
     }
 
     // Handle different event types

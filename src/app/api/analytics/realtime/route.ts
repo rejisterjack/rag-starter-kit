@@ -7,8 +7,9 @@
 
 import { NextResponse } from 'next/server';
 import { getRealtimeMetrics } from '@/lib/analytics/dashboard-service';
+import { apiError } from '@/lib/api-response';
 import { logAuditEvent } from '@/lib/audit/audit-logger';
-import { auth, withApiAuth } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { checkApiRateLimit, getRateLimitIdentifier } from '@/lib/security/rate-limiter';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
@@ -29,7 +30,7 @@ export async function GET(req: Request) {
     // Step 1: Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const userId = session.user.id;
@@ -43,19 +44,7 @@ export async function GET(req: Request) {
     });
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        {
-          error: 'Rate limit exceeded',
-          code: 'RATE_LIMIT',
-          resetAt: new Date(rateLimitResult.reset).toISOString(),
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
-      );
+      return apiError('RATE_LIMIT', 'Rate limit exceeded', 429);
     }
 
     // Step 3: Parse query parameters
@@ -84,10 +73,7 @@ export async function GET(req: Request) {
           severity: 'WARNING',
         });
 
-        return NextResponse.json(
-          { error: 'Access denied to workspace analytics', code: 'FORBIDDEN' },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Access denied to workspace analytics', 403);
       }
 
       effectiveWorkspaceId = requestedWorkspaceId;
@@ -102,10 +88,7 @@ export async function GET(req: Request) {
     // Admins can view all workspaces
     const isAdmin = session.user.role === 'ADMIN';
     if (!effectiveWorkspaceId && !isAdmin) {
-      return NextResponse.json(
-        { error: 'Workspace access required', code: 'WORKSPACE_REQUIRED' },
-        { status: 403 }
-      );
+      return apiError('WORKSPACE_REQUIRED', 'Workspace access required', 403);
     }
 
     // Step 5: Log SSE connection
@@ -186,126 +169,9 @@ export async function GET(req: Request) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    return NextResponse.json(
-      {
-        error: 'Failed to establish realtime connection',
-        code: 'INTERNAL_ERROR',
-        details: errorMessage,
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to establish realtime connection', 500, errorMessage);
   }
 }
-
-// =============================================================================
-// Standard GET for non-SSE requests (polling fallback)
-// =============================================================================
-
-export const POST = withApiAuth(async (req, session) => {
-  const startTime = Date.now();
-
-  try {
-    const userId = session.user.id;
-    const userWorkspaceId = session.user.workspaceId;
-
-    // Step 2: Check rate limit
-    const rateLimitIdentifier = getRateLimitIdentifier(req, { userId });
-    const rateLimitResult = await checkApiRateLimit(rateLimitIdentifier, 'api', {
-      userId,
-      endpoint: '/api/analytics/realtime',
-    });
-
-    if (!rateLimitResult.success) {
-      return NextResponse.json(
-        {
-          error: 'Rate limit exceeded',
-          code: 'RATE_LIMIT',
-          resetAt: new Date(rateLimitResult.reset).toISOString(),
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
-      );
-    }
-
-    // Step 3: Parse request body for polling mode
-    let body: { workspaceId?: string } = {};
-    try {
-      body = await req.json();
-    } catch (error: unknown) {
-      logger.debug('No JSON body provided for realtime analytics request', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      // No body provided, continue with defaults
-    }
-
-    const requestedWorkspaceId = body.workspaceId;
-
-    // Step 4: Determine workspace access
-    let effectiveWorkspaceId: string | undefined;
-
-    if (requestedWorkspaceId) {
-      const hasAccess = await checkPermission(
-        userId,
-        requestedWorkspaceId,
-        Permission.READ_API_USAGE
-      );
-
-      if (!hasAccess) {
-        return NextResponse.json(
-          { error: 'Access denied to workspace analytics', code: 'FORBIDDEN' },
-          { status: 403 }
-        );
-      }
-
-      effectiveWorkspaceId = requestedWorkspaceId;
-    } else if (userWorkspaceId) {
-      const hasAccess = await checkPermission(userId, userWorkspaceId, Permission.READ_API_USAGE);
-
-      if (hasAccess) {
-        effectiveWorkspaceId = userWorkspaceId;
-      }
-    }
-
-    const isAdmin = session.user.role === 'ADMIN';
-    if (!effectiveWorkspaceId && !isAdmin) {
-      return NextResponse.json(
-        { error: 'Workspace access required', code: 'WORKSPACE_REQUIRED' },
-        { status: 403 }
-      );
-    }
-
-    // Step 5: Fetch realtime metrics (single poll)
-    const realtimeMetrics = await getRealtimeMetrics(effectiveWorkspaceId);
-
-    // Step 6: Build response
-    const response = NextResponse.json({
-      success: true,
-      data: realtimeMetrics,
-      meta: {
-        requestDuration: Date.now() - startTime,
-        workspaceId: effectiveWorkspaceId ?? 'all',
-        mode: 'polling',
-      },
-    });
-
-    return response;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-    return NextResponse.json(
-      {
-        error: 'Failed to fetch realtime metrics',
-        code: 'INTERNAL_ERROR',
-        details: errorMessage,
-      },
-      { status: 500 }
-    );
-  }
-});
 
 // =============================================================================
 // OPTIONS Handler (CORS)

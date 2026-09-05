@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import { Keyboard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -85,7 +85,7 @@ export function KeyboardShortcuts({ open: controlledOpen, onOpenChange }: Keyboa
         </DialogHeader>
 
         <AnimatePresence>
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-5 mt-2"
@@ -118,7 +118,7 @@ export function KeyboardShortcuts({ open: controlledOpen, onOpenChange }: Keyboa
                 </div>
               </div>
             ))}
-          </motion.div>
+          </m.div>
         </AnimatePresence>
 
         <p className="text-xs text-muted-foreground/60 mt-2 text-center">

@@ -11,8 +11,8 @@
  * - DELETE: Remove SAML configuration
  */
 
-import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { withApiAuth } from '@/lib/auth';
 import {
@@ -51,17 +51,17 @@ export const GET = withApiAuth(async (_request, session, { params }: RouteParams
     );
 
     if (!hasPermission) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+      return apiError('FORBIDDEN', 'Permission denied', 403);
     }
 
     const config = await getWorkspaceSamlConfig(workspaceId);
 
     if (!config) {
-      return NextResponse.json({ error: 'SAML configuration not found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'SAML configuration not found', 404);
     }
 
     // Return configuration without sensitive data
-    return NextResponse.json({
+    return apiSuccess({
       id: config.id,
       workspaceId: config.workspaceId,
       spEntityId: config.spEntityId,
@@ -86,7 +86,7 @@ export const GET = withApiAuth(async (_request, session, { params }: RouteParams
     logger.error('Failed to retrieve SAML configuration', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json({ error: 'Failed to retrieve SAML configuration' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to retrieve SAML configuration', 500);
   }
 });
 
@@ -126,7 +126,7 @@ export const POST = withApiAuth(async (request, session, { params }: RouteParams
     );
 
     if (!hasPermission) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+      return apiError('FORBIDDEN', 'Permission denied', 403);
     }
 
     const body = await request.json();
@@ -138,9 +138,11 @@ export const POST = withApiAuth(async (request, session, { params }: RouteParams
     });
 
     if (!validationResult.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: validationResult.error.format() },
-        { status: 400 }
+      return apiError(
+        'VALIDATION_ERROR',
+        'Validation failed',
+        400,
+        validationResult.error.format()
       );
     }
 
@@ -169,20 +171,14 @@ export const POST = withApiAuth(async (request, session, { params }: RouteParams
         });
 
         if (!response.ok) {
-          return NextResponse.json(
-            { error: 'Failed to fetch IdP metadata from URL' },
-            { status: 400 }
-          );
+          return apiError('ERROR', 'Failed to fetch IdP metadata from URL', 400);
         }
 
         metadataXml = await response.text();
       } else if (data.metadataXml) {
         metadataXml = data.metadataXml;
       } else {
-        return NextResponse.json(
-          { error: 'Metadata XML is required when metadata URL is not provided' },
-          { status: 400 }
-        );
+        return apiError('ERROR', 'Metadata XML is required when metadata URL is not provided', 400);
       }
 
       // Parse metadata
@@ -233,8 +229,7 @@ export const POST = withApiAuth(async (request, session, { params }: RouteParams
       },
     });
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       config: {
         id: config.id,
         spEntityId: config.spEntityId,
@@ -247,13 +242,10 @@ export const POST = withApiAuth(async (request, session, { params }: RouteParams
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: error.format() },
-        { status: 400 }
-      );
+      return apiError('VALIDATION_ERROR', 'Validation failed', 400, error.format());
     }
 
-    return NextResponse.json({ error: 'Failed to create SAML configuration' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to create SAML configuration', 500);
   }
 });
 
@@ -272,7 +264,7 @@ export const PUT = withApiAuth(async (request, session, { params }: RouteParams)
     );
 
     if (!hasPermission) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+      return apiError('FORBIDDEN', 'Permission denied', 403);
     }
 
     const body = await request.json();
@@ -281,9 +273,11 @@ export const PUT = withApiAuth(async (request, session, { params }: RouteParams)
     const validationResult = UpdateSamlConfigSchema.safeParse(body);
 
     if (!validationResult.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: validationResult.error.format() },
-        { status: 400 }
+      return apiError(
+        'VALIDATION_ERROR',
+        'Validation failed',
+        400,
+        validationResult.error.format()
       );
     }
 
@@ -303,19 +297,13 @@ export const PUT = withApiAuth(async (request, session, { params }: RouteParams)
         },
       });
 
-      return NextResponse.json({
-        success: true,
-        message: 'Certificate rotated successfully',
-      });
+      return apiSuccess({ message: 'Certificate rotated successfully' });
     }
 
     // Get existing config
     const existing = await getWorkspaceSamlConfig(workspaceId);
     if (!existing) {
-      return NextResponse.json(
-        { error: 'SAML configuration not found. Use POST to create.' },
-        { status: 404 }
-      );
+      return apiError('ERROR', 'SAML configuration not found. Use POST to create.', 404);
     }
 
     // Merge with existing and update
@@ -339,8 +327,7 @@ export const PUT = withApiAuth(async (request, session, { params }: RouteParams)
       },
     });
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       config: {
         id: updated.id,
         spEntityId: updated.spEntityId,
@@ -353,7 +340,7 @@ export const PUT = withApiAuth(async (request, session, { params }: RouteParams)
     logger.error('Failed to update SAML configuration', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json({ error: 'Failed to update SAML configuration' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to update SAML configuration', 500);
   }
 });
 
@@ -372,7 +359,7 @@ export const DELETE = withApiAuth(async (_request, session, { params }: RoutePar
     );
 
     if (!hasPermission) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+      return apiError('FORBIDDEN', 'Permission denied', 403);
     }
 
     // Delete the SAML configuration
@@ -398,15 +385,12 @@ export const DELETE = withApiAuth(async (_request, session, { params }: RoutePar
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      message: 'SAML configuration removed',
-    });
+    return apiSuccess({ message: 'SAML configuration removed' });
   } catch (error: unknown) {
     logger.error('Failed to delete SAML configuration', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json({ error: 'Failed to delete SAML configuration' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to delete SAML configuration', 500);
   }
 });
 

@@ -188,7 +188,7 @@ describe('useChat', () => {
 
       // Close the stream to finish
       act(() => {
-        controller!.close();
+        controller?.close();
       });
 
       await act(async () => {
@@ -413,7 +413,7 @@ describe('useChat', () => {
 
       // Edit the message
       await act(async () => {
-        await result.current.editMessage(userMessageId!, 'Edited');
+        await result.current.editMessage(userMessageId ?? '', 'Edited');
       });
 
       // Should have made a second fetch call
@@ -556,7 +556,7 @@ describe('useChat', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ data: mockConversations }),
+        json: async () => ({ success: true, data: { items: mockConversations } }),
       });
 
       const { result } = renderHook(() => useChat());
@@ -566,9 +566,9 @@ describe('useChat', () => {
         conversations = await result.current.fetchConversations();
       });
 
-      expect(conversations!).toEqual(mockConversations);
+      expect(conversations).toEqual(mockConversations);
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/chats'),
+        expect.stringContaining('/api/chats'),
         expect.objectContaining({ credentials: 'include' })
       );
     });
@@ -583,7 +583,7 @@ describe('useChat', () => {
         conversations = await result.current.fetchConversations();
       });
 
-      expect(conversations!).toEqual([]);
+      expect(conversations).toEqual([]);
     });
   });
 });

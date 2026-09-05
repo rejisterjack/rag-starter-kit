@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import { ArrowLeft, CheckCircle2, Loader2, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { apiFetch } from '@/lib/api-client';
 
 export default function ForgotPasswordPage(): React.ReactElement {
   const [isLoading, setIsLoading] = useState(false);
@@ -21,14 +22,11 @@ export default function ForgotPasswordPage(): React.ReactElement {
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/forgot-password', {
+      await apiFetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error?.message || 'Failed to send reset email');
 
       setIsSubmitted(true);
     } catch (err) {
@@ -41,7 +39,7 @@ export default function ForgotPasswordPage(): React.ReactElement {
   return (
     <AnimatePresence mode="wait">
       {isSubmitted ? (
-        <motion.div
+        <m.div
           key="submitted"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -50,14 +48,14 @@ export default function ForgotPasswordPage(): React.ReactElement {
           className="space-y-6 text-center"
         >
           <div className="flex justify-center mb-6">
-            <motion.div
+            <m.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: 'spring' }}
               className="rounded-full bg-emerald-500/20 p-4 border border-emerald-500/30 shadow-[0_0_30px_-5px_rgba(16,185,129,0.3)]"
             >
               <CheckCircle2 className="h-10 w-10 text-emerald-400" />
-            </motion.div>
+            </m.div>
           </div>
           <div className="space-y-2">
             <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent pb-1">
@@ -90,9 +88,9 @@ export default function ForgotPasswordPage(): React.ReactElement {
               </Link>
             </Button>
           </div>
-        </motion.div>
+        </m.div>
       ) : (
-        <motion.div
+        <m.div
           key="form"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -151,7 +149,7 @@ export default function ForgotPasswordPage(): React.ReactElement {
               Return to sign in
             </Link>
           </Button>
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

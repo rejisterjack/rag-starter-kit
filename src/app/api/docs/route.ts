@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { APP_URL } from '@/lib/constants';
 
 /**
  * API Documentation - OpenAPI 3.0 Specification
@@ -25,7 +26,7 @@ const openApiSpec = {
   },
   servers: [
     {
-      url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392',
+      url: APP_URL,
       description: 'Current environment',
     },
   ],

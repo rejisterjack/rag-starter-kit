@@ -12,11 +12,13 @@
  */
 
 import { revalidateTag } from 'next/cache';
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma, prismaRead } from '@/lib/db';
 import { parsePaginationParams, validatePaginationParams } from '@/lib/db/cursor-pagination';
+import { fromJson } from '@/lib/db/json';
 import {
   addRateLimitHeaders,
   checkApiRateLimit,
@@ -41,10 +43,7 @@ export async function GET(req: NextRequest) {
     // Step 1: Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const userId = session.user.id;
@@ -59,22 +58,14 @@ export async function GET(req: NextRequest) {
     });
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'RATE_LIMIT',
-            message: 'Rate limit exceeded. Please try again later.',
-            resetAt: new Date(rateLimitResult.reset).toISOString(),
-          },
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
+      const response = apiError('RATE_LIMIT', 'Rate limit exceeded. Please try again later.', 429, {
+        resetAt: new Date(rateLimitResult.reset).toISOString(),
+      });
+      response.headers.set(
+        'Retry-After',
+        Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString()
       );
+      return response;
     }
 
     // Step 3: Parse query parameters
@@ -86,10 +77,7 @@ export async function GET(req: NextRequest) {
     const paginationParams = parsePaginationParams(searchParams, { limit: 100 });
     const validation = validatePaginationParams(paginationParams);
     if (!validation.valid) {
-      return NextResponse.json(
-        { success: false, error: { code: 'VALIDATION_ERROR', message: validation.error } },
-        { status: 400 }
-      );
+      return apiError('VALIDATION_ERROR', validation.error ?? 'Invalid pagination', 400);
     }
 
     // Step 4: Validate workspace access if filtering by workspace
@@ -107,10 +95,7 @@ export async function GET(req: NextRequest) {
           severity: 'WARNING',
         });
 
-        return NextResponse.json(
-          { success: false, error: { code: 'FORBIDDEN', message: 'Access denied to workspace' } },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Access denied to workspace', 403);
       }
     }
 
@@ -145,6 +130,7 @@ export async function GET(req: NextRequest) {
         status: true,
         metadata: true,
         chunkCount: true,
+        storageUrl: true,
         createdAt: true,
         ingestionJob: { select: { progress: true, error: true, errorCategory: true } },
       },
@@ -154,7 +140,7 @@ export async function GET(req: NextRequest) {
     });
 
     const formattedDocuments = documents.map((doc) => {
-      const metadata = (doc.metadata as Record<string, unknown>) || {};
+      const metadata = fromJson<Record<string, unknown>>(doc.metadata, {});
       return {
         id: doc.id,
         name: doc.name,
@@ -164,8 +150,11 @@ export async function GET(req: NextRequest) {
         status: STATUS_MAP[doc.status] || 'pending',
         progress: doc.ingestionJob?.progress,
         chunkCount: doc.chunkCount,
+        storageUrl: doc.storageUrl,
         createdAt: doc.createdAt.toISOString(),
-        errorMessage: doc.ingestionJob?.error || (metadata.error as string) || undefined,
+        errorMessage:
+          doc.ingestionJob?.error ||
+          (typeof metadata.error === 'string' ? metadata.error : undefined),
         errorCategory: doc.ingestionJob?.errorCategory ?? undefined,
       };
     });
@@ -177,15 +166,12 @@ export async function GET(req: NextRequest) {
 
     const pagedFormatted = formattedDocuments.slice(0, resultDocs.length);
 
-    const response = NextResponse.json({
-      success: true,
-      data: {
-        documents: pagedFormatted,
-        pagination: {
-          hasNextPage,
-          nextCursor: hasNextPage && lastDoc ? lastDoc.id : null,
-          limit: pageSize,
-        },
+    const response = apiSuccess({
+      documents: pagedFormatted,
+      pagination: {
+        hasNextPage,
+        nextCursor: hasNextPage && lastDoc ? lastDoc.id : null,
+        limit: pageSize,
       },
     });
 
@@ -194,19 +180,14 @@ export async function GET(req: NextRequest) {
     return response;
   } catch (error) {
     const isDev = process.env.NODE_ENV === 'development';
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: isDev
-            ? error instanceof Error
-              ? error.message
-              : 'Internal server error'
-            : 'Failed to retrieve documents',
-        },
-      },
-      { status: 500 }
+    return apiError(
+      'INTERNAL_ERROR',
+      isDev
+        ? error instanceof Error
+          ? error.message
+          : 'Internal server error'
+        : 'Failed to retrieve documents',
+      500
     );
   }
 }
@@ -220,10 +201,7 @@ export async function DELETE(req: NextRequest) {
     // Step 1: Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const userId = session.user.id;
@@ -233,10 +211,7 @@ export async function DELETE(req: NextRequest) {
     const documentId = searchParams.get('id');
 
     if (!documentId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'MISSING_ID', message: 'Document ID is required' } },
-        { status: 400 }
-      );
+      return apiError('MISSING_ID', 'Document ID is required', 400);
     }
 
     // Step 3: Fetch document
@@ -245,10 +220,7 @@ export async function DELETE(req: NextRequest) {
     });
 
     if (!document) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Document not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Document not found', 404);
     }
 
     // Step 4: Check access permissions
@@ -269,10 +241,7 @@ export async function DELETE(req: NextRequest) {
         severity: 'WARNING',
       });
 
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Step 5: Delete document (cascade will handle chunks)
@@ -298,28 +267,20 @@ export async function DELETE(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        documentId,
-        message: 'Document deleted successfully',
-      },
+    return apiSuccess({
+      documentId,
+      message: 'Document deleted successfully',
     });
   } catch (error) {
     const isDev = process.env.NODE_ENV === 'development';
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: isDev
-            ? error instanceof Error
-              ? error.message
-              : 'Internal server error'
-            : 'Failed to delete document',
-        },
-      },
-      { status: 500 }
+    return apiError(
+      'INTERNAL_ERROR',
+      isDev
+        ? error instanceof Error
+          ? error.message
+          : 'Internal server error'
+        : 'Failed to delete document',
+      500
     );
   }
 }

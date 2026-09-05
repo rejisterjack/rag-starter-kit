@@ -230,7 +230,7 @@ export class SlackIntegration {
         name: 'Slack Integration',
         keyHash,
         keyPreview,
-        permissions: ['chat:read', 'chat:write', 'documents:read'],
+        permissions: ['read:chats', 'write:chats', 'read:documents'],
         status: 'ACTIVE',
       },
     });

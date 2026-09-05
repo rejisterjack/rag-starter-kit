@@ -271,7 +271,7 @@ export function useChatPreferences() {
       showSources: true,
       theme: 'system',
     },
-    schema: schema as unknown as z.ZodType<ChatPreferences>,
+    schema: schema as z.ZodType<ChatPreferences>,
     syncAcrossTabs: true,
   });
 

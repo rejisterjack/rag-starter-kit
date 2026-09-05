@@ -4,7 +4,7 @@
  * GET /api/admin/jobs — List ingestion jobs for the admin dashboard
  */
 
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { withApiAuth } from '@/lib/auth';
 import { prismaRead } from '@/lib/db';
 export const GET = withApiAuth(async (req) => {
@@ -46,21 +46,17 @@ export const GET = withApiAuth(async (req) => {
           : null,
     }));
 
-    return NextResponse.json({ jobs: result });
+    return apiSuccess({ jobs: result });
   } catch (error) {
     const isDev = process.env.NODE_ENV === 'development';
-    return NextResponse.json(
-      {
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: isDev
-            ? error instanceof Error
-              ? error.message
-              : 'Internal server error'
-            : 'Internal server error',
-        },
-      },
-      { status: 500 }
+    return apiError(
+      'INTERNAL_ERROR',
+      isDev
+        ? error instanceof Error
+          ? error.message
+          : 'Internal server error'
+        : 'Internal server error',
+      500
     );
   }
 });

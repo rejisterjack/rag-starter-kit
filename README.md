@@ -61,7 +61,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 <details open>
 <summary><b>🎨 Modern UI/UX</b></summary>
 
-- Next.js 15 App Router with React 19
+- Next.js 16 App Router with React 19
 - Tailwind CSS 4 with beautiful dark mode
 - shadcn/ui component library
 - Responsive design (mobile, tablet, desktop)
@@ -142,7 +142,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 
 | Category | Technology |
 |----------|------------|
-| **Framework** | [Next.js 15](https://nextjs.org/) (App Router, RSC, Streaming) |
+| **Framework** | [Next.js 16](https://nextjs.org/) (App Router, RSC, Streaming) |
 | **UI** | [React 19](https://react.dev/), [Tailwind CSS 4](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/) |
 | **AI / RAG** | [Vercel AI SDK](https://sdk.vercel.ai/), LangChain.js, OpenRouter, Anthropic Claude |
 | **Embeddings** | [Google Gemini](https://ai.google.dev/) (free tier) |
@@ -155,7 +155,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 | **Testing** | [Vitest](https://vitest.dev/) + [Playwright](https://playwright.dev/) |
 | **Analytics** | [Plausible](https://plausible.io/) + [PostHog](https://posthog.com/) (optional) |
 | **DevOps** | [Vercel](https://vercel.com/) |
-| **Linting** | [Biome](https://biomejs.dev/) |
+| **Linting** | ESLint + Prettier |
 
 ---
 
@@ -196,20 +196,22 @@ bun dev
 
 ### Docker (Self-Hosted)
 
+Requires **Node.js 24+**. The app listens on port **7392**.
+
 ```bash
-# Start PostgreSQL + Redis locally
+# Start PostgreSQL and Redis
 docker compose up -d
 
-# Update .env with local database URL:
-# DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ragdb
-
-# Run migrations and seed
+# Copy .env.example → .env and set API keys, then migrate + seed
 bun db:migrate
 bun db:seed
 
-# Build and run production container
+# Development
+bun dev   # http://localhost:7392
+
+# Production container
 docker build -t rag-starter-kit .
-docker run -p 3000:3000 --env-file .env --network host rag-starter-kit
+docker run -p 7392:7392 --env-file .env rag-starter-kit
 ```
 
 ### One-Click Deploy
@@ -243,7 +245,7 @@ docker run -p 3000:3000 --env-file .env --network host rag-starter-kit
 ```mermaid
 graph TB
     User([User]) -->|Upload Document| Cloudinary[Cloudinary]
-    User -->|Chat Query| Next[Next.js 15 App]
+    User -->|Chat Query| Next[Next.js 16 App]
 
     subgraph "Background Processing"
         Cloudinary -->|Trigger| Inngest[Inngest Jobs]
@@ -271,11 +273,11 @@ graph TB
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| **Presentation** | Next.js 15, React 19, Tailwind CSS | UI components, SSR, streaming |
+| **Presentation** | Next.js 16, React 19, Tailwind CSS | UI components, SSR, streaming |
 | **API** | Next.js API Routes | RESTful endpoints, type-safe APIs |
 | **AI/ML** | Vercel AI SDK, OpenRouter, Gemini | LLM inference, embeddings |
 | **RAG** | LangChain, custom pipeline | Document processing, retrieval |
-| **Data** | PostgreSQL, pgvector, Redis | Persistent storage, caching |
+| **Data** | PostgreSQL + pgvector, Redis | Persistent storage, vector search, caching |
 | **Storage** | Cloudinary | Document files |
 | **Queue** | Inngest | Background job processing |
 | **Real-time** | Ably | WebSocket connections |
@@ -332,7 +334,7 @@ bun test:integration  # Integration tests
 ```
 rag-starter-kit/
 ├── src/
-│   ├── app/                 # Next.js 15 App Router
+│   ├── app/                 # Next.js 16 App Router
 │   ├── components/          # React components (shadcn/ui)
 │   ├── lib/
 │   │   ├── ai/             # AI SDK config (OpenRouter + Google)

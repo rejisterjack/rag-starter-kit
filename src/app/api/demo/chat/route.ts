@@ -1,6 +1,7 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { checkBodySize } from '@/lib/api/middleware';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { generateRAGResponse } from '@/lib/rag/engine';
 import { estimateMessageTokens } from '@/lib/rag/token-budget';
@@ -62,23 +63,17 @@ export async function POST(req: NextRequest) {
     });
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'RATE_LIMIT',
-            message:
-              'Demo rate limit exceeded. Please try again later or sign up for a free account.',
-            resetAt: new Date(rateLimitResult.reset).toISOString(),
-          },
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
+      const response = apiError(
+        'RATE_LIMIT',
+        'Demo rate limit exceeded. Please try again later or sign up for a free account.',
+        429,
+        { resetAt: new Date(rateLimitResult.reset).toISOString() }
       );
+      response.headers.set(
+        'Retry-After',
+        Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString()
+      );
+      return response;
     }
 
     const bodySizeCheck = checkBodySize(req, 1_000_000);
@@ -88,25 +83,12 @@ export async function POST(req: NextRequest) {
     try {
       body = await req.json();
     } catch (_error: unknown) {
-      return NextResponse.json(
-        { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     const parseResult = chatRequestSchema.safeParse(body);
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid input',
-            details: parseResult.error.issues,
-          },
-        },
-        { status: 400 }
-      );
+      return apiError('VALIDATION_ERROR', 'Invalid input', 400, parseResult.error.issues);
     }
 
     const { messages, config, stream } = parseResult.data;
@@ -122,16 +104,7 @@ export async function POST(req: NextRequest) {
     const estimatedTokens = estimateMessageTokens(messages);
     if (estimatedTokens > 2000) {
       // Stricter limit for demo
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'TOKEN_LIMIT',
-            message: 'Message history too long for demo mode.',
-          },
-        },
-        { status: 400 }
-      );
+      return apiError('TOKEN_LIMIT', 'Message history too long for demo mode.', 400);
     }
 
     // Default demo config
@@ -162,23 +135,20 @@ export async function POST(req: NextRequest) {
       config: demoConfig,
     });
 
-    const jsonResponse = NextResponse.json({
-      success: true,
-      data: {
-        content: ragResponse.answer,
-        sources: ragResponse.sources.map((source, index) => ({
-          id: String(index + 1),
-          documentId: source.metadata?.documentId,
-          documentName: source.metadata?.documentName || 'Unknown Document',
-          page: source.metadata?.page,
-          score: source.similarity,
-          content: source.content,
-        })),
-        usage: {
-          promptTokens: ragResponse.tokensUsed?.prompt,
-          completionTokens: ragResponse.tokensUsed?.completion,
-          totalTokens: ragResponse.tokensUsed?.total,
-        },
+    const jsonResponse = apiSuccess({
+      content: ragResponse.answer,
+      sources: ragResponse.sources.map((source, index) => ({
+        id: String(index + 1),
+        documentId: source.metadata?.documentId,
+        documentName: source.metadata?.documentName || 'Unknown Document',
+        page: source.metadata?.page,
+        score: source.similarity,
+        content: source.content,
+      })),
+      usage: {
+        promptTokens: ragResponse.tokensUsed?.prompt,
+        completionTokens: ragResponse.tokensUsed?.completion,
+        totalTokens: ragResponse.tokensUsed?.total,
       },
     });
 
@@ -197,12 +167,6 @@ export async function POST(req: NextRequest) {
       error: error instanceof Error ? error.message : String(error),
       duration: durationMs,
     });
-    return NextResponse.json(
-      {
-        success: false,
-        error: { code: 'INTERNAL_ERROR', message: 'Failed to process chat request' },
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to process chat request', 500);
   }
 }

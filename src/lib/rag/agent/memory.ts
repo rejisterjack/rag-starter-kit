@@ -8,6 +8,7 @@
  */
 
 import { prisma } from '@/lib/db';
+import { fromJsonOptional } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 import type { Message } from '@/types';
 
@@ -132,7 +133,7 @@ export class AgentMemory {
         role: msg.role as Message['role'],
         content: msg.content,
         createdAt: msg.createdAt,
-        ...(msg.sources ? { sources: msg.sources as unknown as Message['sources'] } : {}),
+        ...(msg.sources ? { sources: fromJsonOptional<Message['sources']>(msg.sources) } : {}),
       })) as Message[];
     } catch (error: unknown) {
       logger.debug('Failed to load conversation history', {

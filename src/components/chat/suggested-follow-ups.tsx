@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Loader2, Sparkles } from 'lucide-react';
 import { memo, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -21,11 +20,8 @@ export const SuggestedFollowUps = memo(function SuggestedFollowUps({
   if (!questions || questions.length === 0) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.15, duration: 0.25, ease: 'easeOut' }}
-      className={`mt-3 pt-3 border-t border-border/30 ${className ?? ''}`}
+    <div
+      className={`mt-3 pt-3 border-t border-border/30 animate-fade-in-up [animation-delay:150ms] ${className ?? ''}`}
     >
       <div className="flex items-center gap-1.5 mb-2">
         <Sparkles className="h-3 w-3 text-primary/70" />
@@ -51,6 +47,6 @@ export const SuggestedFollowUps = memo(function SuggestedFollowUps({
           </Button>
         ))}
       </div>
-    </motion.div>
+    </div>
   );
 });

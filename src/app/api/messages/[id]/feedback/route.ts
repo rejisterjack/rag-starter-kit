@@ -1,3 +1,4 @@
+import { apiError, apiSuccess } from '@/lib/api-response';
 /**
  * Message Feedback API
  * POST /api/messages/[id]/feedback - Submit feedback for a message
@@ -39,10 +40,7 @@ export async function POST(
     const rateLimitIdentifier = `feedback:${userId || 'anonymous'}`;
     const rateLimitResult = await checkApiRateLimit(rateLimitIdentifier, 'feedback');
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { error: 'Too many feedback submissions', code: 'RATE_LIMITED' },
-        { status: 429 }
-      );
+      return apiError('RATE_LIMITED', 'Too many feedback submissions', 429);
     }
 
     // Parse and validate request body
@@ -76,7 +74,7 @@ export async function POST(
     });
 
     if (!message) {
-      return NextResponse.json({ error: 'Message not found', code: 'NOT_FOUND' }, { status: 404 });
+      return apiError('NOT_FOUND', 'Message not found', 404);
     }
 
     // Only allow feedback on assistant messages
@@ -123,26 +121,20 @@ export async function POST(
 
     logger.info('Message feedback submitted');
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        id: feedback.id,
-        messageId: feedback.messageId,
-        rating: feedback.rating,
-        comment: feedback.comment,
-        categories: feedback.categories,
-        createdAt: feedback.createdAt.toISOString(),
-      },
+    return apiSuccess({
+      id: feedback.id,
+      messageId: feedback.messageId,
+      rating: feedback.rating,
+      comment: feedback.comment,
+      categories: feedback.categories,
+      createdAt: feedback.createdAt.toISOString(),
     });
   } catch (error: unknown) {
     logger.error('Failed to submit message feedback', {
       error: error instanceof Error ? error.message : 'Unknown',
     });
 
-    return NextResponse.json(
-      { error: 'Failed to submit feedback', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to submit feedback', 500);
   }
 }
 
@@ -170,10 +162,7 @@ export const GET = withApiAuth(
       });
 
       if (!message) {
-        return NextResponse.json(
-          { error: 'Message not found', code: 'NOT_FOUND' },
-          { status: 404 }
-        );
+        return apiError('NOT_FOUND', 'Message not found', 404);
       }
 
       // Only message owner or admin can view feedback
@@ -181,7 +170,7 @@ export const GET = withApiAuth(
       const isAdmin = session.user.role === 'ADMIN';
 
       if (!isOwner && !isAdmin) {
-        return NextResponse.json({ error: 'Access denied', code: 'FORBIDDEN' }, { status: 403 });
+        return apiError('FORBIDDEN', 'Access denied', 403);
       }
 
       // Get feedback statistics
@@ -204,38 +193,32 @@ export const GET = withApiAuth(
         downvotes: feedbacks.filter((f: { rating: string }) => f.rating === 'DOWN').length,
       };
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          stats,
-          feedbacks: feedbacks.map(
-            (f: {
-              id: string;
-              rating: string;
-              comment: string | null;
-              categories: string[];
-              createdAt: Date;
-              userId: string | null;
-            }) => ({
-              id: f.id,
-              rating: f.rating,
-              comment: f.comment,
-              categories: f.categories,
-              createdAt: f.createdAt.toISOString(),
-              isOwn: f.userId === session.user.id,
-            })
-          ),
-        },
+      return apiSuccess({
+        stats,
+        feedbacks: feedbacks.map(
+          (f: {
+            id: string;
+            rating: string;
+            comment: string | null;
+            categories: string[];
+            createdAt: Date;
+            userId: string | null;
+          }) => ({
+            id: f.id,
+            rating: f.rating,
+            comment: f.comment,
+            categories: f.categories,
+            createdAt: f.createdAt.toISOString(),
+            isOwn: f.userId === session.user.id,
+          })
+        ),
       });
     } catch (error: unknown) {
       logger.error('Failed to get message feedback', {
         error: error instanceof Error ? error.message : 'Unknown',
       });
 
-      return NextResponse.json(
-        { error: 'Failed to get feedback', code: 'INTERNAL_ERROR' },
-        { status: 500 }
-      );
+      return apiError('INTERNAL_ERROR', 'Failed to get feedback', 500);
     }
   }
 );
@@ -265,16 +248,13 @@ export const DELETE = withApiAuth(
 
       logger.info('Message feedback deleted');
 
-      return NextResponse.json({ success: true });
+      return apiSuccess({});
     } catch (error: unknown) {
       logger.error('Failed to delete message feedback', {
         error: error instanceof Error ? error.message : 'Unknown',
       });
 
-      return NextResponse.json(
-        { error: 'Failed to delete feedback', code: 'INTERNAL_ERROR' },
-        { status: 500 }
-      );
+      return apiError('INTERNAL_ERROR', 'Failed to delete feedback', 500);
     }
   }
 );

@@ -39,18 +39,3 @@ export const DynamicAreaChart = dynamic(() => import('recharts').then((mod) => m
   loading: ChartSkeleton,
   ssr: false,
 });
-
-// Re-export static components (lightweight)
-export {
-  Area,
-  Bar,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Line,
-  Pie,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';

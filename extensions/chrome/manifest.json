@@ -3,6 +3,7 @@
   "name": "RAG Knowledge Assistant",
   "version": "1.0.0",
   "description": "Save web pages to your knowledge base, ask questions about any content, and get AI-powered summaries from your RAG assistant.",
+  "options_page": "options.html",
   "permissions": [
     "activeTab",
     "storage",
@@ -42,6 +43,10 @@
   ],
   "side_panel": {
     "default_path": "sidepanel.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   },
   "commands": {
     "_execute_action": {

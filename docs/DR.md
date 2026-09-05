@@ -90,7 +90,7 @@ This checks:
 1. Database connectivity
 2. Schema integrity (all expected tables exist)
 3. Row counts for critical tables
-4. pgvector extension is operational
+4. pgvector extension and document_chunks table are present
 5. Vector index exists and is functional
 
 ## Scheduled Verification

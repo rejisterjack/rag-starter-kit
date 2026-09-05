@@ -2,6 +2,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { apiFetch } from '@/lib/api-client';
 import { analyticsKeys } from '@/lib/query-keys';
 
 // Types
@@ -103,11 +104,7 @@ async function fetchAnalyticsOverview(filter: AnalyticsFilter): Promise<Analytic
   if (filter.workspaceId) params.set('workspaceId', filter.workspaceId);
   if (filter.userId) params.set('userId', filter.userId);
 
-  const response = await fetch(`/api/analytics/overview?${params}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch analytics overview');
-  }
-  return response.json();
+  return apiFetch<AnalyticsData>(`/api/analytics/overview?${params}`);
 }
 
 async function fetchMetrics(filter: AnalyticsFilter): Promise<MetricsData> {
@@ -115,11 +112,7 @@ async function fetchMetrics(filter: AnalyticsFilter): Promise<MetricsData> {
   if (filter.startDate) params.set('startDate', filter.startDate.toISOString());
   if (filter.endDate) params.set('endDate', filter.endDate.toISOString());
 
-  const response = await fetch(`/api/analytics/metrics?${params}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch metrics');
-  }
-  return response.json();
+  return apiFetch<MetricsData>(`/api/analytics/metrics?${params}`);
 }
 
 async function fetchTimeSeries(filter: AnalyticsFilter): Promise<TimeSeriesPoint[]> {
@@ -127,27 +120,15 @@ async function fetchTimeSeries(filter: AnalyticsFilter): Promise<TimeSeriesPoint
   if (filter.startDate) params.set('startDate', filter.startDate.toISOString());
   if (filter.endDate) params.set('endDate', filter.endDate.toISOString());
 
-  const response = await fetch(`/api/analytics/timeseries?${params}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch time series data');
-  }
-  return response.json();
+  return apiFetch<TimeSeriesPoint[]>(`/api/analytics/timeseries?${params}`);
 }
 
 async function fetchRealtimeMetrics(): Promise<RealtimeMetrics> {
-  const response = await fetch('/api/analytics/realtime');
-  if (!response.ok) {
-    throw new Error('Failed to fetch realtime metrics');
-  }
-  return response.json();
+  return apiFetch<RealtimeMetrics>('/api/analytics/realtime');
 }
 
 async function fetchRealtimeEvents(): Promise<RealtimeEvent[]> {
-  const response = await fetch('/api/analytics/events');
-  if (!response.ok) {
-    throw new Error('Failed to fetch realtime events');
-  }
-  return response.json();
+  return apiFetch<RealtimeEvent[]>('/api/analytics/events');
 }
 
 // Re-export analytics keys for convenience

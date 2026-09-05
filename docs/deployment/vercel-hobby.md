@@ -6,7 +6,7 @@ This guide walks you through deploying the RAG Starter Kit to Vercel's free Hobb
 
 ```
 Vercel Hobby (Serverless Functions, 10s timeout)
-├── Prisma Postgres (Accelerate, pgvector)
+├── Prisma Postgres (Accelerate) + pgvector
 ├── Upstash Redis (free tier, caching + rate limiting)
 ├── Cloudinary (free tier, file storage)
 ├── Inngest Cloud (free tier, background jobs)

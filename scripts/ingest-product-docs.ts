@@ -130,7 +130,7 @@ function chunkContent(content: string, source: string, maxChunkSize = 1500): Pro
  * - Prisma client initialization
  * - Embedding generation via Google Gemini
  * - Document/Chunk creation in the database
- * - Vector insertion into pgvector
+ * - Vector insertion into Qdrant
  *
  * To fully implement, uncomment and complete the database operations below.
  */
@@ -169,7 +169,7 @@ async function ingestProductDocs() {
   console.log('   2. Create a system user/workspace for product KB');
   console.log('   3. Generate embeddings via Google Gemini (free tier)');
   console.log('   4. Insert documents and chunks into database');
-  console.log('   5. Store vectors in pgvector');
+  console.log('   5. Store vectors in Qdrant');
   console.log('\n💡 Note: The RAG Bot currently uses embedded product knowledge');
   console.log('   in its system prompt for instant answers. This ingestion script');
   console.log('   enables true vector retrieval for more dynamic, citation-rich responses.');

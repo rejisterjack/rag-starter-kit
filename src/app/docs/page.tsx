@@ -1,4 +1,14 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import { buildBreadcrumbJsonLd } from '@/components/seo';
+
+export const dynamic = 'force-static';
+
+export const metadata: Metadata = {
+  title: 'Documentation',
+  description:
+    'Everything you need to build, deploy, and scale AI-powered document chatbots with the RAG Starter Kit.',
+};
 
 const sections = [
   {
@@ -119,11 +129,15 @@ const sections = [
 export default function DocsHomePage() {
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildBreadcrumbJsonLd('/docs')) }}
+      />
       <div className="mb-12">
         <h1 className="text-4xl font-bold tracking-tight mb-4">Documentation</h1>
         <p className="text-lg text-muted-foreground max-w-2xl">
           Everything you need to build, deploy, and scale AI-powered document chatbots with the RAG
-          Starter Kit. Built on Next.js 15, LangChain, and PostgreSQL with pgvector.
+          Starter Kit. Built on Next.js 16, the Vercel AI SDK, PostgreSQL, and pgvector.
         </p>
       </div>
 
@@ -163,20 +177,22 @@ export default function DocsHomePage() {
         </p>
         <div className="flex flex-wrap gap-4">
           <a
-            href="https://github.com/nicholasgriffintn/rag-starter-kit/issues"
+            href="https://github.com/rejisterjack/rag-starter-kit/issues"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-primary hover:underline"
           >
             GitHub Issues
+            <span className="sr-only">(opens in new tab)</span>
           </a>
           <a
-            href="https://github.com/nicholasgriffintn/rag-starter-kit"
+            href="https://github.com/rejisterjack/rag-starter-kit"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-primary hover:underline"
           >
             Repository
+            <span className="sr-only">(opens in new tab)</span>
           </a>
         </div>
       </div>

@@ -18,7 +18,6 @@ export function PWAScripts({ nonce }: PWAScriptsProps) {
       id="pwa-register-sw"
       strategy="afterInteractive"
       nonce={nonce}
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: Required for PWA service worker registration inline script
       dangerouslySetInnerHTML={{
         __html: `
           (function() {
@@ -32,7 +31,7 @@ export function PWAScripts({ nonce }: PWAScriptsProps) {
                   updateViaCache: 'imports',
                 })
                 .then(function(registration) {
-                  console.log('[PWA] Service Worker registered with scope:', registration.scope);
+                  typeof process !== 'undefined' && process.env.NODE_ENV === 'development' && console.log('[PWA] Service Worker registered with scope:', registration.scope);
                   
                   // Store registration for later use
                   window.__SW_REGISTRATION__ = registration;
@@ -43,7 +42,7 @@ export function PWAScripts({ nonce }: PWAScriptsProps) {
                     if (newWorker) {
                       newWorker.addEventListener('statechange', function() {
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                          console.log('[PWA] New version available');
+                          typeof process !== 'undefined' && process.env.NODE_ENV === 'development' && console.log('[PWA] New version available');
                           // Dispatch custom event
                           window.dispatchEvent(new CustomEvent('sw-update-available'));
                         }
@@ -57,7 +56,7 @@ export function PWAScripts({ nonce }: PWAScriptsProps) {
                 
                 // Listen for messages from service worker
                 navigator.serviceWorker.addEventListener('message', function(event) {
-                  console.log('[PWA] Message from SW:', event.data);
+                  typeof process !== 'undefined' && process.env.NODE_ENV === 'development' && console.log('[PWA] Message from SW:', event.data);
                   
                   if (event.data && event.data.type) {
                     switch (event.data.type) {
@@ -82,14 +81,14 @@ export function PWAScripts({ nonce }: PWAScriptsProps) {
                 
                 // Listen for controller changes (new SW activated)
                 navigator.serviceWorker.addEventListener('controllerchange', function() {
-                  console.log('[PWA] Service Worker controller changed');
+                  typeof process !== 'undefined' && process.env.NODE_ENV === 'development' && console.log('[PWA] Service Worker controller changed');
                   window.dispatchEvent(new CustomEvent('sw-controller-changed'));
                 });
               });
               
               // Handle beforeinstallprompt event
               window.addEventListener('beforeinstallprompt', function(e) {
-                console.log('[PWA] Before install prompt event fired');
+                typeof process !== 'undefined' && process.env.NODE_ENV === 'development' && console.log('[PWA] Before install prompt event fired');
                 // Prevent the mini-infobar from appearing on mobile
                 e.preventDefault();
                 // Store the event for later use
@@ -102,12 +101,12 @@ export function PWAScripts({ nonce }: PWAScriptsProps) {
               
               // Handle appinstalled event
               window.addEventListener('appinstalled', function() {
-                console.log('[PWA] App was installed');
+                typeof process !== 'undefined' && process.env.NODE_ENV === 'development' && console.log('[PWA] App was installed');
                 window.__DEFERRED_INSTALL_PROMPT__ = null;
                 window.dispatchEvent(new CustomEvent('pwa-installed'));
               });
             } else {
-              console.log('[PWA] Service Workers not supported');
+              typeof process !== 'undefined' && process.env.NODE_ENV === 'development' && console.log('[PWA] Service Workers not supported');
             }
             
             // Expose PWA utilities globally

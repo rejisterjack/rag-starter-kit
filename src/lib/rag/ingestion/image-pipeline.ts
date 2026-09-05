@@ -11,9 +11,14 @@
 
 import { createHash } from 'node:crypto';
 import { generateImageEmbedding } from '@/lib/ai/embeddings/image';
+import { asModel } from '@/lib/ai/types';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { upsertImageEmbedding, searchSimilarImages as qdrantSearchSimilarImages, deleteImagePoints } from '@/lib/qdrant';
+import {
+  deleteImagePoints,
+  searchSimilarImages as qdrantSearchSimilarImages,
+  upsertImageEmbedding,
+} from '@/lib/vector';
 
 /**
  * Image metadata extracted from documents
@@ -66,9 +71,7 @@ export async function extractImagesFromPDF(pdfBuffer: Buffer): Promise<Extracted
     const images: ExtractedImage[] = [];
 
     // Get PDF info to determine page count
-    const pdfParse = (await import('pdf-parse')) as unknown as {
-      default: (buffer: Buffer, options?: { max?: number }) => Promise<{ numpages: number }>;
-    };
+    const pdfParse = await import('pdf-parse');
     const pdfData = await pdfParse.default(pdfBuffer, { max: 0 });
     const pageCount = pdfData.numpages;
 
@@ -184,7 +187,8 @@ export async function uploadImageToStorage(
 export async function generateImageCaption(imageBuffer: Buffer | string): Promise<string> {
   try {
     const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
-    const { generateText } = await import('ai');
+    const ai = await import('ai');
+    const { generateText } = ai;
 
     // Convert buffer to base64 if needed
     let imageData: string;
@@ -195,11 +199,10 @@ export async function generateImageCaption(imageBuffer: Buffer | string): Promis
       imageData = `data:image/png;base64,${base64}`;
     }
 
+    const googleAI = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY });
+
     const result = await generateText({
-      // biome-ignore lint/suspicious/noExplicitAny: AI SDK version compatibility
-      model: createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY })(
-        'gemini-1.5-flash'
-      ) as any,
+      model: asModel<Parameters<typeof generateText>[0]['model']>(googleAI('gemini-1.5-flash')),
       messages: [
         {
           role: 'user',
@@ -269,9 +272,12 @@ export async function processImage(
         },
       });
 
-      // Upsert image embedding into Qdrant
+      // Upsert image embedding into pgvector
       const contentHash = createHash('sha256').update(image.buffer).digest('hex');
-      const doc = await tx.document.findUnique({ where: { id: documentId }, select: { userId: true } });
+      const doc = await tx.document.findUnique({
+        where: { id: documentId },
+        select: { userId: true },
+      });
       await upsertImageEmbedding({
         id: crypto.randomUUID(),
         documentId,
@@ -284,7 +290,7 @@ export async function processImage(
         dimensions: embedding.length,
       });
 
-      return { docImage, imageEmbedding: undefined as unknown as undefined, contentHash };
+      return { docImage, imageEmbedding: undefined, contentHash };
     });
 
     // Step 5: Update with caption (if available)
@@ -405,20 +411,23 @@ export async function searchSimilarImages(
     // Generate query embedding
     const queryEmbedding = await generateImageEmbedding(queryImage);
 
-    // Search for similar images using Qdrant
+    // Search for similar images using pgvector
     const results = await qdrantSearchSimilarImages(queryEmbedding, {
       userId: workspaceId,
       topK,
     });
 
-    return results.map((r) => ({
-      id: String(r.id),
-      documentId: (r.payload as Record<string, unknown>)?.documentId as string ?? '',
-      storageUrl: (r.payload as Record<string, unknown>)?.storageUrl as string ?? '',
-      caption: ((r.payload as Record<string, unknown>)?.caption as string | null) ?? undefined,
-      pageNumber: ((r.payload as Record<string, unknown>)?.pageNumber as number | null) ?? undefined,
-      similarity: r.score,
-    }));
+    return results.map((r) => {
+      const p = r.payload ?? {};
+      return {
+        id: String(r.id),
+        documentId: String(p.documentId ?? ''),
+        storageUrl: String(p.storageUrl ?? ''),
+        caption: (p.caption as string | null) ?? undefined,
+        pageNumber: (p.pageNumber as number | null) ?? undefined,
+        similarity: r.score,
+      };
+    });
   } catch (error) {
     logger.warn('Similar image search failed', {
       workspaceId,
@@ -449,20 +458,23 @@ export async function searchImagesByText(
     // Generate text embedding
     const textEmbedding = await generateTextEmbeddingForImageSearch(query);
 
-    // Search for similar images using Qdrant
+    // Search for similar images using pgvector
     const results = await qdrantSearchSimilarImages(textEmbedding, {
       userId: workspaceId,
       topK,
     });
 
-    return results.map((r) => ({
-      id: String(r.id),
-      documentId: (r.payload as Record<string, unknown>)?.documentId as string ?? '',
-      storageUrl: (r.payload as Record<string, unknown>)?.storageUrl as string ?? '',
-      caption: ((r.payload as Record<string, unknown>)?.caption as string | null) ?? undefined,
-      pageNumber: ((r.payload as Record<string, unknown>)?.pageNumber as number | null) ?? undefined,
-      similarity: r.score,
-    }));
+    return results.map((r) => {
+      const p = r.payload ?? {};
+      return {
+        id: String(r.id),
+        documentId: String(p.documentId ?? ''),
+        storageUrl: String(p.storageUrl ?? ''),
+        caption: (p.caption as string | null) ?? undefined,
+        pageNumber: (p.pageNumber as number | null) ?? undefined,
+        similarity: r.score,
+      };
+    });
   } catch (error) {
     logger.warn('Image search by text failed', {
       workspaceId,
@@ -521,11 +533,11 @@ export async function deleteDocumentImages(documentId: string): Promise<void> {
     }
   }
 
-  // Delete from Qdrant
+  // Delete from pgvector
   try {
     await deleteImagePoints(documentId);
   } catch (error) {
-    logger.warn('Failed to delete image points from Qdrant', {
+    logger.warn('Failed to delete image points from pgvector', {
       documentId,
       error: error instanceof Error ? error.message : String(error),
     });

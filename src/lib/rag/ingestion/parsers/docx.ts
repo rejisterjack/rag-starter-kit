@@ -106,7 +106,6 @@ function parseParagraphsFromHTML(html: string): DOCXParagraph[] {
   let match: RegExpExecArray | null;
 
   // Extract headings
-  // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex iteration pattern
   while ((match = headingRegex.exec(html)) !== null) {
     const level = parseInt(match[1], 10);
     const text = stripHtmlTags(match[2]).trim();
@@ -123,7 +122,6 @@ function parseParagraphsFromHTML(html: string): DOCXParagraph[] {
 
   // Extract list items
   const listLevel = 0;
-  // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex iteration pattern
   while ((match = listItemRegex.exec(html)) !== null) {
     const text = stripHtmlTags(match[1]).trim();
     if (text) {
@@ -138,7 +136,6 @@ function parseParagraphsFromHTML(html: string): DOCXParagraph[] {
   }
 
   // Extract regular paragraphs
-  // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex iteration pattern
   while ((match = paragraphRegex.exec(html)) !== null) {
     const text = stripHtmlTags(match[1]).trim();
     if (text && !paragraphs.some((p) => p.text === text)) {

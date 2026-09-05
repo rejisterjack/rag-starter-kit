@@ -10,15 +10,18 @@
  * - Rate limiting
  */
 
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { withApiAuth } from '@/lib/auth';
 import { prisma, prismaRead } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import {
   ConcurrentModificationError,
   extractVersion,
   updateWithVersion,
 } from '@/lib/db/optimistic-locking';
 import { logger } from '@/lib/logger';
+import { getChunksByDocumentId } from '@/lib/vector/points';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // Document status mapping from DB to UI
@@ -57,10 +60,7 @@ export const GET = withApiAuth(
       });
 
       if (!document) {
-        return NextResponse.json(
-          { success: false, error: { code: 'NOT_FOUND', message: 'Document not found' } },
-          { status: 404 }
-        );
+        return apiError('NOT_FOUND', 'Document not found', 404);
       }
 
       // Step 3: Check access permissions
@@ -70,20 +70,33 @@ export const GET = withApiAuth(
         (await checkPermission(userId, document.workspaceId, Permission.READ_DOCUMENTS));
 
       if (!hasDirectAccess && !hasWorkspaceAccess) {
-        return NextResponse.json(
-          { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Access denied', 403);
       }
 
       // B2: Cache response for completed documents (reduce polling DB hits)
-      const cacheControl = document.status === 'COMPLETED'
-        ? 'private, max-age=30, stale-while-revalidate=60'
-        : 'no-cache';
+      const cacheControl =
+        document.status === 'COMPLETED'
+          ? 'private, max-age=30, stale-while-revalidate=60'
+          : 'no-cache';
 
-      // Step 4: Fetch chunk stats from Qdrant and format response
-      const metadata = (document.metadata as Record<string, unknown>) || {};
+      // Step 4: Fetch chunks from pgvector and format response
+      const metadata = fromJson<Record<string, unknown>>(document.metadata, {});
       const chunkCount = document.chunkCount;
+
+      let chunks: Array<{
+        id: string;
+        text: string;
+        index: number;
+        page?: number | null;
+        section?: string | null;
+      }> = [];
+      if (document.status === 'COMPLETED' && chunkCount > 0) {
+        try {
+          chunks = await getChunksByDocumentId(documentId);
+        } catch {
+          // pgvector unavailable — preview will show "not available"
+        }
+      }
 
       const formattedDocument = {
         id: document.id,
@@ -93,13 +106,16 @@ export const GET = withApiAuth(
             ? 'text/html'
             : `application/${document.contentType.toLowerCase()}`,
         size: document.size,
+        storageUrl: document.storageUrl,
         status: STATUS_MAP[document.status] || 'pending',
         progress: document.ingestionJob?.progress,
         chunkCount,
         createdAt: document.createdAt.toISOString(),
         updatedAt: document.updatedAt.toISOString(),
         content: document.content,
-        errorMessage: document.ingestionJob?.error || (metadata.error as string) || undefined,
+        errorMessage:
+          document.ingestionJob?.error ||
+          (typeof metadata.error === 'string' ? metadata.error : undefined),
         errorCategory: document.ingestionJob?.errorCategory ?? undefined,
         metadata: {
           ...metadata,
@@ -108,7 +124,7 @@ export const GET = withApiAuth(
           ocrConfidence: document.ocrConfidence,
           ocrLanguage: document.ocrLanguage,
         },
-        chunks: [],
+        chunks,
         jobStatus: document.ingestionJob
           ? {
               status: document.ingestionJob.status,
@@ -119,22 +135,12 @@ export const GET = withApiAuth(
           : null,
       };
 
-      return NextResponse.json({
-        success: true,
-        data: formattedDocument,
-      }, {
-        headers: { 'Cache-Control': cacheControl },
-      });
+      return apiSuccess(formattedDocument, 200, { 'Cache-Control': cacheControl });
     } catch (error) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: error instanceof Error ? error.message : 'Internal server error',
-          },
-        },
-        { status: 500 }
+      return apiError(
+        'INTERNAL_ERROR',
+        error instanceof Error ? error.message : 'Internal server error',
+        500
       );
     }
   }
@@ -158,10 +164,7 @@ export const PATCH = withApiAuth(
         logger.debug('Failed to parse request body for document update', {
           error: error instanceof Error ? error.message : 'Unknown error',
         });
-        return NextResponse.json(
-          { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-          { status: 400 }
-        );
+        return apiError('INVALID_BODY', 'Invalid JSON body', 400);
       }
 
       // Step 3: Fetch document
@@ -170,10 +173,7 @@ export const PATCH = withApiAuth(
       });
 
       if (!document) {
-        return NextResponse.json(
-          { success: false, error: { code: 'NOT_FOUND', message: 'Document not found' } },
-          { status: 404 }
-        );
+        return apiError('NOT_FOUND', 'Document not found', 404);
       }
 
       // Step 4: Check access permissions
@@ -183,17 +183,14 @@ export const PATCH = withApiAuth(
         (await checkPermission(userId, document.workspaceId, Permission.WRITE_DOCUMENTS));
 
       if (!hasDirectAccess && !hasWorkspaceAccess) {
-        return NextResponse.json(
-          { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Access denied', 403);
       }
 
       // Step 5: Build update data
       const updateData: Record<string, unknown> = {};
       if (body.name !== undefined) updateData.name = body.name;
       if (body.metadata !== undefined) {
-        const currentMetadata = (document.metadata as Record<string, unknown>) || {};
+        const currentMetadata = fromJson<Record<string, unknown>>(document.metadata, {});
         updateData.metadata = { ...currentMetadata, ...body.metadata };
       }
 
@@ -216,34 +213,23 @@ export const PATCH = withApiAuth(
         }
       } catch (e) {
         if (e instanceof ConcurrentModificationError) {
-          return NextResponse.json(
-            { success: false, error: { code: 'CONFLICT', message: e.message } },
-            { status: 409 }
-          );
+          return apiError('CONFLICT', e.message, 409);
         }
         throw e;
       }
 
-      const result = updatedDocument as Record<string, unknown>;
-      return NextResponse.json({
-        success: true,
-        data: {
-          id: result.id,
-          name: result.name,
-          version: result.version,
-          updatedAt: (result.updatedAt as Date).toISOString(),
-        },
+      const result = updatedDocument;
+      return apiSuccess({
+        id: result.id,
+        name: result.name,
+        version: result.version,
+        updatedAt: (result.updatedAt as Date).toISOString(),
       });
     } catch (error) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: error instanceof Error ? error.message : 'Internal server error',
-          },
-        },
-        { status: 500 }
+      return apiError(
+        'INTERNAL_ERROR',
+        error instanceof Error ? error.message : 'Internal server error',
+        500
       );
     }
   }

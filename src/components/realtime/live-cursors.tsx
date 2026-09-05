@@ -39,7 +39,7 @@ interface CursorProps {
   smoothFactor?: number;
 }
 
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 
 // =============================================================================
 // Helper Functions
@@ -114,7 +114,7 @@ const Cursor: React.FC<CursorProps> = ({ cursor, showLabel = true, labelPosition
   );
 
   return (
-    <motion.div
+    <m.div
       className="absolute pointer-events-none z-50"
       initial={{ x: position.x, y: position.y }}
       animate={{ x: position.x, y: position.y }}
@@ -182,7 +182,7 @@ const Cursor: React.FC<CursorProps> = ({ cursor, showLabel = true, labelPosition
           />
         )}
       </div>
-    </motion.div>
+    </m.div>
   );
 };
 
@@ -382,14 +382,12 @@ export const CursorContainer: React.FC<CursorContainerProps> = ({
   );
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: Cursor tracking container requires mouse events
     <div
       ref={containerRef}
       className={cn('relative', className)}
       onMouseMove={handleMouseMove}
       role="button"
       tabIndex={0}
-      onKeyDown={() => {}}
       aria-label="Cursor tracking area"
     >
       {children}

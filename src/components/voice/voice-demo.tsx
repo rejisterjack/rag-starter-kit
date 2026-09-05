@@ -22,7 +22,6 @@ export function VoiceDemo() {
   const [activeTab, setActiveTab] = useState('input');
   const [demoText, setDemoText] = useState('Hello! This is a demonstration of the voice features.');
   const [receivedTranscript, setReceivedTranscript] = useState('');
-  const [isSpeaking, _setIsSpeaking] = useState(false);
 
   // Check browser support
   const support = checkBrowserSupport();
@@ -35,7 +34,7 @@ export function VoiceDemo() {
   });
 
   // Voice output demo
-  const { voices, cancel } = useVoiceOutput();
+  const { isSpeaking, voices, cancel } = useVoiceOutput();
 
   // Voice commands demo
   const { commands, lastCommand, registerCommand } = useVoiceCommands({

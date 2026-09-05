@@ -470,18 +470,12 @@ export class EmailService {
     template: EmailTemplate
   ): Promise<{ success: boolean; error?: string }> {
     // Console provider logs email content for development/debugging
-    // biome-ignore lint/suspicious/noConsole: Intentional console output for console email provider
-    console.log('📧 Email (Console Mode):');
-    // biome-ignore lint/suspicious/noConsole: Intentional console output for console email provider
-    console.log('From:', from);
-    // biome-ignore lint/suspicious/noConsole: Intentional console output for console email provider
-    console.log('To:', to);
-    // biome-ignore lint/suspicious/noConsole: Intentional console output for console email provider
-    console.log('Subject:', template.subject);
-    // biome-ignore lint/suspicious/noConsole: Intentional console output for console email provider
-    console.log('Text:', template.text);
-    // biome-ignore lint/suspicious/noConsole: Intentional console output for console email provider
-    console.log('---');
+    logger.info('Email (Console Mode):');
+    logger.info('From:', { from });
+    logger.info('To:', { to });
+    logger.info('Subject:', { subject: template.subject });
+    logger.info('Text:', { text: template.text });
+    logger.info('---');
 
     return { success: true };
   }

@@ -391,9 +391,7 @@ class SyncManager {
     try {
       const registration = await navigator.serviceWorker.ready;
       if ('sync' in registration) {
-        await (
-          registration as unknown as { sync: { register: (tag: string) => Promise<void> } }
-        ).sync.register(tag);
+        await registration.sync?.register(tag);
       }
     } catch {
       // Background Sync not supported or permission denied

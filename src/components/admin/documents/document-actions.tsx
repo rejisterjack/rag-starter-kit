@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { apiFetch } from '@/lib/api-client';
+
 // =============================================================================
 // Delete Button with confirmation
 // =============================================================================
@@ -26,14 +28,10 @@ export function DeleteButton({ documentId }: { documentId: string }) {
           )
         ) {
           setIsDeleting(true);
-          fetch(`/api/ingest?id=${documentId}`, { method: 'DELETE' })
-            .then((res) => {
-              if (res.ok) {
-                toast.success('Document deleted');
-                router.refresh();
-              } else {
-                toast.error('Failed to delete document');
-              }
+          apiFetch(`/api/ingest?id=${documentId}`, { method: 'DELETE' })
+            .then(() => {
+              toast.success('Document deleted');
+              router.refresh();
             })
             .catch(() => toast.error('Failed to delete document'))
             .finally(() => setIsDeleting(false));
@@ -57,23 +55,16 @@ export function ReingestButton({ documentId }: { documentId: string }) {
   const handleReingest = async () => {
     setIsReingesting(true);
     try {
-      const res = await fetch(`/api/ingest?id=${documentId}`, { method: 'GET' });
-      if (res.ok) {
-        const data = await res.json();
-        const userId = data?.data?.userId;
-        if (userId) {
-          await fetch('/api/ingest', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              documentId,
-              action: 'retry',
-            }),
-          });
-        }
-        toast.success('Re-ingestion started');
-        router.refresh();
-      }
+      // Dedicated retry endpoint handles auth, permissions, and status reset.
+      // (The old GET-then-POST /api/ingest flow read a userId field that the
+      // status response never contained, so the retry POST never fired.)
+      await apiFetch('/api/ingest/retry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId }),
+      });
+      toast.success('Re-ingestion started');
+      router.refresh();
     } catch (_error: unknown) {
       toast.error('Failed to re-ingest document');
     } finally {

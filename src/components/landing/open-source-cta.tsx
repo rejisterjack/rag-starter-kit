@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import {
   ArrowRight,
   BookOpen,
@@ -54,7 +54,7 @@ export function OpenSourceCTA(): React.ReactElement {
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Main CTA Card */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 40, scale: 0.95 }}
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true, margin: '-100px' }}
@@ -63,7 +63,7 @@ export function OpenSourceCTA(): React.ReactElement {
         >
           {/* Animated Background Gradients inside the card */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <motion.div
+            <m.div
               className="absolute top-[-50%] left-[-10%] w-[80%] h-[150%] rounded-full opacity-30"
               style={{
                 background: 'radial-gradient(circle, hsl(var(--primary)), transparent 60%)',
@@ -78,7 +78,7 @@ export function OpenSourceCTA(): React.ReactElement {
               }}
               transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
             />
-            <motion.div
+            <m.div
               className="absolute bottom-[-50%] right-[-10%] w-[70%] h-[130%] rounded-full opacity-20"
               style={{
                 background: 'radial-gradient(circle, hsl(320 100% 60%), transparent 60%)',
@@ -97,7 +97,7 @@ export function OpenSourceCTA(): React.ReactElement {
           </div>
 
           <div className="relative z-10">
-            <motion.div
+            <m.div
               initial={{ scale: 0.9, opacity: 0 }}
               whileInView={{ scale: 1, opacity: 1 }}
               viewport={{ once: true }}
@@ -106,7 +106,7 @@ export function OpenSourceCTA(): React.ReactElement {
             >
               <Heart className="h-4 w-4 text-red-400 animate-pulse" />
               <span>MIT Licensed — Free Forever</span>
-            </motion.div>
+            </m.div>
 
             <h2 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-7xl mb-6 leading-tight">
               Built by Developers,
@@ -215,10 +215,10 @@ export function OpenSourceCTA(): React.ReactElement {
               </Link>
             </div>
           </div>
-        </motion.div>
+        </m.div>
 
         {/* Contribution ways */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -232,7 +232,7 @@ export function OpenSourceCTA(): React.ReactElement {
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {contributionWays.map((way, index) => (
-              <motion.div
+              <m.div
                 key={way.title}
                 className="group glass-heavy rounded-2xl p-6 border border-border/50 hover:border-primary/40 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_15px_30px_-10px_rgba(0,0,0,0.3)] interactive cursor-default"
                 initial={{ opacity: 0, y: 30 }}
@@ -256,10 +256,10 @@ export function OpenSourceCTA(): React.ReactElement {
                   {way.action}
                   <ArrowRight className="h-4 w-4 group-hover/link:translate-x-1 transition-transform" />
                 </Link>
-              </motion.div>
+              </m.div>
             ))}
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </section>
   );

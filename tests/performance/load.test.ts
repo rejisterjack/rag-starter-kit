@@ -87,7 +87,7 @@ export const options = {
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:7392';
 const API_KEY = __ENV.API_KEY || '';
 
-export default function () {
+function loadTest() {
   const headers = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${API_KEY}`,
@@ -131,6 +131,8 @@ export default function () {
 
   sleep(1);
 }
+
+export default loadTest;
 
 // Setup function run once before the test
 export function setup() {
