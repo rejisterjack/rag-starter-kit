@@ -268,4 +268,6 @@ function isTextMimeType(mimeType: string): boolean {
   return textTypes.some((type) => mimeType.startsWith(type));
 }
 
-export default { listFiles, exportFile, getFileContent };
+const googleDriveIntegration = { listFiles, exportFile, getFileContent };
+
+export default googleDriveIntegration;

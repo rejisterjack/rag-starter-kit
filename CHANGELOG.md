@@ -90,7 +90,7 @@ This is the first stable release of `rag-starter-kit` — a production-ready RAG
 - Playwright E2E test suite
 - GitHub Actions CI/CD (CI, E2E, Lighthouse, Security scanning)
 - One-click deploy buttons for Vercel, Railway, and Render
-- Biome for formatting and linting
+- ESLint for linting and Prettier for formatting
 
 **Database**
 - PostgreSQL 16 + pgvector extension

@@ -89,16 +89,16 @@ function App() {
 
 ## Configuration Options
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `apiUrl` | `string` | *(required)* | Base URL of your RAG Starter Kit deployment |
-| `apiKey` | `string` | `""` | API key for authenticating with the public chat endpoint |
-| `title` | `string` | `"Chat"` | Title displayed in the widget header |
-| `placeholder` | `string` | `"Ask a question..."` | Placeholder text for the input field |
-| `primaryColor` | `string` | `"#7c3aed"` | Primary theme color (hex) for bubbles, header, and accents |
-| `position` | `"bottom-right" \| "bottom-left"` | `"bottom-right"` | Position of the floating bubble |
-| `greeting` | `string` | `"Hi! How can I help you today?"` | Initial greeting message |
-| `showSources` | `boolean` | `true` | Whether to show source citations under responses |
+| Option         | Type                              | Default                           | Description                                                |
+| -------------- | --------------------------------- | --------------------------------- | ---------------------------------------------------------- |
+| `apiUrl`       | `string`                          | _(required)_                      | Base URL of your RAG Starter Kit deployment                |
+| `apiKey`       | `string`                          | `""`                              | API key for authenticating with the public chat endpoint   |
+| `title`        | `string`                          | `"Chat"`                          | Title displayed in the widget header                       |
+| `placeholder`  | `string`                          | `"Ask a question..."`             | Placeholder text for the input field                       |
+| `primaryColor` | `string`                          | `"#7c3aed"`                       | Primary theme color (hex) for bubbles, header, and accents |
+| `position`     | `"bottom-right" \| "bottom-left"` | `"bottom-right"`                  | Position of the floating bubble                            |
+| `greeting`     | `string`                          | `"Hi! How can I help you today?"` | Initial greeting message                                   |
+| `showSources`  | `boolean`                         | `true`                            | Whether to show source citations under responses           |
 
 ## Theming and Customization
 
@@ -108,14 +108,14 @@ The widget uses Shadow DOM for complete style isolation. The `primaryColor` opti
 
 For advanced customization, the widget sets CSS custom properties on the host element:
 
-| Variable | Purpose |
-|---|---|
-| `--ragwk-primary` | Primary accent color |
+| Variable                | Purpose                          |
+| ----------------------- | -------------------------------- |
+| `--ragwk-primary`       | Primary accent color             |
 | `--ragwk-primary-hover` | Hover state for primary elements |
-| `--ragwk-primary-light` | Light background tint |
-| `--ragwk-bg` | Panel background color |
-| `--ragwk-text` | Primary text color |
-| `--ragwk-border` | Border color |
+| `--ragwk-primary-light` | Light background tint            |
+| `--ragwk-bg`            | Panel background color           |
+| `--ragwk-text`          | Primary text color               |
+| `--ragwk-border`        | Border color                     |
 
 ### Responsive Behavior
 
@@ -126,24 +126,24 @@ For advanced customization, the widget sets CSS custom properties on the host el
 
 ### Methods
 
-| Method | Description |
-|---|---|
-| `open()` | Open the chat panel |
-| `close()` | Close the chat panel |
-| `toggle()` | Toggle open/closed state |
-| `destroy()` | Remove the widget from the DOM and clean up |
+| Method                | Description                                            |
+| --------------------- | ------------------------------------------------------ |
+| `open()`              | Open the chat panel                                    |
+| `close()`             | Close the chat panel                                   |
+| `toggle()`            | Toggle open/closed state                               |
+| `destroy()`           | Remove the widget from the DOM and clean up            |
 | `on(event, callback)` | Subscribe to an event. Returns an unsubscribe function |
 
 ### Events
 
-| Event | Data | Description |
-|---|---|---|
-| `open` | - | Widget panel opened |
-| `close` | - | Widget panel closed |
-| `message:sent` | `{ content: string }` | User sent a message |
+| Event              | Data                                        | Description                 |
+| ------------------ | ------------------------------------------- | --------------------------- |
+| `open`             | -                                           | Widget panel opened         |
+| `close`            | -                                           | Widget panel closed         |
+| `message:sent`     | `{ content: string }`                       | User sent a message         |
 | `message:received` | `{ content: string, sources?: Citation[] }` | Assistant response received |
-| `error` | `{ error: string }` | An error occurred |
-| `destroy` | - | Widget was destroyed |
+| `error`            | `{ error: string }`                         | An error occurred           |
+| `destroy`          | -                                           | Widget was destroyed        |
 
 ### Event listener example
 
@@ -225,6 +225,7 @@ bun build
 ```
 
 The build outputs:
+
 - `dist/index.js` / `dist/index.mjs` - Vanilla JS entry (CJS + ESM)
 - `dist/react.js` / `dist/react.mjs` - React component entry (CJS + ESM)
 - `dist/index.d.ts` / `dist/react.d.ts` - TypeScript declarations

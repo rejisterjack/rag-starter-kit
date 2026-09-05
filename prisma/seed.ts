@@ -15,6 +15,21 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { hash } from 'bcryptjs';
 import { PrismaClient } from '../src/generated/prisma/client';
 
+export function assertSeedAllowed(environment = process.env): void {
+  if (environment.NODE_ENV === 'production' && environment.SEED_FORCE !== 'true') {
+    throw new Error(
+      'Database seeding is disabled in production. Set SEED_FORCE=true only for an intentional, reviewed seed operation.'
+    );
+  }
+}
+
+try {
+  assertSeedAllowed();
+} catch (error) {
+  console.error(`❌ ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
+}
+
 if (!process.env.DATABASE_URL) {
   console.error('❌ DATABASE_URL must be set');
   process.exit(1);
@@ -49,8 +64,8 @@ RAG Starter Kit is a production-ready, TypeScript-native Retrieval-Augmented Gen
 - OCR support for image-heavy PDFs via Tesseract.js
 
 ### Vector Search
-- Embeddings stored in Qdrant vector database
-- HNSW index for sub-millisecond approximate nearest-neighbour search
+- Embeddings stored in PostgreSQL with the pgvector extension
+- HNSW index for approximate nearest-neighbour search
 - Hybrid search combines vector similarity with full-text keyword matching
 - Configurable similarity threshold and top-K retrieval count
 
@@ -58,7 +73,7 @@ RAG Starter Kit is a production-ready, TypeScript-native Retrieval-Augmented Gen
 - Streaming token generation via Server-Sent Events (SSE)
 - Source citations displayed for every answer
 - Conversation memory across multi-turn sessions
-- Multiple LLM providers: OpenRouter, OpenAI, Anthropic, Ollama
+- OpenRouter model access with configurable retrieval and generation settings
 
 ### Voice Features
 - Speech-to-text via Web Speech API and/or OpenAI Whisper
@@ -84,7 +99,7 @@ Entirely free for self-hosted deployments. Uses OpenRouter free-tier models for 
 
 - Node.js 20 or higher
 - bun 9 or higher
-- A free OpenRouter API key (https://openrouter.ai/keys)
+- An OpenRouter API key (https://openrouter.ai/keys)
 - A free Google AI Studio API key (https://aistudio.google.com/app/apikey)
 
 ## Step 1: Clone the Repository
@@ -309,10 +324,9 @@ Recommended parameters: m=16, ef_construction=64 for most use cases. Increase ef
 - INNGEST_SIGNING_KEY + EVENT_KEY: Background job authentication
 
 ### AI Configuration
-- LLM_PROVIDER: openrouter | openai | anthropic | ollama (default: openrouter)
-- DEFAULT_MODEL: Model identifier string
+- OPENROUTER_API_KEY: LLM API access
+- Model configuration is selected through the OpenRouter integration
 - GOOGLE_GENERATIVE_AI_API_KEY: Required for embeddings
-- OLLAMA_BASE_URL: Local Ollama server URL
 
 ### RAG Tuning
 - MAX_CHUNK_SIZE: 100-4000 (default: 1000)

@@ -155,7 +155,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 | **Testing** | [Vitest](https://vitest.dev/) + [Playwright](https://playwright.dev/) |
 | **Analytics** | [Plausible](https://plausible.io/) + [PostHog](https://posthog.com/) (optional) |
 | **DevOps** | [Vercel](https://vercel.com/) |
-| **Linting** | [Biome](https://biomejs.dev/) |
+| **Linting** | ESLint + Prettier |
 
 ---
 

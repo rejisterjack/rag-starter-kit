@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { domAnimation, LazyMotion } from 'framer-motion';
+import type { Session } from 'next-auth';
 import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider } from 'next-themes';
 import { type ReactNode, useState } from 'react';
@@ -15,13 +16,15 @@ import { PlausibleProvider } from './providers/plausible-provider';
  */
 interface ProvidersProps {
   children: ReactNode;
+  /** Server-fetched session used to seed SessionProvider (prevents hydration mismatch) */
+  session?: Session | null;
 }
 
 /**
  * Root providers component that wraps the application with all necessary context providers
  * Includes: React Query, Theme Provider, PWA/Offline Provider, Plausible Analytics
  */
-export function Providers({ children }: ProvidersProps): React.ReactElement {
+export function Providers({ children, session }: ProvidersProps): React.ReactElement {
   // Ensure QueryClient is only created once per component lifecycle
   const [queryClient] = useState(
     () =>
@@ -40,7 +43,7 @@ export function Providers({ children }: ProvidersProps): React.ReactElement {
   );
 
   return (
-    <SessionProvider refetchOnWindowFocus={false} refetchWhenOffline={false}>
+    <SessionProvider session={session} refetchOnWindowFocus={false} refetchWhenOffline={false}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider
           attribute="class"

@@ -254,4 +254,6 @@ function isMarkdownOrTextFile(filename: string): boolean {
   return extensions.some((ext) => lower.endsWith(ext));
 }
 
-export default { listUserRepos, getRepoReadme, getRepoDocs, getFileContent };
+const githubIntegration = { listUserRepos, getRepoReadme, getRepoDocs, getFileContent };
+
+export default githubIntegration;

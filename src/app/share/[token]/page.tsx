@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { apiFetch } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
 interface SharedMessage {
@@ -61,15 +62,8 @@ export default function SharedChatPage() {
   useEffect(() => {
     async function fetchSharedChat() {
       try {
-        const response = await fetch(`/api/share/${token}`);
-        const result = await response.json();
-
-        if (!response.ok) {
-          setError(result.error || 'Failed to load shared chat');
-          return;
-        }
-
-        setData(result.data);
+        const data = await apiFetch<ShareData>(`/api/share/${token}`);
+        setData(data);
       } catch (_error: unknown) {
         setError('Failed to load shared chat');
       } finally {

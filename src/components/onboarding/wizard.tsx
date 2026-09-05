@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { apiFetch } from '@/lib/api-client';
 
 const workspaceSchema = z.object({
   name: z.string().min(2, 'Workspace name must be at least 2 characters'),
@@ -90,22 +91,16 @@ export function OnboardingWizard({ user: _user }: OnboardingWizardProps) {
   const onSubmitWorkspace = async (data: WorkspaceFormData) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/workspaces', {
+      const result = await apiFetch<{ workspace: { id: string } }>('/api/workspaces', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to create workspace');
-      }
-
-      const result = await response.json();
-      setWorkspaceId(result.data.workspace.id);
+      setWorkspaceId(result.workspace.id);
 
       // Set RAG settings
-      await fetch(`/api/workspaces/${result.data.workspace.id}/rag-settings`, {
+      await apiFetch(`/api/workspaces/${result.workspace.id}/rag-settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -137,14 +132,10 @@ export function OnboardingWizard({ user: _user }: OnboardingWizardProps) {
       formData.append('file', file);
       formData.append('workspaceId', workspaceId);
 
-      const response = await fetch('/api/ingest', {
+      await apiFetch('/api/ingest', {
         method: 'POST',
         body: formData,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload document');
-      }
 
       setUploadedDocument(true);
       toast.success('Document uploaded successfully!');

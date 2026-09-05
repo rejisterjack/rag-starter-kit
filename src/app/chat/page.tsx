@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChatContainer } from '@/components/chat/chat-container';
 import { ChatSidebar } from '@/components/chat/chat-sidebar';
 import type { Source } from '@/components/chat/citations';
@@ -59,7 +59,7 @@ export default function ChatPage(): React.ReactElement {
     },
   });
 
-  const documents = documentsQuery.data || [];
+  const documents = useMemo(() => documentsQuery.data || [], [documentsQuery.data]);
 
   const {
     messages,

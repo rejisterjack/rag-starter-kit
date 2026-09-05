@@ -7,6 +7,7 @@ export const publicChatHistorySchema = z.object({
 
 export const publicChatRequestSchema = z.object({
   question: z.string().min(1, 'Question is required').max(4000, 'Question too long'),
+  workspaceId: z.string().min(1, 'Workspace ID cannot be empty').optional(),
   conversationId: z.string().optional(),
   history: z.array(publicChatHistorySchema).optional(),
   config: z

@@ -186,12 +186,7 @@ export interface VoiceCommand {
  * Built-in voice commands
  */
 export type BuiltInVoiceCommand =
-  | 'new-chat'
-  | 'send-message'
-  | 'clear-chat'
-  | 'stop-speaking'
-  | 'help'
-  | 'settings';
+  'new-chat' | 'send-message' | 'clear-chat' | 'stop-speaking' | 'help' | 'settings';
 
 // =============================================================================
 // Voice Settings Types

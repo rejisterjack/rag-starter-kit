@@ -137,7 +137,7 @@ async function preprocessImage(imageData: Buffer | string): Promise<unknown> {
   }
 
   // Process image with CLIP processor
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const processed = await (processor as (data: Buffer) => Promise<unknown>)(imageData);
   return processed;
 }
@@ -162,7 +162,7 @@ export async function generateImageEmbedding(imageBuffer: Buffer | string): Prom
     const processed = await preprocessImage(imageBuffer);
 
     // Generate embedding
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const output = await (
       model as (input: unknown) => Promise<{ image_embeds: { data: Float32Array } }>
     )(processed);
@@ -240,11 +240,11 @@ export async function generateTextEmbeddingForImageSearch(text: string): Promise
     const { model, processor } = await loadCLIPModel();
 
     // Process text
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const processed = await (processor as (text: string) => Promise<unknown>)(text);
 
     // Generate embedding
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const output = await (
       model as (input: unknown) => Promise<{ text_embeds: { data: Float32Array } }>
     )(processed);

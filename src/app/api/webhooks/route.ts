@@ -115,11 +115,11 @@ export const GET = withApiAuth(async (req, session) => {
       return apiError('BAD_REQUEST', 'workspaceId query parameter is required', 400);
     }
 
-    // Check if user has permission to manage API keys in this workspace
+    // Check if user has permission to manage webhooks in this workspace
     const hasPermission = await checkPermission(
       session.user.id,
       workspaceId,
-      Permission.MANAGE_API_KEYS
+      Permission.MANAGE_WEBHOOKS
     );
 
     if (!hasPermission) {
@@ -211,11 +211,11 @@ export const POST = withApiAuth(async (req, session) => {
       throw error;
     }
 
-    // Check if user has permission to manage API keys in this workspace
+    // Check if user has permission to manage webhooks in this workspace
     const hasPermission = await checkPermission(
       session.user.id,
       validatedInput.workspaceId,
-      Permission.MANAGE_API_KEYS
+      Permission.MANAGE_WEBHOOKS
     );
 
     if (!hasPermission) {

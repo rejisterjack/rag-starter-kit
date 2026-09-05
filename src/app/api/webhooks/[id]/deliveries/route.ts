@@ -15,7 +15,7 @@ import { checkPermission, Permission } from '@/lib/workspace/permissions';
 const querySchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(50),
   offset: z.coerce.number().min(0).default(0),
-  status: z.enum(['PENDING', 'DELIVERED', 'FAILED', 'RETRYING']).optional(),
+  status: z.enum(['PENDING', 'DELIVERED', 'FAILED', 'RETRYING']).nullish(),
 });
 
 export async function GET(
@@ -31,17 +31,24 @@ export async function GET(
     const { id: webhookId } = await params;
     const { searchParams } = new URL(req.url);
 
-    const query = querySchema.safeParse({
-      limit: searchParams.get('limit'),
-      offset: searchParams.get('offset'),
-      status: searchParams.get('status'),
-    });
+    // searchParams.get() returns null when a param is absent; strip nulls so
+    // .default()/nullish behave as intended instead of failing invalid_type
+    const rawQuery: Record<string, string> = {};
+    const limitParam = searchParams.get('limit');
+    const offsetParam = searchParams.get('offset');
+    const statusParam = searchParams.get('status');
+    if (limitParam !== null) rawQuery.limit = limitParam;
+    if (offsetParam !== null) rawQuery.offset = offsetParam;
+    if (statusParam !== null && statusParam !== '') rawQuery.status = statusParam;
+
+    const query = querySchema.safeParse(rawQuery);
 
     if (!query.success) {
       return apiError('BAD_REQUEST', 'Invalid query parameters', 400, query.error.errors);
     }
 
-    const { limit, offset, status } = query.data;
+    const { limit, offset, status: maybeStatus } = query.data;
+    const status = maybeStatus ?? undefined;
 
     // Get webhook to check permissions
     const webhook = await prisma.webhook.findUnique({

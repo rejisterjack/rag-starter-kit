@@ -8,13 +8,11 @@
  * ## Supported Providers
  *
  * ### Chat/Completion (LLM)
- * - **OpenRouter** - Access to multiple free models (DeepSeek, Mistral, Llama)
- * - **OpenAI** - GPT-4, GPT-3.5-turbo
+ * - **OpenRouter** - Access to multiple free models (Nemotron, Gemma, GLM) — the only chat provider
  * - **Ollama** - Self-hosted local models
  *
  * ### Embeddings
  * - **Google Gemini** - Free tier (1,500 req/day), 768 dimensions
- * - **OpenAI** - text-embedding-3 series
  * - **Local** - Transformers.js on-device
  *
  * ## Quick Start
@@ -47,7 +45,6 @@
 
 import { createHash } from 'node:crypto';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createOpenAI } from '@ai-sdk/openai';
 import { openrouter } from '@openrouter/ai-sdk-provider';
 import {
   embed,
@@ -76,133 +73,24 @@ if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
 }
 const googleAI = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY });
 
-// Groq provider — ultra-fast LPU inference (free tier with rate limits)
-// Get API key: https://console.groq.com/keys
-const groq = process.env.GROQ_API_KEY
-  ? createOpenAI({
-      apiKey: process.env.GROQ_API_KEY,
-      baseURL: 'https://api.groq.com/openai/v1',
-    })
-  : null;
-
-// NVIDIA NIM provider — high-quality models via DGX Cloud (free tier with rate limits)
-// Get API key: https://build.nvidia.com/settings/api-keys
-const nvidia = process.env.NVIDIA_API_KEY
-  ? createOpenAI({
-      apiKey: process.env.NVIDIA_API_KEY,
-      baseURL: 'https://integrate.api.nvidia.com/v1',
-    })
-  : null;
-
-// Cerebras provider — fastest inference on the planet (~2200 tok/s, 1M tokens/day free)
-// Get API key: https://cloud.cerebras.ai
-const cerebras = process.env.CEREBRAS_API_KEY
-  ? createOpenAI({
-      apiKey: process.env.CEREBRAS_API_KEY,
-      baseURL: 'https://api.cerebras.ai/v1',
-    })
-  : null;
-
-// SambaNova provider — fast Llama & DeepSeek models (free tier)
-// Get API key: https://cloud.sambanova.ai
-const sambanova = process.env.SAMBANOVA_API_KEY
-  ? createOpenAI({
-      apiKey: process.env.SAMBANOVA_API_KEY,
-      baseURL: 'https://api.sambanova.ai/v1',
-    })
-  : null;
-
-// Mistral provider — Codestral + Mistral Large (free experiment plan)
-// Get API key: https://console.mistral.ai
-const mistral = process.env.MISTRAL_API_KEY
-  ? createOpenAI({
-      apiKey: process.env.MISTRAL_API_KEY,
-      baseURL: 'https://api.mistral.ai/v1',
-    })
-  : null;
-
 /**
  * BEST OpenRouter FREE Models - Ranked by Performance
  * All available at: https://openrouter.ai/models?max_price=0
- * Last verified: 2026-05-05
+ * Last verified live: 2026-08-30
  */
 export const BEST_FREE_MODELS = {
   // 🥇 TIER 1: Best Overall Performance (confirmed working)
-  PRIMARY_CHAT: 'google/gemma-3-12b-it:free', // Fast, reliable, Google AI Studio
+  PRIMARY_CHAT: 'nvidia/nemotron-3.5-lightning:free', // Fast, reliable, verified live
 
   // 🥈 TIER 2: Great Performance
-  GPT_OSS_120B: 'openai/gpt-oss-120b:free', // OpenAI OSS — very capable
-  GPT_OSS_20B: 'openai/gpt-oss-20b:free', // Smaller, faster OSS variant
+  NEMOTRON_SUPER: 'nvidia/nemotron-3-super-120b-a12b:free', // Verified live, strong quality
+  GEMMA_4_26B: 'google/gemma-4-26b-a4b-it:free', // Google, verified available
 
   // 🥉 TIER 3: Good Alternatives
-  GEMMA_3_27B: 'google/gemma-3-27b-it:free', // Google, larger Gemma variant
-  LLAMA_3_3_70B: 'meta-llama/llama-3.3-70b-instruct:free', // Meta's best free model
+  GLM_5_2: 'z-ai/glm-5.2:free', // Capable, occasionally rate-limited
 
   // 🏅 TIER 4: Fallback options
-  LLAMA_3_2_3B: 'meta-llama/llama-3.2-3b-instruct:free', // Small but fast
-  HERMES_405B: 'nousresearch/hermes-3-llama-3.1-405b:free', // Very capable but slow
-} as const;
-
-/**
- * Groq free models — ultra-fast LPU inference
- * Requires GROQ_API_KEY from https://console.groq.com/keys
- */
-export const GROQ_MODELS = {
-  LLAMA_3_3_70B: 'llama-3.3-70b-versatile',
-  LLAMA_4_SCOUT: 'meta-llama/llama-4-scout-17b-16e-instruct',
-  QWEN3_32B: 'qwen/qwen3-32b',
-  GEMMA_2_9B: 'gemma2-9b-it',
-  MIXTRAL_8x7B: 'mixtral-8x7b-32768',
-  LLAMA_3_1_8B: 'llama-3.1-8b-instant',
-} as const;
-
-/**
- * NVIDIA NIM free models — high-quality reasoning on DGX Cloud
- * Requires NVIDIA_API_KEY from https://build.nvidia.com/settings/api-keys
- */
-export const NVIDIA_MODELS = {
-  NEMOTRON_70B: 'nvidia/llama-3.1-nemotron-70b-instruct',
-  DEEPSEEK_R1: 'deepseek-ai/deepseek-r1',
-  LLAMA_3_1_70B: 'meta/llama-3.1-70b-instruct',
-  LLAMA_3_1_8B: 'meta/llama-3.1-8b-instruct',
-  MIXTRAL_8x22B: 'mistralai/mixtral-8x22b-instruct-v0.1',
-  NEMOTRON_NANO: 'nvidia/nemotron-nano-9b-v2',
-} as const;
-
-/**
- * Cerebras free models — fastest inference on the planet (~2200 tok/s)
- * 1M tokens/day free, no credit card required.
- * Get API key: https://cloud.cerebras.ai
- */
-export const CEREBRAS_MODELS = {
-  LLAMA_3_1_8B: 'llama3.1-8b',
-  LLAMA_4_SCOUT: 'llama-4-scout-17b-16e-instruct',
-  GPT_OSS_120B: 'gpt-oss-120b',
-  QWEN_2_5_CODER_32B: 'qwen-2.5-coder-32b',
-} as const;
-
-/**
- * SambaNova free models — fast Llama & DeepSeek models
- * Free tier, no credit card required.
- * Get API key: https://cloud.sambanova.ai
- */
-export const SAMBANOVA_MODELS = {
-  DEEPSEEK_V3_1: 'DeepSeek-V3.1',
-  LLAMA_4_MAVERICK: 'Llama-4-Maverick-17B-128E',
-  LLAMA_3_3_70B: 'Meta-Llama-3.3-70B-Instruct',
-  DEEPSEEK_R1: 'DeepSeek-R1',
-} as const;
-
-/**
- * Mistral free models — Codestral + Mistral Large (free experiment plan)
- * Phone verification required, no credit card.
- * Get API key: https://console.mistral.ai
- */
-export const MISTRAL_MODELS = {
-  MISTRAL_LARGE: 'mistral-large-latest',
-  CODESTRAL: 'codestral-latest',
-  MISTRAL_SMALL: 'mistral-small-latest',
-  MISTRAL_NEMO: 'open-mistral-nemo',
+  NEMOTRON_ULTRA: 'nvidia/nemotron-3-ultra-550b-a55b:free', // Very capable but slow
 } as const;
 
 /**
@@ -210,22 +98,22 @@ export const MISTRAL_MODELS = {
  * Routes each AI task to the best provider based on speed, quality, and rate limits.
  *
  * Strategy:
- * - Chat (user-facing): Groq (fastest streaming) → SambaNova (smartest) → NVIDIA → Mistral
- * - Fast tasks (expansion, compression): Cerebras (~2200 tok/s, saves rate limits)
- * - HyDE (needs quality): SambaNova DeepSeek V3.1 → Groq
+ * - All tasks route through OpenRouter free models, with tiered fallbacks
+ * - Fast tasks (expansion, compression): lightweight tier first
+ * - HyDE (needs quality): strongest free tier first
  * - Reranking: Cohere Rerank API (purpose-built)
  * - Embeddings: Google Gemini (free, high quality)
  */
 export const TASK_MODELS = {
   // Fast internal tasks (query expansion, compression, sub-queries)
-  FAST_TASK: `cerebras/${CEREBRAS_MODELS.LLAMA_3_1_8B}`,
-  FAST_TASK_FALLBACK_1: `groq/${GROQ_MODELS.LLAMA_3_1_8B}`,
-  FAST_TASK_FALLBACK_2: BEST_FREE_MODELS.LLAMA_3_2_3B,
+  FAST_TASK: BEST_FREE_MODELS.PRIMARY_CHAT,
+  FAST_TASK_FALLBACK_1: BEST_FREE_MODELS.NEMOTRON_SUPER,
+  FAST_TASK_FALLBACK_2: BEST_FREE_MODELS.GEMMA_4_26B,
 
   // HyDE (needs quality hypothetical documents)
-  HYDE: `sambanova/${SAMBANOVA_MODELS.DEEPSEEK_V3_1}`,
-  HYDE_FALLBACK_1: `groq/${GROQ_MODELS.LLAMA_3_3_70B}`,
-  HYDE_FALLBACK_2: BEST_FREE_MODELS.PRIMARY_CHAT,
+  HYDE: BEST_FREE_MODELS.NEMOTRON_SUPER,
+  HYDE_FALLBACK_1: BEST_FREE_MODELS.PRIMARY_CHAT,
+  HYDE_FALLBACK_2: BEST_FREE_MODELS.GLM_5_2,
 } as const;
 
 export type AITask = 'fast' | 'hyde' | 'chat';
@@ -255,30 +143,14 @@ export async function getModelsForTask(task: AITask): Promise<string[]> {
 /**
  * Model fallback chain for resilience
  * Automatically tries next model if one fails/rate-limits.
- * Prioritizes providers with dedicated API keys for best performance.
+ * OpenRouter free models only — all verified live 2026-08-30.
  */
 export const MODEL_FALLBACK_CHAIN = [
-  // Groq: ultra-fast LPU inference — best for real-time streaming
-  `groq/${GROQ_MODELS.LLAMA_3_3_70B}`,
-  `groq/${GROQ_MODELS.LLAMA_4_SCOUT}`,
-  // SambaNova: DeepSeek V3.1 — top open-source quality
-  `sambanova/${SAMBANOVA_MODELS.DEEPSEEK_V3_1}`,
-  `sambanova/${SAMBANOVA_MODELS.LLAMA_3_3_70B}`,
-  // NVIDIA: Nemotron 70B — high-quality reasoning on DGX Cloud
-  `nvidia-nim/${NVIDIA_MODELS.NEMOTRON_70B}`,
-  `nvidia-nim/${NVIDIA_MODELS.DEEPSEEK_R1}`,
-  // Mistral: Large — strong general + multilingual
-  `mistral/${MISTRAL_MODELS.MISTRAL_LARGE}`,
-  // Cerebras: fastest inference (~2200 tok/s)
-  `cerebras/${CEREBRAS_MODELS.LLAMA_4_SCOUT}`,
-  `cerebras/${CEREBRAS_MODELS.GPT_OSS_120B}`,
-  // OpenRouter: always available free models (fallback)
   BEST_FREE_MODELS.PRIMARY_CHAT,
-  BEST_FREE_MODELS.GPT_OSS_120B,
-  BEST_FREE_MODELS.GPT_OSS_20B,
-  BEST_FREE_MODELS.GEMMA_3_27B,
-  BEST_FREE_MODELS.LLAMA_3_3_70B,
-  BEST_FREE_MODELS.LLAMA_3_2_3B,
+  BEST_FREE_MODELS.NEMOTRON_SUPER,
+  BEST_FREE_MODELS.GEMMA_4_26B,
+  BEST_FREE_MODELS.GLM_5_2,
+  BEST_FREE_MODELS.NEMOTRON_ULTRA,
 ];
 
 export const defaultAIConfig: RAGConfig = {
@@ -423,40 +295,9 @@ export async function generateTaskCompletion(
 
 /**
  * Resolve a model ID to the appropriate AI SDK language model instance.
- * Routes to the correct provider based on model prefix.
+ * All models route through OpenRouter.
  */
 export function resolveModel(modelId: string): LanguageModelV1 | null {
-  // Groq models (prefix: "groq/")
-  if (modelId.startsWith('groq/')) {
-    if (!groq) return null;
-    return groq(modelId.slice(5));
-  }
-
-  // NVIDIA NIM models (prefix: "nvidia-nim/")
-  if (modelId.startsWith('nvidia-nim/')) {
-    if (!nvidia) return null;
-    return nvidia(modelId.slice(11));
-  }
-
-  // Cerebras models (prefix: "cerebras/")
-  if (modelId.startsWith('cerebras/')) {
-    if (!cerebras) return null;
-    return cerebras(modelId.slice(9));
-  }
-
-  // SambaNova models (prefix: "sambanova/")
-  if (modelId.startsWith('sambanova/')) {
-    if (!sambanova) return null;
-    return sambanova(modelId.slice(10));
-  }
-
-  // Mistral models (prefix: "mistral/")
-  if (modelId.startsWith('mistral/')) {
-    if (!mistral) return null;
-    return mistral(modelId.slice(8));
-  }
-
-  // Default: OpenRouter
   return openrouter(modelId);
 }
 

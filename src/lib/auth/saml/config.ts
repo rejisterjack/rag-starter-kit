@@ -80,11 +80,7 @@ export interface AttributeMapping {
  * Supported signature algorithms
  */
 export type SignatureAlgorithm =
-  | 'rsa-sha256'
-  | 'rsa-sha512'
-  | 'rsa-sha1'
-  | 'ecdsa-sha256'
-  | 'eddsa-ed25519';
+  'rsa-sha256' | 'rsa-sha512' | 'rsa-sha1' | 'ecdsa-sha256' | 'eddsa-ed25519';
 
 /**
  * Supported digest algorithms

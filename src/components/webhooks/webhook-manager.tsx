@@ -1,6 +1,7 @@
 'use client';
 
-import { Plus, Trash2 } from 'lucide-react';
+import { FileClock, Plus, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -25,8 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-// import { cn } from '@/lib/utils';
+import { WebhookEvents } from '@/lib/webhooks/events';
 
 interface WebhookConfig {
   id: string;
@@ -48,12 +48,15 @@ interface WebhookManagerProps {
 }
 
 const AVAILABLE_EVENTS = [
-  'chat.created',
-  'chat.message_sent',
-  'document.uploaded',
-  'document.processed',
-  'workspace.member_joined',
-  'workspace.member_left',
+  WebhookEvents.DOCUMENT_CREATED,
+  WebhookEvents.DOCUMENT_PROCESSED,
+  WebhookEvents.DOCUMENT_PROCESSING_FAILED,
+  WebhookEvents.CHAT_CREATED,
+  WebhookEvents.CHAT_MESSAGE_SENT,
+  WebhookEvents.MEMBER_JOINED,
+  WebhookEvents.MEMBER_LEFT,
+  WebhookEvents.API_KEY_CREATED,
+  WebhookEvents.API_KEY_REVOKED,
 ];
 
 export function WebhookManager({
@@ -63,6 +66,7 @@ export function WebhookManager({
   onDelete,
   onRegenerateSecret: _onRegenerateSecret,
 }: WebhookManagerProps) {
+  const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
   const [newWebhook, setNewWebhook] = useState<{
     name: string;
@@ -208,7 +212,22 @@ export function WebhookManager({
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => onDelete(webhook.id)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="View delivery logs"
+                        onClick={() =>
+                          router.push(`/chat/settings/webhooks/${webhook.id}/deliveries`)
+                        }
+                      >
+                        <FileClock className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Delete webhook"
+                        onClick={() => onDelete(webhook.id)}
+                      >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>

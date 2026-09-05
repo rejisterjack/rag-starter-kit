@@ -552,11 +552,7 @@ export async function checkIngestionHealth(): Promise<{
   };
 }
 
-export type {
-  ExtractedImage,
-  ImageProcessingResult,
-  ProcessedImage,
-} from './image-pipeline';
+export type { ExtractedImage, ImageProcessingResult, ProcessedImage } from './image-pipeline';
 // Export image pipeline functions
 export {
   deleteDocumentImages,

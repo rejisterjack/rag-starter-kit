@@ -5,19 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { ApiError, apiFetch } from '@/lib/api-client';
 
 // =============================================================================
 // Types
 // =============================================================================
-
-interface InvitationResponse {
-  success: boolean;
-  error?: string;
-  workspace?: {
-    id: string;
-    name: string;
-  };
-}
 
 // =============================================================================
 // Main Component (wrapped in Suspense for useSearchParams)
@@ -60,19 +52,24 @@ function InviteAcceptContent(): React.ReactElement {
 
   const checkInvitation = useCallback(async (inviteToken: string) => {
     try {
-      const response = await fetch(`/api/invite/validate?token=${encodeURIComponent(inviteToken)}`);
-      const data = await response.json();
+      const data = await apiFetch<{ workspace?: { id: string; name: string } }>(
+        `/api/invite/validate?token=${encodeURIComponent(inviteToken)}`
+      );
 
-      if (data.success) {
+      if (data.workspace) {
         setWorkspace(data.workspace);
         setStatus('ready');
       } else {
         setStatus('error');
-        setError(data.error || 'Invalid or expired invitation.');
+        setError('Invalid or expired invitation.');
       }
-    } catch (_error: unknown) {
+    } catch (err) {
       setStatus('error');
-      setError('Failed to validate invitation. Please try again.');
+      setError(
+        err instanceof ApiError
+          ? err.message || 'Invalid or expired invitation.'
+          : 'Failed to validate invitation. Please try again.'
+      );
     }
   }, []);
 
@@ -94,7 +91,7 @@ function InviteAcceptContent(): React.ReactElement {
     setStatus('accepting');
 
     try {
-      const response = await fetch('/api/invite/accept', {
+      await apiFetch('/api/invite/accept', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,22 +99,19 @@ function InviteAcceptContent(): React.ReactElement {
         body: JSON.stringify({ token }),
       });
 
-      const data: InvitationResponse = await response.json();
-
-      if (data.success) {
-        setStatus('success');
-        // Redirect to workspace after a short delay
-        setTimeout(() => {
-          router.push('/chat');
-          router.refresh();
-        }, 2000);
-      } else {
-        setStatus('error');
-        setError(data.error || 'Failed to accept invitation.');
-      }
-    } catch (_error: unknown) {
+      setStatus('success');
+      // Redirect to workspace after a short delay
+      setTimeout(() => {
+        router.push('/chat');
+        router.refresh();
+      }, 2000);
+    } catch (err) {
       setStatus('error');
-      setError('An error occurred. Please try again.');
+      setError(
+        err instanceof ApiError
+          ? err.message || 'Failed to accept invitation.'
+          : 'An error occurred. Please try again.'
+      );
     }
   };
 

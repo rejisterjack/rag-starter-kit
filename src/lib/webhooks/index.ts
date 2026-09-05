@@ -4,12 +4,7 @@
  * Provides utilities for webhook management and delivery.
  */
 
-export type {
-  DeliveryResult,
-  WebhookDeliveryOptions,
-  WebhookEventType,
-  WebhookPayload,
-} from './delivery';
+export type { DeliveryResult, WebhookDeliveryOptions, WebhookPayload } from './delivery';
 // Delivery
 export {
   buildWebhookPayload,
@@ -17,11 +12,13 @@ export {
   deliverWebhook,
   generateWebhookSecret,
   generateWebhookSignature,
-  getAvailableWebhookEvents,
+  recordDelivery,
   testWebhook,
   verifyWebhookSignature,
-  WebhookEvents,
 } from './delivery';
+export type { WebhookEventType } from './events';
+// Event types (client-safe)
+export { getAvailableWebhookEvents, WebhookEvents } from './events';
 // Idempotency
 export {
   checkIdempotencyKey,

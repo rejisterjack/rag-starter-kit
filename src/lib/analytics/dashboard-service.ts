@@ -189,7 +189,7 @@ export class DashboardService {
                count(*)::int AS chat_count,
                coalesce(sum("totalTokens"), 0)::int AS token_usage,
                coalesce(avg("latencyMs"), 0)::float AS avg_latency
-        FROM "RAGEvent"
+        FROM rag_events
         WHERE "createdAt" >= ${from} AND "createdAt" <= ${to}
         ${workspaceFilter}
         GROUP BY bucket
@@ -198,7 +198,7 @@ export class DashboardService {
       prisma.$queryRaw<Array<{ bucket: Date; error_count: number }>>`
         SELECT date_trunc(${truncUnit}, "createdAt") AS bucket,
                count(*)::int AS error_count
-        FROM "AuditLog"
+        FROM audit_logs
         WHERE severity = 'ERROR'
           AND "createdAt" >= ${from}
           AND "createdAt" <= ${to}

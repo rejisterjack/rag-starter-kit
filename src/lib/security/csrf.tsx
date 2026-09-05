@@ -19,13 +19,15 @@ import { logger } from '@/lib/logger';
 // Configuration
 // =============================================================================
 
-const _csrfSecretSource = process.env.CSRF_SECRET || process.env.NEXTAUTH_SECRET;
+const _csrfSecretSource = process.env.CSRF_SECRET;
 
-if (!_csrfSecretSource && process.env.NODE_ENV === 'production') {
-  throw new Error('CSRF_SECRET or NEXTAUTH_SECRET must be set in production');
+if (!_csrfSecretSource) {
+  throw new Error(
+    'CSRF_SECRET is required and must be set explicitly. Do not use an auth secret or dev-only fallback.'
+  );
 }
 
-const CSRF_SECRET = _csrfSecretSource || 'dev-only-insecure-csrf-secret';
+const CSRF_SECRET = _csrfSecretSource;
 
 const CSRF_COOKIE_NAME = 'csrf_token';
 const TOKEN_VERSION = 'v2'; // For future upgrades
@@ -309,7 +311,10 @@ export function CsrfTokenScript({ nonce }: CsrfTokenScriptProps): React.ReactEle
               try {
                 const response = await fetch('/api/csrf/token');
                 if (response.ok) {
-                  const { token } = await response.json();
+                  const body = await response.json();
+                  // Endpoint returns { success, data: { token } } — unwrap the envelope
+                  const token = body && body.data ? body.data.token : body && body.token;
+                  if (!token) return;
                   // Set token in all forms
                   document.querySelectorAll('input[name="_csrf"]').forEach(input => {
                     input.value = token;

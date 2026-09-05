@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useConnectivity } from '@/hooks/use-connectivity';
 import { useConversations } from '@/hooks/use-conversations';
+import { apiFetch } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { ConversationActions } from './conversation-actions';
 
@@ -161,12 +162,13 @@ export function ConversationHistoryList({
       if (searchCancelledRef.current) return;
       setIsSearching(true);
       try {
-        const response = await fetch(
+        const data = await apiFetch<{ items?: ConversationSummary[] }>(
           `/api/chats?limit=50&search=${encodeURIComponent(searchQuery.trim())}`
         );
-        if (!response.ok) throw new Error('Search failed');
-        const json = await response.json();
-        if (!searchCancelledRef.current) setSearchConversations(json.data as ConversationSummary[]);
+        if (!searchCancelledRef.current)
+          setSearchConversations(
+            Array.isArray(data.items) ? data.items : ([] as ConversationSummary[])
+          );
       } catch {
         if (!searchCancelledRef.current) toast.error('Search failed');
       } finally {
@@ -191,10 +193,9 @@ export function ConversationHistoryList({
     async (chatId: string) => {
       setDeletingId(chatId);
       try {
-        const response = await fetch(`/api/chat?chatId=${encodeURIComponent(chatId)}`, {
+        await apiFetch(`/api/chat?chatId=${encodeURIComponent(chatId)}`, {
           method: 'DELETE',
         });
-        if (!response.ok) throw new Error('Failed to delete conversation');
 
         setSearchConversations((prev: ConversationSummary[]) =>
           prev.filter((c) => c.id !== chatId)

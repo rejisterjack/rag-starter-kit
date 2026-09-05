@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import { ApiError, apiFetch } from '@/lib/api-client';
 
 const workspaceSchema = z.object({
   name: z.string().min(2, 'Workspace name must be at least 2 characters').max(50),
@@ -76,22 +77,15 @@ export default function NewWorkspacePage() {
     setIsLoading(true);
     try {
       // Create workspace
-      const response = await fetch('/api/workspaces', {
+      const result = await apiFetch<{ workspace: { id: string } }>('/api/workspaces', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to create workspace');
-      }
-
-      const result = await response.json();
-      const workspace = result.data.workspace;
+      const workspace = result.workspace;
 
       // Configure RAG settings
-      await fetch(`/api/workspaces/${workspace.id}/rag-settings`, {
+      await apiFetch(`/api/workspaces/${workspace.id}/rag-settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -101,22 +95,53 @@ export default function NewWorkspacePage() {
           topK: 5,
           similarityThreshold: 0.7,
         }),
+      }).catch(() => {
+        // Non-fatal: workspace exists, settings can be edited later
+        toast.error('Workspace created, but RAG settings failed to save');
       });
 
-      // Send invites if provided
+      // Send invites if provided — the members API takes one
+      // { email, role } per request, not a batch { emails: [...] }
       if (inviteEmails.trim()) {
-        const emails = inviteEmails.split(',').map((e) => e.trim());
-        await fetch(`/api/workspaces/${workspace.id}/members`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ emails }),
-        });
+        const emails = inviteEmails
+          .split(',')
+          .map((e) => e.trim())
+          .filter(Boolean);
+
+        const inviteResults = await Promise.allSettled(
+          emails.map((email) =>
+            apiFetch(`/api/workspaces/${workspace.id}/members`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, role: 'MEMBER' }),
+            })
+              .then(() => email)
+              .catch(() => {
+                throw new Error(email);
+              })
+          )
+        );
+
+        const failures = inviteResults
+          .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+          .map((r) => (r.reason instanceof Error ? r.reason.message : 'unknown'));
+
+        if (failures.length > 0) {
+          toast.error(`Some invites failed: ${failures.join(', ')}`);
+        }
       }
 
       toast.success('Workspace created successfully!');
       router.push('/chat');
+      router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create workspace');
+      toast.error(
+        error instanceof ApiError && error.message
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to create workspace'
+      );
     } finally {
       setIsLoading(false);
     }

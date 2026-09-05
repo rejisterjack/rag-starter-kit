@@ -118,17 +118,15 @@ export const POST = withApiAuth(async (req, session) => {
       };
 
       const citations: ExportCitation[] | undefined = includeCitations
-        ? parseSources(messageItem.sources).map(
-            (s: SourceItem): ExportCitation => ({
-              id: s.id,
-              chunkId: s.id,
-              documentId: s.metadata?.documentId ?? s.id,
-              documentName: s.metadata?.documentName ?? 'Unknown',
-              page: s.metadata?.page,
-              content: s.content,
-              score: s.similarity ?? 0,
-            })
-          )
+        ? parseSources(messageItem.sources).map((s: SourceItem): ExportCitation => ({
+            id: s.id,
+            chunkId: s.id,
+            documentId: s.metadata?.documentId ?? s.id,
+            documentName: s.metadata?.documentName ?? 'Unknown',
+            page: s.metadata?.page,
+            content: s.content,
+            score: s.similarity ?? 0,
+          }))
         : undefined;
 
       return {

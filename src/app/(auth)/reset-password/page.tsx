@@ -9,6 +9,7 @@ import { Suspense, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { apiFetch } from '@/lib/api-client';
 
 export default function ResetPasswordPage(): React.ReactElement {
   return (
@@ -66,16 +67,11 @@ function ResetPasswordContent(): React.ReactElement {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/reset-password', {
+      await apiFetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password }),
       });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Failed to reset password');
-      }
 
       setIsSuccess(true);
       setTimeout(() => router.push('/login'), 3000);

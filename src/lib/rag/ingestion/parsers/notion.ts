@@ -67,8 +67,7 @@ interface NotionPageResponse {
 function blockToText(block: NotionBlock): string {
   const type = block.type;
   const data = (block as Record<string, unknown>)[type] as
-    | (Record<string, unknown> & { rich_text?: Array<{ plain_text: string }> })
-    | undefined;
+    (Record<string, unknown> & { rich_text?: Array<{ plain_text: string }> }) | undefined;
   if (!data) return '';
 
   const richTexts: Array<{ plain_text: string }> = data.rich_text ?? [];

@@ -52,7 +52,6 @@ export async function parsePDF(buffer: Buffer): Promise<ParsedPDF> {
     // pdf-parse doesn't give us direct page mapping, so we estimate
     const pages = extractPages(text, pageCount);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const info = data.info as Record<string, unknown>;
 
     const metadata: PDFMetadata = {

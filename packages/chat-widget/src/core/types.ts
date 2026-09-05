@@ -86,12 +86,7 @@ export interface ChatApiResponse {
  * Widget event types that consumers can listen to
  */
 export type WidgetEventType =
-  | 'open'
-  | 'close'
-  | 'message:sent'
-  | 'message:received'
-  | 'error'
-  | 'destroy';
+  'open' | 'close' | 'message:sent' | 'message:received' | 'error' | 'destroy';
 
 /**
  * Event callback signature

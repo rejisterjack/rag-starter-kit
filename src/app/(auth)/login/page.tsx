@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { ApiError, apiFetch } from '@/lib/api-client';
 
 // Validation schema
 const loginSchema = z.object({
@@ -136,7 +137,24 @@ function LoginContent(): React.ReactElement {
         body: JSON.stringify({ email: data.email, password: data.password }),
       });
 
-      if (challengeRes.status === 401 || challengeRes.status === 423) {
+      if (challengeRes.status === 423) {
+        // Account locked — surface the lock with remaining time instead of a
+        // generic "invalid credentials" message (D-5)
+        let message = 'Account is locked. Please try again later.';
+        try {
+          const body = await challengeRes.json();
+          const minutes = body?.error?.details?.retryAfterMinutes;
+          if (typeof minutes === 'number' && minutes > 0) {
+            message = `Account is locked. Please try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`;
+          }
+        } catch {
+          // Non-JSON body — keep the default message
+        }
+        setLoginError(message);
+        return;
+      }
+
+      if (challengeRes.status === 401) {
         setLoginError('Invalid email or password');
         return;
       }
@@ -188,21 +206,17 @@ function LoginContent(): React.ReactElement {
     setLoginError(null);
 
     try {
-      const verifyRes = await fetch('/api/auth/mfa/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: mfaCode, challengeToken: mfaChallengeToken }),
-      });
+      const verifyData = await apiFetch<{ completionToken?: string; warning?: string }>(
+        '/api/auth/mfa/verify',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: mfaCode, challengeToken: mfaChallengeToken }),
+        }
+      );
 
-      const verifyData = (await verifyRes.json()) as {
-        success?: boolean;
-        completionToken?: string;
-        error?: string;
-        warning?: string;
-      };
-
-      if (!verifyRes.ok || !verifyData.success || !verifyData.completionToken) {
-        setLoginError(verifyData.error || 'Invalid code');
+      if (!verifyData.completionToken) {
+        setLoginError('Invalid code');
         return;
       }
 
@@ -222,8 +236,10 @@ function LoginContent(): React.ReactElement {
         router.push(callbackUrl);
         router.refresh();
       }
-    } catch {
-      setLoginError('Verification failed. Please try again.');
+    } catch (err) {
+      setLoginError(
+        err instanceof ApiError ? err.message : 'Verification failed. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -252,7 +268,7 @@ function LoginContent(): React.ReactElement {
     }
     setIsResending(true);
     try {
-      await fetch('/api/auth/verify-email', {
+      await apiFetch('/api/auth/verify-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: emailVal }),

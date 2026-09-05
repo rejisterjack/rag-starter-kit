@@ -97,3 +97,29 @@ export async function apiClient<T>(url: string, options?: ApiClientOptions): Pro
 
   return response.json();
 }
+
+/**
+ * Envelope shape returned by every API route via apiSuccess/apiError.
+ */
+export interface ApiEnvelope<T> {
+  success: boolean;
+  data?: T;
+  error?: { code: string; message: string; details?: unknown };
+}
+
+/**
+ * Fetch an API route and return the unwrapped `data` payload.
+ *
+ * Throws ApiError when the route returns a non-2xx status or a
+ * `{ success: false }` envelope, so callers never see the raw envelope.
+ */
+export async function apiFetch<T>(url: string, options?: ApiClientOptions): Promise<T> {
+  const json: ApiEnvelope<T> = await apiClient<ApiEnvelope<T>>(url, options);
+
+  if (!json || typeof json !== 'object' || json.success !== true || json.data === undefined) {
+    // Some routes return non-enveloped payloads (e.g. auth endpoints); pass through.
+    return json as unknown as T;
+  }
+
+  return json.data;
+}

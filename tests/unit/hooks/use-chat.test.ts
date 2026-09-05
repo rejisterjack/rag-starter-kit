@@ -556,7 +556,7 @@ describe('useChat', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ data: mockConversations }),
+        json: async () => ({ success: true, data: { items: mockConversations } }),
       });
 
       const { result } = renderHook(() => useChat());

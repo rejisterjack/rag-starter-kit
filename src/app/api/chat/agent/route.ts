@@ -136,7 +136,7 @@ async function getModel(modelName: string): Promise<LanguageModel> {
     return asModel<LanguageModel>(openai(modelName));
   }
 
-  // Use centralized dynamic resolver for everything else (Groq, OpenRouter, etc.)
+  // Use centralized dynamic resolver for everything else (OpenRouter)
   const resolved = resolveDynamicModel(modelName);
   if (resolved) return resolved;
 
@@ -1266,7 +1266,6 @@ async function handleReAct(
 ): Promise<Response> {
   const {
     userMessage,
-    history: _history,
     userId,
     workspaceId,
     effectiveConversationId,

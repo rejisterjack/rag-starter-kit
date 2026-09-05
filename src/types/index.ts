@@ -75,15 +75,7 @@ export interface Document {
 }
 
 export type DocumentType =
-  | 'PDF'
-  | 'DOCX'
-  | 'XLSX'
-  | 'PPTX'
-  | 'TXT'
-  | 'MD'
-  | 'HTML'
-  | 'AUDIO'
-  | 'VIDEO';
+  'PDF' | 'DOCX' | 'XLSX' | 'PPTX' | 'TXT' | 'MD' | 'HTML' | 'AUDIO' | 'VIDEO';
 
 export type DocumentStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 

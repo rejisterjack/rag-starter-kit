@@ -33,6 +33,7 @@ export class ApiClient {
       body: JSON.stringify({
         question,
         history,
+        ...(this.workspaceId ? { workspaceId: this.workspaceId } : {}),
       }),
     });
 
@@ -74,6 +75,7 @@ export class ApiClient {
         body: JSON.stringify({
           question,
           history,
+          ...(this.workspaceId ? { workspaceId: this.workspaceId } : {}),
         }),
         signal,
       });
@@ -351,11 +353,7 @@ export class ApiClient {
   /**
    * Fetch with automatic retry on network errors.
    */
-  private async fetchWithRetry(
-    url: string,
-    options: RequestInit,
-    retries = 2
-  ): Promise<Response> {
+  private async fetchWithRetry(url: string, options: RequestInit, retries = 2): Promise<Response> {
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= retries; attempt++) {

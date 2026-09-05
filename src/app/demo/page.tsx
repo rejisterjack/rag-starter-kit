@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { fetchWithCsrf } from '@/lib/security/csrf';
 
 export default function DemoPage(): React.ReactElement {
   const [messages, setMessages] = useState<Array<{ id: string; role: string; content: string }>>([
@@ -30,7 +31,7 @@ export default function DemoPage(): React.ReactElement {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/demo/chat', {
+      const response = await fetchWithCsrf('/api/demo/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: newMessages, stream: false }),

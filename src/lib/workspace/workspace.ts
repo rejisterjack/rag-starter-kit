@@ -1,3 +1,4 @@
+import { updateTag } from 'next/cache';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { APP_URL } from '@/lib/constants';
 import { prisma } from '@/lib/db';
@@ -124,6 +125,10 @@ export async function createWorkspace(
     workspaceId: workspace.id,
     metadata: { name: data.name, slug },
   });
+
+  // Bust the cached workspace lookups so a freshly-created workspace is
+  // visible immediately (session.ts caches with revalidate: 60)
+  updateTag('workspace');
 
   return {
     id: workspace.id,

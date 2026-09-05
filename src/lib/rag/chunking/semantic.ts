@@ -32,9 +32,7 @@ function splitIntoSentences(text: string): string[] {
 export class SemanticChunker implements Chunker {
   private embeddingFunction?: (text: string) => Promise<number[]> | number[];
 
-  constructor(options?: {
-    embeddingFunction?: (text: string) => Promise<number[]> | number[];
-  }) {
+  constructor(options?: { embeddingFunction?: (text: string) => Promise<number[]> | number[] }) {
     this.embeddingFunction = options?.embeddingFunction;
   }
 

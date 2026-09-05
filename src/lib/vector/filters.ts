@@ -9,10 +9,10 @@ export function buildVectorFilter(options: {
   const hasIdentity = Boolean(options.userId || options.workspaceId);
   const hasNested = Boolean(
     options.filters &&
-      (options.filters.documentIds?.length ||
-        options.filters.documentTypes?.length ||
-        options.filters.dateRange ||
-        options.filters.userId)
+    (options.filters.documentIds?.length ||
+      options.filters.documentTypes?.length ||
+      options.filters.dateRange ||
+      options.filters.userId)
   );
 
   if (!hasIdentity && !hasNested) return undefined;

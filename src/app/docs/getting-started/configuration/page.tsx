@@ -289,9 +289,8 @@ export default function ConfigurationPage() {
                   />
                   <EnvRow
                     name="CSRF_SECRET"
-                    required={false}
-                    defaultVal="NEXTAUTH_SECRET"
-                    desc="CSRF token signing key (falls back to NEXTAUTH_SECRET)"
+                    required={true}
+                    desc="Dedicated CSRF token signing key (min 32 characters)"
                   />
                   <EnvRow
                     name="ALLOWED_ORIGINS"

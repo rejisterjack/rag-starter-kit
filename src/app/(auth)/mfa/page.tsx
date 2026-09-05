@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Suspense, useState } from 'react';
+import { ApiError, apiFetch } from '@/lib/api-client';
 
 export default function MfaPage() {
   return (
@@ -32,20 +33,17 @@ function MfaContent() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/mfa/verify', {
+      const data = await apiFetch<{
+        completionToken?: string;
+        warning?: string;
+      }>('/api/auth/mfa/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, challengeToken }),
       });
 
-      const data = (await res.json()) as {
-        success?: boolean;
-        completionToken?: string;
-        error?: string;
-      };
-
-      if (!data.success || !data.completionToken) {
-        setError(data.error || 'Invalid code');
+      if (!data.completionToken) {
+        setError('Invalid code');
         return;
       }
 
@@ -61,8 +59,12 @@ function MfaContent() {
         router.push('/chat');
         router.refresh();
       }
-    } catch {
-      setError('Verification failed. Please try again.');
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.message
+          ? err.message
+          : 'Verification failed. Please try again.'
+      );
     } finally {
       setLoading(false);
     }

@@ -22,8 +22,8 @@ import {
   parsePaginationParams,
   validatePaginationParams,
 } from '@/lib/db/cursor-pagination';
-
 import { withTracing } from '@/lib/tracing/http-middleware';
+import { createDefaultWorkspace } from '@/lib/workspace/workspace';
 
 export const GET = withTracing('api.chats.list', async (request: NextRequest) => {
   const session = await auth();
@@ -31,7 +31,21 @@ export const GET = withTracing('api.chats.list', async (request: NextRequest) =>
     return apiError('UNAUTHORIZED', 'Authentication required', 401);
   }
 
-  const workspace = await getServerSession();
+  let workspace = await getServerSession();
+
+  // Self-heal: users without any workspace (e.g. legacy rows or a failed
+  // post-signup creation) previously got a 404 here, breaking the chat
+  // sidebar. Create a personal workspace and retry once instead.
+  if (!workspace) {
+    try {
+      const userName = session.user.name || session.user.email?.split('@')[0] || 'My';
+      await createDefaultWorkspace(session.user.id, { name: `${userName}'s Workspace` });
+      workspace = await getServerSession({ skipCache: true });
+    } catch {
+      workspace = null;
+    }
+  }
+
   if (!workspace) {
     return apiError('WORKSPACE_NOT_FOUND', 'Workspace not found', 404);
   }

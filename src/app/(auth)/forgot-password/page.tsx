@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { apiFetch } from '@/lib/api-client';
 
 export default function ForgotPasswordPage(): React.ReactElement {
   const [isLoading, setIsLoading] = useState(false);
@@ -21,14 +22,11 @@ export default function ForgotPasswordPage(): React.ReactElement {
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/forgot-password', {
+      await apiFetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error?.message || 'Failed to send reset email');
 
       setIsSubmitted(true);
     } catch (err) {

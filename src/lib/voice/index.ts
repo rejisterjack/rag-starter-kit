@@ -21,11 +21,7 @@ export {
   SUPPORTED_LANGUAGES,
 } from './browser-support';
 // Speech Service
-export {
-  getSpeechService,
-  resetSpeechService,
-  SpeechService,
-} from './speech-service';
+export { getSpeechService, resetSpeechService, SpeechService } from './speech-service';
 // Types
 export type {
   AudioLevelData,
@@ -72,12 +68,7 @@ export type {
   VADStateChangeHandler,
 } from './vad';
 // VAD (Voice Activity Detection)
-export {
-  createVAD,
-  detectAudioActivity,
-  VoiceActivityDetector,
-  waitForVoice,
-} from './vad';
+export { createVAD, detectAudioActivity, VoiceActivityDetector, waitForVoice } from './vad';
 // Wake Word Types
 export type {
   WakeWordEvent,

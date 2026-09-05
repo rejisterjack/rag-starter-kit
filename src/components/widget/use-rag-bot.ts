@@ -46,13 +46,22 @@ function generateId(): string {
  * 2. Vercel AI SDK (no quotes): "0:hello" -> hello
  * 3. Standard SSE: "data: hello" -> hello
  * 4. Raw text (no prefix): "hello" -> hello
+ * Returns STREAM_ERROR_SENTINEL for `e:{...}` error frames so callers can
+ * surface the error instead of rendering the raw frame in the chat bubble.
  */
-function extractTextFromStreamLine(line: string): string | null {
+export const STREAM_ERROR_SENTINEL = Symbol('stream-error');
+
+function extractTextFromStreamLine(line: string): string | null | typeof STREAM_ERROR_SENTINEL {
   const trimmed = line.trim();
   if (!trimmed) return null;
 
   // Skip SSE comments and control lines
   if (trimmed.startsWith(':') || trimmed === '') return null;
+
+  // --- Error frame (server wrapStreamWithErrorFrame) ---
+  if (trimmed.startsWith('e:')) {
+    return STREAM_ERROR_SENTINEL;
+  }
 
   // --- Format 1: Vercel AI SDK text stream (0:"text") ---
   if (trimmed.startsWith('0:')) {
@@ -264,6 +273,9 @@ export function useRAGBot(options: UseRAGBotOptions = {}): UseRAGBotReturn {
 
         for (const line of lines) {
           const text = extractTextFromStreamLine(line);
+          if (text === STREAM_ERROR_SENTINEL) {
+            throw new Error('Stream error from AI model. Please try again.');
+          }
           if (text !== null) {
             receivedAnyContent = true;
             streamingContentRef.current += text;
@@ -278,6 +290,9 @@ export function useRAGBot(options: UseRAGBotOptions = {}): UseRAGBotReturn {
 
       // Process remaining buffer after stream ends
       const remainingText = extractTextFromStreamLine(buffer);
+      if (remainingText === STREAM_ERROR_SENTINEL) {
+        throw new Error('Stream error from AI model. Please try again.');
+      }
       if (remainingText !== null) {
         receivedAnyContent = true;
         streamingContentRef.current += remainingText;

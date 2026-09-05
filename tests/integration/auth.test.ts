@@ -628,33 +628,29 @@ describe('Authentication', () => {
       { role: 'viewer', canDelete: false, canInvite: false, canManageBilling: false },
     ];
 
-    it.each(
-      permissionMatrix
-    )('$role canDelete: $canDelete, canInvite: $canInvite, canManageBilling: $canManageBilling', async ({
-      role,
-      canDelete,
-      canInvite,
-      canManageBilling,
-    }) => {
-      mockPrisma.membership.findFirst = vi.fn().mockResolvedValue({
-        userId: 'user-001',
-        workspaceId: 'ws-1',
-        role,
-      });
-
-      const membership = await mockPrisma.membership.findFirst({
-        where: {
+    it.each(permissionMatrix)(
+      '$role canDelete: $canDelete, canInvite: $canInvite, canManageBilling: $canManageBilling',
+      async ({ role, canDelete, canInvite, canManageBilling }) => {
+        mockPrisma.membership.findFirst = vi.fn().mockResolvedValue({
           userId: 'user-001',
           workspaceId: 'ws-1',
-        },
-      });
+          role,
+        });
 
-      const permissions = getPermissions(membership.role);
+        const membership = await mockPrisma.membership.findFirst({
+          where: {
+            userId: 'user-001',
+            workspaceId: 'ws-1',
+          },
+        });
 
-      expect(permissions.canDelete).toBe(canDelete);
-      expect(permissions.canInvite).toBe(canInvite);
-      expect(permissions.canManageBilling).toBe(canManageBilling);
-    });
+        const permissions = getPermissions(membership.role);
+
+        expect(permissions.canDelete).toBe(canDelete);
+        expect(permissions.canInvite).toBe(canInvite);
+        expect(permissions.canManageBilling).toBe(canManageBilling);
+      }
+    );
 
     it('checks document access permissions', async () => {
       const mockDocument = {

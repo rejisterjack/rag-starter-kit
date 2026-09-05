@@ -187,7 +187,9 @@ export function DocumentCard({
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          !isMutating && onPreview?.(document);
+          if (!isMutating) {
+            onPreview?.(document);
+          }
         }
       }}
       role={onPreview && !isMutating ? 'button' : undefined}

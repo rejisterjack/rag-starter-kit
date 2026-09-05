@@ -4,13 +4,13 @@
  * Uses OpenRouter's free tier models for chat completions.
  * OpenRouter provides access to multiple LLMs through a single API.
  *
- * Free models available:
- * - mistralai/mistral-7b-instruct:free
- * - google/gemma-2-9b-it:free
- * - meta-llama/llama-3.1-8b-instruct:free
- * - microsoft/phi-3-mini-128k-instruct:free
- * - nousresearch/hermes-3-llama-3.1-405b:free
- * - huggingface/zephyr-7b-beta:free
+ * Free models available (verified live 2026-08):
+ * - nvidia/nemotron-3.5-lightning:free
+ * - nvidia/nemotron-3-super-120b-a12b:free
+ * - z-ai/glm-5.2:free
+ *
+ * Legacy ids (mistral-7b, gemma-2, llama-3.1/3.2, phi-3, zephyr, hermes) were
+ * retired by OpenRouter and now return 404 "Not Found" — do not resurrect them.
  */
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
@@ -32,40 +32,28 @@ const openrouter = createOpenRouter({
  * Free models available on OpenRouter
  */
 export const FREE_MODELS = {
-  // Mistral 7B - Good balance of quality and speed
-  MISTRAL_7B: 'mistralai/mistral-7b-instruct:free',
+  // NVIDIA Nemotron 3.5 Lightning — fast, reliable, good general quality
+  NEMOTRON_LIGHTNING: 'nvidia/nemotron-3.5-lightning:free',
 
-  // Google's Gemma 2 - Great for general tasks
-  GEMMA_2_9B: 'google/gemma-2-9b-it:free',
+  // NVIDIA Nemotron 3 Super 120B — larger fallback with strong quality
+  NEMOTRON_SUPER: 'nvidia/nemotron-3-super-120b-a12b:free',
 
-  // Meta's Llama 3.1 - State-of-the-art open model
-  LLAMA_3_1_8B: 'meta-llama/llama-3.1-8b-instruct:free',
-
-  // Microsoft's Phi-3 - Fast and efficient
-  PHI_3_MINI: 'microsoft/phi-3-mini-128k-instruct:free',
-
-  // Nous Hermes 3 - Large context window
-  HERMES_3_405B: 'nousresearch/hermes-3-llama-3.1-405b:free',
-
-  // HuggingFace Zephyr - Good for chat
-  ZEPHYR_7B: 'huggingface/zephyr-7b-beta:free',
+  // Z.AI GLM 5.2 — capable, occasionally rate-limited
+  GLM_5_2: 'z-ai/glm-5.2:free',
 } as const;
 
 /**
- * Default model to use (Mistral 7B offers good balance)
+ * Default model to use
  */
-export const DEFAULT_FREE_MODEL = FREE_MODELS.MISTRAL_7B;
+export const DEFAULT_FREE_MODEL = FREE_MODELS.NEMOTRON_LIGHTNING;
 
 /**
  * Model configuration with context window sizes
  */
 export const MODEL_CONFIG: Record<string, { maxTokens: number; contextWindow: number }> = {
-  [FREE_MODELS.MISTRAL_7B]: { maxTokens: 8192, contextWindow: 32768 },
-  [FREE_MODELS.GEMMA_2_9B]: { maxTokens: 8192, contextWindow: 8192 },
-  [FREE_MODELS.LLAMA_3_1_8B]: { maxTokens: 8192, contextWindow: 128000 },
-  [FREE_MODELS.PHI_3_MINI]: { maxTokens: 4096, contextWindow: 128000 },
-  [FREE_MODELS.HERMES_3_405B]: { maxTokens: 8192, contextWindow: 128000 },
-  [FREE_MODELS.ZEPHYR_7B]: { maxTokens: 4096, contextWindow: 32768 },
+  [FREE_MODELS.NEMOTRON_LIGHTNING]: { maxTokens: 8192, contextWindow: 128000 },
+  [FREE_MODELS.NEMOTRON_SUPER]: { maxTokens: 8192, contextWindow: 128000 },
+  [FREE_MODELS.GLM_5_2]: { maxTokens: 8192, contextWindow: 128000 },
 };
 
 /**
@@ -134,46 +122,25 @@ export async function generateOpenRouterCompletion(
 export function getFreeModelsList() {
   return [
     {
-      id: FREE_MODELS.MISTRAL_7B,
-      name: 'Mistral 7B Instruct',
-      provider: 'Mistral AI',
-      description: 'Good balance of quality and speed. Great for general tasks.',
-      contextWindow: 32768,
-    },
-    {
-      id: FREE_MODELS.GEMMA_2_9B,
-      name: 'Gemma 2 9B',
-      provider: 'Google',
-      description: 'Excellent for general tasks and reasoning.',
-      contextWindow: 8192,
-    },
-    {
-      id: FREE_MODELS.LLAMA_3_1_8B,
-      name: 'Llama 3.1 8B Instruct',
-      provider: 'Meta',
-      description: 'State-of-the-art open model with large context.',
+      id: FREE_MODELS.NEMOTRON_LIGHTNING,
+      name: 'Nemotron 3.5 Lightning',
+      provider: 'NVIDIA',
+      description: 'Fast and reliable. Great default for general tasks.',
       contextWindow: 128000,
     },
     {
-      id: FREE_MODELS.PHI_3_MINI,
-      name: 'Phi-3 Mini',
-      provider: 'Microsoft',
-      description: 'Fast and efficient, great for quick responses.',
+      id: FREE_MODELS.NEMOTRON_SUPER,
+      name: 'Nemotron 3 Super 120B',
+      provider: 'NVIDIA',
+      description: 'Larger model with strong reasoning quality.',
       contextWindow: 128000,
     },
     {
-      id: FREE_MODELS.HERMES_3_405B,
-      name: 'Hermes 3 Llama 3.1 405B',
-      provider: 'Nous Research',
-      description: 'Large model with extensive knowledge.',
+      id: FREE_MODELS.GLM_5_2,
+      name: 'GLM 5.2',
+      provider: 'Z.AI',
+      description: 'Capable general model, occasionally rate-limited.',
       contextWindow: 128000,
-    },
-    {
-      id: FREE_MODELS.ZEPHYR_7B,
-      name: 'Zephyr 7B Beta',
-      provider: 'HuggingFace',
-      description: 'Optimized for chat conversations.',
-      contextWindow: 32768,
     },
   ];
 }

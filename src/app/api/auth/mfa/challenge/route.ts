@@ -36,7 +36,13 @@ async function handler(req: Request) {
   const { email, password } = parsed.data;
   const lockoutStatus = await getLockoutStatus(email);
   if (lockoutStatus.isLocked) {
-    return apiError('ACCOUNT_LOCKED', 'Account locked', 423);
+    const minutes = lockoutStatus.lockedUntil
+      ? Math.max(1, Math.ceil((lockoutStatus.lockedUntil.getTime() - Date.now()) / 60000))
+      : null;
+    return apiError('ACCOUNT_LOCKED', 'Account locked', 423, {
+      lockedUntil: lockoutStatus.lockedUntil?.toISOString() ?? null,
+      retryAfterMinutes: minutes,
+    });
   }
 
   const user = await prisma.user.findUnique({

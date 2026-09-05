@@ -82,7 +82,20 @@ export async function POST(req: Request) {
       );
     }
 
-    const { question, history, config } = parseResult.data;
+    const { question, history, config, workspaceId: requestedWorkspaceId } = parseResult.data;
+
+    if (requestedWorkspaceId && requestedWorkspaceId !== workspaceId) {
+      await logAuditEvent({
+        event: AuditEvent.PERMISSION_DENIED,
+        workspaceId,
+        metadata: {
+          action: 'public_chat_workspace_mismatch',
+          requestedWorkspaceId,
+        },
+        severity: 'WARNING',
+      });
+      return apiError('FORBIDDEN', 'API key cannot access the requested workspace', 403);
+    }
 
     const hasPermission = await checkPermission(
       keyValidation.keyId || '',

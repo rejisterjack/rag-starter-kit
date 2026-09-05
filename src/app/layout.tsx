@@ -9,6 +9,7 @@ import { Providers } from '@/components/providers';
 import { buildOrganizationJsonLd, buildWebSiteJsonLd, JsonLd } from '@/components/seo';
 import { NavigationProgress } from '@/components/ui/navigation-progress';
 import { Toaster } from '@/components/ui/toaster';
+import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { SITE } from '@/lib/seo/content-registry';
 import '@/styles/globals.css';
@@ -145,7 +146,12 @@ interface RootLayoutProps {
   children: React.ReactNode;
 }
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  // Fetch the session server-side and seed SessionProvider so the navbar's
+  // session-dependent markup renders identically on server and client
+  // (prevents hydration mismatches, D-3)
+  const session = await auth();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
@@ -156,7 +162,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         >
           Skip to content
         </a>
-        <Providers>
+        <Providers session={session}>
           <Suspense>
             <NavigationProgress />
           </Suspense>

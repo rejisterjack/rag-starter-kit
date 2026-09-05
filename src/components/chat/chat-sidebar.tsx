@@ -1,6 +1,7 @@
 'use client';
 
-import { FolderOpen, History } from 'lucide-react';
+import { FolderOpen, History, Settings } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { DocumentListProps } from '../documents/document-list';
@@ -86,6 +87,17 @@ export function ChatSidebar({ documentListProps, historyListProps, className }: 
             <ConversationHistoryList {...historyListProps} />
           )}
         </div>
+      </div>
+
+      {/* Settings links */}
+      <div className="shrink-0 border-t border-white/8 p-2">
+        <Link
+          href="/chat/settings"
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+        >
+          <Settings className="h-3.5 w-3.5 shrink-0" />
+          <span>Settings</span>
+        </Link>
       </div>
     </section>
   );

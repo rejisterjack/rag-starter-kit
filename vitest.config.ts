@@ -16,6 +16,7 @@ export default defineConfig({
     include: [
       'tests/**/*.{test,spec}.{js,ts,jsx,tsx}',
       'src/**/*.{test,spec}.{js,ts,jsx,tsx}',
+      'packages/**/*.{test,spec}.{js,ts,jsx,tsx}',
     ],
     exclude: [
       'node_modules',
@@ -85,6 +86,7 @@ export default defineConfig({
       NEXT_PUBLIC_API_URL: 'http://localhost:7392',
       AUTH_SECRET: 'test-secret-for-vitest-exactly-32c',
       NEXTAUTH_SECRET: 'test-secret-for-vitest-exactly-32c',
+      CSRF_SECRET: 'test-csrf-secret-for-vitest-exactly-32c',
       NEXTAUTH_URL: 'http://localhost:7392',
       DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
       DIRECT_URL: 'postgresql://test:test@localhost:5432/test',

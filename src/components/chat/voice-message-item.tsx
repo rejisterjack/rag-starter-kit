@@ -316,9 +316,7 @@ export function VoiceMessageList({
   speakingMessageId,
   onSpeakingChange,
 }: VoiceMessageListProps) {
-  const [_currentSpeakingId, setCurrentSpeakingId] = useState<string | null>(
-    speakingMessageId ?? null
-  );
+  const [, setCurrentSpeakingId] = useState<string | null>(speakingMessageId ?? null);
 
   // Sync with external speaking state
   useEffect(() => {

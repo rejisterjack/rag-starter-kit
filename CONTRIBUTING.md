@@ -223,7 +223,7 @@ Update your .env file before upgrading.
 
 ## Code Style
 
-We use [Biome](https://biomejs.dev/) for formatting and linting. It runs automatically on commit via a pre-commit hook.
+We use ESLint for linting and Prettier for formatting. Both run automatically on commit via the pre-commit hook.
 
 ```bash
 bun lint          # Check for issues

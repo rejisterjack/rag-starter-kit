@@ -287,9 +287,8 @@ export async function GET(_req: NextRequest) {
     const session = await auth();
 
     // Return OCR capabilities and supported languages
-    const { getLanguageOptions, isOCRAvailable, getOCRVersion } = await import(
-      '@/lib/rag/ingestion/parsers/ocr'
-    );
+    const { getLanguageOptions, isOCRAvailable, getOCRVersion } =
+      await import('@/lib/rag/ingestion/parsers/ocr');
 
     const languages = getLanguageOptions();
     const available = isOCRAvailable();

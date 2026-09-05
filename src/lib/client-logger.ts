@@ -16,8 +16,7 @@ type ConsoleMethod = 'error' | 'warn' | 'info';
 function devLog(method: ConsoleMethod, msg: string, ctx?: LogContext): void {
   if (process.env.NODE_ENV === 'development') {
     const logFn = (globalThis as Record<string, unknown>)[method] as
-      | ((...args: unknown[]) => void)
-      | undefined;
+      ((...args: unknown[]) => void) | undefined;
     logFn?.(formatMsg(msg, ctx));
   }
 }

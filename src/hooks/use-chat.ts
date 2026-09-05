@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import type { Source } from '@/components/chat/citations';
 import type { Message } from '@/components/chat/message-item';
 import { getSelectedModel } from '@/hooks/use-selected-model';
+import { apiFetch } from '@/lib/api-client';
 import { fetchWithCsrf } from '@/lib/security/csrf';
 
 export interface UseChatOptions {
@@ -47,6 +48,15 @@ export interface UseChatReturn {
 // Max retry attempts for recoverable errors
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1000;
+
+/** Raw message shape returned by GET /api/chat */
+interface MessageRaw {
+  id: string;
+  role: string;
+  content: string;
+  createdAt: string;
+  sources?: Source[];
+}
 
 /**
  * Parse error from API response — handles canonical { success, error: { code, message } } format
@@ -165,30 +175,20 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     if (isSendingRef.current) return;
 
     try {
-      const response = await fetch(`/api/chat?chatId=${chatId}&limit=50`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to load messages');
-
-      const data = await response.json();
+      const data = await apiFetch<{ messages?: MessageRaw[] }>(
+        `/api/chat?chatId=${chatId}&limit=50`,
+        { credentials: 'include' }
+      );
       if (conversationIdRef.current !== chatId) return;
 
-      if (data.success && data.data?.messages) {
-        const loadedMessages: Message[] = data.data.messages.map(
-          (m: {
-            id: string;
-            role: string;
-            content: string;
-            createdAt: string;
-            sources?: Source[];
-          }) => ({
-            id: m.id,
-            role: m.role as 'user' | 'assistant',
-            content: m.content,
-            createdAt: new Date(m.createdAt),
-            sources: m.sources,
-          })
-        );
+      if (data.messages) {
+        const loadedMessages: Message[] = data.messages.map((m) => ({
+          id: m.id,
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+          createdAt: new Date(m.createdAt),
+          sources: m.sources,
+        }));
 
         if (pageNum === 1) {
           setMessages((prev) => {
@@ -203,7 +203,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           setMessages((prev) => [...loadedMessages, ...prev]);
         }
 
-        setHasMore(data.data.messages.length >= 50);
+        setHasMore(data.messages.length >= 50);
         setPage(pageNum);
       }
     } catch (err) {
@@ -407,14 +407,39 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           };
 
           // AI SDK streamText().toTextStreamResponse() uses text/plain with raw UTF-8 chunks.
+          // The server's wrapStreamWithErrorFrame may append a final `e:{...}` error
+          // frame to this stream — detect and surface it instead of rendering it.
           if (!isEventStream) {
+            let buffer = '';
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
-              fullContent += decoder.decode(value, { stream: true });
-              flushContent(fullContent);
+              buffer += decoder.decode(value, { stream: true });
+              // Only flush up to the last complete line so a trailing `e:` frame
+              // is never partially shown mid-stream
+              const lastNewline = buffer.lastIndexOf('\n');
+              if (lastNewline !== -1) {
+                const complete = buffer.slice(0, lastNewline + 1);
+                buffer = buffer.slice(lastNewline + 1);
+                fullContent += complete;
+                flushContent(fullContent);
+              }
             }
-            fullContent += decoder.decode();
+            buffer += decoder.decode();
+
+            // Remaining tail: either a final `e:` error frame or leftover text
+            const trailing = buffer.trim();
+            if (trailing.startsWith('e:')) {
+              let streamErrorMessage = 'Stream error from AI model. Please try again.';
+              try {
+                const errorData = JSON.parse(trailing.slice(2));
+                if (errorData?.message) streamErrorMessage = errorData.message;
+              } catch {
+                // Malformed frame — keep the default message
+              }
+              throw new Error(streamErrorMessage);
+            }
+            fullContent += buffer;
           } else {
             // Legacy / alternate: newline-delimited data stream (type:payload)
             while (true) {
@@ -438,15 +463,19 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
                     flushContent(fullContent);
                   }
                 } else if (line.startsWith('e:')) {
+                  let streamErrorMessage = 'Stream error from AI model. Please try again.';
+                  let parsed = false;
                   try {
                     const errorData = JSON.parse(line.slice(2));
-                    throw new Error(errorData.message || 'Stream error from server');
-                  } catch (e) {
-                    if (e instanceof Error && e.message !== 'Stream error from server') {
-                      // JSON parse error, ignore
-                    } else {
-                      throw e;
+                    if (errorData?.message) {
+                      streamErrorMessage = errorData.message;
+                      parsed = true;
                     }
+                  } catch {
+                    // Malformed JSON frame — fall through with the default message
+                  }
+                  if (parsed || line.slice(2).trim().length > 0) {
+                    throw new Error(streamErrorMessage);
                   }
                 } else if (line.startsWith('d:') || line.startsWith('f:')) {
                   // done
@@ -612,7 +641,8 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       if (!response.ok) throw new Error('Failed to fetch conversations');
 
       const data = await response.json();
-      return (data.data || []) as ConversationSummary[];
+      const payload = data?.data?.items;
+      return (Array.isArray(payload) ? payload : []) as ConversationSummary[];
     } catch {
       return [];
     }

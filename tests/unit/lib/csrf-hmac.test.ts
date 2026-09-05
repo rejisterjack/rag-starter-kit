@@ -4,11 +4,18 @@
  * Tests for the HMAC-based CSRF token implementation
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // We need to test the HMAC functions, but they're not exported
 // Let's test through the validateCsrfToken function
 import { generateCsrfTokenForAppRouter, validateCsrfToken } from '@/lib/security/csrf';
+
+const ORIGINAL_ENV = { ...process.env };
+
+beforeEach(() => {
+  process.env = { ...ORIGINAL_ENV };
+  vi.resetModules();
+});
 
 describe('HMAC-based CSRF Tokens', () => {
   describe('generateCsrfTokenForAppRouter', () => {
@@ -141,6 +148,19 @@ describe('HMAC-based CSRF Tokens', () => {
 
       const result = await validateCsrfToken(mockReq);
       expect(result).toBe(false);
+    });
+  });
+
+  describe('Secret configuration', () => {
+    it('should require an explicit secret instead of a dev-only fallback in test mode', async () => {
+      delete process.env.CSRF_SECRET;
+      delete process.env.AUTH_SECRET;
+      delete process.env.NEXTAUTH_SECRET;
+      process.env.NODE_ENV = 'test';
+
+      await expect(import('@/lib/security/csrf')).rejects.toThrow(
+        /CSRF_SECRET|AUTH_SECRET|NEXTAUTH_SECRET/i
+      );
     });
   });
 });

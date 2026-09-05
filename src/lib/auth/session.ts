@@ -56,17 +56,31 @@ const getCachedUser = unstable_cache(
 
 /**
  * Get the current workspace from session
+ * @param options.skipCache - bypass the 60s cache (use after creating a workspace)
  */
-export async function getServerSession() {
+export async function getServerSession(options: { skipCache?: boolean } = {}) {
   const session = await auth();
   if (!session?.user?.id) return null;
 
   if (session.user.workspaceId) {
-    const workspace = await getCachedWorkspace(session.user.workspaceId, session.user.id);
+    const workspace = options.skipCache
+      ? await prisma.workspace.findFirst({
+          where: {
+            id: session.user.workspaceId,
+            members: { some: { userId: session.user.id } },
+          },
+        })
+      : await getCachedWorkspace(session.user.workspaceId, session.user.id);
     if (workspace) return workspace;
   }
 
-  const member = await getCachedFallbackWorkspace(session.user.id);
+  const member = options.skipCache
+    ? await prisma.workspaceMember.findFirst({
+        where: { userId: session.user.id },
+        orderBy: { joinedAt: 'asc' },
+        include: { workspace: true },
+      })
+    : await getCachedFallbackWorkspace(session.user.id);
 
   return member?.workspace || null;
 }

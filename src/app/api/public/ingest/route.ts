@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return apiError('BAD_REQUEST', 'Invalid JSON', 400);
+    return apiError('INVALID_JSON', 'Invalid JSON in request body', 400);
   }
 
   const parsed = publicIngestRequestSchema.safeParse(body);

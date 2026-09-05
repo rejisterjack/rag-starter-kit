@@ -123,9 +123,8 @@ const sections: { title: string; vars: EnvVar[] }[] = [
       },
       {
         name: 'CSRF_SECRET',
-        required: false,
-        default: 'NEXTAUTH_SECRET',
-        description: 'CSRF token signing key',
+        required: true,
+        description: 'Dedicated CSRF token signing key (min 32 characters)',
       },
       {
         name: 'ALLOWED_ORIGINS',

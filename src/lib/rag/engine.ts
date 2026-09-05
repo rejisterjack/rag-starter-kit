@@ -6,8 +6,10 @@
  */
 
 import type { LanguageModelUsage } from 'ai';
+import { generateChatCompletion, streamChatCompletion } from '@/lib/ai';
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
 import { logger } from '@/lib/logger';
+import { buildContext, retrieveSources } from '@/lib/rag/retrieval';
 import { StreamingContentFilter } from '@/lib/security/content-filter';
 import { analyzePromptSafety, filterOutput } from '@/lib/security/prompt-guard';
 import type { RAGConfig, RAGQuery, RAGResponse, Source } from '@/types';
@@ -47,9 +49,6 @@ export const defaultRAGConfig: RAGConfig = {
  * 4. Generate response with context
  */
 export async function generateRAGResponse(query: RAGQuery): Promise<RAGResponse> {
-  const { retrieveSources, buildContext } = await import('./retrieval');
-  const { generateChatCompletion } = await import('@/lib/ai');
-
   const startTime = Date.now();
   const config = { ...defaultRAGConfig, ...query.config };
 
@@ -126,9 +125,6 @@ export async function* streamRAGResponse(query: RAGQuery): AsyncGenerator<{
   content?: string;
   error?: string;
 }> {
-  const { retrieveSources, buildContext } = await import('./retrieval');
-  const { streamChatCompletion } = await import('@/lib/ai');
-
   const config = { ...defaultRAGConfig, ...query.config };
 
   try {

@@ -23,11 +23,11 @@ const envSchema = z.object({
   // At least one must be set with 32+ characters.
   AUTH_SECRET: z.string().optional(),
   NEXTAUTH_SECRET: z.string().optional(),
+  CSRF_SECRET: z.string().optional(),
   AUTH_URL: z.string().url().optional(),
   NEXTAUTH_URL: z.string().url().optional(),
   OPENROUTER_API_KEY: z.string().min(1, 'OPENROUTER_API_KEY is required'),
   GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1, 'GOOGLE_GENERATIVE_AI_API_KEY is required'),
-  GROQ_API_KEY: z.string().optional(),
   COHERE_API_KEY: z.string().optional(),
 
   // Optional variables with defaults
@@ -142,6 +142,11 @@ function validateEnv(): EnvSchema {
 
     // Production-only checks
     if (parsed.NODE_ENV === 'production') {
+      if (!parsed.CSRF_SECRET || parsed.CSRF_SECRET.length < 32) {
+        throw new Error(
+          'CSRF_SECRET is required in production (min 32 chars). Generate: openssl rand -base64 32'
+        );
+      }
       if (!parsed.UPSTASH_REDIS_REST_URL) {
         throw new Error('UPSTASH_REDIS_REST_URL is required in production');
       }

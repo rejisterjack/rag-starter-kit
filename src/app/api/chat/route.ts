@@ -254,7 +254,8 @@ export async function POST(req: NextRequest) {
     const ConversationMemory = mods.memoryMod.ConversationMemory;
     const conversationMemory = new ConversationMemory(prismaRead);
     let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
-    let sources: Awaited<ReturnType<typeof import('@/lib/rag/retrieval')['retrieveSources']>> = [];
+    let sources: Awaited<ReturnType<(typeof import('@/lib/rag/retrieval'))['retrieveSources']>> =
+      [];
     let vectorSearchDegraded = false;
     let retrievalError: string | null = null;
 
@@ -791,14 +792,19 @@ export async function PUT(req: NextRequest) {
 
     // JWT can retain a workspaceId after DB reset or workspace deletion; Prisma would
     // reject the FK on chat create. Only attach workspace the user still belongs to.
+    // When the JWT predates workspace creation (e.g. D-6 self-heal ran after sign-in),
+    // session.user.workspaceId is undefined — fall back to the user's first membership
+    // so the chat lands in a workspace the sidebar can actually list.
     let resolvedWorkspaceId: string | null = null;
-    if (workspaceId) {
-      const membership = await prisma.workspaceMember.findFirst({
-        where: { userId, workspaceId },
-        select: { workspaceId: true },
-      });
-      resolvedWorkspaceId = membership?.workspaceId ?? null;
-    }
+    const membershipWhere = workspaceId
+      ? { userId, workspaceId }
+      : { userId, status: 'ACTIVE' as const };
+    const membership = await prisma.workspaceMember.findFirst({
+      where: membershipWhere,
+      select: { workspaceId: true },
+      orderBy: { joinedAt: 'asc' },
+    });
+    resolvedWorkspaceId = membership?.workspaceId ?? null;
 
     // Check rate limit for chat creation
     const rateLimitIdentifier = getRateLimitIdentifier(req, { userId, workspaceId });

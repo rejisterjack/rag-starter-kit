@@ -173,13 +173,7 @@ function useChat(options: UseChatOptions): UseChatReturn {
 }
 
 export type AgentState =
-  | 'idle'
-  | 'classifying'
-  | 'reasoning'
-  | 'executing'
-  | 'responding'
-  | 'completed'
-  | 'error';
+  'idle' | 'classifying' | 'reasoning' | 'executing' | 'responding' | 'completed' | 'error';
 
 export interface ReActStep {
   id: string;

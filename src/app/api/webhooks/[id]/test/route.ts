@@ -3,7 +3,7 @@ import { apiError, apiSuccess } from '@/lib/api-response';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { testWebhook } from '@/lib/webhooks/delivery';
+import { buildWebhookPayload, recordDelivery, testWebhook } from '@/lib/webhooks/delivery';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
 // ============================================================================
@@ -40,11 +40,11 @@ export async function POST(_req: Request, { params }: RouteParams) {
       return apiError('NOT_FOUND', 'Webhook not found', 404);
     }
 
-    // Check if user has permission to manage API keys in this workspace
+    // Check if user has permission to manage webhooks in this workspace
     const hasPermission = await checkPermission(
       session.user.id,
       webhook.workspaceId,
-      Permission.MANAGE_API_KEYS
+      Permission.MANAGE_WEBHOOKS
     );
 
     if (!hasPermission) {
@@ -57,10 +57,17 @@ export async function POST(_req: Request, { params }: RouteParams) {
     }
 
     // Send test webhook
+    const testPayload = buildWebhookPayload('webhook.test', {
+      message: 'This is a test webhook from RAG Starter Kit',
+      test: true,
+    });
     const result = await testWebhook(webhook.url, webhook.secret, {
       maxRetries: 1, // Only 1 retry for tests
       timeoutMs: 30000,
     });
+
+    // Persist the delivery attempt so it shows up in the deliveries log (D-13)
+    await recordDelivery(id, testPayload, result);
 
     // Update webhook stats based on result
     await prisma.webhook.update({

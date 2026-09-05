@@ -112,7 +112,7 @@ export const GET = withApiAuth(async (_req: Request, session, { params }: RouteP
     const hasPermission = await checkPermission(
       session.user.id,
       webhook.workspaceId,
-      Permission.MANAGE_API_KEYS
+      Permission.MANAGE_WEBHOOKS
     );
 
     if (!hasPermission) {
@@ -369,7 +369,7 @@ export const PATCH = withApiAuth(async (req: Request, session, { params }: Route
     const hasPermission = await checkPermission(
       session.user.id,
       existingWebhook.workspaceId,
-      Permission.MANAGE_API_KEYS
+      Permission.MANAGE_WEBHOOKS
     );
 
     if (!hasPermission) {
@@ -492,7 +492,7 @@ export const DELETE = withApiAuth(async (_req: Request, session, { params }: Rou
     const hasPermission = await checkPermission(
       session.user.id,
       existingWebhook.workspaceId,
-      Permission.MANAGE_API_KEYS
+      Permission.MANAGE_WEBHOOKS
     );
 
     if (!hasPermission) {

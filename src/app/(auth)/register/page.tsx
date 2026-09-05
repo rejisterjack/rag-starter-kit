@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { apiFetch } from '@/lib/api-client';
 
 // Validation schema
 const registerSchema = z
@@ -77,7 +78,7 @@ export default function RegisterPage(): React.ReactElement {
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/register', {
+      await apiFetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -86,15 +87,6 @@ export default function RegisterPage(): React.ReactElement {
           password: data.password,
         }),
       });
-
-      const result = await response.json();
-      if (!response.ok) {
-        const msg =
-          typeof result.error?.message === 'string'
-            ? result.error.message
-            : 'Failed to create account';
-        throw new Error(msg);
-      }
 
       const signInResult = await signIn('credentials', {
         email: data.email,

@@ -44,8 +44,6 @@ export interface ExportButtonProps {
 export function ExportButton({
   chatId,
   chatTitle,
-  workspaceId,
-  workspaceName,
   variant = 'button',
   onExport,
   showLabel = true,
