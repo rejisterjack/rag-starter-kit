@@ -1,3 +1,4 @@
+import { apiError, apiSuccess } from '@/lib/api-response';
 /**
  * GitHub Repos API Endpoint
  *
@@ -19,20 +20,14 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get('workspaceId') || session.user.workspaceId;
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Workspace ID is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Workspace ID is required', 400);
     }
 
     const hasAccess = await checkPermission(
@@ -41,10 +36,7 @@ export async function GET(req: NextRequest) {
       Permission.READ_DOCUMENTS
     );
     if (!hasAccess) {
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Get GitHub integration
@@ -69,8 +61,7 @@ export async function GET(req: NextRequest) {
     // Fetch repos from GitHub
     const repos = await listUserRepos(integration.accessToken);
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       data: {
         repos: repos.map((repo: GitHubRepo) => ({
           id: repo.id,
@@ -128,10 +119,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     let body: {
@@ -143,10 +131,7 @@ export async function POST(req: NextRequest) {
     try {
       body = await req.json();
     } catch (_error: unknown) {
-      return NextResponse.json(
-        { success: false, error: { code: 'INVALID_JSON', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_JSON', 'Invalid JSON body', 400);
     }
 
     const {
@@ -157,17 +142,11 @@ export async function POST(req: NextRequest) {
     } = body;
 
     if (!repos || !Array.isArray(repos) || repos.length === 0) {
-      return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Repos array is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Repos array is required', 400);
     }
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Workspace ID is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Workspace ID is required', 400);
     }
 
     const hasAccess = await checkPermission(
@@ -176,10 +155,7 @@ export async function POST(req: NextRequest) {
       Permission.WRITE_DOCUMENTS
     );
     if (!hasAccess) {
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Get GitHub integration

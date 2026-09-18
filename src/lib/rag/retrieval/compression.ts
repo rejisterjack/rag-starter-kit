@@ -160,11 +160,10 @@ export class ContextualCompressor {
       { role: 'user', content: prompt },
     ];
 
-    const { text } = await generateTaskCompletion(
-      'fast',
-      messages as unknown as Parameters<typeof generateTaskCompletion>[1],
-      { temperature: 0.3, maxTokens: this.config.maxTokensPerChunk * 2 }
-    );
+    const { text } = await generateTaskCompletion('fast', messages, {
+      temperature: 0.3,
+      maxTokens: this.config.maxTokensPerChunk * 2,
+    });
 
     const relevantSentences = text
       .split('\n')
@@ -202,11 +201,10 @@ export class ContextualCompressor {
       { role: 'user', content: prompt },
     ];
 
-    const { text } = await generateTaskCompletion(
-      'fast',
-      messages as unknown as Parameters<typeof generateTaskCompletion>[1],
-      { temperature: 0.3, maxTokens: this.config.maxTokensPerChunk }
-    );
+    const { text } = await generateTaskCompletion('fast', messages, {
+      temperature: 0.3,
+      maxTokens: this.config.maxTokensPerChunk,
+    });
 
     return text.trim();
   }

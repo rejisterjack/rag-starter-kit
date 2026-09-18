@@ -109,7 +109,7 @@ export class SelfQueryTransformer {
       ];
 
       const { text } = await generateChatCompletion(
-        messages as unknown as Parameters<typeof generateChatCompletion>[0],
+        messages,
         { temperature: 0.1 } // Low temperature for deterministic output
       );
 

@@ -473,9 +473,7 @@ export class SpeechService {
         },
       });
 
-      const AudioContextClass =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       this.audioContext = new AudioContextClass();
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;

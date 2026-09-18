@@ -116,7 +116,6 @@ export class CitationHandler {
     const citationPattern = /\[(\d+)\]/g;
     let patternMatch: RegExpExecArray | null;
 
-    // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex iteration pattern
     while ((patternMatch = citationPattern.exec(response)) !== null) {
       const citationId = `[${patternMatch[1]}]`;
 
@@ -140,7 +139,6 @@ export class CitationHandler {
     const citationPattern = /\[(\d+)\]/g;
     let patternMatch: RegExpExecArray | null;
 
-    // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex iteration pattern
     while ((patternMatch = citationPattern.exec(response)) !== null) {
       matches.push({
         citationId: `[${patternMatch[1]}]`,
@@ -346,7 +344,6 @@ export function extractCitationNumbers(text: string): number[] {
   const pattern = /\[(\d+)\]/g;
   let patternMatch: RegExpExecArray | null;
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex iteration pattern
   while ((patternMatch = pattern.exec(text)) !== null) {
     numbers.push(parseInt(patternMatch[1], 10));
   }

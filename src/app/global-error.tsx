@@ -2,6 +2,7 @@
 
 import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
+import { clientLogger } from '@/lib/client-logger';
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
@@ -38,7 +39,9 @@ function reportError(error: Error & { digest?: string }): void {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
           keepalive: true,
-        }).catch(() => {});
+        }).catch((error) => {
+          clientLogger.error('Failed to report error to server', { error });
+        });
       }
     } catch {
       // Don't throw from the error reporter
@@ -52,7 +55,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps): React.R
   }, [error]);
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
         <div
           style={{

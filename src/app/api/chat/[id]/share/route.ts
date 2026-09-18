@@ -1,3 +1,4 @@
+import { apiError, apiSuccess } from '@/lib/api-response';
 /**
  * Chat Sharing API
  * POST /api/chat/[id]/share - Create/update share settings
@@ -38,10 +39,7 @@ export const POST = withApiAuth(
       const rateLimitIdentifier = `share:${userId}`;
       const rateLimitResult = await checkApiRateLimit(rateLimitIdentifier, 'share');
       if (!rateLimitResult.success) {
-        return NextResponse.json(
-          { error: 'Too many share requests', code: 'RATE_LIMITED' },
-          { status: 429 }
-        );
+        return apiError('RATE_LIMITED', 'Too many share requests', 429);
       }
 
       // Verify chat exists and user owns it
@@ -51,14 +49,11 @@ export const POST = withApiAuth(
       });
 
       if (!chat) {
-        return NextResponse.json({ error: 'Chat not found', code: 'NOT_FOUND' }, { status: 404 });
+        return apiError('NOT_FOUND', 'Chat not found', 404);
       }
 
       if (chat.userId !== userId) {
-        return NextResponse.json(
-          { error: 'Only the chat owner can share it', code: 'FORBIDDEN' },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Only the chat owner can share it', 403);
       }
 
       // Parse and validate request body
@@ -99,29 +94,23 @@ export const POST = withApiAuth(
 
       logger.info('Chat share settings updated');
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          id: share.id,
-          chatId: share.chatId,
-          shareToken: share.shareToken,
-          shareUrl,
-          isPublic: share.isPublic,
-          allowComments: share.allowComments,
-          expiresAt: share.expiresAt?.toISOString() || null,
-          viewCount: share.viewCount,
-          createdAt: share.createdAt.toISOString(),
-        },
+      return apiSuccess({
+        id: share.id,
+        chatId: share.chatId,
+        shareToken: share.shareToken,
+        shareUrl,
+        isPublic: share.isPublic,
+        allowComments: share.allowComments,
+        expiresAt: share.expiresAt?.toISOString() || null,
+        viewCount: share.viewCount,
+        createdAt: share.createdAt.toISOString(),
       });
     } catch (error: unknown) {
       logger.error('Failed to update chat share settings', {
         error: error instanceof Error ? error.message : 'Unknown',
       });
 
-      return NextResponse.json(
-        { error: 'Failed to update share settings', code: 'INTERNAL_ERROR' },
-        { status: 500 }
-      );
+      return apiError('INTERNAL_ERROR', 'Failed to update share settings', 500);
     }
   }
 );
@@ -148,14 +137,11 @@ export const GET = withApiAuth(
       });
 
       if (!chat) {
-        return NextResponse.json({ error: 'Chat not found', code: 'NOT_FOUND' }, { status: 404 });
+        return apiError('NOT_FOUND', 'Chat not found', 404);
       }
 
       if (chat.userId !== userId) {
-        return NextResponse.json(
-          { error: 'Only the chat owner can view share settings', code: 'FORBIDDEN' },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Only the chat owner can view share settings', 403);
       }
 
       // Get share settings
@@ -164,45 +150,36 @@ export const GET = withApiAuth(
       });
 
       if (!share) {
-        return NextResponse.json({
-          success: true,
-          data: {
-            isShared: false,
-            shareUrl: null,
-            isPublic: false,
-            allowComments: false,
-            expiresAt: null,
-            viewCount: 0,
-          },
+        return apiSuccess({
+          isShared: false,
+          shareUrl: null,
+          isPublic: false,
+          allowComments: false,
+          expiresAt: null,
+          viewCount: 0,
         });
       }
 
       const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/share/${share.shareToken}`;
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          isShared: true,
-          id: share.id,
-          shareToken: share.shareToken,
-          shareUrl,
-          isPublic: share.isPublic,
-          allowComments: share.allowComments,
-          expiresAt: share.expiresAt?.toISOString() || null,
-          viewCount: share.viewCount,
-          lastViewedAt: share.lastViewedAt?.toISOString() || null,
-          createdAt: share.createdAt.toISOString(),
-        },
+      return apiSuccess({
+        isShared: true,
+        id: share.id,
+        shareToken: share.shareToken,
+        shareUrl,
+        isPublic: share.isPublic,
+        allowComments: share.allowComments,
+        expiresAt: share.expiresAt?.toISOString() || null,
+        viewCount: share.viewCount,
+        lastViewedAt: share.lastViewedAt?.toISOString() || null,
+        createdAt: share.createdAt.toISOString(),
       });
     } catch (error: unknown) {
       logger.error('Failed to get chat share settings', {
         error: error instanceof Error ? error.message : 'Unknown',
       });
 
-      return NextResponse.json(
-        { error: 'Failed to get share settings', code: 'INTERNAL_ERROR' },
-        { status: 500 }
-      );
+      return apiError('INTERNAL_ERROR', 'Failed to get share settings', 500);
     }
   }
 );
@@ -229,14 +206,11 @@ export const DELETE = withApiAuth(
       });
 
       if (!chat) {
-        return NextResponse.json({ error: 'Chat not found', code: 'NOT_FOUND' }, { status: 404 });
+        return apiError('NOT_FOUND', 'Chat not found', 404);
       }
 
       if (chat.userId !== userId) {
-        return NextResponse.json(
-          { error: 'Only the chat owner can remove sharing', code: 'FORBIDDEN' },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Only the chat owner can remove sharing', 403);
       }
 
       // Delete share settings
@@ -246,16 +220,13 @@ export const DELETE = withApiAuth(
 
       logger.info('Chat sharing removed');
 
-      return NextResponse.json({ success: true });
+      return apiSuccess({});
     } catch (error: unknown) {
       logger.error('Failed to remove chat sharing', {
         error: error instanceof Error ? error.message : 'Unknown',
       });
 
-      return NextResponse.json(
-        { error: 'Failed to remove sharing', code: 'INTERNAL_ERROR' },
-        { status: 500 }
-      );
+      return apiError('INTERNAL_ERROR', 'Failed to remove sharing', 500);
     }
   }
 );

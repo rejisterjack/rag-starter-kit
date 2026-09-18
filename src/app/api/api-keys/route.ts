@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { withApiAuth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
@@ -16,10 +16,7 @@ export const GET = withApiAuth(async (req, session) => {
     const workspaceId = searchParams.get('workspaceId');
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { error: { code: 'BAD_REQUEST', message: 'workspaceId query parameter is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'workspaceId query parameter is required', 400);
     }
 
     // Check if user has permission to manage API keys
@@ -30,39 +27,30 @@ export const GET = withApiAuth(async (req, session) => {
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Get API keys for workspace
     const apiKeys = await getWorkspaceApiKeys(workspaceId);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        apiKeys: apiKeys.map((key) => ({
-          id: key.id,
-          name: key.name,
-          keyPreview: key.keyPreview,
-          permissions: key.permissions,
-          lastUsedAt: key.lastUsedAt?.toISOString() ?? null,
-          expiresAt: key.expiresAt?.toISOString() ?? null,
-          status: key.status,
-          createdAt: key.createdAt.toISOString(),
-          createdBy: key.createdBy,
-        })),
-      },
+    return apiSuccess({
+      apiKeys: apiKeys.map((key) => ({
+        id: key.id,
+        name: key.name,
+        keyPreview: key.keyPreview,
+        permissions: key.permissions,
+        lastUsedAt: key.lastUsedAt?.toISOString() ?? null,
+        expiresAt: key.expiresAt?.toISOString() ?? null,
+        status: key.status,
+        createdAt: key.createdAt.toISOString(),
+        createdBy: key.createdBy,
+      })),
     });
   } catch (error: unknown) {
     logger.error('Failed to get API keys', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to get API keys' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to get API keys', 500);
   }
 });
 
@@ -80,10 +68,7 @@ export const POST = withApiAuth(async (req, session) => {
       logger.debug('Failed to parse request body for API key creation', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     // Validate input
@@ -97,10 +82,7 @@ export const POST = withApiAuth(async (req, session) => {
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Create API key
@@ -110,38 +92,27 @@ export const POST = withApiAuth(async (req, session) => {
       expiresInDays: validatedInput.expiresInDays,
     });
 
-    return NextResponse.json(
+    return apiSuccess(
       {
-        success: true,
-        data: {
-          apiKey: {
-            id: apiKey.id,
-            name: apiKey.name,
-            key, // The full key is only returned once on creation
-            createdAt: apiKey.createdAt.toISOString(),
-          },
+        apiKey: {
+          id: apiKey.id,
+          name: apiKey.name,
+          key, // The full key is only returned once on creation
+          createdAt: apiKey.createdAt.toISOString(),
         },
       },
-      { status: 201 }
+      201
     );
   } catch (error) {
     const isDev = process.env.NODE_ENV === 'development';
     if (error instanceof Error && error.message.startsWith('Invalid')) {
-      return NextResponse.json(
-        {
-          error: { code: 'VALIDATION_ERROR', message: isDev ? error.message : 'Validation failed' },
-        },
-        { status: 400 }
-      );
+      return apiError('VALIDATION_ERROR', isDev ? error.message : 'Validation failed', 400);
     }
 
     logger.error('Failed to create API key', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to create API key' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to create API key', 500);
   }
 });
 

@@ -13,7 +13,8 @@
  * - preprocessing: Enable preprocessing (default: true)
  */
 
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
@@ -54,10 +55,7 @@ export async function POST(req: NextRequest) {
     // Step 1: Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const userId = session.user.id;
@@ -73,22 +71,19 @@ export async function POST(req: NextRequest) {
     });
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
+      const response = apiError(
+        'RATE_LIMIT',
+        'OCR rate limit exceeded. Please try again later.',
+        429,
         {
-          success: false,
-          error: {
-            code: 'RATE_LIMIT',
-            message: 'OCR rate limit exceeded. Please try again later.',
-            resetAt: new Date(rateLimitResult.reset).toISOString(),
-          },
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
+          resetAt: new Date(rateLimitResult.reset).toISOString(),
         }
       );
+      response.headers.set(
+        'Retry-After',
+        Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString()
+      );
+      return response;
     }
 
     // Step 3: Parse request
@@ -115,15 +110,10 @@ export async function POST(req: NextRequest) {
       imageUrl = body.url || null;
       workspaceId = body.workspaceId || workspaceId;
     } else {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'INVALID_CONTENT_TYPE',
-            message: 'Content-Type must be multipart/form-data or application/json',
-          },
-        },
-        { status: 400 }
+      return apiError(
+        'INVALID_CONTENT_TYPE',
+        'Content-Type must be multipart/form-data or application/json',
+        400
       );
     }
 
@@ -142,10 +132,7 @@ export async function POST(req: NextRequest) {
           severity: 'WARNING',
         });
 
-        return NextResponse.json(
-          { success: false, error: { code: 'FORBIDDEN', message: 'Access denied to workspace' } },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Access denied to workspace', 403);
       }
     }
 
@@ -157,29 +144,19 @@ export async function POST(req: NextRequest) {
     if (file) {
       // Validate file type
       if (!SUPPORTED_IMAGE_TYPES.includes(file.type)) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: 'INVALID_IMAGE_TYPE',
-              message: `Unsupported image type: ${file.type}. Supported: ${SUPPORTED_IMAGE_TYPES.join(', ')}`,
-            },
-          },
-          { status: 400 }
+        return apiError(
+          'INVALID_IMAGE_TYPE',
+          `Unsupported image type: ${file.type}. Supported: ${SUPPORTED_IMAGE_TYPES.join(', ')}`,
+          400
         );
       }
 
       // Validate file size
       if (file.size > MAX_FILE_SIZE) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: 'FILE_TOO_LARGE',
-              message: `File size (${formatBytes(file.size)}) exceeds 20MB limit`,
-            },
-          },
-          { status: 413 }
+        return apiError(
+          'FILE_TOO_LARGE',
+          `File size (${formatBytes(file.size)}) exceeds 20MB limit`,
+          413
         );
       }
 
@@ -196,47 +173,24 @@ export async function POST(req: NextRequest) {
         mimeType = fetchResult.mimeType;
       } catch (error) {
         const isDev = process.env.NODE_ENV === 'development';
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: 'FETCH_ERROR',
-              message: isDev
-                ? error instanceof Error
-                  ? error.message
-                  : 'Failed to fetch image from URL'
-                : 'Failed to fetch image from URL',
-            },
-          },
-          { status: 400 }
+        return apiError(
+          'FETCH_ERROR',
+          isDev
+            ? error instanceof Error
+              ? error.message
+              : 'Failed to fetch image from URL'
+            : 'Failed to fetch image from URL',
+          400
         );
       }
     } else {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'NO_CONTENT',
-            message: 'No image file or URL provided',
-          },
-        },
-        { status: 400 }
-      );
+      return apiError('NO_CONTENT', 'No image file or URL provided', 400);
     }
 
     // Step 6: Validate image
     const { isValidImage } = await ocr();
     if (!(await isValidImage(buffer))) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'INVALID_IMAGE',
-            message: 'File is not a valid image',
-          },
-        },
-        { status: 400 }
-      );
+      return apiError('INVALID_IMAGE', 'File is not a valid image', 400);
     }
 
     // Step 7: Configure OCR
@@ -287,25 +241,19 @@ export async function POST(req: NextRequest) {
     });
 
     // Step 10: Build response
-    const response = NextResponse.json(
-      {
-        success: true,
-        data: {
-          text: result.content,
-          confidence: result.metadata.confidence,
-          language: result.metadata.language,
-          characterCount: result.metadata.characterCount,
-          wordCount: result.metadata.wordCount,
-          processingTimeMs: ocrProcessingTime,
-          preprocessingApplied: result.metadata.preprocessingApplied,
-          filename,
-          mimeType,
-          blocks: result.metadata.blocks || [],
-          progress: progressUpdates,
-        },
-      },
-      { status: 200 }
-    );
+    const response = apiSuccess({
+      text: result.content,
+      confidence: result.metadata.confidence,
+      language: result.metadata.language,
+      characterCount: result.metadata.characterCount,
+      wordCount: result.metadata.wordCount,
+      processingTimeMs: ocrProcessingTime,
+      preprocessingApplied: result.metadata.preprocessingApplied,
+      filename,
+      mimeType,
+      blocks: result.metadata.blocks || [],
+      progress: progressUpdates,
+    });
 
     addRateLimitHeaders(response.headers, rateLimitResult);
     return response;
@@ -314,31 +262,17 @@ export async function POST(req: NextRequest) {
     const { OCRParserError } = await ocr();
     const isDev = process.env.NODE_ENV === 'development';
     if (error instanceof OCRParserError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: error.code,
-            message: isDev ? error.message : 'OCR processing failed',
-          },
-        },
-        { status: 422 }
-      );
+      return apiError(error.code, isDev ? error.message : 'OCR processing failed', 422);
     }
 
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: isDev
-            ? error instanceof Error
-              ? error.message
-              : 'Internal server error'
-            : 'Internal server error',
-        },
-      },
-      { status: 500 }
+    return apiError(
+      'INTERNAL_ERROR',
+      isDev
+        ? error instanceof Error
+          ? error.message
+          : 'Internal server error'
+        : 'Internal server error',
+      500
     );
   }
 }
@@ -353,9 +287,8 @@ export async function GET(_req: NextRequest) {
     const session = await auth();
 
     // Return OCR capabilities and supported languages
-    const { getLanguageOptions, isOCRAvailable, getOCRVersion } = await import(
-      '@/lib/rag/ingestion/parsers/ocr'
-    );
+    const { getLanguageOptions, isOCRAvailable, getOCRVersion } =
+      await import('@/lib/rag/ingestion/parsers/ocr');
 
     const languages = getLanguageOptions();
     const available = isOCRAvailable();
@@ -372,34 +305,26 @@ export async function GET(_req: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        available,
-        version,
-        supportedLanguages: languages,
-        supportedFormats: ['png', 'jpg', 'jpeg', 'tiff', 'tif', 'bmp', 'webp', 'gif'],
-        maxFileSize: MAX_FILE_SIZE,
-        defaultLanguage: 'eng',
-        defaultConfidenceThreshold: 60,
-        authenticated: !!session?.user,
-      },
+    return apiSuccess({
+      available,
+      version,
+      supportedLanguages: languages,
+      supportedFormats: ['png', 'jpg', 'jpeg', 'tiff', 'tif', 'bmp', 'webp', 'gif'],
+      maxFileSize: MAX_FILE_SIZE,
+      defaultLanguage: 'eng',
+      defaultConfidenceThreshold: 60,
+      authenticated: !!session?.user,
     });
   } catch (error) {
     const isDev = process.env.NODE_ENV === 'development';
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: isDev
-            ? error instanceof Error
-              ? error.message
-              : 'Internal server error'
-            : 'Internal server error',
-        },
-      },
-      { status: 500 }
+    return apiError(
+      'INTERNAL_ERROR',
+      isDev
+        ? error instanceof Error
+          ? error.message
+          : 'Internal server error'
+        : 'Internal server error',
+      500
     );
   }
 }

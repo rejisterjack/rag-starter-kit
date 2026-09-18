@@ -2,68 +2,68 @@
 # Run with: artillery run artillery-config.yml
 
 config:
-  target: "http://localhost:3000"
+  target: 'http://localhost:3000'
   phases:
     # Smoke test - verify basic functionality
-    - name: "Smoke Test"
+    - name: 'Smoke Test'
       duration: 60
       arrivalRate: 1
-      
+
     # Normal load
-    - name: "Normal Load"
+    - name: 'Normal Load'
       duration: 300
       arrivalRate: 5
       rampTo: 10
-      
+
     # Peak load
-    - name: "Peak Load"
+    - name: 'Peak Load'
       duration: 300
       arrivalRate: 10
       rampTo: 50
-      
+
     # Stress test
-    - name: "Stress Test"
+    - name: 'Stress Test'
       duration: 300
       arrivalRate: 50
       rampTo: 100
-      
+
   defaults:
     headers:
-      Content-Type: "application/json"
-      
+      Content-Type: 'application/json'
+
   plugins:
     expect:
       expectDefault: true
-      
+
   environments:
     development:
-      target: "http://localhost:3000"
+      target: 'http://localhost:3000'
     staging:
-      target: "https://staging.rag-chatbot.com"
+      target: 'https://staging.rag-chatbot.com'
     production:
-      target: "https://rag-chatbot.com"
+      target: 'https://rag-chatbot.com'
 
 scenarios:
   # Health check scenario
-  - name: "Health Check"
+  - name: 'Health Check'
     weight: 10
     flow:
       - get:
-          url: "/api/health"
+          url: '/api/health'
           expect:
             - statusCode: 200
             - contentType: json
-            - hasProperty: "status"
+            - hasProperty: 'status'
 
   # Chat API scenario
-  - name: "Chat Request"
+  - name: 'Chat Request'
     weight: 60
     flow:
       - post:
-          url: "/api/chat"
+          url: '/api/chat'
           json:
-            message: "What is the revenue for Q1 2024?"
-            workspaceId: "{{ $randomString() }}"
+            message: 'What is the revenue for Q1 2024?'
+            workspaceId: '{{ $randomString() }}'
           expect:
             - statusCode: 200
             - contentType: json
@@ -71,11 +71,11 @@ scenarios:
                 max: 5000
 
   # Document listing scenario
-  - name: "List Documents"
+  - name: 'List Documents'
     weight: 20
     flow:
       - get:
-          url: "/api/documents?workspaceId=test-workspace"
+          url: '/api/documents?workspaceId=test-workspace'
           expect:
             - statusCode: 200
             - contentType: json
@@ -83,74 +83,74 @@ scenarios:
                 max: 1000
 
   # Full conversation flow
-  - name: "Conversation Flow"
+  - name: 'Conversation Flow'
     weight: 10
     flow:
       - post:
-          url: "/api/chat"
+          url: '/api/chat'
           json:
-            message: "Hello, I have questions about financial reports"
-            workspaceId: "conv-test-{{ $randomString() }}"
+            message: 'Hello, I have questions about financial reports'
+            workspaceId: 'conv-test-{{ $randomString() }}'
           capture:
-            - json: "$.chatId"
-              as: "chatId"
+            - json: '$.chatId'
+              as: 'chatId'
           expect:
             - statusCode: 200
-            
+
       - think: 2
-      
+
       - post:
-          url: "/api/chat"
+          url: '/api/chat'
           json:
-            message: "What was the total revenue in 2024?"
-            workspaceId: "conv-test-{{ $randomString() }}"
-            chatId: "{{ chatId }}"
+            message: 'What was the total revenue in 2024?'
+            workspaceId: 'conv-test-{{ $randomString() }}'
+            chatId: '{{ chatId }}'
           expect:
             - statusCode: 200
-            
+
       - think: 2
-      
+
       - post:
-          url: "/api/chat"
+          url: '/api/chat'
           json:
-            message: "How does that compare to Q1?"
-            workspaceId: "conv-test-{{ $randomString() }}"
-            chatId: "{{ chatId }}"
+            message: 'How does that compare to Q1?'
+            workspaceId: 'conv-test-{{ $randomString() }}'
+            chatId: '{{ chatId }}'
           expect:
             - statusCode: 200
 
 # Custom metrics tracking
 metrics:
-  - name: "chat_response_time"
-    type: "histogram"
+  - name: 'chat_response_time'
+    type: 'histogram'
     match:
-      url: "/api/chat"
-      method: "POST"
-      
-  - name: "documents_response_time"
-    type: "histogram"
+      url: '/api/chat'
+      method: 'POST'
+
+  - name: 'documents_response_time'
+    type: 'histogram'
     match:
-      url: "/api/documents"
-      method: "GET"
+      url: '/api/documents'
+      method: 'GET'
 
 # Thresholds for pass/fail
 thresholds:
-  - metric: "http.response_time"
+  - metric: 'http.response_time'
     threshold:
       p95: 2000
       p99: 5000
-      
-  - metric: "http.errors"
+
+  - metric: 'http.errors'
     threshold:
       rate: 0.05
-      
-  - metric: "vusers.failed"
+
+  - metric: 'vusers.failed'
     threshold:
       max: 10
 
 # Reporting configuration
 reporting:
-  - plugin: "json"
-    output: "performance-report.json"
-  - plugin: "html"
-    output: "performance-report.html"
+  - plugin: 'json'
+    output: 'performance-report.json'
+  - plugin: 'html'
+    output: 'performance-report.html'

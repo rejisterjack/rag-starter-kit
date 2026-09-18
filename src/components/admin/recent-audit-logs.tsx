@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, type Variants } from 'framer-motion';
+import { m, type Variants } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import type { AuditEvent, AuditSeverity } from '@/generated/prisma/client';
 import type { AuditLogResult } from '@/lib/audit/audit-logger';
@@ -78,9 +78,9 @@ export function RecentAuditLogs({ logs }: RecentAuditLogsProps): React.ReactElem
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-3">
+    <m.div variants={containerVariants} initial="hidden" animate="show" className="space-y-3">
       {logs.map((log) => (
-        <motion.div
+        <m.div
           variants={itemVariants}
           key={log.id}
           className="flex items-start gap-4 p-4 rounded-xl glass border border-white/5 hover:bg-white/5 transition-all duration-300"
@@ -106,8 +106,8 @@ export function RecentAuditLogs({ logs }: RecentAuditLogsProps): React.ReactElem
               <span>{formatRelativeTime(log.createdAt)}</span>
             </div>
           </div>
-        </motion.div>
+        </m.div>
       ))}
-    </motion.div>
+    </m.div>
   );
 }

@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import type { WebhookStatus } from '@/generated/prisma/client';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { withApiAuth } from '@/lib/auth';
 import { prisma, prismaRead } from '@/lib/db';
 import { inngest } from '@/lib/inngest/client';
@@ -105,42 +105,33 @@ export const GET = withApiAuth(async (_req: Request, session, { params }: RouteP
     });
 
     if (!webhook) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Webhook not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Webhook not found', 404);
     }
 
     // Check if user has permission to manage API keys in this workspace
     const hasPermission = await checkPermission(
       session.user.id,
       webhook.workspaceId,
-      Permission.MANAGE_API_KEYS
+      Permission.MANAGE_WEBHOOKS
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        webhook: {
-          id: webhook.id,
-          name: webhook.name,
-          url: webhook.url,
-          events: webhook.events,
-          status: webhook.status,
-          lastTriggeredAt: webhook.lastTriggeredAt?.toISOString() ?? null,
-          failureCount: webhook.failureCount,
-          createdAt: webhook.createdAt.toISOString(),
-          updatedAt: webhook.updatedAt.toISOString(),
-          workspaceId: webhook.workspaceId,
-          createdById: webhook.createdById,
-        },
+    return apiSuccess({
+      webhook: {
+        id: webhook.id,
+        name: webhook.name,
+        url: webhook.url,
+        events: webhook.events,
+        status: webhook.status,
+        lastTriggeredAt: webhook.lastTriggeredAt?.toISOString() ?? null,
+        failureCount: webhook.failureCount,
+        createdAt: webhook.createdAt.toISOString(),
+        updatedAt: webhook.updatedAt.toISOString(),
+        workspaceId: webhook.workspaceId,
+        createdById: webhook.createdById,
       },
     });
   } catch (error) {
@@ -148,10 +139,7 @@ export const GET = withApiAuth(async (_req: Request, session, { params }: RouteP
       error: error instanceof Error ? error.message : 'Unknown error',
     });
 
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to get webhook' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to get webhook', 500);
   }
 });
 
@@ -181,17 +169,11 @@ export async function POST(req: Request, { params }: RouteParams) {
     });
 
     if (!webhook) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Webhook not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Webhook not found', 404);
     }
 
     if (webhook.status !== 'ACTIVE') {
-      return NextResponse.json(
-        { error: { code: 'WEBHOOK_PAUSED', message: 'This webhook is not active' } },
-        { status: 400 }
-      );
+      return apiError('WEBHOOK_PAUSED', 'This webhook is not active', 400);
     }
 
     // 2. Read raw body and verify signature
@@ -199,19 +181,13 @@ export async function POST(req: Request, { params }: RouteParams) {
     const signatureHeader = req.headers.get('x-webhook-signature');
 
     if (!signatureHeader) {
-      return NextResponse.json(
-        { error: { code: 'MISSING_SIGNATURE', message: 'x-webhook-signature header is required' } },
-        { status: 401 }
-      );
+      return apiError('MISSING_SIGNATURE', 'x-webhook-signature header is required', 401);
     }
 
     const isValid = verifyWebhookSignature(rawBody, signatureHeader, webhook.secret);
     if (!isValid) {
       logger.warn('Webhook signature verification failed', { webhookId: id });
-      return NextResponse.json(
-        { error: { code: 'INVALID_SIGNATURE', message: 'Signature verification failed' } },
-        { status: 401 }
-      );
+      return apiError('INVALID_SIGNATURE', 'Signature verification failed', 401);
     }
 
     // 3. Parse the payload
@@ -222,10 +198,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       logger.debug('Invalid JSON in webhook ingestion payload', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: { code: 'INVALID_JSON', message: 'Request body must be valid JSON' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_JSON', 'Request body must be valid JSON', 400);
     }
 
     // Determine ingestion mode
@@ -233,14 +206,10 @@ export async function POST(req: Request, { params }: RouteParams) {
     const isContentMode = typeof payload.content === 'string' && payload.content.length > 0;
 
     if (!isUrlMode && !isContentMode) {
-      return NextResponse.json(
-        {
-          error: {
-            code: 'INVALID_PAYLOAD',
-            message: 'Payload must contain either a "url" field or a "content" field',
-          },
-        },
-        { status: 400 }
+      return apiError(
+        'INVALID_PAYLOAD',
+        'Payload must contain either a "url" field or a "content" field',
+        400
       );
     }
 
@@ -276,14 +245,16 @@ export async function POST(req: Request, { params }: RouteParams) {
             });
             throw new Error('Invalid URL provided in payload');
           }
-          docName = (payload.title as string) || new URL(url).hostname + new URL(url).pathname;
+          docName =
+            (typeof payload.title === 'string' ? payload.title : '') ||
+            new URL(url).hostname + new URL(url).pathname;
           contentType = 'HTML';
           contentValue = null;
           sourceUrl = url;
           docSize = 0;
         } else {
           // Raw text content mode
-          docName = (payload.title as string) || 'Webhook Document';
+          docName = (typeof payload.title === 'string' ? payload.title : '') || 'Webhook Document';
           contentType = 'TXT';
           contentValue = payload.content as string;
           docSize = Buffer.byteLength(contentValue, 'utf-8');
@@ -350,14 +321,11 @@ export async function POST(req: Request, { params }: RouteParams) {
     );
 
     // 7. Return success response
-    return NextResponse.json(result);
+    return apiSuccess(result);
   } catch (error) {
     // Handle idempotency errors gracefully
     if (error instanceof Error && error.message === 'Event already processed') {
-      return NextResponse.json(
-        { success: true, message: 'Event already processed' },
-        { status: 200 }
-      );
+      return apiSuccess({ message: 'Event already processed' });
     }
 
     const isDev = process.env.NODE_ENV === 'development';
@@ -365,20 +333,14 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     // Distinguish validation errors from internal errors
     if (message === 'Invalid URL provided in payload' || message.startsWith('Invalid')) {
-      return NextResponse.json(
-        { error: { code: 'VALIDATION_ERROR', message: isDev ? message : 'Validation failed' } },
-        { status: 400 }
-      );
+      return apiError('VALIDATION_ERROR', isDev ? message : 'Validation failed', 400);
     }
 
     logger.error('Webhook ingestion failed', {
       error: message,
     });
 
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: isDev ? message : 'Webhook ingestion failed' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', isDev ? message : 'Webhook ingestion failed', 500);
   }
 }
 
@@ -400,24 +362,18 @@ export const PATCH = withApiAuth(async (req: Request, session, { params }: Route
     });
 
     if (!existingWebhook) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Webhook not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Webhook not found', 404);
     }
 
     // Check if user has permission to manage API keys in this workspace
     const hasPermission = await checkPermission(
       session.user.id,
       existingWebhook.workspaceId,
-      Permission.MANAGE_API_KEYS
+      Permission.MANAGE_WEBHOOKS
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Parse and validate body
@@ -428,10 +384,7 @@ export const PATCH = withApiAuth(async (req: Request, session, { params }: Route
       logger.debug('Invalid JSON body in webhook update', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     let validatedInput: UpdateWebhookInput;
@@ -440,15 +393,7 @@ export const PATCH = withApiAuth(async (req: Request, session, { params }: Route
       validatedInput = validateUpdateWebhookInput(body);
     } catch (error) {
       if (error instanceof Error) {
-        return NextResponse.json(
-          {
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: isDev ? error.message : 'Validation failed',
-            },
-          },
-          { status: 400 }
-        );
+        return apiError('VALIDATION_ERROR', isDev ? error.message : 'Validation failed', 400);
       }
       throw error;
     }
@@ -464,14 +409,10 @@ export const PATCH = withApiAuth(async (req: Request, session, { params }: Route
       });
 
       if (duplicateWebhook) {
-        return NextResponse.json(
-          {
-            error: {
-              code: 'DUPLICATE_WEBHOOK',
-              message: 'A webhook with this URL already exists in the workspace',
-            },
-          },
-          { status: 409 }
+        return apiError(
+          'DUPLICATE_WEBHOOK',
+          'A webhook with this URL already exists in the workspace',
+          409
         );
       }
     }
@@ -509,15 +450,12 @@ export const PATCH = withApiAuth(async (req: Request, session, { params }: Route
       updates: validatedInput,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        webhook: {
-          ...updatedWebhook,
-          createdAt: updatedWebhook.createdAt.toISOString(),
-          updatedAt: updatedWebhook.updatedAt.toISOString(),
-          lastTriggeredAt: updatedWebhook.lastTriggeredAt?.toISOString() ?? null,
-        },
+    return apiSuccess({
+      webhook: {
+        ...updatedWebhook,
+        createdAt: updatedWebhook.createdAt.toISOString(),
+        updatedAt: updatedWebhook.updatedAt.toISOString(),
+        lastTriggeredAt: updatedWebhook.lastTriggeredAt?.toISOString() ?? null,
       },
     });
   } catch (error) {
@@ -525,10 +463,7 @@ export const PATCH = withApiAuth(async (req: Request, session, { params }: Route
       error: error instanceof Error ? error.message : 'Unknown error',
     });
 
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to update webhook' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to update webhook', 500);
   }
 });
 
@@ -550,24 +485,18 @@ export const DELETE = withApiAuth(async (_req: Request, session, { params }: Rou
     });
 
     if (!existingWebhook) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Webhook not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Webhook not found', 404);
     }
 
     // Check if user has permission to manage API keys in this workspace
     const hasPermission = await checkPermission(
       session.user.id,
       existingWebhook.workspaceId,
-      Permission.MANAGE_API_KEYS
+      Permission.MANAGE_WEBHOOKS
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Delete the webhook
@@ -581,18 +510,14 @@ export const DELETE = withApiAuth(async (_req: Request, session, { params }: Rou
       userId: session.user.id,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: { message: 'Webhook deleted successfully' },
+    return apiSuccess({
+      message: 'Webhook deleted successfully',
     });
   } catch (error) {
     logger.error('Failed to delete webhook', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
 
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to delete webhook' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to delete webhook', 500);
   }
 });

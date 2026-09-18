@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { motion, type Variants } from 'framer-motion';
+import { m, type Variants } from 'framer-motion';
 import { AlertTriangle, Github, Loader2, Mail } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { ApiError, apiFetch } from '@/lib/api-client';
 
 // Validation schema
 const loginSchema = z.object({
@@ -68,15 +69,23 @@ export default function LoginPage(): React.ReactElement {
   );
 }
 
+function sanitizeRedirectUrl(url: string): string {
+  if (url.startsWith('/') && !url.startsWith('//')) return url;
+  return '/chat';
+}
+
 function LoginContent(): React.ReactElement {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/chat';
+  const callbackUrl = sanitizeRedirectUrl(searchParams.get('callbackUrl') || '/chat');
   const error = searchParams.get('error');
 
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(error);
+  const [mfaChallengeToken, setMfaChallengeToken] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [pendingCredentials, setPendingCredentials] = useState<LoginFormData | null>(null);
   const [ssoDetected, setSsoDetected] = useState<DomainLookupResult | null>(null);
   const [isCheckingDomain, setIsCheckingDomain] = useState(false);
 
@@ -94,7 +103,7 @@ function LoginContent(): React.ReactElement {
 
   useEffect(() => {
     const checkDomain = async () => {
-      if (!email || !email.includes('@')) {
+      if (!email?.includes('@')) {
         setSsoDetected(null);
         return;
       }
@@ -122,6 +131,47 @@ function LoginContent(): React.ReactElement {
     setLoginError(null);
 
     try {
+      const challengeRes = await fetch('/api/auth/mfa/challenge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email, password: data.password }),
+      });
+
+      if (challengeRes.status === 423) {
+        // Account locked — surface the lock with remaining time instead of a
+        // generic "invalid credentials" message (D-5)
+        let message = 'Account is locked. Please try again later.';
+        try {
+          const body = await challengeRes.json();
+          const minutes = body?.error?.details?.retryAfterMinutes;
+          if (typeof minutes === 'number' && minutes > 0) {
+            message = `Account is locked. Please try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`;
+          }
+        } catch {
+          // Non-JSON body — keep the default message
+        }
+        setLoginError(message);
+        return;
+      }
+
+      if (challengeRes.status === 401) {
+        setLoginError('Invalid email or password');
+        return;
+      }
+
+      if (challengeRes.ok) {
+        const challengeData = (await challengeRes.json()) as {
+          mfaRequired?: boolean;
+          challengeToken?: string;
+        };
+
+        if (challengeData.mfaRequired && challengeData.challengeToken) {
+          setPendingCredentials(data);
+          setMfaChallengeToken(challengeData.challengeToken);
+          return;
+        }
+      }
+
       const result = await signIn('credentials', {
         email: data.email,
         password: data.password,
@@ -130,6 +180,12 @@ function LoginContent(): React.ReactElement {
       });
 
       if (result?.error) {
+        if (result.error.includes('MFA_REQUIRED:')) {
+          const token = result.error.split('MFA_REQUIRED:')[1];
+          setPendingCredentials(data);
+          setMfaChallengeToken(token);
+          return;
+        }
         setLoginError('Invalid email or password');
       } else {
         router.push(callbackUrl);
@@ -137,6 +193,53 @@ function LoginContent(): React.ReactElement {
       }
     } catch (_error: unknown) {
       setLoginError('An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaChallengeToken || mfaCode.length < 6) return;
+
+    setIsLoading(true);
+    setLoginError(null);
+
+    try {
+      const verifyData = await apiFetch<{ completionToken?: string; warning?: string }>(
+        '/api/auth/mfa/verify',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: mfaCode, challengeToken: mfaChallengeToken }),
+        }
+      );
+
+      if (!verifyData.completionToken) {
+        setLoginError('Invalid code');
+        return;
+      }
+
+      if (verifyData.warning) {
+        toast.warning(verifyData.warning);
+      }
+
+      const result = await signIn('credentials', {
+        mfaCompletionToken: verifyData.completionToken,
+        redirect: false,
+        callbackUrl,
+      });
+
+      if (result?.error) {
+        setLoginError('Unable to complete sign in. Please try again.');
+      } else {
+        router.push(callbackUrl);
+        router.refresh();
+      }
+    } catch (err) {
+      setLoginError(
+        err instanceof ApiError ? err.message : 'Verification failed. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -165,7 +268,7 @@ function LoginContent(): React.ReactElement {
     }
     setIsResending(true);
     try {
-      await fetch('/api/auth/verify-email', {
+      await apiFetch('/api/auth/verify-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: emailVal }),
@@ -183,16 +286,16 @@ function LoginContent(): React.ReactElement {
   const showSSOOnly = ssoDetected?.forceSSO && ssoDetected.found;
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">
-      <motion.div variants={itemVariants} className="text-center">
+    <m.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">
+      <m.div variants={itemVariants} className="text-center">
         <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent pb-1">
           Welcome back
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">Sign in to your account to continue</p>
-      </motion.div>
+      </m.div>
 
       {loginError && (
-        <motion.div variants={itemVariants}>
+        <m.div variants={itemVariants}>
           {loginError === 'verification-token-expired' ||
           loginError === 'invalid-verification-token' ||
           loginError === 'invalid-verification-link' ? (
@@ -245,11 +348,11 @@ function LoginContent(): React.ReactElement {
               </AlertDescription>
             </Alert>
           )}
-        </motion.div>
+        </m.div>
       )}
 
       {showSSOOnly && (
-        <motion.div variants={itemVariants}>
+        <m.div variants={itemVariants}>
           <Alert className="bg-blue-500/10 border-blue-500/30 backdrop-blur-md text-blue-200">
             <AlertTriangle className="h-4 w-4 text-blue-400" />
             <AlertDescription>
@@ -257,15 +360,15 @@ function LoginContent(): React.ReactElement {
               login is disabled.
             </AlertDescription>
           </Alert>
-        </motion.div>
+        </m.div>
       )}
 
       {/* OAuth buttons */}
-      <motion.div variants={itemVariants} className="space-y-3">
+      <m.div variants={itemVariants} className="space-y-3">
         <Button
           variant="outline"
           className="w-full interactive"
-          onClick={() => signIn('github', { callbackUrl: searchParams?.get('callbackUrl') ?? '/' })}
+          onClick={() => signIn('github', { callbackUrl })}
         >
           <Github className="mr-2 h-4 w-4" />
           Continue with GitHub
@@ -273,7 +376,7 @@ function LoginContent(): React.ReactElement {
         <Button
           variant="outline"
           className="w-full interactive"
-          onClick={() => signIn('google', { callbackUrl: searchParams?.get('callbackUrl') ?? '/' })}
+          onClick={() => signIn('google', { callbackUrl })}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" role="img" aria-label="Google logo">
             <title>Google</title>
@@ -296,10 +399,10 @@ function LoginContent(): React.ReactElement {
           </svg>
           Continue with Google
         </Button>
-      </motion.div>
+      </m.div>
 
       {(ssoDetected?.found || showSSOOnly) && (
-        <motion.div variants={itemVariants}>
+        <m.div variants={itemVariants}>
           {!showSSOOnly && (
             <div className="relative mb-6 mt-2">
               <div className="absolute inset-0 flex items-center">
@@ -322,11 +425,61 @@ function LoginContent(): React.ReactElement {
             workspaceLogo={ssoDetected?.workspaceLogo}
             ssoMethods={ssoDetected?.ssoMethods || []}
           />
-        </motion.div>
+        </m.div>
       )}
 
-      {!showSSOOnly && (
-        <motion.div variants={itemVariants}>
+      {mfaChallengeToken && (
+        <m.div variants={itemVariants}>
+          <div className="text-center mb-4">
+            <h2 className="text-xl font-semibold">Two-Factor Authentication</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Enter the 6-digit code from your authenticator app
+              {pendingCredentials?.email ? ` for ${pendingCredentials.email}` : ''}
+            </p>
+          </div>
+          <form onSubmit={onMfaSubmit} className="space-y-4">
+            <Input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={8}
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="000000"
+              className="text-center text-2xl tracking-widest bg-background/50 border-white/10"
+              disabled={isLoading}
+              aria-label="MFA code"
+              data-testid="mfa-code-input"
+            />
+            <Button type="submit" className="w-full" disabled={isLoading || mfaCode.length < 6}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                'Verify and sign in'
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              disabled={isLoading}
+              onClick={() => {
+                setMfaChallengeToken(null);
+                setMfaCode('');
+                setPendingCredentials(null);
+              }}
+            >
+              Back to login
+            </Button>
+          </form>
+        </m.div>
+      )}
+
+      {!showSSOOnly && !mfaChallengeToken && (
+        <m.div variants={itemVariants}>
           <div className="relative mb-6 mt-2">
             <div className="absolute inset-0 flex items-center">
               <Separator className="w-full border-border/50" />
@@ -346,15 +499,21 @@ function LoginContent(): React.ReactElement {
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="email"
+                  data-testid="email-input"
                   type="email"
                   placeholder="name@example.com"
                   {...register('email')}
                   className="pl-10 bg-background/50 border-white/10 focus-visible:ring-primary/50"
                   disabled={isLoading}
                   aria-invalid={errors.email ? 'true' : 'false'}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
                 />
               </div>
-              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+              {errors.email && (
+                <p id="email-error" className="text-sm text-red-500" role="alert">
+                  {errors.email.message}
+                </p>
+              )}
               {isCheckingDomain && (
                 <p className="text-xs text-muted-foreground">
                   <Loader2 className="inline h-3 w-3 animate-spin mr-1" />
@@ -376,6 +535,7 @@ function LoginContent(): React.ReactElement {
               </div>
               <Input
                 id="password"
+                data-testid="password-input"
                 type="password"
                 placeholder="Enter your password"
                 {...register('password')}
@@ -385,7 +545,12 @@ function LoginContent(): React.ReactElement {
               />
               {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
             </div>
-            <Button type="submit" className="w-full font-medium" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full font-medium"
+              disabled={isLoading}
+              data-testid="login-button"
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -396,11 +561,11 @@ function LoginContent(): React.ReactElement {
               )}
             </Button>
           </form>
-        </motion.div>
+        </m.div>
       )}
 
       {!showSSOOnly && (
-        <motion.div variants={itemVariants} className="pt-2">
+        <m.div variants={itemVariants} className="pt-2">
           <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{' '}
             <Link
@@ -410,11 +575,11 @@ function LoginContent(): React.ReactElement {
               Sign up
             </Link>
           </p>
-        </motion.div>
+        </m.div>
       )}
 
-      <motion.div variants={itemVariants}>
-        <p className="text-center text-xs text-muted-foreground/60 leading-relaxed max-w-[80%] mx-auto">
+      <m.div variants={itemVariants}>
+        <p className="text-center text-xs text-muted-foreground leading-relaxed max-w-[80%] mx-auto">
           By continuing, you agree to our{' '}
           <Link href="/terms" className="hover:text-primary transition-colors">
             Terms of Service
@@ -425,8 +590,8 @@ function LoginContent(): React.ReactElement {
           </Link>
           .
         </p>
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }
 

@@ -4,14 +4,14 @@ A Manifest V3 Chrome extension that connects your browser to a RAG (Retrieval-Au
 
 ## Features
 
-| Feature | Shortcut | Description |
-|---------|----------|-------------|
-| **Popup Panel** | `Ctrl+Shift+K` / `Cmd+Shift+K` | Quick-access panel with connection status and actions |
-| **Side Panel** | `Ctrl+Shift+L` / `Cmd+Shift+L` | Persistent chat panel docked to the right side of the browser |
-| **Quick Ask** | `Ctrl+Shift+A` / `Cmd+Shift+A` | Send selected text as a question to the RAG assistant |
-| **Save Page** | Right-click > Save page | Ingest the current page into your knowledge base |
-| **Summarize** | Right-click > Summarize | Generate a RAG-powered summary of the current page |
-| **Ask about selection** | Right-click on text | Send the selected text as a query to the RAG |
+| Feature                 | Shortcut                       | Description                                                   |
+| ----------------------- | ------------------------------ | ------------------------------------------------------------- |
+| **Popup Panel**         | `Ctrl+Shift+K` / `Cmd+Shift+K` | Quick-access panel with connection status and actions         |
+| **Side Panel**          | `Ctrl+Shift+L` / `Cmd+Shift+L` | Persistent chat panel docked to the right side of the browser |
+| **Quick Ask**           | `Ctrl+Shift+A` / `Cmd+Shift+A` | Send selected text as a question to the RAG assistant         |
+| **Save Page**           | Right-click > Save page        | Ingest the current page into your knowledge base              |
+| **Summarize**           | Right-click > Summarize        | Generate a RAG-powered summary of the current page            |
+| **Ask about selection** | Right-click on text            | Send the selected text as a query to the RAG                  |
 
 ### Popup Panel
 
@@ -35,7 +35,7 @@ The side panel docks to the right side of the browser and provides a persistent 
 
 ### From Chrome Web Store (Recommended)
 
-*Coming soon -- the extension will be published to the Chrome Web Store.*
+_Coming soon -- the extension will be published to the Chrome Web Store._
 
 ### Manual Installation (Development)
 
@@ -85,24 +85,24 @@ chrome.storage.local.set({ authToken: 'your-jwt-token-here' });
 
 ## Keyboard Shortcuts
 
-| Action | Windows / Linux | macOS |
-|--------|----------------|-------|
-| Open popup | `Ctrl+Shift+K` | `Cmd+Shift+K` |
-| Open side panel | `Ctrl+Shift+L` | `Cmd+Shift+L` |
-| Quick ask (selection) | `Ctrl+Shift+A` | `Cmd+Shift+A` |
+| Action                | Windows / Linux | macOS         |
+| --------------------- | --------------- | ------------- |
+| Open popup            | `Ctrl+Shift+K`  | `Cmd+Shift+K` |
+| Open side panel       | `Ctrl+Shift+L`  | `Cmd+Shift+L` |
+| Quick ask (selection) | `Ctrl+Shift+A`  | `Cmd+Shift+A` |
 
 You can customize these shortcuts in Chrome at `chrome://extensions/shortcuts`.
 
 ## Permissions Explained
 
-| Permission | Justification |
-|------------|---------------|
-| `activeTab` | Read the URL and title of the active tab to save pages and generate summaries |
-| `storage` | Persist user preferences (backend URL, side panel toggle, auto-save setting, auth token) |
-| `contextMenus` | Add right-click menu items for "Ask RAG about this", "Save page", and "Summarize" |
-| `sidePanel` | Open the docked side panel via keyboard shortcut or popup button |
-| `scripting` | Execute content scripts to extract selected text and page content for RAG queries |
-| `notifications` | Show Chrome notifications when a page is saved or an error occurs |
+| Permission      | Justification                                                                            |
+| --------------- | ---------------------------------------------------------------------------------------- |
+| `activeTab`     | Read the URL and title of the active tab to save pages and generate summaries            |
+| `storage`       | Persist user preferences (backend URL, side panel toggle, auto-save setting, auth token) |
+| `contextMenus`  | Add right-click menu items for "Ask RAG about this", "Save page", and "Summarize"        |
+| `sidePanel`     | Open the docked side panel via keyboard shortcut or popup button                         |
+| `scripting`     | Execute content scripts to extract selected text and page content for RAG queries        |
+| `notifications` | Show Chrome notifications when a page is saved or an error occurs                        |
 
 **No browsing history is collected.** The extension only communicates with the backend URL you configure. No data is sent to any third-party services.
 
@@ -150,11 +150,11 @@ extensions/chrome/
 
 ## Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| "Unable to connect" status | Verify the backend URL is correct and the server is running. Check `host_permissions` in the manifest. |
-| Context menus not appearing | Reload the extension in `chrome://extensions`. Menus are created on `onInstalled`. |
-| Side panel not opening | Ensure the `sidePanel` permission is granted. Try reloading the extension. |
+| Issue                               | Solution                                                                                                             |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| "Unable to connect" status          | Verify the backend URL is correct and the server is running. Check `host_permissions` in the manifest.               |
+| Context menus not appearing         | Reload the extension in `chrome://extensions`. Menus are created on `onInstalled`.                                   |
+| Side panel not opening              | Ensure the `sidePanel` permission is granted. Try reloading the extension.                                           |
 | Selection-based actions not working | The page must have focus and text selected. Some pages (chrome:// URLs, PDF viewer) may not support content scripts. |
 
 ## License

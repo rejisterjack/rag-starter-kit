@@ -324,7 +324,7 @@ export const messages = {
   },
 
   async getPending(): Promise<CachedMessage[]> {
-    return getAllByIndex<CachedMessage>(STORES.MESSAGES, 'by-pending', 1 as unknown as IDBValidKey);
+    return getAllByIndex<CachedMessage>(STORES.MESSAGES, 'by-pending', IDBKeyRange.only(1));
   },
 
   async put(message: CachedMessage): Promise<void> {

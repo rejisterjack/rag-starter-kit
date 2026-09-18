@@ -4,6 +4,8 @@ import { ArrowRight, Bot, Send, Sparkles, User } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { fetchWithCsrf } from '@/lib/security/csrf';
 
 export default function DemoPage(): React.ReactElement {
   const [messages, setMessages] = useState<Array<{ id: string; role: string; content: string }>>([
@@ -29,7 +31,7 @@ export default function DemoPage(): React.ReactElement {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/demo/chat', {
+      const response = await fetchWithCsrf('/api/demo/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: newMessages, stream: false }),
@@ -65,6 +67,7 @@ export default function DemoPage(): React.ReactElement {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
+      <h1 className="sr-only">RAG Starter Kit Demo</h1>
       {/* Header Banner */}
       <div className="bg-primary/10 border-b border-primary/20 p-3 text-center text-sm flex items-center justify-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
@@ -105,7 +108,7 @@ export default function DemoPage(): React.ReactElement {
           </div>
         ))}
         {isLoading && (
-          <div className="flex gap-4 justify-start">
+          <div className="flex gap-4 justify-start" aria-live="polite" role="status">
             <div className="shrink-0 h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 mt-1">
               <Bot className="h-5 w-5 text-primary" />
             </div>
@@ -122,6 +125,7 @@ export default function DemoPage(): React.ReactElement {
                 className="w-2 h-2 rounded-full bg-primary animate-bounce"
                 style={{ animationDelay: '300ms' }}
               />
+              <span className="sr-only">Assistant is typing...</span>
             </div>
           </div>
         )}
@@ -130,19 +134,27 @@ export default function DemoPage(): React.ReactElement {
       <div className="p-4 border-t border-border bg-background/80 backdrop-blur-md">
         <div className="max-w-4xl mx-auto relative">
           <form onSubmit={handleSubmit} className="relative flex items-center">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything about the RAG Starter Kit..."
-              className="w-full bg-muted/50 border border-border rounded-full px-6 py-4 pr-14 focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground"
-              disabled={isLoading}
-            />
+            <div className="w-full">
+              <Label htmlFor="demo-chat-input" className="sr-only">
+                Chat message
+              </Label>
+              <input
+                id="demo-chat-input"
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask anything about the RAG Starter Kit..."
+                aria-label="Type your message"
+                className="w-full bg-muted/50 border border-border rounded-full px-6 py-4 pr-14 focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground"
+                disabled={isLoading}
+              />
+            </div>
             <Button
               type="submit"
               size="icon"
               disabled={!input.trim() || isLoading}
               className="absolute right-2 rounded-full h-10 w-10"
+              aria-label="Send message"
             >
               <Send className="h-4 w-4" />
             </Button>
@@ -153,7 +165,7 @@ export default function DemoPage(): React.ReactElement {
             </Link>
             <span className="text-muted-foreground">|</span>
             <a
-              href="https://github.com/your-org/rag-starter-kit"
+              href="https://github.com/rejisterjack/rag-starter-kit"
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground flex items-center"

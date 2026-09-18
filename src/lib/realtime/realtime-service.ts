@@ -148,7 +148,7 @@ export class RealtimeService {
       this.channels.set(roomId, channel);
     }
 
-    return this.channels.get(roomId)!;
+    return this.channels.get(roomId) as ReturnType<typeof this.channels.get> & NonNullable<unknown>;
   }
 
   async joinRoom(roomId: string, _type: 'workspace' | 'conversation' | 'private'): Promise<void> {

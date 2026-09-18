@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { withApiAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -19,16 +19,13 @@ export const POST = withApiAuth(async (req, session) => {
       logger.debug('Failed to parse request body for invite acceptance', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
+      return apiError('BAD_REQUEST', 'Invalid JSON body', 400);
     }
 
     const { token } = body;
 
     if (!token) {
-      return NextResponse.json(
-        { success: false, error: 'Invitation token is required' },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Invitation token is required', 400);
     }
 
     // Get invitation details first
@@ -38,25 +35,19 @@ export const POST = withApiAuth(async (req, session) => {
     });
 
     if (!invitation) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid invitation token' },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Invalid invitation token', 404);
     }
 
     // Check if invitation email matches user's email
     if (invitation.email !== session.user.email) {
-      return NextResponse.json(
-        { success: false, error: 'This invitation was sent to a different email address' },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'This invitation was sent to a different email address', 403);
     }
 
     // Accept the invitation
     const result = await acceptInvitation(token, session.user.id);
 
     if (!result.success) {
-      return NextResponse.json({ success: false, error: result.error }, { status: 400 });
+      return apiError('BAD_REQUEST', result.error ?? 'Failed to accept invitation', 400);
     }
 
     // Log the acceptance
@@ -67,8 +58,7 @@ export const POST = withApiAuth(async (req, session) => {
       metadata: { invitedEmail: invitation.email, role: invitation.role },
     });
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       workspace: {
         id: invitation.workspace.id,
         name: invitation.workspace.name,
@@ -78,9 +68,6 @@ export const POST = withApiAuth(async (req, session) => {
     logger.error('Error accepting invitation', {
       error: error instanceof Error ? error.message : 'Unknown',
     });
-    return NextResponse.json(
-      { success: false, error: 'Failed to accept invitation' },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to accept invitation', 500);
   }
 });

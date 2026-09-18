@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { withApiAuth } from '@/lib/auth';
 import { prisma, prismaRead } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { validateUrlSafety } from '@/lib/security/ssrf-protection';
 import { generateWebhookSecret } from '@/lib/webhooks/delivery';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
 
@@ -17,7 +18,7 @@ interface CreateWebhookInput {
   workspaceId: string;
 }
 
-function validateCreateWebhookInput(body: unknown): CreateWebhookInput {
+async function validateCreateWebhookInput(body: unknown): Promise<CreateWebhookInput> {
   if (!body || typeof body !== 'object') {
     throw new Error('Invalid input: expected an object');
   }
@@ -50,6 +51,23 @@ function validateCreateWebhookInput(body: unknown): CreateWebhookInput {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
     throw new Error('Invalid url: must be a valid URL');
+  }
+
+  // SSRF protection — block private/internal URLs
+  try {
+    const ssrfResult = await validateUrlSafety(input.url);
+    if (!ssrfResult.safe) {
+      throw new Error(`Invalid url: ${ssrfResult.reason || 'URL is not allowed'}`);
+    }
+  } catch (error: unknown) {
+    logger.warn('SSRF validation failed for webhook URL', {
+      url: input.url,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Invalid url: could not verify URL safety');
   }
 
   // Validate events
@@ -94,24 +112,18 @@ export const GET = withApiAuth(async (req, session) => {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)));
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { error: { code: 'BAD_REQUEST', message: 'workspaceId query parameter is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'workspaceId query parameter is required', 400);
     }
 
-    // Check if user has permission to manage API keys in this workspace
+    // Check if user has permission to manage webhooks in this workspace
     const hasPermission = await checkPermission(
       session.user.id,
       workspaceId,
-      Permission.MANAGE_API_KEYS
+      Permission.MANAGE_WEBHOOKS
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Get webhooks with pagination
@@ -142,16 +154,13 @@ export const GET = withApiAuth(async (req, session) => {
 
     const totalPages = Math.ceil(total / limit);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        webhooks: webhooks.map((w) => ({
-          ...w,
-          createdAt: w.createdAt.toISOString(),
-          updatedAt: w.updatedAt.toISOString(),
-          lastTriggeredAt: w.lastTriggeredAt?.toISOString() ?? null,
-        })),
-      },
+    return apiSuccess({
+      webhooks: webhooks.map((w) => ({
+        ...w,
+        createdAt: w.createdAt.toISOString(),
+        updatedAt: w.updatedAt.toISOString(),
+        lastTriggeredAt: w.lastTriggeredAt?.toISOString() ?? null,
+      })),
       pagination: {
         page,
         limit,
@@ -166,10 +175,7 @@ export const GET = withApiAuth(async (req, session) => {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
 
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to get webhooks' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to get webhooks', 500);
   }
 });
 
@@ -191,43 +197,29 @@ export const POST = withApiAuth(async (req, session) => {
       logger.debug('Invalid JSON body in webhook creation', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     let validatedInput: CreateWebhookInput;
     const isDev = process.env.NODE_ENV === 'development';
     try {
-      validatedInput = validateCreateWebhookInput(body);
+      validatedInput = await validateCreateWebhookInput(body);
     } catch (error) {
       if (error instanceof Error) {
-        return NextResponse.json(
-          {
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: isDev ? error.message : 'Validation failed',
-            },
-          },
-          { status: 400 }
-        );
+        return apiError('VALIDATION_ERROR', isDev ? error.message : 'Validation failed', 400);
       }
       throw error;
     }
 
-    // Check if user has permission to manage API keys in this workspace
+    // Check if user has permission to manage webhooks in this workspace
     const hasPermission = await checkPermission(
       session.user.id,
       validatedInput.workspaceId,
-      Permission.MANAGE_API_KEYS
+      Permission.MANAGE_WEBHOOKS
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Check if webhook with same URL already exists in workspace
@@ -239,14 +231,10 @@ export const POST = withApiAuth(async (req, session) => {
     });
 
     if (existingWebhook) {
-      return NextResponse.json(
-        {
-          error: {
-            code: 'DUPLICATE_WEBHOOK',
-            message: 'A webhook with this URL already exists in the workspace',
-          },
-        },
-        { status: 409 }
+      return apiError(
+        'DUPLICATE_WEBHOOK',
+        'A webhook with this URL already exists in the workspace',
+        409
       );
     }
 
@@ -287,28 +275,22 @@ export const POST = withApiAuth(async (req, session) => {
       userId: session.user.id,
     });
 
-    return NextResponse.json(
+    return apiSuccess(
       {
-        success: true,
-        data: {
-          webhook: {
-            ...webhook,
-            createdAt: webhook.createdAt.toISOString(),
-            updatedAt: webhook.updatedAt.toISOString(),
-            lastTriggeredAt: webhook.lastTriggeredAt?.toISOString() ?? null,
-          },
+        webhook: {
+          ...webhook,
+          createdAt: webhook.createdAt.toISOString(),
+          updatedAt: webhook.updatedAt.toISOString(),
+          lastTriggeredAt: webhook.lastTriggeredAt?.toISOString() ?? null,
         },
       },
-      { status: 201 }
+      201
     );
   } catch (error) {
     logger.error('Failed to create webhook', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
 
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to create webhook' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to create webhook', 500);
   }
 });

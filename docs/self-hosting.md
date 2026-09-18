@@ -109,8 +109,7 @@ docker compose up -d
 # Run migrations
 docker compose exec app npx prisma migrate deploy
 
-# Enable pgvector
-docker compose exec postgres psql -U postgres -d ragdb -c "CREATE EXTENSION IF NOT EXISTS vector;"
+# pgvector ships with the postgres service (pgvector/pgvector:pg16)
 ```
 
 ### 5. Access the app

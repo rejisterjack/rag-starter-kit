@@ -49,11 +49,7 @@ export {
   HierarchicalChunker,
 } from './hierarchical';
 // Re-export late chunking utilities
-export {
-  createLateChunkingEmbedder,
-  isLateChunkingSuitable,
-  LateChunker,
-} from './late';
+export { createLateChunkingEmbedder, isLateChunkingSuitable, LateChunker } from './late';
 export { SemanticChunker } from './semantic';
 
 // Re-export token utilities

@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import { Bot, Check, ChevronDown, Circle, Loader2, Sparkles, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -46,7 +46,7 @@ function ThinkingDots() {
   return (
     <span className="inline-flex items-center gap-0.5" aria-hidden="true">
       {[0, 1, 2].map((i) => (
-        <motion.span
+        <m.span
           key={i}
           className="h-1 w-1 rounded-full bg-primary"
           animate={{ opacity: [0.3, 1, 0.3] }}
@@ -104,7 +104,7 @@ export function AgentThinkingIndicator({
   if (!isThinking) return null;
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -5, scale: 0.98 }}
@@ -120,13 +120,13 @@ export function AgentThinkingIndicator({
             <div className="h-9 w-9 rounded-full bg-emerald-500 text-white flex items-center justify-center ring-2 ring-offset-2 ring-offset-background ring-emerald-500/30 shadow-md">
               <Bot className="h-5 w-5" aria-hidden="true" />
             </div>
-            <motion.div
+            <m.div
               className="absolute -right-1 -top-1"
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ duration: 1.5, repeat: Infinity }}
             >
               <Sparkles className="h-3 w-3 text-yellow-400" aria-hidden="true" />
-            </motion.div>
+            </m.div>
           </div>
         </div>
 
@@ -144,7 +144,7 @@ export function AgentThinkingIndicator({
           {/* Current tool badge */}
           <AnimatePresence>
             {currentTool && (
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 10 }}
@@ -152,7 +152,7 @@ export function AgentThinkingIndicator({
               >
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                 Running: {currentTool}
-              </motion.div>
+              </m.div>
             )}
           </AnimatePresence>
 
@@ -165,7 +165,7 @@ export function AgentThinkingIndicator({
             aria-valuemax={100}
             aria-label={`Agent progress: ${progress}%`}
           >
-            <motion.div
+            <m.div
               className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-primary"
               initial={{ width: '0%' }}
               animate={{ width: `${progress}%` }}
@@ -195,7 +195,7 @@ export function AgentThinkingIndicator({
 
               <AnimatePresence>
                 {showDetails && (
-                  <motion.div
+                  <m.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
@@ -204,7 +204,7 @@ export function AgentThinkingIndicator({
                   >
                     <ul className="mt-2 space-y-1.5" aria-label="Agent steps">
                       {steps.map((step, idx) => (
-                        <motion.li
+                        <m.li
                           key={step.id ?? idx}
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
@@ -224,16 +224,16 @@ export function AgentThinkingIndicator({
                           >
                             {step.label}
                           </span>
-                        </motion.li>
+                        </m.li>
                       ))}
                     </ul>
-                  </motion.div>
+                  </m.div>
                 )}
               </AnimatePresence>
             </div>
           )}
         </div>
       </div>
-    </motion.div>
+    </m.div>
   );
 }

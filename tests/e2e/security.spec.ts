@@ -111,6 +111,7 @@ test.describe('Authentication Security', () => {
     // Simulate session timeout (in real test, would manipulate cookies/session)
     await page.evaluate(() => {
       // Clear auth cookie
+      // biome-ignore lint/suspicious/noDocumentCookie: Test-only cookie cleanup
       document.cookie = 'next-auth.session-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     });
 

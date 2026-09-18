@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import { BrainCircuit, Database, Scissors, Search, Upload, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -38,16 +38,16 @@ const stages: Stage[] = [
     title: 'Embed',
     description: 'Google Gemini vectors',
     detail:
-      'Free Google Gemini embedding tier (1,500 req/day). Generates 768-dimensional dense vectors stored in PostgreSQL pgvector extension.',
+      'Free Google Gemini embedding tier (1,500 req/day). Generates 768-dimensional dense vectors stored in PostgreSQL with pgvector.',
     color: '236, 72, 153', // Pink
   },
   {
     id: 'store',
     icon: Database,
     title: 'Store',
-    description: 'pgvector + PostgreSQL',
+    description: 'PostgreSQL + pgvector',
     detail:
-      'Vectors stored with HNSW index for approximate nearest neighbor search. Cosine similarity for fast semantic retrieval with sub-millisecond latency.',
+      'Embeddings stored in PostgreSQL with pgvector HNSW indexing. The same database holds document metadata and relational data.',
     color: '45, 212, 191', // Teal
   },
   {
@@ -101,7 +101,7 @@ export function RagPipelineDiagram(): React.ReactElement {
       {/* Dynamic Background Glow based on active stage */}
       <div className="absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute inset-0 bg-background/80 backdrop-blur-3xl z-10" />
-        <motion.div
+        <m.div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[120px] opacity-20"
           animate={{
             background: `radial-gradient(circle, rgb(\${stages[activeIndex]?.color || '0,0,0'}) 0%, transparent 70%)`,
@@ -111,7 +111,7 @@ export function RagPipelineDiagram(): React.ReactElement {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -125,13 +125,13 @@ export function RagPipelineDiagram(): React.ReactElement {
             Click each stage to explore. Every step is configurable, observable, and runs entirely
             in TypeScript.
           </p>
-        </motion.div>
+        </m.div>
 
         <div className="relative">
           {/* Animated SVG Data Flow Lines (Desktop) */}
           <div className="hidden lg:block absolute top-[45px] left-0 right-0 h-[2px] z-0 px-[8%]">
             <div className="relative w-full h-full bg-border/40 rounded-full overflow-hidden">
-              <motion.div
+              <m.div
                 className="absolute inset-0 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50"
                 animate={{
                   x: ['-100%', '100%'],
@@ -143,7 +143,7 @@ export function RagPipelineDiagram(): React.ReactElement {
                 }}
               />
               {/* Particle moving through pipeline */}
-              <motion.div
+              <m.div
                 className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary))]"
                 animate={{
                   left: ['0%', '100%'],
@@ -163,7 +163,7 @@ export function RagPipelineDiagram(): React.ReactElement {
               const isActive = activeStage === stage.id;
 
               return (
-                <motion.div
+                <m.div
                   key={stage.id}
                   className="relative group cursor-pointer"
                   initial={{ opacity: 0, y: 30 }}
@@ -176,7 +176,7 @@ export function RagPipelineDiagram(): React.ReactElement {
                   }}
                   onClick={() => setActiveStage(stage.id)}
                 >
-                  <motion.div
+                  <m.div
                     className={`h-full text-center glass-panel rounded-2xl p-5 transition-all duration-300 \${
                       isActive
                         ? 'border border-primary/50 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] bg-background/80'
@@ -190,7 +190,7 @@ export function RagPipelineDiagram(): React.ReactElement {
                   >
                     {/* Stage number */}
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <motion.div
+                      <m.div
                         className={`w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center shadow-lg transition-colors duration-500 \${
                           isActive || activeIndex > index
                             ? 'bg-primary text-primary-foreground'
@@ -200,7 +200,7 @@ export function RagPipelineDiagram(): React.ReactElement {
                         transition={isActive ? { duration: 1, repeat: Infinity } : {}}
                       >
                         {index + 1}
-                      </motion.div>
+                      </m.div>
                     </div>
 
                     {/* Icon */}
@@ -212,7 +212,7 @@ export function RagPipelineDiagram(): React.ReactElement {
                       }}
                     >
                       {isActive && (
-                        <motion.div
+                        <m.div
                           className="absolute inset-0 rounded-xl"
                           style={{ border: `1px solid rgba(\${stage.color}, 0.5)` }}
                           animate={{ opacity: [0.5, 1, 0.5] }}
@@ -230,12 +230,12 @@ export function RagPipelineDiagram(): React.ReactElement {
                     <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider hidden sm:block">
                       {stage.description}
                     </p>
-                  </motion.div>
+                  </m.div>
 
                   {/* Active Indicator Arrow */}
                   <AnimatePresence>
                     {isActive && (
-                      <motion.div
+                      <m.div
                         className="hidden lg:block absolute -bottom-8 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[10px]"
                         style={{ borderBottomColor: `rgba(\${stage.color}, 0.3)` }}
                         initial={{ opacity: 0, y: -10 }}
@@ -245,7 +245,7 @@ export function RagPipelineDiagram(): React.ReactElement {
                       />
                     )}
                   </AnimatePresence>
-                </motion.div>
+                </m.div>
               );
             })}
           </div>
@@ -254,7 +254,7 @@ export function RagPipelineDiagram(): React.ReactElement {
           <div className="mt-8 lg:mt-12 min-h-[160px]">
             <AnimatePresence mode="wait">
               {activeStage && (
-                <motion.div
+                <m.div
                   key={activeStage}
                   initial={{ opacity: 0, y: 20, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -300,7 +300,7 @@ export function RagPipelineDiagram(): React.ReactElement {
                       </p>
                     </div>
                   </div>
-                </motion.div>
+                </m.div>
               )}
             </AnimatePresence>
           </div>

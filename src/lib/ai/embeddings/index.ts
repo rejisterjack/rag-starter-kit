@@ -329,7 +329,7 @@ const PROVIDER_MODEL_DIMENSIONS: Record<string, Record<string, number>> = {
 
 /**
  * Validate that the configured embedding model's output dimensions match
- * the pgvector column in the database schema.
+ * the pgvector column size.
  *
  * Call this at application startup (e.g. in instrumentation.ts or a layout effect).
  * Returns a warning string if there is a mismatch, or null if dimensions are compatible.
@@ -363,7 +363,7 @@ export function validateEmbeddingDimensions(
       valid: true,
       message:
         `Unknown model "${resolvedModel}" for provider "${effectiveProvider}". ` +
-        `Cannot validate dimensions. Ensure its output matches the pgvector column (${SCHEMA_VECTOR_DIMENSION}D).`,
+        `Cannot validate dimensions. Ensure its output matches pgvector (${SCHEMA_VECTOR_DIMENSION}D).`,
     };
   }
 

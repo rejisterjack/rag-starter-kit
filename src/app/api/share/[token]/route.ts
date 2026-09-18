@@ -1,9 +1,10 @@
+import { apiError, apiSuccess } from '@/lib/api-response';
 /**
  * Public Chat Share API
  * GET /api/share/[token] - View a shared chat
  */
 
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
 import { logger } from '@/lib/logger';
@@ -23,10 +24,7 @@ export async function GET(
     const rateLimitIdentifier = `share_view:${token}`;
     const rateLimitResult = await checkApiRateLimit(rateLimitIdentifier, 'share_view');
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { error: 'Too many requests', code: 'RATE_LIMITED' },
-        { status: 429 }
-      );
+      return apiError('RATE_LIMITED', 'Too many requests', 429);
     }
 
     // Find the share by token
@@ -61,18 +59,12 @@ export async function GET(
     });
 
     if (!share) {
-      return NextResponse.json(
-        { error: 'Shared chat not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Shared chat not found', 404);
     }
 
     // Check if share has expired
     if (share.expiresAt && new Date() > share.expiresAt) {
-      return NextResponse.json(
-        { error: 'This shared chat has expired', code: 'GONE' },
-        { status: 410 }
-      );
+      return apiError('GONE', 'This shared chat has expired', 410);
     }
 
     // Check if share is public or user is the owner
@@ -80,10 +72,7 @@ export async function GET(
     const isOwner = session?.user?.id === share.chat.user.id;
 
     if (!share.isPublic && !isOwner) {
-      return NextResponse.json(
-        { error: 'This chat is not publicly shared', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'This chat is not publicly shared', 403);
     }
 
     // Update view count and last viewed
@@ -97,43 +86,40 @@ export async function GET(
 
     logger.info('Shared chat viewed');
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        share: {
-          id: share.id,
-          isPublic: share.isPublic,
-          allowComments: share.allowComments,
-          expiresAt: share.expiresAt?.toISOString() || null,
-          viewCount: share.viewCount + 1,
-          createdAt: share.createdAt.toISOString(),
+    return apiSuccess({
+      share: {
+        id: share.id,
+        isPublic: share.isPublic,
+        allowComments: share.allowComments,
+        expiresAt: share.expiresAt?.toISOString() || null,
+        viewCount: share.viewCount + 1,
+        createdAt: share.createdAt.toISOString(),
+      },
+      chat: {
+        id: share.chat.id,
+        title: share.chat.title,
+        createdAt: share.chat.createdAt.toISOString(),
+        owner: {
+          id: share.chat.user.id,
+          name: share.chat.user.name,
+          image: share.chat.user.image,
         },
-        chat: {
-          id: share.chat.id,
-          title: share.chat.title,
-          createdAt: share.chat.createdAt.toISOString(),
-          owner: {
-            id: share.chat.user.id,
-            name: share.chat.user.name,
-            image: share.chat.user.image,
-          },
-          messages: share.chat.messages.map(
-            (msg: {
-              id: string;
-              content: string;
-              role: string;
-              sources: unknown;
-              createdAt: Date;
-            }) => ({
-              id: msg.id,
-              content: msg.content,
-              role: msg.role,
-              sources: msg.sources,
-              createdAt: msg.createdAt.toISOString(),
-            })
-          ),
-          messageCount: share.chat.messages.length,
-        },
+        messages: share.chat.messages.map(
+          (msg: {
+            id: string;
+            content: string;
+            role: string;
+            sources: unknown;
+            createdAt: Date;
+          }) => ({
+            id: msg.id,
+            content: msg.content,
+            role: msg.role,
+            sources: msg.sources,
+            createdAt: msg.createdAt.toISOString(),
+          })
+        ),
+        messageCount: share.chat.messages.length,
       },
     });
   } catch (error: unknown) {
@@ -141,9 +127,6 @@ export async function GET(
       error: error instanceof Error ? error.message : 'Unknown error',
     });
 
-    return NextResponse.json(
-      { error: 'Failed to get shared chat', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to get shared chat', 500);
   }
 }

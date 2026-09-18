@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { type Granularity, getTimeSeriesData } from '@/lib/analytics/dashboard-service';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import {
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
     // Step 1: Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const userId = session.user.id;
@@ -41,19 +42,14 @@ export async function GET(req: Request) {
     });
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        {
-          error: 'Rate limit exceeded',
-          code: 'RATE_LIMIT',
-          resetAt: new Date(rateLimitResult.reset).toISOString(),
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
+      const errRes = apiError('RATE_LIMIT', 'Rate limit exceeded', 429, {
+        resetAt: new Date(rateLimitResult.reset).toISOString(),
+      });
+      errRes.headers.set(
+        'Retry-After',
+        Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString()
       );
+      return errRes;
     }
 
     // Step 3: Parse query parameters
@@ -66,27 +62,18 @@ export async function GET(req: Request) {
 
     // Validate required params
     if (!fromParam || !toParam) {
-      return NextResponse.json(
-        {
-          error: 'Missing required parameters',
-          code: 'MISSING_PARAMS',
-          details: { required: ['from', 'to'], optional: ['granularity', 'workspaceId'] },
-        },
-        { status: 400 }
-      );
+      return apiError('MISSING_PARAMS', 'Missing required parameters', 400, {
+        required: ['from', 'to'],
+        optional: ['granularity', 'workspaceId'],
+      });
     }
 
     // Validate granularity
     const validGranularities: Granularity[] = ['hour', 'day', 'week', 'month'];
     if (!validGranularities.includes(granularityParam)) {
-      return NextResponse.json(
-        {
-          error: 'Invalid granularity',
-          code: 'INVALID_GRANULARITY',
-          details: { valid: validGranularities },
-        },
-        { status: 400 }
-      );
+      return apiError('INVALID_GRANULARITY', 'Invalid granularity', 400, {
+        valid: validGranularities,
+      });
     }
 
     // Parse dates
@@ -94,25 +81,15 @@ export async function GET(req: Request) {
     const toDate = new Date(toParam);
 
     if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
-      return NextResponse.json(
-        {
-          error: 'Invalid date format',
-          code: 'INVALID_DATE',
-          details: { format: 'ISO 8601 (YYYY-MM-DD or full ISO string)' },
-        },
-        { status: 400 }
-      );
+      return apiError('INVALID_DATE', 'Invalid date format', 400, {
+        format: 'ISO 8601 (YYYY-MM-DD or full ISO string)',
+      });
     }
 
     if (fromDate > toDate) {
-      return NextResponse.json(
-        {
-          error: 'Invalid date range',
-          code: 'INVALID_DATE_RANGE',
-          details: { message: 'from date must be before to date' },
-        },
-        { status: 400 }
-      );
+      return apiError('INVALID_DATE_RANGE', 'Invalid date range', 400, {
+        message: 'from date must be before to date',
+      });
     }
 
     // Limit date range based on granularity
@@ -132,18 +109,11 @@ export async function GET(req: Request) {
     };
 
     if (diffUnits[granularityParam] > maxRanges[granularityParam]) {
-      return NextResponse.json(
-        {
-          error: 'Date range too large',
-          code: 'RANGE_TOO_LARGE',
-          details: {
-            granularity: granularityParam,
-            max: maxRanges[granularityParam],
-            unit: `${granularityParam}s`,
-          },
-        },
-        { status: 400 }
-      );
+      return apiError('RANGE_TOO_LARGE', 'Date range too large', 400, {
+        granularity: granularityParam,
+        max: maxRanges[granularityParam],
+        unit: `${granularityParam}s`,
+      });
     }
 
     // Step 4: Determine workspace access
@@ -169,10 +139,7 @@ export async function GET(req: Request) {
           severity: 'WARNING',
         });
 
-        return NextResponse.json(
-          { error: 'Access denied to workspace analytics', code: 'FORBIDDEN' },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Access denied to workspace analytics', 403);
       }
 
       effectiveWorkspaceId = requestedWorkspaceId;
@@ -188,10 +155,7 @@ export async function GET(req: Request) {
     // Admins can view all workspaces (no workspaceId filter)
     const isAdmin = session.user.role === 'ADMIN';
     if (!effectiveWorkspaceId && !isAdmin) {
-      return NextResponse.json(
-        { error: 'Workspace access required', code: 'WORKSPACE_REQUIRED' },
-        { status: 403 }
-      );
+      return apiError('WORKSPACE_REQUIRED', 'Workspace access required', 403);
     }
 
     // Step 5: Fetch time-series data
@@ -217,9 +181,8 @@ export async function GET(req: Request) {
     });
 
     // Step 7: Build response
-    const response = NextResponse.json({
-      success: true,
-      data: metricsData,
+    const response = apiSuccess({
+      ...metricsData,
       meta: {
         requestDuration: Date.now() - startTime,
         workspaceId: effectiveWorkspaceId ?? 'all',
@@ -233,14 +196,7 @@ export async function GET(req: Request) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    return NextResponse.json(
-      {
-        error: 'Failed to fetch analytics metrics',
-        code: 'INTERNAL_ERROR',
-        details: errorMessage,
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to fetch analytics metrics', 500, errorMessage);
   }
 }
 

@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 import { checkMemoryRateLimit } from '@/lib/security/rate-limiter';
 
 /**
@@ -26,8 +27,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const report = body['csp-report'] || body;
 
     if (process.env.NODE_ENV === 'development') {
-      // biome-ignore lint/suspicious/noConsole: Intentional CSP violation logging
-      console.warn('[CSP Violation]', {
+      logger.warn('[CSP Violation]', {
         documentUri: report['document-uri'],
         violatedDirective: report['violated-directive'],
         blockedUri: report['blocked-uri'],
@@ -47,11 +47,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 }
 
 // Allow browsers to send reports without CORS issues
-export async function OPTIONS(): Promise<NextResponse> {
+// Restrict to same-origin — CSP reports are only sent by our own pages.
+export async function OPTIONS(req: NextRequest): Promise<NextResponse> {
+  const origin = req.headers.get('origin') ?? '';
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? process.env.NEXTAUTH_URL ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const allowOrigin = allowedOrigins.includes(origin) ? origin : '';
+
   return new NextResponse(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      ...(allowOrigin ? { 'Access-Control-Allow-Origin': allowOrigin } : {}),
       'Access-Control-Allow-Methods': 'POST',
       'Access-Control-Allow-Headers': 'Content-Type',
     },

@@ -64,7 +64,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     autoStart = false,
     onListeningStart,
     onListeningStop,
-    ...speechOptions
   } = options;
 
   const [isListening, setIsListening] = useState(false);
@@ -72,6 +71,16 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
   const [interimTranscript, setInterimTranscript] = useState('');
   const [error, setError] = useState<SpeechRecognitionError | null>(null);
   const [confidence, setConfidence] = useState<number | null>(null);
+
+  // Stabilize speech options to avoid unnecessary effect re-runs
+  const speechOptions = useMemo(
+    () => ({
+      language: options.language,
+      continuous: options.continuous,
+      interimResults: options.interimResults,
+    }),
+    [options.language, options.continuous, options.interimResults]
+  );
 
   const serviceRef = useRef<SpeechService | null>(null);
   const unsubscribeRef = useRef<(() => void)[]>([]);
@@ -152,7 +161,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     onListeningStart,
     onListeningStop,
     onTranscriptChange,
-    // biome-ignore lint/correctness/useExhaustiveDependencies: speechOptions spread is intentional
     speechOptions,
   ]);
 
@@ -161,14 +169,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     if (serviceRef.current) {
       serviceRef.current.configure(speechOptions);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    speechOptions.language,
-    speechOptions.continuous,
-    speechOptions.interimResults,
-    // biome-ignore lint/correctness/useExhaustiveDependencies: speechOptions included alongside its properties
-    speechOptions,
-  ]);
+  }, [speechOptions]);
 
   const startListening = useCallback(() => {
     if (serviceRef.current) {
@@ -631,14 +632,24 @@ export interface UseVoiceActivityReturn {
 }
 
 export function useVoiceActivity(options: UseVoiceActivityOptions = {}): UseVoiceActivityReturn {
-  const {
-    autoStart = false,
-    onVoiceStart,
-    onVoiceEnd,
-    onNoise,
-    onVolumeChange,
-    ...vadOptions
-  } = options;
+  const { autoStart = false, onVoiceStart, onVoiceEnd, onNoise, onVolumeChange } = options;
+
+  const vadOptions = useMemo(
+    () => ({
+      threshold: options.threshold,
+      minVoiceDuration: options.minVoiceDuration,
+      minSilenceDuration: options.minSilenceDuration,
+      sampleRate: options.sampleRate,
+      fftSize: options.fftSize,
+    }),
+    [
+      options.threshold,
+      options.minVoiceDuration,
+      options.minSilenceDuration,
+      options.sampleRate,
+      options.fftSize,
+    ]
+  );
 
   const [state, setState] = useState<VADState>({
     isVoiceDetected: false,
@@ -700,8 +711,6 @@ export function useVoiceActivity(options: UseVoiceActivityOptions = {}): UseVoic
       vad.destroy();
       vadRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // biome-ignore lint/correctness/useExhaustiveDependencies: vadOptions spread is intentional
   }, [isSupported, autoStart, onNoise, onVoiceEnd, onVoiceStart, onVolumeChange, vadOptions]);
 
   // Update options when they change
@@ -709,8 +718,6 @@ export function useVoiceActivity(options: UseVoiceActivityOptions = {}): UseVoic
     if (vadRef.current) {
       vadRef.current.updateOptions(vadOptions);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // biome-ignore lint/correctness/useExhaustiveDependencies: vadOptions object is stable
   }, [vadOptions]);
 
   const start = useCallback(async () => {
@@ -795,7 +802,17 @@ export interface UseWakeWordReturn {
 }
 
 export function useWakeWord(options: UseWakeWordOptions = {}): UseWakeWordReturn {
-  const { autoStart = false, onWake, onListening, onError, ...wakeWordOptions } = options;
+  const { autoStart = false, onWake, onListening, onError } = options;
+
+  const wakeWordOptions = useMemo(
+    () => ({
+      wakeWords: options.wakeWords,
+      confidenceThreshold: options.confidenceThreshold,
+      lowPowerMode: options.lowPowerMode,
+      language: options.language,
+    }),
+    [options.wakeWords, options.confidenceThreshold, options.lowPowerMode, options.language]
+  );
 
   const [state, setState] = useState<WakeWordState>({
     isListening: false,
@@ -848,8 +865,6 @@ export function useWakeWord(options: UseWakeWordOptions = {}): UseWakeWordReturn
       detector.destroy();
       detectorRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // biome-ignore lint/correctness/useExhaustiveDependencies: wakeWordOptions spread is intentional
   }, [isSupported, autoStart, onError, onListening, onWake, wakeWordOptions]);
 
   // Update options when they change (excluding callback-related options)
@@ -857,8 +872,6 @@ export function useWakeWord(options: UseWakeWordOptions = {}): UseWakeWordReturn
     if (detectorRef.current) {
       detectorRef.current.updateOptions(wakeWordOptions);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // biome-ignore lint/correctness/useExhaustiveDependencies: wakeWordOptions object is stable
   }, [wakeWordOptions]);
 
   const start = useCallback(async () => {

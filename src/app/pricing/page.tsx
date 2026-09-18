@@ -1,6 +1,7 @@
 import { Building2, Check, Cloud, ExternalLink, Github, Mail, Sparkles, Zap } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { buildFAQJsonLd, buildSoftwareApplicationJsonLd } from '@/components/seo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -9,6 +10,29 @@ export const metadata: Metadata = {
   description:
     'RAG Starter Kit is free and open-source forever under the MIT license. Self-host with zero cost using free-tier AI providers.',
 };
+
+const PRICING_FAQS = [
+  {
+    question: 'Is it really free?',
+    answer:
+      'Yes. The entire codebase is MIT-licensed. You clone it, deploy it to your own infrastructure, and owe nothing. The AI models it uses by default (OpenRouter free tier, Google Gemini free tier) are also free for development and moderate production usage.',
+  },
+  {
+    question: 'What is the Pro tier?',
+    answer:
+      'Pro gives access to premium AI models like Claude Sonnet, GPT-4.1, Gemini 2.5 Pro, and DeepSeek R1 through OpenRouter. These models offer superior reasoning, larger context windows, and faster responses. Pro is currently in development.',
+  },
+  {
+    question: 'What AI providers does it support?',
+    answer:
+      'By default it uses OpenRouter (free models: DeepSeek, Mistral, Llama, Gemma) for chat and Google Gemini for embeddings. You can switch to OpenAI, Anthropic Claude, or a self-hosted Ollama instance by changing a single environment variable.',
+  },
+  {
+    question: 'Can I use this commercially?',
+    answer:
+      'Yes. The MIT license has no restrictions on commercial use. You can build products on top of it, charge your clients for it, and white-label the UI. The only requirement is that you retain the MIT license notice in the codebase.',
+  },
+];
 
 const freeFeatures = [
   'Full RAG pipeline (ingest, embed, retrieve, generate)',
@@ -73,6 +97,15 @@ export default function PricingPage() {
         </p>
       </div>
 
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildFAQJsonLd(PRICING_FAQS)) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildSoftwareApplicationJsonLd()) }}
+      />
+
       {/* Three-Tier Pricing */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-20">
         <div className="grid gap-8 lg:grid-cols-3 md:grid-cols-2">
@@ -120,6 +153,7 @@ export default function PricingPage() {
                 >
                   <Github className="mr-2 h-4 w-4" />
                   Clone on GitHub
+                  <span className="sr-only">(opens in new tab)</span>
                 </Link>
               </Button>
               <Button asChild variant="outline" className="w-full rounded-xl h-11">
@@ -275,6 +309,7 @@ export default function PricingPage() {
                 <Link href={option.href} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                   Deploy
+                  <span className="sr-only">(opens in new tab)</span>
                 </Link>
               </Button>
             </div>

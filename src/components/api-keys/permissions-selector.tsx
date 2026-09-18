@@ -15,19 +15,19 @@ interface Permission {
 const PERMISSIONS: Permission[] = [
   // Chat
   {
-    id: 'chat:read',
+    id: 'read:chats',
     label: 'Read Chats',
     description: 'View conversation history',
     category: 'chat',
   },
   {
-    id: 'chat:write',
+    id: 'write:chats',
     label: 'Send Messages',
     description: 'Send messages and create chats',
     category: 'chat',
   },
   {
-    id: 'chat:delete',
+    id: 'delete:chats',
     label: 'Delete Chats',
     description: 'Delete conversations',
     category: 'chat',
@@ -35,50 +35,48 @@ const PERMISSIONS: Permission[] = [
 
   // Documents
   {
-    id: 'documents:read',
+    id: 'read:documents',
     label: 'Read Documents',
     description: 'View uploaded documents',
     category: 'documents',
   },
   {
-    id: 'documents:write',
+    id: 'write:documents',
     label: 'Upload Documents',
     description: 'Upload new documents',
     category: 'documents',
   },
   {
-    id: 'documents:delete',
+    id: 'delete:documents',
     label: 'Delete Documents',
     description: 'Remove documents',
+    category: 'documents',
+  },
+  {
+    id: 'share:documents',
+    label: 'Share Documents',
+    description: 'Share documents with others',
     category: 'documents',
   },
 
   // Workspaces
   {
-    id: 'workspaces:read',
-    label: 'Read Workspaces',
-    description: 'View workspace information',
+    id: 'manage:workspace',
+    label: 'Manage Workspace',
+    description: 'Modify workspace settings',
     category: 'workspaces',
   },
   {
-    id: 'workspaces:write',
-    label: 'Manage Workspaces',
-    description: 'Create and modify workspaces',
-    category: 'workspaces',
-  },
-
-  // Admin
-  {
-    id: 'admin:users',
-    label: 'Manage Users',
+    id: 'manage:members',
+    label: 'Manage Members',
     description: 'Add/remove workspace members',
-    category: 'admin',
+    category: 'workspaces',
   },
   {
-    id: 'admin:analytics',
-    label: 'View Analytics',
+    id: 'read:api_usage',
+    label: 'View API Usage',
     description: 'Access analytics and usage data',
-    category: 'admin',
+    category: 'workspaces',
   },
 ];
 

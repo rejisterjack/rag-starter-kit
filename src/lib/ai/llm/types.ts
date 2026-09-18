@@ -86,11 +86,7 @@ export interface FireworksConfig {
 }
 
 export type LLMConfig =
-  | OpenAIConfig
-  | OpenRouterConfig
-  | OllamaConfig
-  | AnthropicConfig
-  | FireworksConfig;
+  OpenAIConfig | OpenRouterConfig | OllamaConfig | AnthropicConfig | FireworksConfig;
 
 // Error types
 export class LLMError extends Error {

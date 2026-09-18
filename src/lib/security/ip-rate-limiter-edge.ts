@@ -91,7 +91,7 @@ function getEdgeRedis(): RateLimitRedis {
       _cachedRedis = new Redis({
         url: process.env.UPSTASH_REDIS_REST_URL,
         token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      }) as unknown as RateLimitRedis;
+      }) as RateLimitRedis;
       return _cachedRedis;
     } catch {
       _cachedRedis = mockRedis;

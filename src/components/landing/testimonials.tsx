@@ -1,5 +1,7 @@
 import { Star } from 'lucide-react';
 
+const STAR_KEYS = ['s1', 's2', 's3', 's4', 's5'] as const;
+
 const TESTIMONIALS = [
   {
     name: 'Sarah K.',
@@ -12,7 +14,7 @@ const TESTIMONIALS = [
     name: 'Marcus T.',
     role: 'Senior Developer, Consulting Firm',
     quote:
-      "Finally a RAG kit that doesn't require Python. The pgvector integration is rock solid and the multi-provider AI support saved us weeks.",
+      "Finally a RAG kit that doesn't require Python. The Qdrant integration is rock solid and the multi-provider AI support saved us weeks.",
     stars: 5,
   },
   {
@@ -58,10 +60,9 @@ export function Testimonials(): React.ReactElement {
               className="rounded-2xl border border-border/50 bg-card p-6 hover:border-primary/30 transition-colors"
             >
               <div className="flex gap-0.5 mb-3">
-                {Array.from({ length: t.stars }, (_, i) => (
+                {STAR_KEYS.slice(0, t.stars).map((sk) => (
                   <Star
-                    // biome-ignore lint/suspicious/noArrayIndexKey: static star count never reorders
-                    key={`star-${t.name}-${i}`}
+                    key={`${t.name}-${sk}`}
                     className="h-4 w-4 fill-yellow-400 text-yellow-400"
                   />
                 ))}
@@ -105,6 +106,7 @@ export function Testimonials(): React.ReactElement {
             className="text-primary hover:underline"
           >
             Share your project
+            <span className="sr-only">(opens in new tab)</span>
           </a>
         </p>
       </div>

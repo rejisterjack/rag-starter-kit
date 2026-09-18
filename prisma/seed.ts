@@ -11,8 +11,24 @@
  * Note: Bun auto-loads .env files before script execution.
  */
 
+import { PrismaPg } from '@prisma/adapter-pg';
 import { hash } from 'bcryptjs';
 import { PrismaClient } from '../src/generated/prisma/client';
+
+export function assertSeedAllowed(environment = process.env): void {
+  if (environment.NODE_ENV === 'production' && environment.SEED_FORCE !== 'true') {
+    throw new Error(
+      'Database seeding is disabled in production. Set SEED_FORCE=true only for an intentional, reviewed seed operation.'
+    );
+  }
+}
+
+try {
+  assertSeedAllowed();
+} catch (error) {
+  console.error(`❌ ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
+}
 
 if (!process.env.DATABASE_URL) {
   console.error('❌ DATABASE_URL must be set');
@@ -20,7 +36,9 @@ if (!process.env.DATABASE_URL) {
 }
 
 const prisma = new PrismaClient({
-  accelerateUrl: process.env.DATABASE_URL,
+  // Same driver strategy as the app runtime (src/lib/db/client.ts): direct pg
+  // adapter over DATABASE_URL. Accelerate URLs (prisma://) are not used here.
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
 
 // ---------------------------------------------------------------------------
@@ -46,8 +64,8 @@ RAG Starter Kit is a production-ready, TypeScript-native Retrieval-Augmented Gen
 - OCR support for image-heavy PDFs via Tesseract.js
 
 ### Vector Search
-- Embeddings stored in PostgreSQL using the pgvector extension
-- HNSW index for sub-millisecond approximate nearest-neighbour search
+- Embeddings stored in PostgreSQL with the pgvector extension
+- HNSW index for approximate nearest-neighbour search
 - Hybrid search combines vector similarity with full-text keyword matching
 - Configurable similarity threshold and top-K retrieval count
 
@@ -55,7 +73,7 @@ RAG Starter Kit is a production-ready, TypeScript-native Retrieval-Augmented Gen
 - Streaming token generation via Server-Sent Events (SSE)
 - Source citations displayed for every answer
 - Conversation memory across multi-turn sessions
-- Multiple LLM providers: OpenRouter, OpenAI, Anthropic, Ollama
+- OpenRouter model access with configurable retrieval and generation settings
 
 ### Voice Features
 - Speech-to-text via Web Speech API and/or OpenAI Whisper
@@ -81,7 +99,7 @@ Entirely free for self-hosted deployments. Uses OpenRouter free-tier models for 
 
 - Node.js 20 or higher
 - bun 9 or higher
-- A free OpenRouter API key (https://openrouter.ai/keys)
+- An OpenRouter API key (https://openrouter.ai/keys)
 - A free Google AI Studio API key (https://aistudio.google.com/app/apikey)
 
 ## Step 1: Clone the Repository
@@ -229,7 +247,7 @@ A: Your data lives in your own Prisma Postgres database. Use pg_dump or your hos
 
 ## System Overview
 
-RAG Starter Kit follows a layered architecture built on Next.js 15 App Router:
+RAG Starter Kit follows a layered architecture built on Next.js 16 App Router:
 
 \`\`\`
 Browser → CDN/Edge → Next.js Middleware → App Router → API Routes
@@ -247,13 +265,13 @@ Browser → CDN/Edge → Next.js Middleware → App Router → API Routes
 3. Text extracted (PDF: pdf-parse, DOCX: mammoth, URL: cheerio scraping)
 4. Text split into chunks (configurable size + overlap)
 5. Each chunk embedded via Google Gemini text-embedding-004 (768 dimensions)
-6. Embeddings + metadata stored in PostgreSQL/pgvector
+6. Embeddings + metadata stored in PostgreSQL/Qdrant
 7. Document status updated to COMPLETED
 
 ### Query Flow
 1. User message received at API route
 2. Message embedded using same model as ingestion
-3. HNSW approximate nearest-neighbour search on pgvector
+3. HNSW approximate nearest-neighbour search on Qdrant
 4. Hybrid re-ranking: combine vector scores with BM25 keyword scores
 5. Top-K chunks assembled into context window
 6. System prompt + context + user message sent to LLM
@@ -271,7 +289,7 @@ Browser → CDN/Edge → Next.js Middleware → App Router → API Routes
 - audit_logs: immutable security event log
 - rate_limits: sliding window rate limiting
 
-### pgvector Index
+### Qdrant Index
 \`\`\`sql
 CREATE INDEX document_chunks_embedding_idx
 ON document_chunks
@@ -306,10 +324,9 @@ Recommended parameters: m=16, ef_construction=64 for most use cases. Increase ef
 - INNGEST_SIGNING_KEY + EVENT_KEY: Background job authentication
 
 ### AI Configuration
-- LLM_PROVIDER: openrouter | openai | anthropic | ollama (default: openrouter)
-- DEFAULT_MODEL: Model identifier string
+- OPENROUTER_API_KEY: LLM API access
+- Model configuration is selected through the OpenRouter integration
 - GOOGLE_GENERATIVE_AI_API_KEY: Required for embeddings
-- OLLAMA_BASE_URL: Local Ollama server URL
 
 ### RAG Tuning
 - MAX_CHUNK_SIZE: 100-4000 (default: 1000)
@@ -362,6 +379,23 @@ async function main() {
     },
   });
   console.log(`✅ Demo user: ${demoUser.email}`);
+
+  // -------------------------------------------------------------------------
+  // 3. E2E test user — credentials kept in sync with tests/e2e/fixtures/credentials.ts
+  // -------------------------------------------------------------------------
+  const e2ePassword = await hash(process.env.E2E_TEST_PASSWORD || 'TestPassword123!', 12);
+  const e2eUser = await prisma.user.upsert({
+    where: { email: process.env.E2E_TEST_EMAIL || 'test@example.com' },
+    update: {},
+    create: {
+      name: 'E2E Test User',
+      email: process.env.E2E_TEST_EMAIL || 'test@example.com',
+      password: e2ePassword,
+      emailVerified: new Date(),
+      role: 'USER',
+    },
+  });
+  console.log(`✅ E2E test user: ${e2eUser.email}`);
 
   // -------------------------------------------------------------------------
   // 3. Demo workspace
@@ -460,7 +494,7 @@ async function main() {
       }> = [];
 
       for (let i = 0; i < textChunks.length; i++) {
-        const chunkContent = textChunks[i]!;
+        const chunkContent = textChunks[i] ?? '';
         const startPos = i * 800;
         const endPos = Math.min(startPos + 1000, doc.content.length);
 
@@ -487,7 +521,7 @@ async function main() {
       }
 
       if (chunkData.length > 0) {
-        const { upsertChunks } = await import('../src/lib/qdrant');
+        const { upsertChunks } = await import('../src/lib/vector');
         await upsertChunks(chunkData, {
           userId: adminUser.id,
           workspaceId: workspace.id,
@@ -528,7 +562,7 @@ async function main() {
             {
               role: 'ASSISTANT',
               content:
-                'RAG Starter Kit is a production-ready, TypeScript-native Retrieval-Augmented Generation platform. Here are its main features:\n\n**Core capabilities:**\n- 📄 **Document Ingestion** — Upload PDFs, DOCX, Markdown, TXT, or URLs. Background processing via Inngest handles chunking and embedding automatically.\n- 🔍 **Hybrid Search** — Combines pgvector similarity search with full-text keyword matching for better retrieval accuracy.\n- 💬 **Streaming Chat** — Real-time token streaming via SSE with source citations for every answer.\n- 🎙️ **Voice I/O** — Speech-to-text and text-to-speech built in.\n- 👥 **Multi-user Workspaces** — Team collaboration with role-based access control.\n- 🤖 **Agent Mode** — Tool-using AI with web search, calculator, and code execution.\n\n**Infrastructure included:**\n- NextAuth.js v5 authentication (OAuth + credentials)\n- Rate limiting via Upstash Redis\n- Audit logging with tamper-detection\n- PWA support for offline use\n- One-click deploy to Vercel\n\nThe default configuration uses **free AI models** — OpenRouter for chat and Google Gemini for embeddings — so it costs $0 to run.',
+                'RAG Starter Kit is a production-ready, TypeScript-native Retrieval-Augmented Generation platform. Here are its main features:\n\n**Core capabilities:**\n- 📄 **Document Ingestion** — Upload PDFs, DOCX, Markdown, TXT, or URLs. Background processing via Inngest handles chunking and embedding automatically.\n- 🔍 **Hybrid Search** — Combines Qdrant similarity search with full-text keyword matching for better retrieval accuracy.\n- 💬 **Streaming Chat** — Real-time token streaming via SSE with source citations for every answer.\n- 🎙️ **Voice I/O** — Speech-to-text and text-to-speech built in.\n- 👥 **Multi-user Workspaces** — Team collaboration with role-based access control.\n- 🤖 **Agent Mode** — Tool-using AI with web search, calculator, and code execution.\n\n**Infrastructure included:**\n- NextAuth.js v5 authentication (OAuth + credentials)\n- Rate limiting via Upstash Redis\n- Audit logging with tamper-detection\n- PWA support for offline use\n- One-click deploy to Vercel\n\nThe default configuration uses **free AI models** — OpenRouter for chat and Google Gemini for embeddings — so it costs $0 to run.',
               sources: JSON.stringify([
                 {
                   documentName: 'RAG Starter Kit — Product Overview',

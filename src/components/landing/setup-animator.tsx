@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Check, Copy, Play, RotateCcw, Terminal } from 'lucide-react';
 import { useState } from 'react';
 import { useIntersectionObserver } from '@/hooks/use-intersection-observer';
@@ -27,7 +26,7 @@ export function SetupAnimator(): React.ReactElement {
   });
 
   const handleCopy = () => {
-    const rawText = setupCommands.join('\n').replace(/^\ud83c\udf40\s+/, '');
+    const rawText = setupCommands.join('\n').replace(/^🍀\s+/, '');
     navigator.clipboard.writeText(rawText).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -47,13 +46,7 @@ export function SetupAnimator(): React.ReactElement {
   return (
     <section ref={ref} className="py-24 lg:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-12"
-        >
+        <div className="text-center mb-12 animate-fade-in-up">
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
             Ship in <span className="text-gradient">2 Minutes</span>
           </h2>
@@ -61,15 +54,9 @@ export function SetupAnimator(): React.ReactElement {
             Clone, configure two free API keys, and deploy. No Python. No credit card. No tutorial
             hopping.
           </p>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="max-w-3xl mx-auto"
-        >
+        <div className="max-w-3xl mx-auto animate-fade-in-up [animation-delay:200ms]">
           {/* Terminal Window */}
           <div className="glass-heavy rounded-2xl overflow-hidden border border-border/50 shadow-2xl shadow-primary/5">
             {/* Terminal Header */}
@@ -122,18 +109,15 @@ export function SetupAnimator(): React.ReactElement {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {lines.map((line, index) => {
+                  {lines.map((line, lineIdx) => {
                     const isPrompt = line.startsWith('$') || line.startsWith('#');
                     const isSuccess = line.startsWith('🚀');
 
                     return (
-                      <motion.div
-                        // biome-ignore lint/suspicious/noArrayIndexKey: terminal lines are display-only
-                        key={`${index}-${line}`}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="flex items-start gap-2"
+                      <div
+                        key={`line-${line.slice(0, 20)}-${line.length}`}
+                        className="flex items-start gap-2 animate-slide-in-left"
+                        style={{ animationDelay: `${lineIdx * 80}ms` }}
                       >
                         {isPrompt && (
                           <span className="text-green-500 shrink-0 select-none">
@@ -154,22 +138,14 @@ export function SetupAnimator(): React.ReactElement {
                         >
                           {line.replace(/^[$#>🚀]\s*/u, '')}
                         </span>
-                      </motion.div>
+                      </div>
                     );
                   })}
                   {isTyping && (
-                    <motion.span
-                      className="inline-block w-2.5 h-5 bg-primary ml-1 align-middle"
-                      animate={{ opacity: [1, 0] }}
-                      transition={{ duration: 0.6, repeat: Infinity }}
-                    />
+                    <span className="inline-block w-2.5 h-5 bg-primary ml-1 align-middle animate-blink-cursor" />
                   )}
                   {isComplete && !isTyping && (
-                    <motion.span
-                      className="inline-block w-2.5 h-5 bg-primary/50 ml-1 align-middle"
-                      animate={{ opacity: [0.5, 1, 0.5] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    />
+                    <span className="inline-block w-2.5 h-5 bg-primary/50 ml-1 align-middle animate-pulse-soft" />
                   )}
                 </div>
               )}
@@ -184,20 +160,16 @@ export function SetupAnimator(): React.ReactElement {
               { icon: '⚡', label: 'No Python Needed' },
               { icon: '💰', label: '$0 to Start' },
             ].map((item) => (
-              <motion.div
+              <div
                 key={item.label}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4 }}
-                className="glass-light rounded-lg px-3 py-2 text-center"
+                className="glass-light rounded-lg px-3 py-2 text-center animate-fade-in"
               >
                 <span className="text-lg mr-1">{item.icon}</span>
                 <span className="text-xs text-muted-foreground">{item.label}</span>
-              </motion.div>
+              </div>
             ))}
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

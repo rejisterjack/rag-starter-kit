@@ -3,9 +3,10 @@
  * GET /api/webhooks/[id]/deliveries - Get delivery logs for a webhook
  */
 
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import type { DeliveryStatus } from '@/generated/prisma/client';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
 import { logger } from '@/lib/logger';
@@ -14,7 +15,7 @@ import { checkPermission, Permission } from '@/lib/workspace/permissions';
 const querySchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(50),
   offset: z.coerce.number().min(0).default(0),
-  status: z.enum(['PENDING', 'DELIVERED', 'FAILED', 'RETRYING']).optional(),
+  status: z.enum(['PENDING', 'DELIVERED', 'FAILED', 'RETRYING']).nullish(),
 });
 
 export async function GET(
@@ -24,26 +25,30 @@ export async function GET(
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const { id: webhookId } = await params;
     const { searchParams } = new URL(req.url);
 
-    const query = querySchema.safeParse({
-      limit: searchParams.get('limit'),
-      offset: searchParams.get('offset'),
-      status: searchParams.get('status'),
-    });
+    // searchParams.get() returns null when a param is absent; strip nulls so
+    // .default()/nullish behave as intended instead of failing invalid_type
+    const rawQuery: Record<string, string> = {};
+    const limitParam = searchParams.get('limit');
+    const offsetParam = searchParams.get('offset');
+    const statusParam = searchParams.get('status');
+    if (limitParam !== null) rawQuery.limit = limitParam;
+    if (offsetParam !== null) rawQuery.offset = offsetParam;
+    if (statusParam !== null && statusParam !== '') rawQuery.status = statusParam;
+
+    const query = querySchema.safeParse(rawQuery);
 
     if (!query.success) {
-      return NextResponse.json(
-        { error: 'Invalid query parameters', details: query.error.errors },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Invalid query parameters', 400, query.error.errors);
     }
 
-    const { limit, offset, status } = query.data;
+    const { limit, offset, status: maybeStatus } = query.data;
+    const status = maybeStatus ?? undefined;
 
     // Get webhook to check permissions
     const webhook = await prisma.webhook.findUnique({
@@ -52,7 +57,7 @@ export async function GET(
     });
 
     if (!webhook) {
-      return NextResponse.json({ error: 'Webhook not found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'Webhook not found', 404);
     }
 
     // Check permissions
@@ -63,7 +68,7 @@ export async function GET(
     );
 
     if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return apiError('FORBIDDEN', 'Forbidden', 403);
     }
 
     // Build filter
@@ -109,32 +114,29 @@ export async function GET(
       {} as Record<string, number>
     );
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        deliveries: deliveries.map((d) => ({
-          ...d,
-          payload: undefined, // Don't include full payload in list
-          response: d.response ? d.response.slice(0, 1000) : null,
-        })),
-        total,
-        stats: {
-          delivered: statsMap.DELIVERED || 0,
-          failed: statsMap.FAILED || 0,
-          pending: statsMap.PENDING || 0,
-          retrying: statsMap.RETRYING || 0,
-        },
-        pagination: {
-          limit,
-          offset,
-          hasMore: offset + deliveries.length < total,
-        },
+    return apiSuccess({
+      deliveries: deliveries.map((d) => ({
+        ...d,
+        payload: undefined, // Don't include full payload in list
+        response: d.response ? d.response.slice(0, 1000) : null,
+      })),
+      total,
+      stats: {
+        delivered: statsMap.DELIVERED || 0,
+        failed: statsMap.FAILED || 0,
+        pending: statsMap.PENDING || 0,
+        retrying: statsMap.RETRYING || 0,
+      },
+      pagination: {
+        limit,
+        offset,
+        hasMore: offset + deliveries.length < total,
       },
     });
   } catch (error: unknown) {
     logger.error('Failed to fetch webhook deliveries', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json({ error: 'Failed to fetch deliveries' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to fetch deliveries', 500);
   }
 }

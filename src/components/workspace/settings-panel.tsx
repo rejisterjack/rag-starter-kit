@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { apiFetch } from '@/lib/api-client';
 
 interface WorkspaceSettings {
   id: string;
@@ -61,7 +62,7 @@ export function SettingsPanel({
   const handleSaveGeneral = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/workspaces/${workspace.id}`, {
+      await apiFetch(`/api/workspaces/${workspace.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -70,10 +71,6 @@ export function SettingsPanel({
           slug,
         }),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update workspace');
-      }
 
       toast.success('General settings saved');
     } catch (_error: unknown) {
@@ -86,17 +83,20 @@ export function SettingsPanel({
   const handleSaveRAG = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/workspaces/${workspace.id}/settings`, {
-        method: 'PATCH',
+      // PUT /rag-settings with the route's flat schema (the old
+      // PATCH /api/workspaces/[id]/settings endpoint does not exist)
+      await apiFetch(`/api/workspaces/${workspace.id}/rag-settings`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          settings: ragSettings,
+          chunkSize: ragSettings.chunkSize,
+          chunkOverlap: ragSettings.chunkOverlap,
+          topK: ragSettings.topK,
+          similarityThreshold: ragSettings.similarityThreshold,
+          temperature: ragSettings.defaultTemperature,
+          maxTokens: ragSettings.maxTokens,
         }),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update RAG settings');
-      }
 
       toast.success('RAG settings saved');
     } catch (_error: unknown) {

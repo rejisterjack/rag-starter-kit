@@ -28,6 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { apiFetch } from '@/lib/api-client';
 
 // =============================================================================
 // Types
@@ -82,10 +83,8 @@ export default function SSOManagementPage(): React.ReactElement {
 
   const fetchConnections = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/sso/connections');
-      if (!response.ok) throw new Error('Failed to fetch SSO connections');
-      const data = await response.json();
-      setConnections(data.connections);
+      const data = await apiFetch<{ connections?: SamlConnection[] }>('/api/admin/sso/connections');
+      setConnections(data.connections ?? []);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'An error occurred';
       setError(msg);
@@ -95,10 +94,10 @@ export default function SSOManagementPage(): React.ReactElement {
 
   const fetchWorkspaces = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/workspaces?withoutSso=true');
-      if (!response.ok) throw new Error('Failed to fetch workspaces');
-      const data = await response.json();
-      setWorkspaces(data.workspaces);
+      const data = await apiFetch<{ workspaces?: WorkspaceOption[] }>(
+        '/api/admin/workspaces?withoutSso=true'
+      );
+      setWorkspaces(data.workspaces ?? []);
     } catch (_err) {
       toast.error('Failed to load workspaces');
     }
@@ -117,16 +116,11 @@ export default function SSOManagementPage(): React.ReactElement {
     e.preventDefault();
 
     try {
-      const response = await fetch('/api/admin/sso/connections', {
+      await apiFetch('/api/admin/sso/connections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create SSO connection');
-      }
 
       setDialogOpen(false);
       toast.success('SSO connection created');
@@ -147,13 +141,12 @@ export default function SSOManagementPage(): React.ReactElement {
 
   const handleToggleEnabled = async (id: string, enabled: boolean) => {
     try {
-      const response = await fetch(`/api/admin/sso/connections/${id}`, {
+      await apiFetch(`/api/admin/sso/connections/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled }),
       });
 
-      if (!response.ok) throw new Error('Failed to update connection');
       await fetchConnections();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update connection');
@@ -164,11 +157,10 @@ export default function SSOManagementPage(): React.ReactElement {
     if (!confirm('Are you sure you want to delete this SSO connection?')) return;
 
     try {
-      const response = await fetch(`/api/admin/sso/connections/${id}`, {
+      await apiFetch(`/api/admin/sso/connections/${id}`, {
         method: 'DELETE',
       });
 
-      if (!response.ok) throw new Error('Failed to delete connection');
       await fetchConnections();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete connection');

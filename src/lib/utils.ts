@@ -280,16 +280,17 @@ export function sortBy<T>(
  */
 export function deepClone<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') return obj;
-  if (obj instanceof Date) return new Date(obj.getTime()) as unknown as T;
-  if (Array.isArray(obj)) return obj.map(deepClone) as unknown as T;
 
-  const cloned = {} as T;
+  if (obj instanceof Date) return new Date(obj.getTime()) as T;
+  if (Array.isArray(obj)) return (obj as unknown[]).map(deepClone) as T;
+
+  const cloned: Record<string, unknown> = {};
   for (const key in obj) {
     if (Object.hasOwn(obj, key)) {
-      cloned[key] = deepClone(obj[key]);
+      cloned[key] = deepClone((obj as Record<string, unknown>)[key]);
     }
   }
-  return cloned;
+  return cloned as T;
 }
 
 /**

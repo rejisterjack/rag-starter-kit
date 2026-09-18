@@ -2,9 +2,9 @@
  * MFA Setup - GET returns TOTP URI, POST verifies initial setup
  */
 
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { z } from 'zod';
-
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { withApiAuth } from '@/lib/auth';
 import { prisma, prismaRead } from '@/lib/db';
 import { logger } from '@/lib/logger';
@@ -29,17 +29,17 @@ export const GET = withApiAuth(async (_req: NextRequest, session) => {
   });
 
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    return apiError('NOT_FOUND', 'User not found', 404);
   }
 
   if (user.mfaEnabled) {
-    return NextResponse.json({ error: 'MFA is already enabled' }, { status: 400 });
+    return apiError('MFA_ALREADY_ENABLED', 'MFA is already enabled', 400);
   }
 
   const setup = generateTotpSetup(session.user.id, user.email);
   const encryptedSecret = encryptTotpSecret(setup.secret, session.user.id);
 
-  return NextResponse.json({
+  return apiSuccess({
     uri: setup.uri,
     secret: setup.secret,
     backupCodes: setup.backupCodes,
@@ -52,15 +52,12 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return apiError('INVALID_JSON', 'Invalid JSON', 400);
   }
 
   const parsed = verifySchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid input', details: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return apiError('VALIDATION_ERROR', 'Invalid input', 400, parsed.error.flatten());
   }
 
   const { code, tempSecret, backupCodes } = parsed.data;
@@ -68,7 +65,7 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
   // Verify the TOTP code against the temp secret
   const valid = verifyTotpCode(code, tempSecret, session.user.id);
   if (!valid) {
-    return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
+    return apiError('INVALID_CODE', 'Invalid verification code', 400);
   }
 
   // Hash backup codes for storage
@@ -106,5 +103,5 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
     });
   }
 
-  return NextResponse.json({ success: true, message: 'MFA enabled successfully' });
+  return apiSuccess({ message: 'MFA enabled successfully' });
 });

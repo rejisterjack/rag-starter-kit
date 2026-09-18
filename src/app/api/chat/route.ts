@@ -11,7 +11,7 @@
  */
 
 import { generateText, type LanguageModel, streamText } from 'ai';
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import type { LLMMessage } from '@/lib/ai/llm';
 import {
   getBestAvailableModel,
@@ -23,6 +23,7 @@ import { buildSystemPromptWithContext } from '@/lib/ai/prompts/templates';
 import { bufferUsageRecord } from '@/lib/analytics/usage-buffer';
 import { checkBodySize } from '@/lib/api/middleware';
 import { wrapStreamWithErrorFrame } from '@/lib/api/stream-error-wrapper';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma, prismaRead } from '@/lib/db';
@@ -148,10 +149,7 @@ export async function POST(req: NextRequest) {
     const [session, mods] = await Promise.all([auth(), loadModules()]);
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const userId = session.user.id;
@@ -172,35 +170,24 @@ export async function POST(req: NextRequest) {
     ]);
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'RATE_LIMIT',
-            message: 'Rate limit exceeded',
-            resetAt: new Date(rateLimitResult.reset).toISOString(),
-          },
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
+      const response = apiError('RATE_LIMIT', 'Rate limit exceeded', 429, {
+        resetAt: new Date(rateLimitResult.reset).toISOString(),
+      });
+      response.headers.set(
+        'Retry-After',
+        Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString()
       );
+      return response;
     }
 
     if (isLlmDegraded) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'SERVICE_DEGRADED',
-            message: 'AI service temporarily unavailable. Please try again shortly.',
-          },
-        },
-        { status: 503, headers: { 'X-Degraded-Features': 'llm_generation' } }
+      const response = apiError(
+        'SERVICE_DEGRADED',
+        'AI service temporarily unavailable. Please try again shortly.',
+        503
       );
+      response.headers.set('X-Degraded-Features', 'llm_generation');
+      return response;
     }
 
     if (!hasWorkspaceAccess) {
@@ -215,10 +202,7 @@ export async function POST(req: NextRequest) {
         severity: 'WARNING',
       });
 
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied to workspace' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied to workspace', 403);
     }
 
     // Step 4: Parse and validate request body
@@ -233,10 +217,7 @@ export async function POST(req: NextRequest) {
       logger.debug('Invalid JSON body in chat request', {
         error: error instanceof Error ? error.message : 'Unknown',
       });
-      return NextResponse.json(
-        { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     // Step 5: Validate input
@@ -245,17 +226,7 @@ export async function POST(req: NextRequest) {
       validatedInput = validateChatInput(body);
     } catch (error) {
       if (error instanceof Error) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: 'Validation failed',
-              details: error.message,
-            },
-          },
-          { status: 400 }
-        );
+        return apiError('VALIDATION_ERROR', 'Validation failed', 400, error.message);
       }
       throw error;
     }
@@ -283,7 +254,8 @@ export async function POST(req: NextRequest) {
     const ConversationMemory = mods.memoryMod.ConversationMemory;
     const conversationMemory = new ConversationMemory(prismaRead);
     let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
-    let sources: Awaited<ReturnType<typeof import('@/lib/rag/retrieval')['retrieveSources']>> = [];
+    let sources: Awaited<ReturnType<(typeof import('@/lib/rag/retrieval'))['retrieveSources']>> =
+      [];
     let vectorSearchDegraded = false;
     let retrievalError: string | null = null;
 
@@ -325,9 +297,9 @@ export async function POST(req: NextRequest) {
           if (await mods.degradationMod.isFeatureDegraded('vector_search')) {
             return { sources: [], degraded: true, error: null };
           }
-          // Fast-fail if Qdrant circuit breaker is OPEN
-          const { qdrantCircuitBreaker } = mods.externalServicesMod;
-          if (qdrantCircuitBreaker.getState() === 'OPEN') {
+          // Fast-fail if the vector-search circuit breaker is OPEN
+          const { vectorSearchCircuitBreaker } = mods.externalServicesMod;
+          if (vectorSearchCircuitBreaker.getState() === 'OPEN') {
             return { sources: [], degraded: true, error: null };
           }
           const { withSpan } = mods.tracingMod;
@@ -354,10 +326,7 @@ export async function POST(req: NextRequest) {
     ]);
 
     if (historyResult.chatNotFound) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Chat not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Chat not found', 404);
     }
     history = historyResult.history;
     sources = retrievalResult.sources;
@@ -402,16 +371,11 @@ export async function POST(req: NextRequest) {
     const { estimateMessageTokens } = mods.tokenBudgetMod;
     const estimatedTokens = estimateMessageTokens(llmMessages);
     if (estimatedTokens > config.maxTokens * 2) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'TOKEN_LIMIT',
-            message: 'Message too long',
-            details: `Estimated tokens (${estimatedTokens}) exceeds limit (${config.maxTokens * 2})`,
-          },
-        },
-        { status: 400 }
+      return apiError(
+        'TOKEN_LIMIT',
+        'Message too long',
+        400,
+        `Estimated tokens (${estimatedTokens}) exceeds limit (${config.maxTokens * 2})`
       );
     }
 
@@ -543,28 +507,18 @@ export async function POST(req: NextRequest) {
       // If the circuit breaker is open, fail fast
       const { llmCircuitBreaker } = mods.externalServicesMod;
       if (llmCircuitBreaker.getState() === 'OPEN') {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: 'MODEL_UNAVAILABLE',
-              message: 'AI service temporarily unavailable. Please try again in a moment.',
-            },
-          },
-          { status: 503 }
+        return apiError(
+          'MODEL_UNAVAILABLE',
+          'AI service temporarily unavailable. Please try again in a moment.',
+          503
         );
       }
 
       if (discoveredModels.length === 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: 'MODEL_UNAVAILABLE',
-              message: 'All AI models are currently unavailable. Please try again in a moment.',
-            },
-          },
-          { status: 503 }
+        return apiError(
+          'MODEL_UNAVAILABLE',
+          'All AI models are currently unavailable. Please try again in a moment.',
+          503
         );
       }
 
@@ -597,15 +551,10 @@ export async function POST(req: NextRequest) {
         }
 
         if (!foundWorking) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: {
-                code: 'MODEL_UNAVAILABLE',
-                message: 'All AI models are currently unavailable. Please try again in a moment.',
-              },
-            },
-            { status: 503 }
+          return apiError(
+            'MODEL_UNAVAILABLE',
+            'All AI models are currently unavailable. Please try again in a moment.',
+            503
           );
         }
       }
@@ -779,20 +728,17 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const jsonResponse = NextResponse.json({
-        success: true,
-        data: {
-          content: response.text,
-          sources: citations.map((c) => ({
-            id: c.id,
-            documentName: c.documentName,
-            documentId: c.documentId,
-            page: c.page,
-            score: c.score,
-          })),
-          usage: response.usage,
-          model: response.model,
-        },
+      const jsonResponse = apiSuccess({
+        content: response.text,
+        sources: citations.map((c) => ({
+          id: c.id,
+          documentName: c.documentName,
+          documentId: c.documentId,
+          page: c.page,
+          score: c.score,
+        })),
+        usage: response.usage,
+        model: response.model,
       });
 
       // Add rate limit headers
@@ -809,20 +755,14 @@ export async function POST(req: NextRequest) {
         ? getErrorStatusCode((error as { code: string }).code)
         : 500;
 
-    // Only expose error details in development to prevent information leakage
     const isDev = process.env.NODE_ENV === 'development';
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: isTimeout ? 'TIMEOUT' : 'INTERNAL_ERROR',
-          message: isTimeout
-            ? 'The AI service took too long to respond. Please try again.'
-            : 'Failed to process chat request',
-          ...(isDev && { details: errorMessage }),
-        },
-      },
-      { status: statusCode }
+    return apiError(
+      isTimeout ? 'TIMEOUT' : 'INTERNAL_ERROR',
+      isTimeout
+        ? 'The AI service took too long to respond. Please try again.'
+        : 'Failed to process chat request',
+      statusCode,
+      isDev ? errorMessage : undefined
     );
   }
 }
@@ -836,10 +776,7 @@ export async function PUT(req: NextRequest) {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const userId = session.user.id;
@@ -850,28 +787,24 @@ export async function PUT(req: NextRequest) {
       select: { id: true },
     });
     if (!dbUser) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'USER_NOT_FOUND',
-            message: 'Your session is out of date. Please sign in again.',
-          },
-        },
-        { status: 401 }
-      );
+      return apiError('USER_NOT_FOUND', 'Your session is out of date. Please sign in again.', 401);
     }
 
     // JWT can retain a workspaceId after DB reset or workspace deletion; Prisma would
     // reject the FK on chat create. Only attach workspace the user still belongs to.
+    // When the JWT predates workspace creation (e.g. D-6 self-heal ran after sign-in),
+    // session.user.workspaceId is undefined — fall back to the user's first membership
+    // so the chat lands in a workspace the sidebar can actually list.
     let resolvedWorkspaceId: string | null = null;
-    if (workspaceId) {
-      const membership = await prisma.workspaceMember.findFirst({
-        where: { userId, workspaceId },
-        select: { workspaceId: true },
-      });
-      resolvedWorkspaceId = membership?.workspaceId ?? null;
-    }
+    const membershipWhere = workspaceId
+      ? { userId, workspaceId }
+      : { userId, status: 'ACTIVE' as const };
+    const membership = await prisma.workspaceMember.findFirst({
+      where: membershipWhere,
+      select: { workspaceId: true },
+      orderBy: { joinedAt: 'asc' },
+    });
+    resolvedWorkspaceId = membership?.workspaceId ?? null;
 
     // Check rate limit for chat creation
     const rateLimitIdentifier = getRateLimitIdentifier(req, { userId, workspaceId });
@@ -882,22 +815,14 @@ export async function PUT(req: NextRequest) {
     });
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'RATE_LIMIT',
-            message: 'Rate limit exceeded',
-            resetAt: new Date(rateLimitResult.reset).toISOString(),
-          },
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
+      const response = apiError('RATE_LIMIT', 'Rate limit exceeded', 429, {
+        resetAt: new Date(rateLimitResult.reset).toISOString(),
+      });
+      response.headers.set(
+        'Retry-After',
+        Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString()
       );
+      return response;
     }
 
     // Parse request body
@@ -911,25 +836,12 @@ export async function PUT(req: NextRequest) {
       logger.debug('Invalid JSON body in chat title generation', {
         error: error instanceof Error ? error.message : 'Unknown',
       });
-      return NextResponse.json(
-        { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     const parsed = chatCreateSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid input',
-            details: parsed.error.issues,
-          },
-        },
-        { status: 400 }
-      );
+      return apiError('VALIDATION_ERROR', 'Invalid input', 400, parsed.error.issues);
     }
     const { title, model } = parsed.data;
 
@@ -951,15 +863,12 @@ export async function PUT(req: NextRequest) {
       metadata: { chatId: chat.id, title: chat.title },
     });
 
-    const response = NextResponse.json({
-      success: true,
-      data: {
-        chat: {
-          id: chat.id,
-          title: chat.title,
-          model: chat.model,
-          createdAt: chat.createdAt.toISOString(),
-        },
+    const response = apiSuccess({
+      chat: {
+        id: chat.id,
+        title: chat.title,
+        model: chat.model,
+        createdAt: chat.createdAt.toISOString(),
       },
     });
 
@@ -973,17 +882,7 @@ export async function PUT(req: NextRequest) {
       error: errMsg,
     });
     const isDev = process.env.NODE_ENV === 'development';
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Failed to create chat',
-          ...(isDev && { details: errMsg }),
-        },
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to create chat', 500, isDev ? errMsg : undefined);
   }
 }
 
@@ -996,10 +895,7 @@ export async function GET(req: NextRequest) {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const userId = session.user.id;
@@ -1014,13 +910,7 @@ export async function GET(req: NextRequest) {
     const effectiveId = chatId ?? conversationId;
 
     if (!effectiveId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'MISSING_ID', message: 'chatId or conversationId is required' },
-        },
-        { status: 400 }
-      );
+      return apiError('MISSING_ID', 'chatId or conversationId is required', 400);
     }
 
     // Verify user has access to this chat
@@ -1032,10 +922,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!chat) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Chat not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Chat not found', 404);
     }
 
     const { ConversationMemory: ConvMem } = await import('@/lib/rag/memory');
@@ -1048,45 +935,7 @@ export async function GET(req: NextRequest) {
         cursor,
       });
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          messages: messages.map(
-            (m: {
-              id: string;
-              role: string;
-              content: string;
-              createdAt: Date;
-              sources?: unknown;
-            }) => ({
-              id: m.id,
-              role: m.role,
-              content: m.content,
-              createdAt: m.createdAt.toISOString(),
-              sources: m.sources,
-            })
-          ),
-          count: messages.length,
-          nextCursor,
-        },
-      });
-    }
-
-    const { getOrSet } = await import('@/lib/cache');
-    const { CACHE_KEYS, CACHE_TTL } = await import('@/lib/cache/keys');
-
-    const messages = await getOrSet(
-      CACHE_KEYS.chatHistory(effectiveId, limit),
-      async () => {
-        const mem = new ConvMem(prismaRead);
-        return mem.getHistory(effectiveId, limit);
-      },
-      CACHE_TTL.CHAT_HISTORY
-    );
-
-    return NextResponse.json({
-      success: true,
-      data: {
+      return apiSuccess({
         messages: messages.map(
           (m: {
             id: string;
@@ -1103,19 +952,39 @@ export async function GET(req: NextRequest) {
           })
         ),
         count: messages.length,
+        nextCursor,
+      });
+    }
+
+    const { getOrSet } = await import('@/lib/cache');
+    const { CACHE_KEYS, CACHE_TTL } = await import('@/lib/cache/keys');
+
+    const messages = await getOrSet(
+      CACHE_KEYS.chatHistory(effectiveId, limit),
+      async () => {
+        const mem = new ConvMem(prismaRead);
+        return mem.getHistory(effectiveId, limit);
       },
+      CACHE_TTL.CHAT_HISTORY
+    );
+
+    return apiSuccess({
+      messages: messages.map(
+        (m: { id: string; role: string; content: string; createdAt: Date; sources?: unknown }) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          createdAt: m.createdAt.toISOString(),
+          sources: m.sources,
+        })
+      ),
+      count: messages.length,
     });
   } catch (error) {
     logger.warn('Failed to retrieve chat history', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json(
-      {
-        success: false,
-        error: { code: 'INTERNAL_ERROR', message: 'Failed to retrieve chat history' },
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to retrieve chat history', 500);
   }
 }
 
@@ -1124,14 +993,21 @@ export async function GET(req: NextRequest) {
 // =============================================================================
 
 export async function DELETE(req: NextRequest) {
+  const writeLog = (msg: string, meta?: unknown) => {
+    logger.debug(
+      msg,
+      typeof meta === 'object' && meta !== null ? (meta as Record<string, unknown>) : undefined
+    );
+  };
+
   try {
+    writeLog('DELETE CHAT - Handler entered');
     // Authenticate user
     const session = await auth();
+    writeLog('DELETE CHAT - Session retrieved', session);
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      writeLog('DELETE CHAT - Unauthorized');
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const userId = session.user.id;
@@ -1140,44 +1016,48 @@ export async function DELETE(req: NextRequest) {
     // Parse query parameters
     const { searchParams } = new URL(req.url);
     const chatId = searchParams.get('chatId');
+    writeLog('DELETE CHAT - Parsed params', { chatId, userId, workspaceId });
 
     if (!chatId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'MISSING_ID', message: 'chatId is required' } },
-        { status: 400 }
-      );
+      writeLog('DELETE CHAT - Missing chatId');
+      return apiError('MISSING_ID', 'chatId is required', 400);
     }
 
     // Verify user has access to delete this chat
+    writeLog('DELETE CHAT - Querying database');
     const chat = await prismaRead.chat.findFirst({
       where: {
         id: chatId,
-        OR: [{ userId }, workspaceId ? { workspaceId } : {}],
+        ...(workspaceId ? { OR: [{ userId }, { workspaceId }] } : { userId }),
       },
+    });
+    writeLog('DELETE CHAT - Query result', {
+      chatFound: !!chat,
+      chatUserId: chat?.userId,
+      chatWorkspaceId: chat?.workspaceId,
     });
 
     if (!chat) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Chat not found' } },
-        { status: 404 }
-      );
+      writeLog('DELETE CHAT - Chat not found or access denied');
+      return apiError('NOT_FOUND', 'Chat not found', 404);
     }
 
     // Check delete permission for workspace chats
     if (chat.workspaceId && chat.userId !== userId) {
+      writeLog('DELETE CHAT - Checking permission for workspace chat owned by someone else');
       const canDelete = await checkPermission(userId, chat.workspaceId, Permission.DELETE_CHATS);
+      writeLog('DELETE CHAT - Permission check result', { canDelete });
       if (!canDelete) {
-        return NextResponse.json(
-          { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Access denied', 403);
       }
     }
 
     // Delete chat (cascade will handle messages)
+    writeLog('DELETE CHAT - Executing prisma delete');
     await prisma.chat.delete({
       where: { id: chatId },
     });
+    writeLog('DELETE CHAT - Database delete succeeded');
 
     // Log deletion (fire-and-forget)
     logAuditEvent({
@@ -1187,18 +1067,13 @@ export async function DELETE(req: NextRequest) {
       metadata: { chatId },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: { message: 'Chat deleted successfully' },
-    });
+    return apiSuccess({ message: 'Chat deleted successfully' });
   } catch (error) {
-    logger.warn('Failed to delete chat', {
+    writeLog('DELETE CHAT - Error caught', {
       error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
     });
-    return NextResponse.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to delete chat' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to delete chat', 500);
   }
 }
 
@@ -1211,10 +1086,7 @@ export async function PATCH(req: NextRequest) {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const userId = session.user.id;
@@ -1231,48 +1103,29 @@ export async function PATCH(req: NextRequest) {
       logger.debug('Invalid JSON body in chat update', {
         error: error instanceof Error ? error.message : 'Unknown',
       });
-      return NextResponse.json(
-        { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     const parsed = chatUpdateSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid input',
-            details: parsed.error.issues,
-          },
-        },
-        { status: 400 }
-      );
+      return apiError('VALIDATION_ERROR', 'Invalid input', 400, parsed.error.issues);
     }
     const { chatId, title, model } = parsed.data;
 
     if (!chatId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'MISSING_ID', message: 'chatId is required' } },
-        { status: 400 }
-      );
+      return apiError('MISSING_ID', 'chatId is required', 400);
     }
 
     // Verify user has access to this chat
     const chat = await prismaRead.chat.findFirst({
       where: {
         id: chatId,
-        OR: [{ userId }, workspaceId ? { workspaceId } : {}],
+        ...(workspaceId ? { OR: [{ userId }, { workspaceId }] } : { userId }),
       },
     });
 
     if (!chat) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Chat not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Chat not found', 404);
     }
 
     // Build update data
@@ -1294,10 +1147,7 @@ export async function PATCH(req: NextRequest) {
       }
     } catch (e) {
       if (e instanceof ConcurrentModificationError) {
-        return NextResponse.json(
-          { success: false, error: { code: 'CONFLICT', message: e.message } },
-          { status: 409 }
-        );
+        return apiError('CONFLICT', e.message, 409);
       }
       throw e;
     }
@@ -1310,27 +1160,21 @@ export async function PATCH(req: NextRequest) {
       metadata: { chatId, updates: Object.keys(updateData) },
     });
 
-    const chatResult = updatedChat as Record<string, unknown>;
-    return NextResponse.json({
-      success: true,
-      data: {
-        chat: {
-          id: chatResult.id,
-          title: chatResult.title,
-          model: chatResult.model,
-          version: chatResult.version,
-          updatedAt: (chatResult.updatedAt as Date).toISOString(),
-        },
+    const chatResult = updatedChat;
+    return apiSuccess({
+      chat: {
+        id: chatResult.id,
+        title: chatResult.title,
+        model: chatResult.model,
+        version: chatResult.version,
+        updatedAt: (chatResult.updatedAt as Date).toISOString(),
       },
     });
   } catch (error) {
     logger.warn('Failed to update chat', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to update chat' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to update chat', 500);
   }
 }
 

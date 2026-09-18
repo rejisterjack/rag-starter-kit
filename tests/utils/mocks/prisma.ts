@@ -14,9 +14,8 @@ import { vi } from 'vitest';
 /**
  * Deep mock proxy type that recursively mocks all properties as vi.fn()
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DeepMockProxy<T> = {
-  [K in keyof T]: T[K] extends (...args: any[]) => any
+  [K in keyof T]: T[K] extends (...args: unknown[]) => unknown
     ? ReturnType<typeof vi.fn>
     : T[K] extends object
       ? DeepMockProxy<T[K]>

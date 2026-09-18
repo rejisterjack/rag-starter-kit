@@ -1,6 +1,7 @@
-import { AuditEvent, AuditSeverity, type Prisma } from '@/generated/prisma/client';
+import { AuditEvent, AuditSeverity } from '@/generated/prisma/client';
 import { computeRecordHash, getLatestHash } from '@/lib/audit/hash-chain';
 import { prisma } from '@/lib/db';
+import { fromJson, toJsonOrEmpty } from '@/lib/db/json';
 import { detachOldPartitions } from '@/lib/db/partition-manager';
 import { logger } from '@/lib/logger';
 
@@ -75,8 +76,8 @@ export async function logAuditEvent(input: LogAuditEventInput): Promise<void> {
       .then((previousHash) => {
         const recordHash = computeRecordHash({
           id,
-          event: input.event as string,
-          severity: (input.severity ?? 'INFO') as string,
+          event: input.event,
+          severity: input.severity ?? 'INFO',
           userId: input.userId,
           workspaceId: input.workspaceId,
           metadata: input.metadata,
@@ -91,9 +92,9 @@ export async function logAuditEvent(input: LogAuditEventInput): Promise<void> {
             userId: input.userId,
             workspaceId: input.workspaceId,
             severity: input.severity ?? 'INFO',
-            metadata: (input.metadata ?? {}) as unknown as Prisma.InputJsonValue,
-            resource: (input.resource ?? {}) as unknown as Prisma.InputJsonValue,
-            changes: (input.changes ?? {}) as unknown as Prisma.InputJsonValue,
+            metadata: toJsonOrEmpty(input.metadata),
+            resource: toJsonOrEmpty(input.resource),
+            changes: toJsonOrEmpty(input.changes),
             error: input.error ?? null,
             ipAddress: input.ipAddress,
             userAgent: input.userAgent,
@@ -165,13 +166,14 @@ export async function getAuditLogs(
   }
 
   if (query.startDate || query.endDate) {
-    where.createdAt = {};
+    const createdAtFilter: Record<string, Date> = {};
     if (query.startDate) {
-      (where.createdAt as Record<string, Date>).gte = query.startDate;
+      createdAtFilter.gte = query.startDate;
     }
     if (query.endDate) {
-      (where.createdAt as Record<string, Date>).lte = query.endDate;
+      createdAtFilter.lte = query.endDate;
     }
+    where.createdAt = createdAtFilter;
   }
 
   const [logs, total] = await Promise.all([
@@ -196,9 +198,9 @@ export async function getAuditLogs(
   return {
     logs: logs.map((log) => ({
       ...log,
-      metadata: log.metadata as Record<string, unknown> | null,
-      resource: log.resource as Record<string, unknown> | null,
-      changes: log.changes as Record<string, unknown> | null,
+      metadata: fromJson<Record<string, unknown>>(log.metadata, null),
+      resource: fromJson<Record<string, unknown>>(log.resource, null),
+      changes: fromJson<Record<string, unknown>>(log.changes, null),
       error: log.error,
     })) as AuditLogResult[],
     total,
@@ -229,9 +231,9 @@ export async function getRecentWorkspaceEvents(
 
   return logs.map((log) => ({
     ...log,
-    metadata: log.metadata as Record<string, unknown> | null,
-    resource: log.resource as Record<string, unknown> | null,
-    changes: log.changes as Record<string, unknown> | null,
+    metadata: fromJson<Record<string, unknown>>(log.metadata, null),
+    resource: fromJson<Record<string, unknown>>(log.resource, null),
+    changes: fromJson<Record<string, unknown>>(log.changes, null),
     error: log.error,
   })) as AuditLogResult[];
 }
@@ -261,13 +263,14 @@ export async function getSecurityEvents(options?: {
   }
 
   if (options?.startDate || options?.endDate) {
-    where.createdAt = {};
+    const createdAtFilter: Record<string, Date> = {};
     if (options.startDate) {
-      (where.createdAt as Record<string, Date>).gte = options.startDate;
+      createdAtFilter.gte = options.startDate;
     }
     if (options.endDate) {
-      (where.createdAt as Record<string, Date>).lte = options.endDate;
+      createdAtFilter.lte = options.endDate;
     }
+    where.createdAt = createdAtFilter;
   }
 
   const logs = await prisma.auditLog.findMany({
@@ -287,9 +290,9 @@ export async function getSecurityEvents(options?: {
 
   return logs.map((log) => ({
     ...log,
-    metadata: log.metadata as Record<string, unknown> | null,
-    resource: log.resource as Record<string, unknown> | null,
-    changes: log.changes as Record<string, unknown> | null,
+    metadata: fromJson<Record<string, unknown>>(log.metadata, null),
+    resource: fromJson<Record<string, unknown>>(log.resource, null),
+    changes: fromJson<Record<string, unknown>>(log.changes, null),
     error: log.error,
   })) as AuditLogResult[];
 }

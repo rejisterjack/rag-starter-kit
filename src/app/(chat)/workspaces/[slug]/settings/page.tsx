@@ -15,6 +15,8 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { apiFetch } from '@/lib/api-client';
+import { WorkspaceMembersTab } from './members-tab';
 
 const settingsSchema = z.object({
   name: z.string().min(2).max(50),
@@ -82,11 +84,8 @@ export default function WorkspaceSettingsPage() {
 
   const fetchWorkspace = useCallback(async () => {
     try {
-      const response = await fetch('/api/workspaces');
-      if (!response.ok) throw new Error('Failed to fetch workspaces');
-
-      const data = await response.json();
-      const found = data.data.workspaces.find((w: Workspace) => w.slug === slug);
+      const data = await apiFetch<{ workspaces: Workspace[] }>('/api/workspaces');
+      const found = data.workspaces.find((w: Workspace) => w.slug === slug);
 
       if (found) {
         setWorkspace(found);
@@ -123,7 +122,7 @@ export default function WorkspaceSettingsPage() {
     setIsSaving(true);
     try {
       // Update workspace details
-      const workspaceResponse = await fetch(`/api/workspaces/${workspace.id}`, {
+      await apiFetch(`/api/workspaces/${workspace.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -132,10 +131,8 @@ export default function WorkspaceSettingsPage() {
         }),
       });
 
-      if (!workspaceResponse.ok) throw new Error('Failed to update workspace');
-
       // Update RAG settings
-      const ragResponse = await fetch(`/api/workspaces/${workspace.id}/rag-settings`, {
+      await apiFetch(`/api/workspaces/${workspace.id}/rag-settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -148,8 +145,6 @@ export default function WorkspaceSettingsPage() {
           hybridSearchEnabled: data.hybridSearchEnabled,
         }),
       });
-
-      if (!ragResponse.ok) throw new Error('Failed to update RAG settings');
 
       toast.success('Settings saved successfully');
     } catch (_error: unknown) {
@@ -165,11 +160,9 @@ export default function WorkspaceSettingsPage() {
       return;
 
     try {
-      const response = await fetch(`/api/workspaces/${workspace.id}`, {
+      await apiFetch(`/api/workspaces/${workspace.id}`, {
         method: 'DELETE',
       });
-
-      if (!response.ok) throw new Error('Failed to delete workspace');
 
       toast.success('Workspace deleted');
       router.push('/chat');
@@ -390,17 +383,7 @@ export default function WorkspaceSettingsPage() {
             </TabsContent>
 
             <TabsContent value="members">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Team Members</CardTitle>
-                  <CardDescription>Manage workspace members and permissions</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Member management coming soon. Use the API to manage members for now.
-                  </p>
-                </CardContent>
-              </Card>
+              <WorkspaceMembersTab workspaceId={workspace.id} />
             </TabsContent>
 
             <TabsContent value="danger">

@@ -147,7 +147,7 @@ function evaluateMath(expression: string): number {
 
   // Use Function constructor in a controlled way with strict mode
   // to prevent access to global `this` object
-  // eslint-disable-next-line no-new-func
+
   const result = new Function(`"use strict"; return (${cleanExpr})`)();
 
   if (typeof result !== 'number' || !Number.isFinite(result)) {

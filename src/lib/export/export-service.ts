@@ -6,8 +6,11 @@
 
 import { Readable } from 'node:stream';
 import archiver from 'archiver';
+import type { Prisma } from '@/generated/prisma/client';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
+import { logger } from '@/lib/logger';
 
 // Prisma types - will be generated after prisma generate
 // type DBMessage = import('@prisma/client').Message;
@@ -70,8 +73,11 @@ export class ExportService {
     this.activeJobs = new Set();
 
     // Initialize storage
-    // biome-ignore lint/suspicious/noConsole: Initialization error should be logged
-    this.storage.initialize().catch(console.error);
+    this.storage.initialize().catch((error: unknown) => {
+      logger.error('Failed to initialize export storage', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    });
   }
 
   /**
@@ -548,8 +554,13 @@ export class ExportService {
         content: msg.content,
         role: this.mapRole(msg.role),
         createdAt: msg.createdAt,
-        sources: msg.sources ? this.transformSources(msg.sources as SourceData[]) : undefined,
-        tokensUsed: msg.tokensUsed as Record<string, number> | undefined,
+        sources: msg.sources
+          ? this.transformSources(fromJson<SourceData[]>(msg.sources as Prisma.JsonValue, []))
+          : undefined,
+        tokensUsed: fromJson<Record<string, number> | undefined>(
+          msg.tokensUsed as Prisma.JsonValue | null | undefined,
+          undefined
+        ),
       })),
     };
   }

@@ -23,23 +23,32 @@ import {
   storeIdempotencyKey,
 } from '@/lib/webhooks/idempotency';
 import {
-  cleanupExpiredRotations,
-  completeWebhookRotation,
-  getWebhookSecrets,
   rotateWebhookSecret,
-  verifyWebhookSignatureWithRotation,
+  verifyWebhookSignature as verifyRotationSignature,
 } from '@/lib/webhooks/rotation';
 
-// Mock modules - factories defined inline to avoid hoisting issues
-vi.mock('@/lib/security/rate-limiter', () => ({
-  redis: {
+// Mock Redis used by idempotency store (hoisted for vi.mock)
+const { mockRedisClient } = vi.hoisted(() => ({
+  mockRedisClient: {
     get: vi.fn(),
-    set: vi.fn(),
-    del: vi.fn(),
-    keys: vi.fn(),
+    set: vi.fn().mockResolvedValue('OK'),
+    del: vi.fn().mockResolvedValue(1),
+    ttl: vi.fn().mockResolvedValue(3600),
+    keys: vi.fn().mockResolvedValue([]),
     pipeline: vi.fn().mockReturnThis(),
     exec: vi.fn().mockResolvedValue([]),
   },
+}));
+
+vi.mock('@/lib/redis', () => ({
+  redis: mockRedisClient,
+  getRedis: vi.fn(() => mockRedisClient),
+  isRedisConfigured: vi.fn().mockReturnValue(true),
+}));
+
+// Legacy mock kept for any rate-limiter imports in delivery tests
+vi.mock('@/lib/security/rate-limiter', () => ({
+  redis: mockRedisClient,
 }));
 
 vi.mock('@/lib/db', () => ({
@@ -63,7 +72,7 @@ vi.mock('@/lib/logger', () => ({
 
 import { prisma as mockPrisma } from '@/lib/db';
 // Get reference to mocked modules after they're defined
-import { redis as mockRedis } from '@/lib/security/rate-limiter';
+import { redis as mockRedis } from '@/lib/redis';
 
 describe('Webhooks', () => {
   beforeEach(() => {
@@ -76,8 +85,7 @@ describe('Webhooks', () => {
 
       expect(secret).toBeDefined();
       expect(typeof secret).toBe('string');
-      expect(secret.startsWith('whsec_')).toBe(true);
-      expect(secret.length).toBeGreaterThan(20);
+      expect(secret.length).toBe(64); // 32 bytes hex-encoded
     });
 
     it('should generate unique secrets', () => {
@@ -461,154 +469,13 @@ describe('Webhooks', () => {
       expect(result.error).toBe('Webhook not found');
     });
 
-    it('should get webhook secrets during grace period', async () => {
-      const rotatedAt = new Date();
-      mockPrisma.webhook.findUnique.mockResolvedValueOnce({
-        id: 'webhook-123',
-        secret: 'whsec_new',
-        metadata: {
-          previousSecret: 'whsec_old',
-          rotatedAt: rotatedAt.toISOString(),
-          gracePeriodDays: 7,
-        },
-      });
-
-      const secrets = await getWebhookSecrets('webhook-123');
-
-      expect(secrets).not.toBeNull();
-      expect(secrets?.primary).toBe('whsec_new');
-      expect(secrets?.secondary).toBe('whsec_old');
-      expect(secrets?.rotatedAt).toEqual(rotatedAt);
-    });
-
-    it('should verify signature with rotation', async () => {
+    it('should verify webhook signature via rotation helper', () => {
       const payload = JSON.stringify({ event: 'test' });
-      const oldSecret = 'whsec_old';
-      const newSecret = 'whsec_new';
-      const oldSignature = generateWebhookSignature(payload, oldSecret);
-
-      mockPrisma.webhook.findUnique.mockResolvedValueOnce({
-        id: 'webhook-123',
-        secret: newSecret,
-        metadata: {
-          previousSecret: oldSecret,
-          rotatedAt: new Date().toISOString(),
-          gracePeriodDays: 7,
-        },
-      });
-
-      const isValid = await verifyWebhookSignatureWithRotation(
-        'webhook-123',
-        payload,
-        oldSignature
-      );
-
-      expect(isValid).toBe(true);
-    });
-
-    it('should verify with primary secret', async () => {
-      const payload = JSON.stringify({ event: 'test' });
-      const secret = 'whsec_secret';
+      const secret = 'whsec_test_secret';
       const signature = generateWebhookSignature(payload, secret);
 
-      mockPrisma.webhook.findUnique.mockResolvedValueOnce({
-        id: 'webhook-123',
-        secret,
-        metadata: {},
-      });
-
-      const isValid = await verifyWebhookSignatureWithRotation('webhook-123', payload, signature);
-
-      expect(isValid).toBe(true);
-    });
-
-    it('should reject invalid signature during rotation', async () => {
-      mockPrisma.webhook.findUnique.mockResolvedValueOnce({
-        id: 'webhook-123',
-        secret: 'whsec_new',
-        metadata: {
-          previousSecret: 'whsec_old',
-          rotatedAt: new Date().toISOString(),
-          gracePeriodDays: 7,
-        },
-      });
-
-      const isValid = await verifyWebhookSignatureWithRotation(
-        'webhook-123',
-        'payload',
-        'invalid-signature'
-      );
-
-      expect(isValid).toBe(false);
-    });
-
-    it('should complete rotation after grace period', async () => {
-      const rotatedAt = new Date();
-      rotatedAt.setDate(rotatedAt.getDate() - 8); // 8 days ago
-
-      mockPrisma.webhook.findUnique.mockResolvedValueOnce({
-        id: 'webhook-123',
-        secret: 'whsec_new',
-        metadata: {
-          previousSecret: 'whsec_old',
-          rotatedAt: rotatedAt.toISOString(),
-          gracePeriodDays: 7,
-        },
-      });
-      mockPrisma.webhook.update.mockResolvedValueOnce({
-        id: 'webhook-123',
-        secret: 'whsec_new',
-        metadata: {},
-      });
-
-      const completed = await completeWebhookRotation('webhook-123');
-
-      expect(completed).toBe(true);
-    });
-
-    it('should not complete rotation before grace period ends', async () => {
-      const rotatedAt = new Date();
-      rotatedAt.setDate(rotatedAt.getDate() - 3); // 3 days ago
-
-      mockPrisma.webhook.findUnique.mockResolvedValueOnce({
-        id: 'webhook-123',
-        secret: 'whsec_new',
-        metadata: {
-          previousSecret: 'whsec_old',
-          rotatedAt: rotatedAt.toISOString(),
-          gracePeriodDays: 7,
-        },
-      });
-
-      const completed = await completeWebhookRotation('webhook-123');
-
-      expect(completed).toBe(false);
-    });
-
-    it('should cleanup expired rotations', async () => {
-      const rotatedAt = new Date();
-      rotatedAt.setDate(rotatedAt.getDate() - 10); // 10 days ago
-
-      mockPrisma.webhook.findMany.mockResolvedValueOnce([
-        {
-          id: 'webhook-123',
-          secret: 'whsec_new',
-          metadata: {
-            previousSecret: 'whsec_old',
-            rotatedAt: rotatedAt.toISOString(),
-            gracePeriodDays: 7,
-          },
-        },
-      ]);
-      mockPrisma.webhook.update.mockResolvedValueOnce({
-        id: 'webhook-123',
-        secret: 'whsec_new',
-        metadata: {},
-      });
-
-      const completed = await cleanupExpiredRotations();
-
-      expect(completed).toBe(1);
+      expect(verifyRotationSignature(payload, signature, secret)).toBe(true);
+      expect(verifyRotationSignature(payload, 'invalid', secret)).toBe(false);
     });
   });
 
@@ -681,8 +548,7 @@ describe('Webhooks', () => {
       expect(mockRedis.set).toHaveBeenCalledWith(
         'webhook:idempotency:webhook-123:document.created:1',
         expect.stringContaining('document.created'),
-        'EX',
-        86400
+        { ex: 86400 }
       );
     });
 
@@ -836,6 +702,7 @@ describe('Webhooks', () => {
     });
 
     it('should handle store failures', async () => {
+      mockRedis.set.mockReset();
       mockRedis.set.mockRejectedValueOnce(new Error('Redis error'));
 
       const result = await storeIdempotencyKey('key', { event: 'test', webhookId: '123' });

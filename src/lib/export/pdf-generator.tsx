@@ -168,9 +168,11 @@ function ConversationPDF({ conversation, citations, options }: ConversationPDFPr
 
         {/* Messages */}
         <View style={styles.section}>
-          {conversation.messages.map((message, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: Index is stable for PDF export
-            <View key={index} style={styles.messageContainer}>
+          {conversation.messages.map((message) => (
+            <View
+              key={`msg-${message.role}-${message.createdAt}-${message.content.slice(0, 20)}`}
+              style={styles.messageContainer}
+            >
               <View style={styles.messageHeader}>
                 <Text style={styles.role}>{message.role}</Text>
                 <Text style={styles.timestamp}>{formatDate(message.createdAt)}</Text>
@@ -184,10 +186,12 @@ function ConversationPDF({ conversation, citations, options }: ConversationPDFPr
         {citations.length > 0 && (
           <View style={styles.citationsSection}>
             <Text style={styles.citationsTitle}>Citations</Text>
-            {citations.map((citation, index) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: Index is stable for PDF export
-              <Text key={index} style={styles.citation}>
-                [{index + 1}] {citation.documentName}
+            {citations.map((citation, citIdx) => (
+              <Text
+                key={`citation-${citation.documentName}-${citation.page ?? ''}`}
+                style={styles.citation}
+              >
+                [{citIdx + 1}] {citation.documentName}
                 {citation.page ? `, Page ${citation.page}` : ''}
               </Text>
             ))}
@@ -335,8 +339,7 @@ export async function generateBulkPDF(
     <PDFDocument>
       {conversations.map((conversation, convIndex) => (
         <Page
-          // biome-ignore lint/suspicious/noArrayIndexKey: Index is stable for PDF export
-          key={convIndex}
+          key={`conv-page-${conversation.id}`}
           size={(options.pageSize || 'A4') as PDFPageSize}
           style={styles.page as PDFPageProps['style']}
         >
@@ -348,9 +351,11 @@ export async function generateBulkPDF(
             </Text>
           </View>
           <View style={styles.section}>
-            {conversation.messages.map((message, msgIndex) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: Index is stable for PDF export
-              <View key={msgIndex} style={styles.messageContainer}>
+            {conversation.messages.map((message) => (
+              <View
+                key={`bulk-msg-${conversation.id}-${message.role}-${message.content.slice(0, 20)}`}
+                style={styles.messageContainer}
+              >
                 <View style={styles.messageHeader}>
                   <Text style={styles.role}>{message.role}</Text>
                   <Text style={styles.timestamp}>
@@ -364,10 +369,12 @@ export async function generateBulkPDF(
           {allCitations[convIndex]?.length > 0 && (
             <View style={styles.citationsSection}>
               <Text style={styles.citationsTitle}>Citations</Text>
-              {allCitations[convIndex].map((citation, idx) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: Index is stable for PDF export
-                <Text key={idx} style={styles.citation}>
-                  [{idx + 1}] {citation.documentName}
+              {allCitations[convIndex].map((citation, citIdx) => (
+                <Text
+                  key={`bulk-citation-${conversation.id}-${citation.documentName}-${citation.page ?? ''}`}
+                  style={styles.citation}
+                >
+                  [{citIdx + 1}] {citation.documentName}
                   {citation.page ? `, Page ${citation.page}` : ''}
                 </Text>
               ))}

@@ -4,7 +4,7 @@
 
 **Ship a production-grade AI document chatbot this weekend — TypeScript-native RAG with streaming, auth, background jobs, and pgvector. Zero Python required.**
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-4169E1?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
@@ -16,7 +16,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/ci.yml?label=CI&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![E2E Tests](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/e2e.yml?label=E2E&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![Lighthouse](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/lighthouse.yml?label=Lighthouse&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
-[![Coverage](https://img.shields.io/badge/coverage-90%25+-brightgreen?style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
+[![Coverage](https://img.shields.io/badge/coverage-baseline%208.7%25-yellow?style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![All Contributors](https://img.shields.io/github/all-contributors/rejisterjack/rag-starter-kit?color=ee8449&style=flat-square)](#contributors)
 
 [🚀 Live Demo](https://rag-starter-kit.vercel.app/) · [📖 API Docs](https://rag-starter-kit.vercel.app/api/docs) · [🐛 Report Bug](../../issues) · [✨ Request Feature](../../issues) · [🔖 Changelog](CHANGELOG.md) · [🧩 Chrome Extension](extensions/chrome/README.md)
@@ -42,7 +42,7 @@
 | 🤖 **Agent Mode** | Tool-using AI agent (search, calculator, code) |
 | 🌙 **Dark/Light Mode** | Beautiful themes |
 | 📱 **PWA Support** | Install as native app |
-| 🆓 **100% Free AI** | OpenRouter + Google Gemini (or Anthropic/Ollama) |
+| 🆓 **100% Free AI** | OpenRouter + Google Gemini |
 
 </div>
 
@@ -52,7 +52,7 @@
 
 ### 🆓 100% FREE AI Setup
 Unlike other RAG solutions that require paid OpenAI API keys, this starter kit uses:
-- **🤖 Chat**: OpenRouter free models (DeepSeek, Mistral, Llama, Gemma) — or bring your own Anthropic/OpenAI/Ollama key
+- **🤖 Chat**: OpenRouter free models
 - **🔤 Embeddings**: Google Gemini free tier (1,500 req/day)
 - **💰 Cost**: $0 forever for development and light usage
 
@@ -61,7 +61,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 <details open>
 <summary><b>🎨 Modern UI/UX</b></summary>
 
-- Next.js 15 App Router with React 19
+- Next.js 16 App Router with React 19
 - Tailwind CSS 4 with beautiful dark mode
 - shadcn/ui component library
 - Responsive design (mobile, tablet, desktop)
@@ -142,7 +142,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 
 | Category | Technology |
 |----------|------------|
-| **Framework** | [Next.js 15](https://nextjs.org/) (App Router, RSC, Streaming) |
+| **Framework** | [Next.js 16](https://nextjs.org/) (App Router, RSC, Streaming) |
 | **UI** | [React 19](https://react.dev/), [Tailwind CSS 4](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/) |
 | **AI / RAG** | [Vercel AI SDK](https://sdk.vercel.ai/), LangChain.js, OpenRouter, Anthropic Claude |
 | **Embeddings** | [Google Gemini](https://ai.google.dev/) (free tier) |
@@ -155,7 +155,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 | **Testing** | [Vitest](https://vitest.dev/) + [Playwright](https://playwright.dev/) |
 | **Analytics** | [Plausible](https://plausible.io/) + [PostHog](https://posthog.com/) (optional) |
 | **DevOps** | [Vercel](https://vercel.com/) |
-| **Linting** | [Biome](https://biomejs.dev/) |
+| **Linting** | ESLint + Prettier |
 
 ---
 
@@ -196,20 +196,22 @@ bun dev
 
 ### Docker (Self-Hosted)
 
+Requires **Node.js 24+**. The app listens on port **7392**.
+
 ```bash
-# Start PostgreSQL + Redis locally
+# Start PostgreSQL and Redis
 docker compose up -d
 
-# Update .env with local database URL:
-# DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ragdb
-
-# Run migrations and seed
+# Copy .env.example → .env and set API keys, then migrate + seed
 bun db:migrate
 bun db:seed
 
-# Build and run production container
+# Development
+bun dev   # http://localhost:7392
+
+# Production container
 docker build -t rag-starter-kit .
-docker run -p 3000:3000 --env-file .env --network host rag-starter-kit
+docker run -p 7392:7392 --env-file .env rag-starter-kit
 ```
 
 ### One-Click Deploy
@@ -243,7 +245,7 @@ docker run -p 3000:3000 --env-file .env --network host rag-starter-kit
 ```mermaid
 graph TB
     User([User]) -->|Upload Document| Cloudinary[Cloudinary]
-    User -->|Chat Query| Next[Next.js 15 App]
+    User -->|Chat Query| Next[Next.js 16 App]
 
     subgraph "Background Processing"
         Cloudinary -->|Trigger| Inngest[Inngest Jobs]
@@ -271,11 +273,11 @@ graph TB
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| **Presentation** | Next.js 15, React 19, Tailwind CSS | UI components, SSR, streaming |
+| **Presentation** | Next.js 16, React 19, Tailwind CSS | UI components, SSR, streaming |
 | **API** | Next.js API Routes | RESTful endpoints, type-safe APIs |
 | **AI/ML** | Vercel AI SDK, OpenRouter, Gemini | LLM inference, embeddings |
 | **RAG** | LangChain, custom pipeline | Document processing, retrieval |
-| **Data** | PostgreSQL, pgvector, Redis | Persistent storage, caching |
+| **Data** | PostgreSQL + pgvector, Redis | Persistent storage, vector search, caching |
 | **Storage** | Cloudinary | Document files |
 | **Queue** | Inngest | Background job processing |
 | **Real-time** | Ably | WebSocket connections |
@@ -332,7 +334,7 @@ bun test:integration  # Integration tests
 ```
 rag-starter-kit/
 ├── src/
-│   ├── app/                 # Next.js 15 App Router
+│   ├── app/                 # Next.js 16 App Router
 │   ├── components/          # React components (shadcn/ui)
 │   ├── lib/
 │   │   ├── ai/             # AI SDK config (OpenRouter + Google)

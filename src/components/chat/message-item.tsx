@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import {
   Bot,
   Check,
@@ -202,7 +201,7 @@ export const MessageItem = React.memo(function MessageItem({
             )}
           >
             {isEditing ? (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+              <div className="space-y-3 animate-[fade-in_0.2s_ease-out]">
                 <Textarea
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
@@ -233,7 +232,7 @@ export const MessageItem = React.memo(function MessageItem({
                     <X className="mr-1.5 h-4 w-4" /> Cancel
                   </Button>
                 </div>
-              </motion.div>
+              </div>
             ) : (
               <>
                 <div className="text-foreground/90 leading-relaxed prose prose-invert max-w-none text-sm">

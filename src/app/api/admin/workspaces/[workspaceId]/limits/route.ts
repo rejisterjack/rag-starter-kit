@@ -1,3 +1,4 @@
+import { apiError, apiSuccess } from '@/lib/api-response';
 /**
  * Admin Workspace Limits API
  * GET /api/admin/workspaces/[workspaceId]/limits - Get workspace limits and usage
@@ -32,7 +33,7 @@ export const GET = withApiAuth(async (_req, session, { params }: RouteParams) =>
   try {
     // Admin-only check
     if (session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return apiError('FORBIDDEN', 'Forbidden', 403);
     }
 
     const { workspaceId } = await params;
@@ -53,7 +54,7 @@ export const GET = withApiAuth(async (_req, session, { params }: RouteParams) =>
     });
 
     if (!workspace) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'Workspace not found', 404);
     }
 
     const usage = await getWorkspaceResourceUsage(workspaceId);
@@ -79,7 +80,7 @@ export const GET = withApiAuth(async (_req, session, { params }: RouteParams) =>
     logger.error('Failed to fetch workspace limits', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json({ error: 'Failed to fetch limits' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to fetch limits', 500);
   }
 });
 
@@ -91,7 +92,7 @@ export const PUT = withApiAuth(async (req, session, { params }: RouteParams) => 
   try {
     // Admin-only check
     if (session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return apiError('FORBIDDEN', 'Forbidden', 403);
     }
 
     const { workspaceId } = await params;
@@ -103,7 +104,7 @@ export const PUT = withApiAuth(async (req, session, { params }: RouteParams) => 
     });
 
     if (!workspace) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'Workspace not found', 404);
     }
 
     // Parse and validate body
@@ -111,10 +112,7 @@ export const PUT = withApiAuth(async (req, session, { params }: RouteParams) => 
     const validation = updateLimitsSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
-        { error: 'Invalid limits', details: validation.error.errors },
-        { status: 400 }
-      );
+      return apiError('VALIDATION_ERROR', 'Invalid limits', 400, validation.error.errors);
     }
 
     const updates = validation.data;
@@ -129,7 +127,7 @@ export const PUT = withApiAuth(async (req, session, { params }: RouteParams) => 
     if (updates.llmModel !== undefined) updateData.llmModel = updates.llmModel;
 
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+      return apiError('BAD_REQUEST', 'No fields to update', 400);
     }
 
     // Update workspace
@@ -155,15 +153,11 @@ export const PUT = withApiAuth(async (req, session, { params }: RouteParams) => 
       updates: Object.keys(updateData),
     });
 
-    return NextResponse.json({
-      success: true,
-      limits: updated,
-      usage,
-    });
+    return apiSuccess({ limits: updated, usage });
   } catch (error: unknown) {
     logger.error('Failed to update workspace limits', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json({ error: 'Failed to update limits' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to update limits', 500);
   }
 });

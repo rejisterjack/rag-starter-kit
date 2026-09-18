@@ -7,6 +7,7 @@
 
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 
 // =============================================================================
@@ -124,13 +125,13 @@ export async function lookupDomain(email: string): Promise<DomainLookupResult> {
   // Note: oauthConnections not in schema - skipping OAuth providers
 
   // Parse workspace settings
-  const settings = (workspace.settings as Record<string, unknown>) || {};
+  const settings = fromJson<Record<string, unknown>>(workspace.settings, {});
 
   return {
     found: true,
     workspaceId: workspace.id,
     workspaceName: workspace.name,
-    workspaceLogo: (workspace.logoUrl as string | undefined) || undefined,
+    workspaceLogo: workspace.logoUrl ?? undefined,
     ssoMethods,
     forceSSO: settings.forceSSO === true,
     jitProvisioning: settings.jitProvisioning !== false, // Default true

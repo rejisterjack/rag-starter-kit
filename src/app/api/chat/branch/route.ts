@@ -9,7 +9,8 @@
  * - DELETE /api/chat/branch?branchId=x - Delete branch
  */
 
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -30,10 +31,7 @@ export async function POST(req: NextRequest) {
     // Authenticate
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const userId = session.user.id;
@@ -47,10 +45,7 @@ export async function POST(req: NextRequest) {
       logger.debug('Invalid JSON body in branch creation request', {
         error: error instanceof Error ? error.message : 'Unknown',
       });
-      return NextResponse.json(
-        { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     // Validate body
@@ -61,13 +56,7 @@ export async function POST(req: NextRequest) {
     };
 
     if (!conversationId || !messageId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'MISSING_FIELDS', message: 'conversationId and messageId are required' },
-        },
-        { status: 400 }
-      );
+      return apiError('MISSING_FIELDS', 'conversationId and messageId are required', 400);
     }
 
     // Verify user has access to the conversation
@@ -79,10 +68,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!chat) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Conversation not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Conversation not found', 404);
     }
 
     // Create the branch
@@ -109,24 +95,15 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        branchId: newBranchId,
-        name: newBranch?.title || branchName || 'New Branch',
-        parentId: conversationId,
-        messageCount: newBranch?._count.messages || 0,
-      },
+    return apiSuccess({
+      branchId: newBranchId,
+      name: newBranch?.title || branchName || 'New Branch',
+      parentId: conversationId,
+      messageCount: newBranch?._count.messages || 0,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to create branch';
-    return NextResponse.json(
-      {
-        success: false,
-        error: { code: 'INTERNAL_ERROR', message: errorMessage },
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', errorMessage, 500);
   }
 }
 
@@ -139,10 +116,7 @@ export async function GET(req: NextRequest) {
     // Authenticate
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const userId = session.user.id;
@@ -157,13 +131,7 @@ export async function GET(req: NextRequest) {
     const effectiveRootId = conversationId || rootId;
 
     if (!effectiveRootId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'MISSING_ID', message: 'conversationId or rootId is required' },
-        },
-        { status: 400 }
-      );
+      return apiError('MISSING_ID', 'conversationId or rootId is required', 400);
     }
 
     // Verify user has access to the root conversation
@@ -175,10 +143,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!rootChat) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Conversation not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Conversation not found', 404);
     }
 
     // Get branches
@@ -190,26 +155,17 @@ export async function GET(req: NextRequest) {
       tree = await getConversationTree(effectiveRootId);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        branches: branches.map((b) => ({
-          ...b,
-          createdAt: b.createdAt.toISOString(),
-        })),
-        tree,
-        rootId: effectiveRootId,
-      },
+    return apiSuccess({
+      branches: branches.map((b) => ({
+        ...b,
+        createdAt: b.createdAt.toISOString(),
+      })),
+      tree,
+      rootId: effectiveRootId,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to list branches';
-    return NextResponse.json(
-      {
-        success: false,
-        error: { code: 'INTERNAL_ERROR', message: errorMessage },
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', errorMessage, 500);
   }
 }
 
@@ -222,10 +178,7 @@ export async function PATCH(req: NextRequest) {
     // Authenticate
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const userId = session.user.id;
@@ -239,10 +192,7 @@ export async function PATCH(req: NextRequest) {
       logger.debug('Invalid JSON body in message edit request', {
         error: error instanceof Error ? error.message : 'Unknown',
       });
-      return NextResponse.json(
-        { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     // Validate body
@@ -259,13 +209,7 @@ export async function PATCH(req: NextRequest) {
     };
 
     if (!messageId || !newContent) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'MISSING_FIELDS', message: 'messageId and newContent are required' },
-        },
-        { status: 400 }
-      );
+      return apiError('MISSING_FIELDS', 'messageId and newContent are required', 400);
     }
 
     // Verify user has access to the message
@@ -275,20 +219,14 @@ export async function PATCH(req: NextRequest) {
     });
 
     if (!message) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Message not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Message not found', 404);
     }
 
     const hasAccess =
       message.chat.userId === userId || (workspaceId && message.chat.workspaceId === workspaceId);
 
     if (!hasAccess) {
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Edit the message and create branch
@@ -298,13 +236,7 @@ export async function PATCH(req: NextRequest) {
     });
 
     if (!result.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'EDIT_FAILED', message: result.error || 'Failed to edit message' },
-        },
-        { status: 400 }
-      );
+      return apiError('EDIT_FAILED', result.error || 'Failed to edit message', 400);
     }
 
     // Log the action
@@ -321,22 +253,13 @@ export async function PATCH(req: NextRequest) {
       severity: 'INFO',
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        newBranchId: result.newBranchId,
-        message: 'Message edited and new branch created',
-      },
+    return apiSuccess({
+      newBranchId: result.newBranchId,
+      message: 'Message edited and new branch created',
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to edit message';
-    return NextResponse.json(
-      {
-        success: false,
-        error: { code: 'INTERNAL_ERROR', message: errorMessage },
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', errorMessage, 500);
   }
 }
 
@@ -349,10 +272,7 @@ export async function PUT(req: NextRequest) {
     // Authenticate
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const userId = session.user.id;
@@ -366,10 +286,7 @@ export async function PUT(req: NextRequest) {
       logger.debug('Invalid JSON body in branch rename request', {
         error: error instanceof Error ? error.message : 'Unknown',
       });
-      return NextResponse.json(
-        { success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     // Validate body
@@ -379,13 +296,7 @@ export async function PUT(req: NextRequest) {
     };
 
     if (!branchId || !name?.trim()) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'MISSING_FIELDS', message: 'branchId and name are required' },
-        },
-        { status: 400 }
-      );
+      return apiError('MISSING_FIELDS', 'branchId and name are required', 400);
     }
 
     // Verify user has access to the branch
@@ -397,10 +308,7 @@ export async function PUT(req: NextRequest) {
     });
 
     if (!chat) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Branch not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Branch not found', 404);
     }
 
     // Update the branch name
@@ -421,22 +329,13 @@ export async function PUT(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        branchId,
-        name: name.trim(),
-      },
+    return apiSuccess({
+      branchId,
+      name: name.trim(),
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to rename branch';
-    return NextResponse.json(
-      {
-        success: false,
-        error: { code: 'INTERNAL_ERROR', message: errorMessage },
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', errorMessage, 500);
   }
 }
 
@@ -449,10 +348,7 @@ export async function DELETE(req: NextRequest) {
     // Authenticate
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const userId = session.user.id;
@@ -463,13 +359,7 @@ export async function DELETE(req: NextRequest) {
     const branchId = searchParams.get('branchId');
 
     if (!branchId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'MISSING_ID', message: 'branchId is required' },
-        },
-        { status: 400 }
-      );
+      return apiError('MISSING_ID', 'branchId is required', 400);
     }
 
     // Verify user has access to the branch
@@ -481,10 +371,7 @@ export async function DELETE(req: NextRequest) {
     });
 
     if (!chat) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Branch not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Branch not found', 404);
     }
 
     // Check if trying to delete root conversation (not a branch)
@@ -506,21 +393,12 @@ export async function DELETE(req: NextRequest) {
       where: { id: branchId },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        branchId,
-        deleted: true,
-      },
+    return apiSuccess({
+      branchId,
+      deleted: true,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to delete branch';
-    return NextResponse.json(
-      {
-        success: false,
-        error: { code: 'INTERNAL_ERROR', message: errorMessage },
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', errorMessage, 500);
   }
 }

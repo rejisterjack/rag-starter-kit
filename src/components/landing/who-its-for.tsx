@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { AlertTriangle, ArrowRight, BookOpen, Briefcase, Code2 } from 'lucide-react';
 import Link from 'next/link';
 import { useTrackEvent } from '@/hooks/use-analytics-event';
@@ -50,30 +49,20 @@ export function WhoItsFor(): React.ReactElement {
   return (
     <section className="py-24 lg:py-32 relative overflow-hidden bg-muted/20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-16"
-        >
+        <div className="text-center mb-16 animate-fade-in-up">
           <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
             Who is <span className="text-gradient">RAG Starter Kit</span> For?
           </h2>
           <p className="mt-4 text-xl text-muted-foreground max-w-2xl mx-auto">
             Built for developers who want to ship. Not for those looking for a no-code tool.
           </p>
-        </motion.div>
+        </div>
 
         <div className="grid gap-8 lg:grid-cols-3">
-          {personas.map((persona, i) => (
-            <motion.div
+          {personas.map((persona) => (
+            <div
               key={persona.title}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.15 }}
-              className="glass-panel relative rounded-2xl p-8 border border-border/50 hover:border-primary/30 transition-all duration-300 group flex flex-col"
+              className="glass-panel relative rounded-2xl p-8 border border-border/50 hover:border-primary/30 transition-all duration-300 group flex flex-col animate-fade-in-up"
             >
               <div
                 className={`mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl ${persona.iconBg} ${persona.iconColor} transition-transform group-hover:scale-110`}
@@ -107,7 +96,7 @@ export function WhoItsFor(): React.ReactElement {
                   <ArrowRight className="h-4 w-4 group-hover/link:translate-x-1 transition-transform" />
                 </Link>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

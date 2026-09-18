@@ -33,10 +33,7 @@ export {
   MarkdownGenerationError,
   MarkdownGenerator,
 } from './markdown-generator';
-export type {
-  PDFGenerationOptions,
-  PDFGenerationProgress,
-} from './pdf-generator';
+export type { PDFGenerationOptions, PDFGenerationProgress } from './pdf-generator';
 // PDF Generator
 export {
   generateBulkPDF,

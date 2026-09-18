@@ -1,3 +1,4 @@
+import { apiError, apiSuccess } from '@/lib/api-response';
 /**
  * Notion Pages API Endpoint
  *
@@ -21,10 +22,7 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     // Get workspace ID from query params
@@ -32,10 +30,7 @@ export async function GET(req: NextRequest) {
     const workspaceId = searchParams.get('workspaceId') || session.user.workspaceId;
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Workspace ID is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Workspace ID is required', 400);
     }
 
     // Check workspace permission
@@ -45,10 +40,7 @@ export async function GET(req: NextRequest) {
       Permission.READ_DOCUMENTS
     );
     if (!hasAccess) {
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Get Notion integration
@@ -70,8 +62,7 @@ export async function GET(req: NextRequest) {
     // Fetch pages from Notion
     const pages = await notion.listPages();
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       data: {
         pages: pages.map((page) => ({
           id: page.id,
@@ -126,36 +117,24 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     let body: { pageIds?: string[]; workspaceId?: string };
     try {
       body = await req.json();
     } catch (_error: unknown) {
-      return NextResponse.json(
-        { success: false, error: { code: 'INVALID_JSON', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_JSON', 'Invalid JSON body', 400);
     }
 
     const { pageIds, workspaceId = session.user.workspaceId } = body;
 
     if (!pageIds || !Array.isArray(pageIds) || pageIds.length === 0) {
-      return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Page IDs array is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Page IDs array is required', 400);
     }
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Workspace ID is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Workspace ID is required', 400);
     }
 
     // Check workspace permission
@@ -165,10 +144,7 @@ export async function POST(req: NextRequest) {
       Permission.WRITE_DOCUMENTS
     );
     if (!hasAccess) {
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Get Notion integration

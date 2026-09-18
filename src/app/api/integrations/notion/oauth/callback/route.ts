@@ -10,6 +10,7 @@
 import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { APP_URL } from '@/lib/constants';
 import {
   exchangeCodeForToken,
   type NotionOAuthConfig,
@@ -24,7 +25,7 @@ import { logger } from '@/lib/logger';
 function getOAuthConfig(): NotionOAuthConfig | null {
   const clientId = process.env.NOTION_CLIENT_ID;
   const clientSecret = process.env.NOTION_CLIENT_SECRET;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392';
+  const appUrl = APP_URL;
 
   if (!clientId || !clientSecret) {
     return null;
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
     const error = searchParams.get('error');
 
     // Get app URL for redirects
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392';
+    const appUrl = APP_URL;
 
     // Handle OAuth errors from Notion
     if (error) {
@@ -135,7 +136,7 @@ export async function GET(req: NextRequest) {
       `${appUrl}/settings/integrations?success=notion_connected&workspace=${encodeURIComponent(tokenData.workspace_name)}`
     );
   } catch (error) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392';
+    const appUrl = APP_URL;
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
 
     logger.error('Failed to complete Notion OAuth flow', {

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { withApiAuth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
@@ -22,10 +22,7 @@ export const GET = withApiAuth(async (req, session, { params }: RouteParams) => 
     const workspaceId = searchParams.get('workspaceId');
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { error: { code: 'BAD_REQUEST', message: 'workspaceId query parameter is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'workspaceId query parameter is required', 400);
     }
 
     // Check if user has permission to manage API keys
@@ -36,46 +33,34 @@ export const GET = withApiAuth(async (req, session, { params }: RouteParams) => 
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Get API key
     const apiKey = await getApiKeyById(keyId);
 
     if (!apiKey || apiKey.workspace?.id !== workspaceId) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'API key not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'API key not found', 404);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        apiKey: {
-          id: apiKey.id,
-          name: apiKey.name,
-          keyPreview: apiKey.keyPreview,
-          permissions: apiKey.permissions,
-          lastUsedAt: apiKey.lastUsedAt?.toISOString() ?? null,
-          expiresAt: apiKey.expiresAt?.toISOString() ?? null,
-          status: apiKey.status,
-          createdAt: apiKey.createdAt.toISOString(),
-          createdBy: apiKey.createdBy,
-        },
+    return apiSuccess({
+      apiKey: {
+        id: apiKey.id,
+        name: apiKey.name,
+        keyPreview: apiKey.keyPreview,
+        permissions: apiKey.permissions,
+        lastUsedAt: apiKey.lastUsedAt?.toISOString() ?? null,
+        expiresAt: apiKey.expiresAt?.toISOString() ?? null,
+        status: apiKey.status,
+        createdAt: apiKey.createdAt.toISOString(),
+        createdBy: apiKey.createdBy,
       },
     });
   } catch (error: unknown) {
     logger.error('Failed to get API key', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to get API key' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to get API key', 500);
   }
 });
 
@@ -95,10 +80,7 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
       logger.debug('Invalid JSON body in PATCH request', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     // Validate input
@@ -108,17 +90,11 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
     const existingKey = await getApiKeyById(keyId);
 
     if (!existingKey) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'API key not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'API key not found', 404);
     }
 
     if (!existingKey.workspace) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'API key workspace not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'API key workspace not found', 404);
     }
 
     // Check if user has permission to manage API keys in this workspace
@@ -129,10 +105,7 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Update API key
@@ -142,28 +115,18 @@ export const PATCH = withApiAuth(async (req, session, { params }: RouteParams) =
     });
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: { code: 'UPDATE_FAILED', message: result.error } },
-        { status: 400 }
-      );
+      return apiError('UPDATE_FAILED', result.error ?? 'Failed to update API key', 400);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: { message: 'API key updated successfully' },
+    return apiSuccess({
+      message: 'API key updated successfully',
     });
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('Invalid')) {
-      return NextResponse.json(
-        { error: { code: 'VALIDATION_ERROR', message: error.message } },
-        { status: 400 }
-      );
+      return apiError('VALIDATION_ERROR', error.message, 400);
     }
 
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to update API key' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to update API key', 500);
   }
 });
 
@@ -179,17 +142,11 @@ export const DELETE = withApiAuth(async (_req, session, { params }: RouteParams)
     const existingKey = await getApiKeyById(keyId);
 
     if (!existingKey) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'API key not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'API key not found', 404);
     }
 
     if (!existingKey.workspace) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'API key workspace not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'API key workspace not found', 404);
     }
 
     // Check if user has permission to manage API keys in this workspace
@@ -200,34 +157,24 @@ export const DELETE = withApiAuth(async (_req, session, { params }: RouteParams)
     );
 
     if (!hasPermission) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Revoke API key
     const result = await revokeApiKey(keyId, session.user.id);
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: { code: 'REVOKE_FAILED', message: result.error } },
-        { status: 400 }
-      );
+      return apiError('REVOKE_FAILED', result.error ?? 'Failed to revoke API key', 400);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: { message: 'API key revoked successfully' },
+    return apiSuccess({
+      message: 'API key revoked successfully',
     });
   } catch (error: unknown) {
     logger.error('Failed to revoke API key', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to revoke API key' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to revoke API key', 500);
   }
 });
 

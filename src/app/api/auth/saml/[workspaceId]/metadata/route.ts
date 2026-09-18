@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * SAML Service Provider Metadata Endpoint
  *
@@ -8,7 +9,7 @@
  * @see SAML 2.0 Metadata Specification
  */
 
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 import { generateSPMetadata, getSamlUrls, type SPMetadataConfig } from '@/lib/auth/saml/config';
 import { getWorkspaceSamlConfig } from '@/lib/auth/saml/provider';
@@ -28,7 +29,7 @@ export async function GET(
     const config = await getWorkspaceSamlConfig(workspaceId);
 
     if (!config) {
-      return NextResponse.json({ error: 'SAML configuration not found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'SAML configuration not found', 404);
     }
 
     const urls = getSamlUrls(workspaceId, baseUrl);
@@ -81,7 +82,7 @@ export async function GET(
     logger.error('Failed to generate SAML SP metadata', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json({ error: 'Failed to generate metadata' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to generate metadata', 500);
   }
 }
 

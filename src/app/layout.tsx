@@ -6,48 +6,59 @@ import { Suspense } from 'react';
 import { Navbar } from '@/components/navbar';
 import { NonceScripts } from '@/components/nonce-scripts';
 import { Providers } from '@/components/providers';
-import { StructuredData } from '@/components/seo';
+import { buildOrganizationJsonLd, buildWebSiteJsonLd, JsonLd } from '@/components/seo';
 import { NavigationProgress } from '@/components/ui/navigation-progress';
 import { Toaster } from '@/components/ui/toaster';
+import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
+import { SITE } from '@/lib/seo/content-registry';
 import '@/styles/globals.css';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],
   display: 'swap',
+  adjustFontFallback: true,
 });
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
   display: 'swap',
+  adjustFontFallback: true,
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rag-starter-kit.vercel.app';
+const siteUrl = SITE.url;
+
+if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_APP_URL) {
+  logger.warn(
+    '[metadataBase] NEXT_PUBLIC_APP_URL is not set — falling back to default URL. Set this env var in production.'
+  );
+}
 
 export const metadata: Metadata = {
   title: {
-    default: 'RAG Starter Kit - Production-Ready RAG Chatbot',
-    template: '%s | RAG Starter Kit',
+    default: `${SITE.name} — Production-Ready RAG Chatbot`,
+    template: `%s | ${SITE.name}`,
   },
-  description:
-    'A production-ready RAG (Retrieval-Augmented Generation) chatbot boilerplate powered by Next.js 15, LangChain, and PostgreSQL pgvector. Build AI-powered document chatbots in minutes.',
+  description: SITE.description,
   keywords: [
     'RAG',
-    'chatbot',
-    'AI',
+    'RAG starter kit',
+    'AI chatbot boilerplate',
     'Next.js',
-    'LangChain',
-    'OpenAI',
+    'TypeScript',
     'pgvector',
     'PostgreSQL',
+    'Prisma',
+    'Vercel AI SDK',
     'retrieval-augmented generation',
     'document chatbot',
-    'AI boilerplate',
+    'open source',
   ],
-  authors: [{ name: 'RAG Starter Kit Team' }],
-  creator: 'RAG Starter Kit Team',
-  publisher: 'RAG Starter Kit',
+  authors: [{ name: 'Rupam Das' }],
+  creator: 'Rupam Das',
+  publisher: SITE.name,
   metadataBase: new URL(siteUrl),
   alternates: {
     canonical: '/',
@@ -56,26 +67,24 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: siteUrl,
-    siteName: 'RAG Starter Kit',
-    title: 'RAG Starter Kit - Production-Ready RAG Chatbot',
-    description:
-      'Build AI-powered document chatbots with Next.js, LangChain, and PostgreSQL pgvector.',
+    siteName: SITE.name,
+    title: `${SITE.name} — Production-Ready RAG Chatbot`,
+    description: SITE.description,
     images: [
       {
         url: '/og',
         width: 1200,
         height: 630,
-        alt: 'RAG Starter Kit - Production-Ready RAG Chatbot Boilerplate',
+        alt: 'RAG Starter Kit — AI-Powered Document Search',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'RAG Starter Kit - Production-Ready RAG Chatbot',
-    description:
-      'Build AI-powered document chatbots with Next.js, LangChain, and PostgreSQL pgvector.',
+    title: `${SITE.name} — Production-Ready RAG Chatbot`,
+    description: SITE.description,
     images: ['/og'],
-    creator: '@ragstarterkit',
+    creator: SITE.twitter,
   },
   robots: {
     index: true,
@@ -117,7 +126,7 @@ export const metadata: Metadata = {
   classification: 'Software Development',
   other: {
     'og:site_name': 'RAG Starter Kit',
-    'twitter:domain': 'rag-starter-kit.vercel.app',
+    'twitter:domain': 'rag.rejisterjack.com',
   },
 };
 
@@ -137,53 +146,23 @@ interface RootLayoutProps {
   children: React.ReactNode;
 }
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  // Fetch the session server-side and seed SessionProvider so the navbar's
+  // session-dependent markup renders identically on server and client
+  // (prevents hydration mismatches, D-3)
+  const session = await auth();
+
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* PWA meta tags for iOS */}
-        <meta name="application-name" content="RAG Chatbot" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="RAG Chat" />
-        <meta name="format-detection" content="telephone=no" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="msapplication-TileColor" content="#18181b" />
-        <meta name="msapplication-tap-highlight" content="no" />
-
-        {/* PWA icons for iOS */}
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
-        <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-152x152.png" />
-
-        {/* Splash screen images for iOS */}
-        <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png" />
-
-        {/* KaTeX CSS for LaTeX math rendering */}
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
-          integrity="sha384-nB0miv6/jRmo5OUTIL0mKZsUQSA/1kzMuoHIOXPb6BjSiW4zuv9mqSTJBGdQsGN"
-          crossOrigin="anonymous"
-        />
-
-        {/* Prefetch offline page */}
-        <link rel="prefetch" href="/offline" />
-      </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
-        suppressHydrationWarning
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         {/* Skip to content link for accessibility */}
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
         >
           Skip to content
         </a>
-        <div className="vibrant-bg" />
-        <Providers>
+        <Providers session={session}>
           <Suspense>
             <NavigationProgress />
           </Suspense>
@@ -197,14 +176,15 @@ export default function RootLayout({ children }: RootLayoutProps) {
           </div>
           <Toaster />
         </Providers>
-        <StructuredData />
-        {/* PWA Scripts & CSRF — wrapped in Suspense because they read headers() at runtime */}
-        <Suspense fallback={null}>
-          <NonceScripts />
-        </Suspense>
+        <JsonLd data={buildWebSiteJsonLd()} />
+        <JsonLd data={buildOrganizationJsonLd()} />
+        {/* PWA Scripts & CSRF — client component, no Suspense needed */}
+        <NonceScripts />
         {/* Vercel Analytics & Core Web Vitals */}
-        <SpeedInsights />
-        <Analytics />
+        <Suspense fallback={null}>
+          <SpeedInsights />
+          <Analytics />
+        </Suspense>
       </body>
     </html>
   );

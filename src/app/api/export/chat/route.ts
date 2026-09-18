@@ -1,9 +1,9 @@
+import { apiError, apiSuccess } from '@/lib/api-response';
 /**
  * Export Chat API Route
  * POST: Export a single chat to the specified format
  */
 
-import { NextResponse } from 'next/server';
 import { z } from 'zod';
 // ExportFormat type used via zod schema validation
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
@@ -48,22 +48,17 @@ export const POST = withApiAuth(async (req, session) => {
       logger.debug('Invalid JSON body in export chat request', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: 'Invalid JSON body', code: 'INVALID_BODY' },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     // Validate request
     const validationResult = exportRequestSchema.safeParse(body);
     if (!validationResult.success) {
-      return NextResponse.json(
-        {
-          error: 'Validation failed',
-          code: 'VALIDATION_ERROR',
-          details: validationResult.error.format(),
-        },
-        { status: 400 }
+      return apiError(
+        'VALIDATION_ERROR',
+        'Validation failed',
+        400,
+        validationResult.error.format()
       );
     }
 
@@ -86,7 +81,7 @@ export const POST = withApiAuth(async (req, session) => {
           severity: 'WARNING',
         });
 
-        return NextResponse.json({ error: 'Access denied', code: 'FORBIDDEN' }, { status: 403 });
+        return apiError('FORBIDDEN', 'Access denied', 403);
       }
     }
 
@@ -112,16 +107,13 @@ export const POST = withApiAuth(async (req, session) => {
     );
 
     if (!result.success) {
-      return NextResponse.json({ error: 'Export failed', code: 'EXPORT_FAILED' }, { status: 500 });
+      return apiError('EXPORT_FAILED', 'Export failed', 500);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        jobId: result.jobId,
-        downloadUrl: result.downloadUrl,
-        expiresAt: result.expiresAt?.toISOString(),
-      },
+    return apiSuccess({
+      jobId: result.jobId,
+      downloadUrl: result.downloadUrl,
+      expiresAt: result.expiresAt?.toISOString(),
     });
   } catch (error) {
     if (error instanceof ExportServiceError) {
@@ -132,19 +124,14 @@ export const POST = withApiAuth(async (req, session) => {
         VALIDATION_ERROR: 400,
       };
 
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: statusMap[error.code] ?? 500 }
-      );
+      return apiError(error.code, error.message, statusMap[error.code] ?? 500);
     }
 
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        code: 'INTERNAL_ERROR',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
+    return apiError(
+      'INTERNAL_ERROR',
+      'Internal server error',
+      500,
+      error instanceof Error ? error.message : 'Unknown error'
     );
   }
 });
@@ -162,10 +149,7 @@ export const GET = withApiAuth(async (req, session) => {
     const jobId = searchParams.get('jobId');
 
     if (!jobId) {
-      return NextResponse.json(
-        { error: 'Job ID is required', code: 'MISSING_JOB_ID' },
-        { status: 400 }
-      );
+      return apiError('MISSING_JOB_ID', 'Job ID is required', 400);
     }
 
     // Get job status
@@ -173,40 +157,31 @@ export const GET = withApiAuth(async (req, session) => {
     const job = exportService.getJobStatus(jobId);
 
     if (!job) {
-      return NextResponse.json({ error: 'Job not found', code: 'NOT_FOUND' }, { status: 404 });
+      return apiError('NOT_FOUND', 'Job not found', 404);
     }
 
     // Verify user owns this job
     if (job.userId !== userId) {
-      return NextResponse.json({ error: 'Access denied', code: 'FORBIDDEN' }, { status: 403 });
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        jobId: job.id,
-        status: job.status,
-        progress: job.progress,
-        currentStep: job.currentStep,
-        totalItems: job.totalItems,
-        processedItems: job.processedItems,
-        downloadUrl: job.downloadUrl,
-        fileSize: job.fileSize,
-        expiresAt: job.expiresAt.toISOString(),
-        error: job.error,
-      },
+    return apiSuccess({
+      jobId: job.id,
+      status: job.status,
+      progress: job.progress,
+      currentStep: job.currentStep,
+      totalItems: job.totalItems,
+      processedItems: job.processedItems,
+      downloadUrl: job.downloadUrl,
+      fileSize: job.fileSize,
+      expiresAt: job.expiresAt.toISOString(),
+      error: job.error,
     });
   } catch (error: unknown) {
     logger.error('Failed to get export job status', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        code: 'INTERNAL_ERROR',
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Internal server error', 500);
   }
 });
 
@@ -223,10 +198,7 @@ export const DELETE = withApiAuth(async (req, session) => {
     const jobId = searchParams.get('jobId');
 
     if (!jobId) {
-      return NextResponse.json(
-        { error: 'Job ID is required', code: 'MISSING_JOB_ID' },
-        { status: 400 }
-      );
+      return apiError('MISSING_JOB_ID', 'Job ID is required', 400);
     }
 
     // Get job
@@ -234,38 +206,26 @@ export const DELETE = withApiAuth(async (req, session) => {
     const job = exportService.getJobStatus(jobId);
 
     if (!job) {
-      return NextResponse.json({ error: 'Job not found', code: 'NOT_FOUND' }, { status: 404 });
+      return apiError('NOT_FOUND', 'Job not found', 404);
     }
 
     // Verify user owns this job
     if (job.userId !== userId) {
-      return NextResponse.json({ error: 'Access denied', code: 'FORBIDDEN' }, { status: 403 });
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Cancel job
     const cancelled = await exportService.cancelJob(jobId);
 
     if (!cancelled) {
-      return NextResponse.json(
-        { error: 'Cannot cancel completed or failed job', code: 'INVALID_STATE' },
-        { status: 400 }
-      );
+      return apiError('INVALID_STATE', 'Cannot cancel completed or failed job', 400);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: { message: 'Export cancelled' },
-    });
+    return apiSuccess({ message: 'Export cancelled' });
   } catch (error: unknown) {
     logger.error('Failed to cancel export job', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        code: 'INTERNAL_ERROR',
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Internal server error', 500);
   }
 });

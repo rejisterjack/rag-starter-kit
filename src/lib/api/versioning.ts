@@ -1,16 +1,8 @@
 /**
  * API Versioning System
  *
- * Implements API versioning with:
- * - URL path versioning (/api/v1/...)
- * - Header-based versioning (Accept: application/vnd.api+json;version=1)
- * - Deprecation warnings
- * - Version compatibility checks
- *
- * Version Policy:
- * - v1: Current stable version
- * - Versions are supported for 12 months after a new version is released
- * - Deprecated versions return warning headers
+ * Implements API versioning helpers for the unversioned `/api/*` REST surface.
+ * Legacy `/api/v1/*` routes were removed — clients should use `/api/*` directly.
  */
 
 import { type NextRequest, NextResponse } from 'next/server';
@@ -51,22 +43,14 @@ const DEFAULT_VERSION = 'v1';
 // =============================================================================
 
 /**
- * Detect API version from request
+ * Detect API version from request headers.
  *
- * Priority:
- * 1. URL path (/api/v1/...)
- * 2. Accept header version parameter
- * 3. X-API-Version header
- * 4. Default version
+ * Legacy `/api/v1/*` URL paths were removed. Version is inferred from:
+ * 1. Accept header version parameter
+ * 2. X-API-Version header
+ * 3. Default version
  */
 export function detectVersion(req: NextRequest): string {
-  // Check URL path first
-  const url = new URL(req.url);
-  const pathMatch = url.pathname.match(/^\/api\/(v\d+)\//);
-  if (pathMatch) {
-    return pathMatch[1];
-  }
-
   // Check Accept header
   const acceptHeader = req.headers.get('accept');
   if (acceptHeader) {
@@ -234,34 +218,6 @@ export function createVersionedRoute(handlers: VersionHandlers): VersionedHandle
 
     return response;
   };
-}
-
-// =============================================================================
-// Version Middleware
-// =============================================================================
-
-/**
- * Next.js middleware for API versioning
- * Redirects /api/... to /api/v1/... if no version specified
- */
-export function versionMiddleware(req: NextRequest): NextResponse | null {
-  const url = new URL(req.url);
-
-  // Skip if already has version
-  if (url.pathname.match(/^\/api\/(v\d+|auth|webhooks)\//)) {
-    return null;
-  }
-
-  // Skip non-API routes
-  if (!url.pathname.startsWith('/api/')) {
-    return null;
-  }
-
-  // Add default version
-  const newPath = url.pathname.replace(/^\/api\//, `/api/${DEFAULT_VERSION}/`);
-  url.pathname = newPath;
-
-  return NextResponse.rewrite(url);
 }
 
 // =============================================================================

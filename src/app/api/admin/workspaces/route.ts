@@ -1,5 +1,4 @@
-import { NextResponse } from 'next/server';
-
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { requireAdmin } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
@@ -10,7 +9,6 @@ import { prisma } from '@/lib/db';
 
 export async function GET(req: Request): Promise<Response> {
   try {
-    // Verify admin access
     await requireAdmin();
 
     const { searchParams } = new URL(req.url);
@@ -33,18 +31,12 @@ export async function GET(req: Request): Promise<Response> {
       },
     });
 
-    return NextResponse.json({ workspaces });
+    return apiSuccess({ workspaces });
   } catch (error) {
     if (error instanceof Error && error.message === 'Forbidden') {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Admin access required' },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Admin access required', 403);
     }
 
-    return NextResponse.json(
-      { error: 'Internal Server Error', message: 'Failed to fetch workspaces' },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to fetch workspaces', 500);
   }
 }

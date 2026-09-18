@@ -5,6 +5,7 @@
 
 import { generateText, streamText } from 'ai';
 import { ollama } from 'ollama-ai-provider';
+import { asModel } from '@/lib/ai/types';
 import { logger } from '@/lib/logger';
 import {
   LLMError,
@@ -63,7 +64,7 @@ export class OllamaProvider implements LLMProvider {
 
     try {
       const result = await generateText({
-        model: ollama(modelName) as unknown as Parameters<typeof generateText>[0]['model'],
+        model: asModel<Parameters<typeof generateText>[0]['model']>(ollama(modelName)),
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,
@@ -100,7 +101,7 @@ export class OllamaProvider implements LLMProvider {
 
     try {
       const result = streamText({
-        model: ollama(modelName) as unknown as Parameters<typeof streamText>[0]['model'],
+        model: asModel<Parameters<typeof streamText>[0]['model']>(ollama(modelName)),
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,

@@ -78,8 +78,8 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
   readonly modelName: string;
   readonly dimensions: number;
 
-  // biome-ignore lint/suspicious/noExplicitAny: pipeline type from optional dep, not available at compile time
-  private pipeline: any | null = null;
+  // Pipeline is dynamically loaded from @xenova/transformers; typed as unknown until initialized
+  private pipeline: unknown = null;
   private readonly maxTokens: number;
   private readonly quantized: boolean;
   private initializing: Promise<void> | null = null;
@@ -147,7 +147,12 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
     // Truncate text if too long
     const truncatedText = this.truncateText(text);
 
-    const output = await this.pipeline(truncatedText, {
+    type PipelineFn = (
+      text: string,
+      opts: Record<string, unknown>
+    ) => Promise<{ data: Float32Array }>;
+    const pipe = this.pipeline as PipelineFn;
+    const output = await pipe(truncatedText, {
       pooling: 'mean',
       normalize: true,
     });
@@ -168,13 +173,18 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
     const embeddings: number[][] = [];
 
     // Process in small batches to avoid memory issues
+    type PipelineFn = (
+      text: string,
+      opts: Record<string, unknown>
+    ) => Promise<{ data: Float32Array }>;
+    const pipe = this.pipeline as PipelineFn;
     const batchSize = 4;
     for (let i = 0; i < texts.length; i += batchSize) {
       const batch = texts.slice(i, i + batchSize);
       const batchResults = await Promise.all(
         batch.map(async (text) => {
           const truncatedText = this.truncateText(text);
-          const output = await this.pipeline?.(truncatedText, {
+          const output = await pipe(truncatedText, {
             pooling: 'mean',
             normalize: true,
           });

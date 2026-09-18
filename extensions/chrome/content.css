@@ -12,7 +12,9 @@
   font-size: 13px;
   opacity: 0;
   transform: translateY(-8px);
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
   pointer-events: none;
   max-width: 360px;
 }

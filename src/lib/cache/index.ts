@@ -51,8 +51,8 @@ export async function invalidate(pattern: string): Promise<void> {
         count: 100,
       });
       // Upstash returns [string cursor, string[] keys]
-      cursor = String((scanResult as unknown as [string, string[]])[0]);
-      const keys = (scanResult as unknown as [string, string[]])[1];
+      const [nextCursor, keys] = scanResult as [string, string[]];
+      cursor = String(nextCursor);
       if (keys && keys.length > 0) {
         await redis.del(...keys);
         totalDeleted += keys.length;

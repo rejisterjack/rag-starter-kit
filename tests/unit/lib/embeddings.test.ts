@@ -79,6 +79,13 @@ describe('Embeddings', () => {
     mockEmbedMany.mockResolvedValue({
       embeddings: [Array(768).fill(0.1), Array(768).fill(0.2)],
     });
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        embeddings: [{ values: Array(768).fill(0.1) }, { values: Array(768).fill(0.2) }],
+      }),
+      text: async () => '',
+    } as Response);
   });
 
   describe('Google Provider', () => {
@@ -108,7 +115,11 @@ describe('Embeddings', () => {
     });
 
     it('should support valid models', () => {
-      const validModels = ['text-embedding-004', 'embedding-001'] as const;
+      const validModels = [
+        'text-embedding-004',
+        'gemini-embedding-001',
+        'gemini-embedding-2',
+      ] as const;
 
       for (const model of validModels) {
         const provider = createGoogleProvider(model, 'test-key');
@@ -344,6 +355,7 @@ describe('Embeddings', () => {
     it('should cache query embeddings', async () => {
       const baseProvider = createGoogleProvider('text-embedding-004', 'test-key');
       const cache = new Map<string, number[]>();
+      const fetchSpy = vi.spyOn(global, 'fetch');
 
       const cachedProvider = createCachedProvider(
         baseProvider,
@@ -354,29 +366,26 @@ describe('Embeddings', () => {
         { ttl: 3600 }
       );
 
-      // First call
       await cachedProvider.embedQuery('test');
-      // Second call should use cache (embed should be called once)
       await cachedProvider.embedQuery('test');
 
-      expect(mockEmbed).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should cache document embeddings partially', async () => {
       const baseProvider = createGoogleProvider('text-embedding-004', 'test-key');
       const cache = new Map<string, number[]>();
+      const fetchSpy = vi.spyOn(global, 'fetch');
 
       const cachedProvider = createCachedProvider(baseProvider, {
         get: async (key) => cache.get(key) || null,
         set: async (key, value) => cache.set(key, value),
       });
 
-      // First batch
       await cachedProvider.embedDocuments(['doc1', 'doc2']);
-      // Second batch with one cached
       await cachedProvider.embedDocuments(['doc1', 'doc3']);
 
-      expect(mockEmbedMany).toHaveBeenCalled();
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
 
     it('should use custom hash function', async () => {
@@ -402,7 +411,8 @@ describe('Embeddings', () => {
   describe('Model Dimensions', () => {
     it('should return dimensions for Google models', () => {
       expect(getModelDimensions('google', 'text-embedding-004')).toBe(768);
-      expect(getModelDimensions('google', 'embedding-001')).toBe(768);
+      expect(getModelDimensions('google', 'gemini-embedding-001')).toBe(3072);
+      expect(getModelDimensions('google', 'gemini-embedding-2')).toBe(768);
     });
 
     it('should return dimensions for OpenAI models', () => {

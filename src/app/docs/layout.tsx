@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { DocsSidebar } from '@/components/docs/sidebar';
 
+export const dynamic = 'force-static';
+
 export const metadata: Metadata = {
   title: {
     default: 'Documentation',

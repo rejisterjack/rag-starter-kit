@@ -38,10 +38,7 @@ async function loadCLIPModel() {
     try {
       const { pipeline } = await import('@xenova/transformers');
       // Use 'feature-extraction' pipeline type with CLIP model
-      clipModel = await (pipeline as unknown as (task: string, model: string) => Promise<unknown>)(
-        'feature-extraction',
-        'Xenova/clip-vit-base-patch32'
-      );
+      clipModel = await pipeline('feature-extraction', 'Xenova/clip-vit-base-patch32');
     } catch (error) {
       logger.error('Failed to load CLIP model', { error });
       throw new Error('CLIP model not available');

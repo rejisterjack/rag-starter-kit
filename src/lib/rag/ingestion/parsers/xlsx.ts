@@ -116,7 +116,6 @@ function parseSharedStrings(zipData: Record<string, Uint8Array>): string[] {
   const siRegex = /<si>(.*?)<\/si>/gs;
   let match: RegExpExecArray | null;
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: intentional regex loop
   while ((match = siRegex.exec(xml)) !== null) {
     const siContent = match[1];
     // Extract text from <t> elements within <si>
@@ -135,7 +134,6 @@ function extractTextFromSi(siContent: string): string {
   const tRegex = /<t(?:\s+[^>]*)?>([^<]*)<\/t>/g;
   let match: RegExpExecArray | null;
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: intentional regex loop
   while ((match = tRegex.exec(siContent)) !== null) {
     texts.push(decodeXmlEntities(match[1]));
   }
@@ -172,7 +170,6 @@ function parseWorkbook(zipData: Record<string, Uint8Array>): { sheets: Map<strin
   const sheetRegex = /<sheet\s+[^>]*name="([^"]+)"[^>]*sheetId="([^"]+)"/g;
   let match: RegExpExecArray | null;
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: intentional regex loop
   while ((match = sheetRegex.exec(xml)) !== null) {
     const name = decodeXmlEntities(match[1]);
     const sheetId = match[2];
@@ -198,7 +195,6 @@ function parseWorksheet(
   const rowRegex = /<row[^>]*>(.*?)<\/row>/gs;
   let rowMatch: RegExpExecArray | null;
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: intentional regex loop
   while ((rowMatch = rowRegex.exec(xml)) !== null) {
     const rowXml = rowMatch[1];
     const rowAttrMatch = rowMatch[0].match(/r="(\d+)"/);
@@ -211,7 +207,6 @@ function parseWorksheet(
       /<c\s+[^>]*r="([A-Z]+\d+)"(?:\s+[^>]*)?>(?:<v>([^<]*)<\/v>)?(?:<f>([^<]*)<\/f>)?<\/c>/g;
     let cellMatch: RegExpExecArray | null;
 
-    // biome-ignore lint/suspicious/noAssignInExpressions: intentional regex loop
     while ((cellMatch = cellRegex.exec(rowXml)) !== null) {
       const address = cellMatch[1];
       const valueContent = cellMatch[2] || '';
@@ -243,8 +238,8 @@ function parseWorksheet(
   // Convert map to sorted array
   const sortedRowNumbers = Array.from(rowMap.keys()).sort((a, b) => a - b);
   for (const rowNumber of sortedRowNumbers) {
-    // biome-ignore lint/style/noNonNullAssertion: rowNumber comes from rowMap.keys()
-    const cells = rowMap.get(rowNumber)!;
+    const cells = rowMap.get(rowNumber);
+    if (!cells) continue;
     cells.sort((a, b) => a.col - b.col);
     rows.push({ rowNumber, cells });
   }

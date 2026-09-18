@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server';
+import type { Prisma } from '@/generated/prisma/client';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { fromJson, toJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 import { canManageWorkspace } from '@/lib/workspace/permissions';
 
@@ -28,10 +30,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const { id } = await params;
@@ -41,10 +40,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
     });
 
     if (!experiment) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Experiment not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Experiment not found', 404);
     }
 
     // Check if user has access to workspace
@@ -57,10 +53,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
     });
 
     if (!membership) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Get event count
@@ -68,35 +61,29 @@ export async function GET(_req: Request, { params }: RouteParams) {
       where: { experimentId: id },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        experiment: {
-          id: experiment.id,
-          name: experiment.name,
-          description: experiment.description,
-          type: experiment.type,
-          status: experiment.status,
-          variants: experiment.variants as unknown as ExperimentVariant[],
-          trafficAllocation: experiment.trafficAllocation as unknown as TrafficAllocation,
-          workspaceId: experiment.workspaceId,
-          createdById: experiment.createdById,
-          startDate: experiment.startDate?.toISOString() ?? null,
-          endDate: experiment.endDate?.toISOString() ?? null,
-          eventCount,
-          createdAt: experiment.createdAt.toISOString(),
-          updatedAt: experiment.updatedAt.toISOString(),
-        },
+    return apiSuccess({
+      experiment: {
+        id: experiment.id,
+        name: experiment.name,
+        description: experiment.description,
+        type: experiment.type,
+        status: experiment.status,
+        variants: fromJson<ExperimentVariant[]>(experiment.variants, []),
+        trafficAllocation: fromJson<TrafficAllocation>(experiment.trafficAllocation, {}),
+        workspaceId: experiment.workspaceId,
+        createdById: experiment.createdById,
+        startDate: experiment.startDate?.toISOString() ?? null,
+        endDate: experiment.endDate?.toISOString() ?? null,
+        eventCount,
+        createdAt: experiment.createdAt.toISOString(),
+        updatedAt: experiment.updatedAt.toISOString(),
       },
     });
   } catch (error: unknown) {
     logger.error('Failed to get experiment', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to get experiment' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to get experiment', 500);
   }
 }
 
@@ -108,10 +95,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const { id } = await params;
@@ -121,27 +105,18 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     });
 
     if (!experiment) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Experiment not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Experiment not found', 404);
     }
 
     // Check if user can manage workspace
     const canManage = await canManageWorkspace(session.user.id, experiment.workspaceId);
     if (!canManage) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Only allow updates when in DRAFT status
     if (experiment.status !== 'DRAFT') {
-      return NextResponse.json(
-        { error: { code: 'CONFLICT', message: 'Can only update experiments in DRAFT status' } },
-        { status: 409 }
-      );
+      return apiError('CONFLICT', 'Can only update experiments in DRAFT status', 409);
     }
 
     // Parse and validate body
@@ -152,10 +127,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       logger.debug('Invalid JSON body in update experiment request', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     let validatedInput: ReturnType<typeof validateUpdateExperimentInput>;
@@ -163,10 +135,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       validatedInput = validateUpdateExperimentInput(body);
     } catch (error) {
       if (error instanceof Error) {
-        return NextResponse.json(
-          { error: { code: 'VALIDATION_ERROR', message: error.message } },
-          { status: 400 }
-        );
+        return apiError('VALIDATION_ERROR', error.message, 400);
       }
       throw error;
     }
@@ -175,8 +144,8 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     const updateData: {
       name?: string;
       description?: string | null;
-      variants?: object[];
-      trafficAllocation?: object;
+      variants?: Prisma.InputJsonValue;
+      trafficAllocation?: Prisma.InputJsonValue;
     } = {};
 
     if (validatedInput.name !== undefined) {
@@ -186,10 +155,10 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       updateData.description = validatedInput.description ?? null;
     }
     if (validatedInput.variants !== undefined) {
-      updateData.variants = validatedInput.variants as unknown as object[];
+      updateData.variants = toJson(validatedInput.variants);
     }
     if (validatedInput.trafficAllocation !== undefined) {
-      updateData.trafficAllocation = validatedInput.trafficAllocation as unknown as object;
+      updateData.trafficAllocation = toJson(validatedInput.trafficAllocation);
     }
 
     // Update experiment
@@ -198,34 +167,28 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       data: updateData,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        experiment: {
-          id: updatedExperiment.id,
-          name: updatedExperiment.name,
-          description: updatedExperiment.description,
-          type: updatedExperiment.type,
-          status: updatedExperiment.status,
-          variants: updatedExperiment.variants as unknown as ExperimentVariant[],
-          trafficAllocation: updatedExperiment.trafficAllocation as unknown as TrafficAllocation,
-          workspaceId: updatedExperiment.workspaceId,
-          createdById: updatedExperiment.createdById,
-          startDate: updatedExperiment.startDate?.toISOString() ?? null,
-          endDate: updatedExperiment.endDate?.toISOString() ?? null,
-          createdAt: updatedExperiment.createdAt.toISOString(),
-          updatedAt: updatedExperiment.updatedAt.toISOString(),
-        },
+    return apiSuccess({
+      experiment: {
+        id: updatedExperiment.id,
+        name: updatedExperiment.name,
+        description: updatedExperiment.description,
+        type: updatedExperiment.type,
+        status: updatedExperiment.status,
+        variants: fromJson<ExperimentVariant[]>(updatedExperiment.variants, []),
+        trafficAllocation: fromJson<TrafficAllocation>(updatedExperiment.trafficAllocation, {}),
+        workspaceId: updatedExperiment.workspaceId,
+        createdById: updatedExperiment.createdById,
+        startDate: updatedExperiment.startDate?.toISOString() ?? null,
+        endDate: updatedExperiment.endDate?.toISOString() ?? null,
+        createdAt: updatedExperiment.createdAt.toISOString(),
+        updatedAt: updatedExperiment.updatedAt.toISOString(),
       },
     });
   } catch (error: unknown) {
     logger.error('Failed to update experiment', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to update experiment' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to update experiment', 500);
   }
 }
 
@@ -237,10 +200,7 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const { id } = await params;
@@ -250,19 +210,13 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
     });
 
     if (!experiment) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Experiment not found' } },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'Experiment not found', 404);
     }
 
     // Check if user can manage workspace
     const canManage = await canManageWorkspace(session.user.id, experiment.workspaceId);
     if (!canManage) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Delete experiment (cascade will delete events)
@@ -270,18 +224,14 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       where: { id },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: { message: 'Experiment deleted successfully' },
+    return apiSuccess({
+      message: 'Experiment deleted successfully',
     });
   } catch (error: unknown) {
     logger.error('Failed to delete experiment', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to delete experiment' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to delete experiment', 500);
   }
 }
 

@@ -2,7 +2,7 @@
  * @fileoverview RAG Retrieval Module - Vector search and source retrieval
  *
  * Provides comprehensive retrieval capabilities for the RAG pipeline:
- * - Vector similarity search using pgvector
+ * - Vector similarity search using Qdrant
  * - Hybrid search (vector + full-text)
  * - Source reranking and deduplication
  * - Semantic caching support
@@ -39,7 +39,7 @@
  *
  * @module rag/retrieval
  * @see {@link module:db/vector-store} for vector store implementation
- * @see {@link https://github.com/pgvector/pgvector|pgvector Documentation}
+ * @see {@link https://qdrant.tech/documentation/|Qdrant Documentation}
  */
 
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
@@ -419,8 +419,8 @@ export async function hybridSearch(
   });
 
   // Get full-text search results using Qdrant keyword search
-  const { searchKeyword: qdrantKeywordSearch } = await import('@/lib/qdrant');
-  const { buildQdrantFilter: buildFilter } = await import('@/lib/qdrant/filters');
+  const { searchKeyword: qdrantKeywordSearch } = await import('@/lib/vector');
+  const { buildQdrantFilter: buildFilter } = await import('@/lib/vector/filters');
   const keywordFilter = buildFilter({ userId });
   const keywordResults = await qdrantKeywordSearch(query, {
     filter: keywordFilter,

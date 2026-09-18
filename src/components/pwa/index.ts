@@ -5,28 +5,15 @@
 
 // ─── Connectivity (Enhanced) ──────────────────────────────────────────────────
 
-export {
-  ConnectivityBanner,
-  ConnectivityChip,
-  ConnectivityDot,
-} from './connectivity-banner';
+export { ConnectivityBanner, ConnectivityChip, ConnectivityDot } from './connectivity-banner';
 
 // ─── Sync Progress ────────────────────────────────────────────────────────────
 
-export {
-  SyncActionList,
-  SyncProgressBar,
-  SyncStatusBadge,
-  SyncToast,
-} from './sync-progress';
+export { SyncActionList, SyncProgressBar, SyncStatusBadge, SyncToast } from './sync-progress';
 
 // ─── Data Freshness ───────────────────────────────────────────────────────────
 
-export {
-  CachedDataWrapper,
-  FreshnessBadge,
-  FreshnessBar,
-} from './data-freshness';
+export { CachedDataWrapper, FreshnessBadge, FreshnessBar } from './data-freshness';
 
 // ─── Offline Fallback ─────────────────────────────────────────────────────────
 
@@ -34,11 +21,7 @@ export { OfflineFallback } from './offline-fallback';
 
 // ─── Install Prompt ───────────────────────────────────────────────────────────
 
-export {
-  FloatingInstallButton,
-  InstallPrompt,
-  IOSInstallHint,
-} from './install-prompt';
+export { FloatingInstallButton, InstallPrompt, IOSInstallHint } from './install-prompt';
 
 export { SmartInstallPrompt } from './smart-install-prompt';
 
@@ -69,12 +52,7 @@ export { PWAScripts } from './pwa-scripts';
 
 // ─── Update Notifications ─────────────────────────────────────────────────────
 
-export {
-  CheckUpdateButton,
-  UpdateBanner,
-  UpdateToast,
-  VersionInfo,
-} from './update-toast';
+export { CheckUpdateButton, UpdateBanner, UpdateToast, VersionInfo } from './update-toast';
 
 // ─── Storage Manager ──────────────────────────────────────────────────────────
 

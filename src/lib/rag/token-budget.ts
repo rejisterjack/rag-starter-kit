@@ -4,7 +4,7 @@
  */
 
 // @ts-expect-error -- js-tiktoken ESM/CJS export names differ
-import { getEncoding } from 'js-tiktoken';
+import { getEncoding, type Tiktoken } from 'js-tiktoken';
 import type { RetrievedChunk } from './chain';
 import type { Message } from './memory';
 
@@ -346,8 +346,7 @@ export class TokenBudgetManager {
 // =============================================================================
 
 // Lazy-initialized tiktoken encoder (cl100k_base used by GPT-4, GPT-3.5, and most models)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _encoder: any = null;
+let _encoder: Tiktoken | null = null;
 
 function getEncoder() {
   if (!_encoder) {

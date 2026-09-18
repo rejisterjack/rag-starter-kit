@@ -5,6 +5,7 @@
  */
 
 import { prisma } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import type { Message, Source } from '@/types';
 
 // ============================================================================
@@ -85,7 +86,7 @@ export async function exportConversationToMarkdown(
 
     // Include sources if available
     if (includeSources && message.sources) {
-      const sources = (message.sources as unknown as Source[]) ?? [];
+      const sources = fromJson<Source[]>(message.sources, []);
       if (sources.length > 0) {
         lines.push('**Sources:**');
         lines.push('');
@@ -266,7 +267,7 @@ export async function exportConversationToHTML(
 `);
 
     if (includeSources && message.sources) {
-      const sources = (message.sources as unknown as Source[]) ?? [];
+      const sources = fromJson<Source[]>(message.sources, []);
       if (sources.length > 0) {
         htmlParts.push(`    <div class="sources">
       <strong>Sources:</strong>`);
@@ -346,7 +347,10 @@ export async function exportConversationToJSON(
   };
 
   if (includeMetadata) {
-    exportData.metadata = conversation.metadata as Record<string, unknown> | undefined;
+    exportData.metadata = fromJson<Record<string, unknown> | undefined>(
+      conversation.metadata,
+      undefined
+    );
   }
 
   return JSON.stringify(exportData, null, 2);
@@ -379,7 +383,7 @@ export async function exportConversationToCSV(
     const timestamp = message.createdAt.toISOString();
     const role = message.role;
     const content = escapeCsv(message.content);
-    const sourceCount = message.sources ? (message.sources as unknown as Source[]).length : 0;
+    const sourceCount = message.sources ? fromJson<Source[]>(message.sources, []).length : 0;
 
     lines.push(`${timestamp},${role},"${content}",${sourceCount}`);
   }

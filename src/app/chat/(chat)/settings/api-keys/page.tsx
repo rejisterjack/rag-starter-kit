@@ -14,7 +14,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { CreateKeyDialog } from '@/components/api-keys/create-key-dialog';
@@ -50,67 +50,68 @@ import {
 } from '@/components/ui/table';
 import { useApiKeys } from '@/hooks/use-api-keys';
 
-// Permission options for the edit modal
+// Permission options for the edit modal — IDs MUST match the server-side
+// `Permission` enum in src/lib/workspace/permissions.ts (resource:action)
 const PERMISSION_OPTIONS = [
   {
-    id: 'chat:read',
+    id: 'read:chats',
     label: 'Read Chats',
     description: 'View conversation history',
     category: 'chat' as const,
   },
   {
-    id: 'chat:write',
+    id: 'write:chats',
     label: 'Send Messages',
     description: 'Send messages and create chats',
     category: 'chat' as const,
   },
   {
-    id: 'chat:delete',
+    id: 'delete:chats',
     label: 'Delete Chats',
     description: 'Delete conversations',
     category: 'chat' as const,
   },
   {
-    id: 'documents:read',
+    id: 'read:documents',
     label: 'Read Documents',
     description: 'View uploaded documents',
     category: 'documents' as const,
   },
   {
-    id: 'documents:write',
+    id: 'write:documents',
     label: 'Upload Documents',
     description: 'Upload new documents',
     category: 'documents' as const,
   },
   {
-    id: 'documents:delete',
+    id: 'delete:documents',
     label: 'Delete Documents',
     description: 'Remove documents',
     category: 'documents' as const,
   },
   {
-    id: 'workspaces:read',
-    label: 'Read Workspaces',
-    description: 'View workspace information',
+    id: 'share:documents',
+    label: 'Share Documents',
+    description: 'Share documents with others',
+    category: 'documents' as const,
+  },
+  {
+    id: 'manage:workspace',
+    label: 'Manage Workspace',
+    description: 'Modify workspace settings',
     category: 'workspaces' as const,
   },
   {
-    id: 'workspaces:write',
-    label: 'Manage Workspaces',
-    description: 'Create and modify workspaces',
-    category: 'workspaces' as const,
-  },
-  {
-    id: 'admin:users',
-    label: 'Manage Users',
+    id: 'manage:members',
+    label: 'Manage Members',
     description: 'Add/remove workspace members',
-    category: 'admin' as const,
+    category: 'workspaces' as const,
   },
   {
-    id: 'admin:analytics',
-    label: 'View Analytics',
+    id: 'read:api_usage',
+    label: 'View API Usage',
     description: 'Access analytics and usage data',
-    category: 'admin' as const,
+    category: 'workspaces' as const,
   },
 ];
 
@@ -136,7 +137,34 @@ export default function ApiKeysSettingsPage(): React.ReactElement {
 
 function ApiKeysContent(): React.ReactElement {
   const searchParams = useSearchParams();
-  const workspaceId = searchParams.get('workspaceId') || 'default';
+  const [resolvedWorkspaceId, setResolvedWorkspaceId] = useState<string | null>(() =>
+    searchParams.get('workspaceId')
+  );
+
+  // When the URL has no ?workspaceId=, resolve the user's current workspace
+  // via the workspaces API instead of falling back to a nonexistent 'default'
+  // workspace (which 403'd every request — D-9)
+  useEffect(() => {
+    if (resolvedWorkspaceId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch('/api/workspaces');
+        if (!response.ok) return;
+        const json = await response.json();
+        const id: string | undefined =
+          json?.data?.currentWorkspaceId ?? json?.data?.workspaces?.[0]?.id;
+        if (!cancelled && id) setResolvedWorkspaceId(id);
+      } catch {
+        // Leave null — hook stays disabled rather than querying a bad id
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedWorkspaceId]);
+
+  const workspaceId = resolvedWorkspaceId ?? undefined;
 
   const { apiKeys, isLoading, error, createKey, revokeKey, updateKey, refresh } =
     useApiKeys(workspaceId);

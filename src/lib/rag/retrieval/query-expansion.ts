@@ -101,11 +101,9 @@ export class QueryExpander {
         { role: 'user', content: prompt },
       ];
 
-      const { text } = await generateTaskCompletion(
-        'fast',
-        messages as unknown as Parameters<typeof generateTaskCompletion>[1],
-        { temperature: this.expansionConfig.temperature }
-      );
+      const { text } = await generateTaskCompletion('fast', messages, {
+        temperature: this.expansionConfig.temperature,
+      });
 
       // Parse variations from response
       const variations = text
@@ -190,11 +188,10 @@ export class QueryExpander {
         { role: 'user', content: prompt },
       ];
 
-      const { text: hypotheticalDoc } = await generateTaskCompletion(
-        'hyde',
-        messages as unknown as Parameters<typeof generateTaskCompletion>[1],
-        { temperature: this.hydeConfig.temperature, maxTokens: 500 }
-      );
+      const { text: hypotheticalDoc } = await generateTaskCompletion('hyde', messages, {
+        temperature: this.hydeConfig.temperature,
+        maxTokens: 500,
+      });
 
       // Generate embedding for the hypothetical document
       return generateEmbedding(hypotheticalDoc);
@@ -231,11 +228,10 @@ export class QueryExpander {
         { role: 'user', content: prompt },
       ];
 
-      const { text } = await generateTaskCompletion(
-        'hyde',
-        messages as unknown as Parameters<typeof generateTaskCompletion>[1],
-        { temperature: this.hydeConfig.temperature, maxTokens: 500 }
-      );
+      const { text } = await generateTaskCompletion('hyde', messages, {
+        temperature: this.hydeConfig.temperature,
+        maxTokens: 500,
+      });
 
       return text;
     } catch (error) {
@@ -266,11 +262,7 @@ export class QueryExpander {
         { role: 'user', content: prompt },
       ];
 
-      const { text } = await generateTaskCompletion(
-        'fast',
-        messages as unknown as Parameters<typeof generateTaskCompletion>[1],
-        { temperature: 0.5 }
-      );
+      const { text } = await generateTaskCompletion('fast', messages, { temperature: 0.5 });
 
       // Parse sub-queries from response
       const subQueries = text

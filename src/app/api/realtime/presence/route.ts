@@ -4,8 +4,8 @@
  * GET: Get users in a workspace/chat
  */
 
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
+import type { NextRequest, NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
@@ -30,30 +30,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'UNAUTHORIZED',
-            message: 'Authentication required',
-          },
-        },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     // Check if Redis is configured
     if (!isRedisConfigured()) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'REDIS_NOT_CONFIGURED',
-            message: 'Real-time features are not available',
-          },
-        },
-        { status: 503 }
-      );
+      return apiError('REDIS_NOT_CONFIGURED', 'Real-time features are not available', 503);
     }
 
     // Check rate limit
@@ -75,21 +57,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         severity: 'WARNING',
       });
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'RATE_LIMITED',
-            message: 'Too many presence updates',
-            retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000),
-          },
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
+      const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
+      return apiError(
+        'RATE_LIMITED',
+        'Too many presence updates',
+        429,
+        { retryAfter },
+        { 'Retry-After': retryAfter.toString() }
       );
     }
 
@@ -125,13 +99,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           },
         });
 
-        return NextResponse.json({
-          success: true,
-          data: {
-            userId,
-            status: status || 'online',
-            timestamp: Date.now(),
-          },
+        return apiSuccess({
+          userId,
+          status: status || 'online',
+          timestamp: Date.now(),
         });
       }
 
@@ -139,39 +110,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         // Keep presence alive
         await heartbeat(userId);
 
-        return NextResponse.json({
-          success: true,
-          data: {
-            userId,
-            timestamp: Date.now(),
-          },
+        return apiSuccess({
+          userId,
+          timestamp: Date.now(),
         });
       }
 
       case 'status': {
         // Update status only
         if (!status) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: {
-                code: 'MISSING_STATUS',
-                message: 'Status is required',
-              },
-            },
-            { status: 400 }
-          );
+          return apiError('MISSING_STATUS', 'Status is required', 400);
         }
 
         await setUserStatus(userId, status as PresenceStatus);
 
-        return NextResponse.json({
-          success: true,
-          data: {
-            userId,
-            status,
-            timestamp: Date.now(),
-          },
+        return apiSuccess({
+          userId,
+          status,
+          timestamp: Date.now(),
         });
       }
 
@@ -179,72 +135,45 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         // Update current view
         await setCurrentView(userId, currentView);
 
-        return NextResponse.json({
-          success: true,
-          data: {
-            userId,
-            currentView,
-            timestamp: Date.now(),
-          },
+        return apiSuccess({
+          userId,
+          currentView,
+          timestamp: Date.now(),
         });
       }
 
       case 'typing': {
         // Update typing status
         if (typeof isTyping !== 'boolean') {
-          return NextResponse.json(
-            {
-              success: false,
-              error: {
-                code: 'INVALID_TYPING',
-                message: 'isTyping boolean is required',
-              },
-            },
-            { status: 400 }
-          );
+          return apiError('INVALID_TYPING', 'isTyping boolean is required', 400);
         }
 
         const { setTyping } = await import('@/lib/realtime/presence');
         await setTyping(userId, typingIn || 'default', isTyping, userInfo);
 
-        return NextResponse.json({
-          success: true,
-          data: {
-            userId,
-            isTyping,
-            typingIn: typingIn || 'default',
-            timestamp: Date.now(),
-          },
+        return apiSuccess({
+          userId,
+          isTyping,
+          typingIn: typingIn || 'default',
+          timestamp: Date.now(),
         });
       }
 
       case 'cursor': {
         // Update cursor position
         if (!cursor || typeof cursor.x !== 'number' || typeof cursor.y !== 'number') {
-          return NextResponse.json(
-            {
-              success: false,
-              error: {
-                code: 'INVALID_CURSOR',
-                message: 'Cursor position with x and y is required',
-              },
-            },
-            { status: 400 }
-          );
+          return apiError('INVALID_CURSOR', 'Cursor position with x and y is required', 400);
         }
 
         const { updateCursor } = await import('@/lib/realtime/presence');
         const roomId = body.roomId || 'default';
         await updateCursor(userId, roomId, cursor, userInfo);
 
-        return NextResponse.json({
-          success: true,
-          data: {
-            userId,
-            cursor,
-            roomId,
-            timestamp: Date.now(),
-          },
+        return apiSuccess({
+          userId,
+          cursor,
+          roomId,
+          timestamp: Date.now(),
         });
       }
 
@@ -252,41 +181,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         // User is leaving
         await removePresence(userId);
 
-        return NextResponse.json({
-          success: true,
-          data: {
-            userId,
-            timestamp: Date.now(),
-          },
+        return apiSuccess({
+          userId,
+          timestamp: Date.now(),
         });
       }
 
       default:
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: 'INVALID_ACTION',
-              message: `Unknown action: ${action}. Valid actions: join, heartbeat, status, view, typing, cursor, leave`,
-            },
-          },
-          { status: 400 }
+        return apiError(
+          'INVALID_ACTION',
+          `Unknown action: ${action}. Valid actions: join, heartbeat, status, view, typing, cursor, leave`,
+          400
         );
     }
   } catch (error: unknown) {
     logger.error('Failed to update presence', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Failed to update presence',
-        },
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to update presence', 500);
   }
 }
 
@@ -299,27 +211,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'UNAUTHORIZED',
-            message: 'Authentication required',
-          },
-        },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     // Check if Redis is configured
     if (!isRedisConfigured()) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          users: [],
-          count: 0,
-          redisEnabled: false,
-        },
+      return apiSuccess({
+        users: [],
+        count: 0,
+        redisEnabled: false,
       });
     }
 
@@ -332,12 +232,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     // If userId is provided, get specific user's presence
     if (userId) {
       const presence = await getUserPresence(userId);
-      return NextResponse.json({
-        success: true,
-        data: {
-          presence,
-          found: !!presence,
-        },
+      return apiSuccess({
+        presence,
+        found: !!presence,
       });
     }
 
@@ -348,43 +245,22 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       // Filter out current user
       const otherUsers = users.filter((u) => u.user.id !== session.user.id);
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          users: otherUsers,
-          count: otherUsers.length,
-          totalInRoom: users.length,
-          roomType,
-          roomId,
-        },
+      return apiSuccess({
+        users: otherUsers,
+        count: otherUsers.length,
+        totalInRoom: users.length,
+        roomType,
+        roomId,
       });
     }
 
     // If neither provided, return error
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'MISSING_PARAMS',
-          message: 'Either roomId or userId is required',
-        },
-      },
-      { status: 400 }
-    );
+    return apiError('MISSING_PARAMS', 'Either roomId or userId is required', 400);
   } catch (error: unknown) {
     logger.error('Failed to get presence data', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Failed to get presence data',
-        },
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to get presence data', 500);
   }
 }
 
@@ -397,49 +273,25 @@ export async function DELETE(_req: NextRequest): Promise<NextResponse> {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'UNAUTHORIZED',
-            message: 'Authentication required',
-          },
-        },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     if (!isRedisConfigured()) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          message: 'Redis not configured, nothing to remove',
-        },
+      return apiSuccess({
+        message: 'Redis not configured, nothing to remove',
       });
     }
 
     await removePresence(session.user.id);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        userId: session.user.id,
-        timestamp: Date.now(),
-      },
+    return apiSuccess({
+      userId: session.user.id,
+      timestamp: Date.now(),
     });
   } catch (error: unknown) {
     logger.error('Failed to remove presence', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Failed to remove presence',
-        },
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to remove presence', 500);
   }
 }

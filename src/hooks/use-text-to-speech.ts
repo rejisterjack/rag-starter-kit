@@ -76,6 +76,7 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}): UseTextTo
 
   const serviceRef = useRef<TextToSpeechService | null>(null);
   const isSupported = isTextToSpeechSupported();
+  const { lang, onEnd, onError, onStart, preferPremium } = options;
 
   // Initialize service
   useEffect(() => {
@@ -91,8 +92,8 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}): UseTextTo
 
       // Select best voice if none selected
       if (!selectedVoice) {
-        const bestVoice = options.lang
-          ? findBestVoice(availableVoices, options.lang, options.preferPremium)
+        const bestVoice = lang
+          ? findBestVoice(availableVoices, lang, preferPremium)
           : service.getDefaultVoice();
         setSelectedVoice(bestVoice);
       }
@@ -102,14 +103,14 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}): UseTextTo
     service.on('start', () => {
       setIsSpeaking(true);
       setIsPaused(false);
-      options.onStart?.();
+      onStart?.();
     });
 
     service.on('end', () => {
       setIsSpeaking(false);
       setIsPaused(false);
       setQueueLength(service.getQueueLength());
-      options.onEnd?.();
+      onEnd?.();
     });
 
     service.on('pause', () => {
@@ -126,21 +127,13 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}): UseTextTo
       const errorMessage =
         'error' in event && typeof event.error === 'string' ? event.error : 'Unknown error';
       const error = new Error(`Speech synthesis error: ${errorMessage}`);
-      options.onError?.(error);
+      onError?.(error);
     });
 
     return () => {
       service.destroy();
     };
-  }, [
-    isSupported,
-    options.lang,
-    options.onEnd,
-    options.onError,
-    options.onStart,
-    options.preferPremium,
-    selectedVoice,
-  ]);
+  }, [isSupported, lang, onEnd, onError, onStart, preferPremium, selectedVoice]);
 
   // Update queue length periodically
   useEffect(() => {

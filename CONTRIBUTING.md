@@ -77,7 +77,7 @@ If either of these fails on a clean clone, that's a bug — please open an issue
 ```
 rag-starter-kit/
 ├── src/
-│   ├── app/                 # Next.js 15 App Router pages and layouts
+│   ├── app/                 # Next.js 16 App Router pages and layouts
 │   ├── components/          # Reusable React components (shadcn/ui based)
 │   ├── lib/
 │   │   ├── ai/             # LLM provider config (OpenRouter + Gemini)
@@ -223,7 +223,7 @@ Update your .env file before upgrading.
 
 ## Code Style
 
-We use [Biome](https://biomejs.dev/) for formatting and linting. It runs automatically on commit via a pre-commit hook.
+We use ESLint for linting and Prettier for formatting. Both run automatically on commit via the pre-commit hook.
 
 ```bash
 bun lint          # Check for issues

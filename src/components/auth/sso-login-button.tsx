@@ -154,7 +154,7 @@ export function SSOLoginButton({
   // Check domain when email changes
   useEffect(() => {
     const checkDomain = async () => {
-      if (!email || !email.includes('@')) {
+      if (!email?.includes('@')) {
         setDomainResult(null);
         return;
       }
@@ -214,7 +214,11 @@ export function SSOLoginButton({
         ) : domainResult?.workspaceLogo ? (
           <Image
             src={domainResult.workspaceLogo}
-            alt=""
+            alt={
+              domainResult.workspaceName
+                ? `Sign in with ${domainResult.workspaceName}`
+                : 'Workspace logo'
+            }
             width={16}
             height={16}
             className="mr-2 h-4 w-4 object-contain"
@@ -336,7 +340,7 @@ export function CompactSSOButton({
       ) : workspaceLogo ? (
         <Image
           src={workspaceLogo}
-          alt=""
+          alt={workspaceName ? `${workspaceName} logo` : 'Workspace logo'}
           width={16}
           height={16}
           className="h-4 w-4 object-contain"

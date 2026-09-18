@@ -204,8 +204,6 @@ function StepItem({
   };
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: Interactive element with conditional role, tabIndex, and keyboard handler
-    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: Conditional ARIA props based on interactive state
     <div
       className={cn(
         'rounded-lg border transition-all',

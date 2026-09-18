@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import {
   Calculator,
   ChevronDown,
@@ -159,9 +159,11 @@ function WebSearchResult({ result }: { result: unknown }) {
 
   return (
     <ul className="space-y-2">
-      {results.slice(0, 5).map((item, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: search results may lack unique ids
-        <li key={i} className="flex items-start gap-2">
+      {results.slice(0, 5).map((item) => (
+        <li
+          key={`search-${item.url ?? item.title ?? Math.random().toString(36).slice(2)}`}
+          className="flex items-start gap-2"
+        >
           <Search className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-400/60" />
           <div className="min-w-0">
             {item.title && (
@@ -195,13 +197,15 @@ function DocumentResult({ result }: { result: unknown }) {
       .documents;
     return (
       <ul className="space-y-2">
-        {docs.map((doc, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: items lack stable ids
-          <li key={i} className="flex items-start gap-2">
+        {docs.map((doc) => (
+          <li
+            key={`doc-${doc.id ?? doc.name ?? Math.random().toString(36).slice(2)}`}
+            className="flex items-start gap-2"
+          >
             <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-400/60" />
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground/90 truncate">
-                {doc.name ?? `Document ${i + 1}`}
+                {doc.name ?? `Document ${doc.id ?? ''}`}
               </p>
               {doc.content && (
                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-3">{doc.content}</p>
@@ -318,7 +322,7 @@ function ToolResultCard({ toolCall }: { toolCall: ToolCall }) {
       {/* Content */}
       <AnimatePresence>
         {isExpanded && !isRunning && toolCall.result !== undefined && (
-          <motion.div
+          <m.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -332,7 +336,7 @@ function ToolResultCard({ toolCall }: { toolCall: ToolCall }) {
                 <ResultRenderer result={toolCall.result} />
               )}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>
@@ -350,7 +354,6 @@ function detectInlineToolCalls(
   const matches: Array<{ match: string; name: string; start: number; end: number }> = [];
   let m: RegExpExecArray | null;
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: intentional regex loop
   while ((m = pattern.exec(content)) !== null) {
     matches.push({
       match: m[0],
@@ -382,12 +385,11 @@ export function ToolResultRenderer({ content, toolCalls }: ToolResultRendererPro
       {hasToolCalls && toolCalls.map((tc) => <ToolResultCard key={tc.id} toolCall={tc} />)}
 
       {hasInlineCalls &&
-        inlineCalls.map((ic, idx) => (
+        inlineCalls.map((ic) => (
           <ToolResultCard
-            // biome-ignore lint/suspicious/noArrayIndexKey: items lack stable ids
-            key={`inline-${idx}`}
+            key={`inline-${ic.name}-${ic.start}`}
             toolCall={{
-              id: `inline-${idx}`,
+              id: `inline-${ic.start}`,
               name: ic.name,
               arguments: {},
               result: ic.match.replace(/\[Tool:\s*\w+\]\s*/, '').trim(),

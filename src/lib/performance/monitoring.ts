@@ -58,7 +58,8 @@ function observeLongTasks(): void {
 }
 
 export function reportMetric(metric: PerformanceMetric): void {
-  logger.debug('Performance metric', metric as unknown as Record<string, unknown>);
+  const { name, value, rating } = metric;
+  logger.debug('Performance metric', { name, value, rating });
 }
 
 export function mark(name: string): void {

@@ -29,6 +29,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { apiFetch } from '@/lib/api-client';
 
 // =============================================================================
 // Types
@@ -72,16 +73,11 @@ export function SSOSettings({
     setSuccess(null);
 
     try {
-      const response = await fetch(`/api/workspaces/${workspaceId}/sso-settings`, {
+      await apiFetch(`/api/workspaces/${workspaceId}/sso-settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to save settings');
-      }
 
       setSuccess('SSO settings saved successfully');
       toast.success('SSO settings saved');

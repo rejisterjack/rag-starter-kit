@@ -1,6 +1,10 @@
-import { NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import NextAuth from 'next-auth';
 import { authConfig } from '@/lib/auth/auth.config';
+import { logger } from '@/lib/logger';
+import { getApiKeyFormatRegex } from '@/lib/security/api-key-constants';
+import { validateCsrfToken } from '@/lib/security/csrf';
+import { detectAICrawler } from '@/lib/seo/ai-agents';
 
 // =============================================================================
 // Env Access
@@ -14,6 +18,13 @@ const env = {
   CSP_CONNECT_SRC: process.env.CSP_CONNECT_SRC ?? '',
   NEXT_PUBLIC_ANALYTICS_HOST: process.env.NEXT_PUBLIC_ANALYTICS_HOST ?? '',
 } as const;
+
+if (process.env.NODE_ENV === 'production' && !env.NEXTAUTH_SECRET) {
+  throw new Error(
+    'FATAL: AUTH_SECRET or NEXTAUTH_SECRET must be set in production. ' +
+      'Application cannot start without a secure signing key.'
+  );
+}
 
 // =============================================================================
 // Route Configuration
@@ -39,26 +50,60 @@ const PUBLIC_ROUTES = [
   '/favicon.ico',
   '/robots.txt',
   '/sitemap.xml',
+  '/llms.txt',
+  '/llms-full.txt',
+  '/feed.xml',
+  '/blog',
 ];
 
 const PROTECTED_API_ROUTES = ['/api/chat', '/api/ingest', '/api/documents', '/api/workspaces'];
 const ADMIN_ROUTES = ['/admin', '/api/admin'];
 
 // =============================================================================
+// Header Sanitization
+// =============================================================================
+
+const TRUSTED_HEADERS = [
+  'x-user-id',
+  'x-user-role',
+  'x-workspace-id',
+  'x-nonce',
+  'x-request-id',
+] as const;
+
+function stripTrustedHeaders(headers: Headers): void {
+  for (const key of TRUSTED_HEADERS) {
+    headers.delete(key);
+  }
+}
+
+// =============================================================================
 // CORS Helpers
 // =============================================================================
 
 function computeCorsOrigin(req: Request): string | null {
-  const origin = req.headers.get('origin') ?? '';
-  const allowedOrigins = (env.ALLOWED_ORIGINS ?? env.NEXTAUTH_URL).split(',').map((s) => s.trim());
-  return allowedOrigins.includes(origin) ? origin : null;
+  const origin = req.headers.get('origin');
+  if (!origin) return null;
+
+  const allowedOrigins = (env.ALLOWED_ORIGINS || env.NEXTAUTH_URL)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  try {
+    const url = new URL(origin);
+    return allowedOrigins.includes(url.origin) ? url.origin : null;
+  } catch {
+    return null;
+  }
 }
 
 function getCorsHeaders(req: Request) {
   const corsOrigin = computeCorsOrigin(req);
   const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Request-ID',
+    'Access-Control-Allow-Headers':
+      'Content-Type, Authorization, X-API-Key, X-Request-ID, X-CSRF-Token',
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Max-Age': '86400',
   };
@@ -125,6 +170,48 @@ export default auth(async function proxy(req) {
       return withRequestId(response, requestId, startTime);
     }
 
+    // CSRF protection for mutating API requests
+    const MUTATING_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
+    const CSRF_SKIP_PREFIXES = ['/api/auth/', '/api/csrf/', '/api/public/', '/api/webhooks/'];
+    const CSRF_SKIP_EXACT = ['/api/csp-report'];
+
+    if (
+      pathname.startsWith('/api/') &&
+      MUTATING_METHODS.has(req.method) &&
+      !CSRF_SKIP_PREFIXES.some((p) => pathname.startsWith(p)) &&
+      !CSRF_SKIP_EXACT.includes(pathname)
+    ) {
+      // For same-origin authenticated requests with a valid session cookie,
+      // rely on SameSite cookie + Origin check instead of double-submit CSRF.
+      const origin = req.headers.get('origin');
+      const hasSessionCookie =
+        req.cookies.has('next-auth.session-token') ||
+        req.cookies.has('__Secure-next-auth.session-token') ||
+        req.cookies.has('authjs.session-token') ||
+        req.cookies.has('__Secure-authjs.session-token');
+      const isSameOrigin =
+        !origin || origin === env.NEXTAUTH_URL || origin === new URL(env.NEXTAUTH_URL).origin;
+
+      if (hasSessionCookie && isSameOrigin) {
+        // Authenticated same-origin request — CSRF cookie may be absent due to
+        // ServiceWorker replay. Session cookie + SameSite is sufficient protection.
+      } else {
+        const csrfValid = await validateCsrfToken(req as NextRequest);
+        if (!csrfValid) {
+          const response = NextResponse.json(
+            {
+              error: 'Invalid CSRF token',
+              code: 'CSRF_INVALID',
+              message:
+                'The request did not include a valid CSRF token. Please refresh the page and try again.',
+            },
+            { status: 403, headers: getCorsHeaders(req) }
+          );
+          return withRequestId(response, requestId, startTime);
+        }
+      }
+    }
+
     // Public routes
     const isPublicRoute = PUBLIC_ROUTES.some(
       (route) => pathname === route || pathname.startsWith(`${route}/`)
@@ -132,8 +219,20 @@ export default auth(async function proxy(req) {
 
     if (isPublicRoute) {
       const headers = new Headers(req.headers);
+      stripTrustedHeaders(headers);
       headers.set('x-request-id', requestId);
       headers.set('x-nonce', cspNonce);
+
+      // AI crawler observability: tag request + structured log for measurement
+      const { isCrawler, crawlerName } = detectAICrawler(req.headers.get('user-agent'));
+      if (isCrawler && crawlerName) {
+        headers.set('x-ai-crawler', crawlerName);
+        logger.info('ai_crawler_hit', {
+          crawler: crawlerName,
+          path: pathname,
+          requestId,
+        });
+      }
 
       const response = NextResponse.next({ request: { headers } });
       addSecurityHeaders(response, requestId, cspNonce);
@@ -156,7 +255,7 @@ export default auth(async function proxy(req) {
     // Rate limiting has already been applied above
     const apiKey = req.headers.get('X-API-Key');
     if (apiKey && pathname.startsWith('/api/')) {
-      if (apiKey.length < 20 || apiKey.length > 200) {
+      if (!getApiKeyFormatRegex().test(apiKey)) {
         const response = NextResponse.json(
           { error: 'Invalid API key format', code: 'INVALID_API_KEY' },
           { status: 401, headers: getCorsHeaders(req) }
@@ -165,6 +264,7 @@ export default auth(async function proxy(req) {
       }
 
       const headers = new Headers(req.headers);
+      stripTrustedHeaders(headers);
       headers.set('x-request-id', requestId);
       headers.set('x-nonce', cspNonce);
 
@@ -207,14 +307,15 @@ export default auth(async function proxy(req) {
 
     // Authenticated request — forward with user context headers
     const requestHeaders = new Headers(req.headers);
+    stripTrustedHeaders(requestHeaders);
     requestHeaders.set('x-request-id', requestId);
     requestHeaders.set('x-nonce', cspNonce);
 
     if (isLoggedIn && user?.id) {
-      requestHeaders.set('x-user-id', user.id as string);
-      requestHeaders.set('x-user-role', (user.role as string) ?? 'USER');
+      requestHeaders.set('x-user-id', user.id);
+      requestHeaders.set('x-user-role', user.role ?? 'USER');
       if (user.workspaceId) {
-        requestHeaders.set('x-workspace-id', user.workspaceId as string);
+        requestHeaders.set('x-workspace-id', user.workspaceId);
       }
     }
 
@@ -257,12 +358,26 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
 
   response.headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
 
+  // Propagate CSP nonce to client-side scripts via a readable cookie.
+  // Not HttpOnly so client components can read it for inline script nonce attributes.
+  // The nonce only needs to be unguessable by remote attackers; same-origin JS
+  // reading it does not weaken CSP (an XSS attacker has already bypassed CSP).
+  if (nonce) {
+    const secureFlag = env.NODE_ENV === 'production' ? '; Secure' : '';
+    response.headers.append(
+      'Set-Cookie',
+      `__csp_nonce=${nonce}; Path=/; SameSite=Strict; Max-Age=60${secureFlag}`
+    );
+  }
+
   const n = nonce ?? '';
 
   const defaultConnectSrc = [
     "'self'",
     'https://api.openai.com',
     'https://*.vercel.app',
+    'https://vercel.live',
+    'https://*.vercel.live',
     'https://openrouter.ai',
     'https://*.openrouter.ai',
     'https://generativelanguage.googleapis.com',
@@ -272,10 +387,14 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
     'https://*.vercel-scripts.com',
     'https://va.vercel-scripts.com',
     'https://*.plausible.io',
-    process.env.NEXT_PUBLIC_ANALYTICS_HOST,
+    'https://res.cloudinary.com',
+    'https://*.cloudinary.com',
+    env.NEXT_PUBLIC_ANALYTICS_HOST,
     'https://*.inngest.com',
     ...(env.NODE_ENV === 'development' ? ['http://localhost:*', 'ws://localhost:*'] : []),
     'wss://*.vercel.app',
+    'wss://vercel.live',
+    'wss://*.vercel.live',
     'wss://*.inngest.com',
   ];
 
@@ -287,13 +406,13 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
 
   const scriptSrc =
     env.NODE_ENV === 'development'
-      ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:8000 https://*.vercel-scripts.com https://va.vercel-scripts.com https://vercel.live`
-      : `script-src 'self' 'nonce-${n}' https://*.vercel-scripts.com https://va.vercel-scripts.com https://vercel.live`;
+      ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:8000 https://*.vercel-scripts.com https://va.vercel-scripts.com https://vercel.live https://*.vercel.live`
+      : `script-src 'self' 'nonce-${n}' https://*.vercel-scripts.com https://va.vercel-scripts.com https://vercel.live https://*.vercel.live https://cdn.jsdelivr.net`;
 
-  const styleSrc =
-    env.NODE_ENV === 'development'
-      ? "style-src 'self' 'unsafe-inline'"
-      : `style-src 'self' 'nonce-${n}'`;
+  // NOTE: 'unsafe-inline' is ignored by browsers when a nonce is also present (CSP spec).
+  // For style-src, we use 'unsafe-inline' only — no nonce — so inline styles from
+  // React, Radix UI, Tailwind, and third-party CSS are not blocked.
+  const styleSrc = "style-src 'self' 'unsafe-inline'";
 
   const csp = [
     "default-src 'self'",
@@ -303,7 +422,7 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, nonce?: 
     "font-src 'self' https://cdn.jsdelivr.net",
     `connect-src https://api.github.com ${connectSrc}`,
     "object-src 'none'",
-    "frame-src 'none'",
+    "frame-src 'self' https://res.cloudinary.com https://docs.google.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "worker-src 'self' blob:",

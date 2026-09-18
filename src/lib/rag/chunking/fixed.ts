@@ -31,10 +31,7 @@ export class FixedChunker implements Chunker {
   private separators: string[];
   private keepSeparator: 'start' | 'end' | false;
 
-  constructor(options?: {
-    separators?: string[];
-    keepSeparator?: 'start' | 'end' | false;
-  }) {
+  constructor(options?: { separators?: string[]; keepSeparator?: 'start' | 'end' | false }) {
     this.separators = options?.separators ?? DEFAULT_SEPARATORS;
     this.keepSeparator = options?.keepSeparator ?? 'end';
   }

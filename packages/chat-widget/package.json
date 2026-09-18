@@ -22,7 +22,8 @@
   ],
   "scripts": {
     "build": "tsup",
-    "dev": "tsup --watch"
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
     "react": ">=18",
@@ -35,6 +36,10 @@
     "react-dom": {
       "optional": true
     }
+  },
+  "dependencies": {
+    "@rag-starter-kit/api-schemas": "workspace:*",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

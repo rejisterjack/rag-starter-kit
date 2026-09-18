@@ -112,6 +112,6 @@ export function createProviderFromEnv(): LLMProvider {
 export function getDefaultConfig(): LLMConfig {
   return {
     provider: 'openrouter',
-    defaultModel: 'mistralai/mistral-7b-instruct:free',
+    defaultModel: 'nvidia/nemotron-3.5-lightning:free',
   };
 }

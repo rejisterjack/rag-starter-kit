@@ -1,21 +1,39 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import type { Document } from '@/components/documents/document-card';
 import { DocumentList } from '@/components/documents/document-list';
 import { sampleDocuments } from '@/tests/utils/fixtures/documents';
-import type { Document } from '@/types/document';
+
+function toListDocument(doc: (typeof sampleDocuments)[number]): Document {
+  const statusMap = {
+    COMPLETED: 'completed',
+    PROCESSING: 'processing',
+    FAILED: 'error',
+    PENDING: 'pending',
+  } as const;
+
+  return {
+    id: doc.id ?? 'doc-unknown',
+    name: doc.name ?? 'unknown',
+    type: doc.type ?? 'application/octet-stream',
+    size: doc.size ?? 0,
+    status: statusMap[(doc.status as keyof typeof statusMap) ?? 'PENDING'] ?? 'pending',
+    createdAt: doc.createdAt ?? new Date(),
+  };
+}
+
+const listDocuments = sampleDocuments.map(toListDocument);
 
 describe('DocumentList', () => {
-  const mockOnSelect = vi.fn();
+  const mockOnPreview = vi.fn();
   const mockOnDelete = vi.fn();
-  // const mockOnDownload = vi.fn();
+  const mockOnUpload = vi.fn();
 
   it('renders list of documents', () => {
-    render(<DocumentList documents={sampleDocuments as Document[]} />);
+    render(<DocumentList documents={listDocuments} />);
 
-    sampleDocuments.forEach((doc) => {
-      if (doc.name) {
-        expect(screen.getByText(doc.name)).toBeInTheDocument();
-      }
+    listDocuments.forEach((doc) => {
+      expect(screen.getByText(doc.name)).toBeInTheDocument();
     });
   });
 
@@ -25,80 +43,53 @@ describe('DocumentList', () => {
     expect(screen.getByText(/no documents/i)).toBeInTheDocument();
   });
 
-  it('calls onSelect when document is clicked', () => {
-    render(<DocumentList documents={sampleDocuments as Document[]} onSelect={mockOnSelect} />);
+  it('calls onPreview when document is clicked', () => {
+    render(<DocumentList documents={listDocuments} onPreview={mockOnPreview} />);
 
-    const firstDocName = sampleDocuments[0]?.name;
-    if (firstDocName) {
-      fireEvent.click(screen.getByText(firstDocName));
-    }
-    expect(mockOnSelect).toHaveBeenCalledWith(sampleDocuments[0].id);
+    fireEvent.click(screen.getByText(listDocuments[0]!.name));
+    expect(mockOnPreview).toHaveBeenCalledWith(listDocuments[0]);
   });
 
-  it('displays document status correctly', () => {
-    render(<DocumentList documents={sampleDocuments as Document[]} />);
+  it('renders search input', () => {
+    render(<DocumentList documents={listDocuments} />);
 
-    expect(screen.getByText('processed')).toBeInTheDocument();
-    expect(screen.getByText('processing')).toBeInTheDocument();
-    expect(screen.getByText('error')).toBeInTheDocument();
+    expect(screen.getByLabelText(/search documents/i)).toBeInTheDocument();
   });
 
-  it('formats file size correctly', () => {
-    render(<DocumentList documents={sampleDocuments as Document[]} />);
+  it('filters documents by search query', () => {
+    render(<DocumentList documents={listDocuments} />);
 
-    expect(screen.getByText(/MB/)).toBeInTheDocument();
+    const search = screen.getByLabelText(/search documents/i);
+    fireEvent.change(search, { target: { value: 'annual-report' } });
+
+    expect(screen.getByText('annual-report-2024.pdf')).toBeInTheDocument();
+    expect(screen.queryByText('project-specs.docx')).not.toBeInTheDocument();
   });
 
-  it('shows checkbox for multi-select', () => {
-    render(<DocumentList documents={sampleDocuments as Document[]} selectable />);
+  it('calls onUpload when upload button is clicked', () => {
+    render(<DocumentList documents={listDocuments} onUpload={mockOnUpload} />);
 
-    const checkboxes = screen.getAllByRole('checkbox');
-    expect(checkboxes.length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: /upload/i }));
+    expect(mockOnUpload).toHaveBeenCalled();
   });
 
-  it('handles select all', () => {
-    const mockOnSelectAll = vi.fn();
-
+  it('shows delete-all when onDeleteAll is provided', () => {
+    const mockOnDeleteAll = vi.fn();
     render(
       <DocumentList
-        documents={sampleDocuments as Document[]}
-        selectable
-        onSelectAll={mockOnSelectAll}
+        documents={listDocuments}
+        onDeleteAll={mockOnDeleteAll}
+        onDelete={mockOnDelete}
       />
     );
 
-    const selectAllCheckbox = screen.getByLabelText(/select all/i);
-    fireEvent.click(selectAllCheckbox);
-
-    expect(mockOnSelectAll).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /delete all documents/i }));
+    expect(mockOnDeleteAll).toHaveBeenCalled();
   });
 
-  it('shows delete button on hover', () => {
-    render(<DocumentList documents={sampleDocuments as Document[]} onDelete={mockOnDelete} />);
+  it('shows loading skeleton when isLoading', () => {
+    render(<DocumentList documents={[]} isLoading />);
 
-    const firstDocName = sampleDocuments[0]?.name;
-    if (firstDocName) {
-      const firstDoc = screen.getByText(firstDocName).closest('div');
-      if (firstDoc) {
-        fireEvent.mouseEnter(firstDoc);
-      }
-    }
-
-    const deleteButton = screen.getAllByRole('button', { name: /delete/i })[0];
-    expect(deleteButton).toBeVisible();
-  });
-
-  it('shows processing indicator for pending documents', () => {
-    render(<DocumentList documents={sampleDocuments as Document[]} />);
-
-    const processingSpinner = screen.getByTestId('processing-spinner');
-    expect(processingSpinner).toBeInTheDocument();
-  });
-
-  it('formats date correctly', () => {
-    render(<DocumentList documents={sampleDocuments as Document[]} />);
-
-    // Should show relative date
-    expect(screen.getAllByText(/ago|today|yesterday/i).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText(/document library/i)).toHaveAttribute('aria-busy', 'true');
   });
 });

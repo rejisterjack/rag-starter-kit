@@ -5,12 +5,12 @@ interface Tech {
 }
 
 const techStack: Tech[] = [
-  { name: 'Next.js 15', category: 'Framework', color: '#000000' },
+  { name: 'Next.js 16', category: 'Framework', color: '#000000' },
   { name: 'React 19', category: 'UI', color: '#61DAFB' },
   { name: 'TypeScript', category: 'Language', color: '#3178C6' },
   { name: 'Tailwind CSS 4', category: 'Styling', color: '#38B2AC' },
   { name: 'PostgreSQL', category: 'Database', color: '#4169E1' },
-  { name: 'pgvector', category: 'Vectors', color: '#E69138' },
+  { name: 'pgvector', category: 'Vectors', color: '#336791' },
   { name: 'Prisma', category: 'ORM', color: '#2D3748' },
   { name: 'LangChain.js', category: 'AI', color: '#1C3C3C' },
   { name: 'Vercel AI SDK', category: 'AI', color: '#000000' },
@@ -30,7 +30,10 @@ const techStack: Tech[] = [
   { name: 'Vercel', category: 'Deploy', color: '#000000' },
 ];
 
-const duplicatedTechStack = [...techStack, ...techStack];
+const duplicatedTechStack = [
+  ...techStack.map((t, i) => ({ ...t, uid: `a-${t.name}-${i}` })),
+  ...techStack.map((t, i) => ({ ...t, uid: `b-${t.name}-${i}` })),
+];
 
 function TechBadge({ tech }: { tech: Tech }): React.ReactElement {
   return (
@@ -63,9 +66,8 @@ export function TechStackMarquee(): React.ReactElement {
         <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-10" />
         <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background to-transparent z-10" />
         <div className="flex animate-marquee group-hover:[animation-play-state:paused]">
-          {duplicatedTechStack.map((tech, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: duplicated marquee items need unique keys
-            <TechBadge key={`${tech.name}-${index}`} tech={tech} />
+          {duplicatedTechStack.map((tech) => (
+            <TechBadge key={tech.uid} tech={tech} />
           ))}
         </div>
       </div>
@@ -75,9 +77,8 @@ export function TechStackMarquee(): React.ReactElement {
         <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-10" />
         <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background to-transparent z-10" />
         <div className="flex animate-marquee-reverse group-hover:[animation-play-state:paused]">
-          {[...duplicatedTechStack].reverse().map((tech, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: duplicated marquee items need unique keys
-            <TechBadge key={`${tech.name}-rev-${index}`} tech={tech} />
+          {[...duplicatedTechStack].reverse().map((tech) => (
+            <TechBadge key={`rev-${tech.uid}`} tech={tech} />
           ))}
         </div>
       </div>

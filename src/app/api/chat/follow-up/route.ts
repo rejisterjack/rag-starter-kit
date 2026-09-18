@@ -11,9 +11,9 @@
 
 import { openrouter } from '@openrouter/ai-sdk-provider';
 import { generateText } from 'ai';
-import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { defaultAIConfig } from '@/lib/ai';
+import { apiSuccess } from '@/lib/api-response';
 import { auth } from '@/lib/auth';
 
 const bodySchema = z.object({
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ questions: FALLBACK_QUESTIONS });
+      return apiSuccess({ questions: FALLBACK_QUESTIONS });
     }
 
     const { assistantMessage, userQuery, count } = parsed.data;
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     // Auth check — if not authenticated (demo mode), return generic fallbacks
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ questions: FALLBACK_QUESTIONS });
+      return apiSuccess({ questions: FALLBACK_QUESTIONS });
     }
 
     // Build the follow-up generation prompt
@@ -61,8 +61,7 @@ Rules:
 
     try {
       const result = await generateText({
-        // biome-ignore lint/suspicious/noExplicitAny: openrouter SDK type mismatch with ai SDK
-        model: openrouter(defaultAIConfig.model) as any,
+        model: openrouter(defaultAIConfig.model),
         messages: [
           { role: 'system', content: systemContent },
           { role: 'user', content: userContent },
@@ -81,15 +80,15 @@ Rules:
           .slice(0, count)
           .map((q) => q.trim());
         if (valid.length > 0) {
-          return NextResponse.json({ questions: valid });
+          return apiSuccess({ questions: valid });
         }
       }
     } catch {
       // LLM call failed — fall through to generic fallback
     }
 
-    return NextResponse.json({ questions: FALLBACK_QUESTIONS });
+    return apiSuccess({ questions: FALLBACK_QUESTIONS });
   } catch {
-    return NextResponse.json({ questions: FALLBACK_QUESTIONS });
+    return apiSuccess({ questions: FALLBACK_QUESTIONS });
   }
 }

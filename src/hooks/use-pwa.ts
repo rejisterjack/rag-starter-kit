@@ -5,6 +5,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { clientLogger } from '@/lib/client-logger';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -132,8 +133,8 @@ export function usePWA(): UsePWAReturn {
             }
           });
         })
-        .catch(() => {
-          // Silently handle service worker registration failure
+        .catch((error) => {
+          clientLogger.error('Service worker registration failed', { error });
         });
 
       // Listen for messages from SW
@@ -231,8 +232,8 @@ export function useServiceWorker(): {
             }
           });
         })
-        .catch(() => {
-          // Silently handle service worker registration failure
+        .catch((error) => {
+          clientLogger.error('Service worker registration failed (useServiceWorker)', { error });
         });
 
       // Listen for messages from SW
@@ -445,7 +446,9 @@ export function useBackgroundSync(): {
       if (action) {
         try {
           await action();
-        } catch (_error: unknown) {}
+        } catch (error: unknown) {
+          clientLogger.error('Background sync action failed', { error });
+        }
       }
       setPendingCount(actionQueue.current.length);
     }
@@ -499,7 +502,9 @@ export function useBackgroundSync(): {
         if (registration.sync) {
           await registration.sync.register(tag);
         }
-      } catch (_error: unknown) {}
+      } catch (error: unknown) {
+        clientLogger.error('Failed to register background sync', { tag, error });
+      }
     },
     [isSupported]
   );

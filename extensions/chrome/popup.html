@@ -1,90 +1,90 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=360">
-  <link rel="stylesheet" href="styles/popup.css">
-</head>
-<body>
-  <div class="container">
-    <!-- Header -->
-    <header class="header">
-      <img src="icons/icon32.png" alt="RAG" class="logo">
-      <h1 class="title">RAG Knowledge Assistant</h1>
-    </header>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=360" />
+    <link rel="stylesheet" href="styles/popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header -->
+      <header class="header">
+        <img src="icons/icon32.png" alt="RAG" class="logo" />
+        <h1 class="title">RAG Knowledge Assistant</h1>
+      </header>
 
-    <!-- Connection Status -->
-    <div class="status-bar">
-      <span id="status-dot" class="status-dot checking"></span>
-      <span id="status-text" class="status-text">Checking connection...</span>
-      <span id="status-url" class="status-url"></span>
+      <!-- Connection Status -->
+      <div class="status-bar">
+        <span id="status-dot" class="status-dot checking"></span>
+        <span id="status-text" class="status-text">Checking connection...</span>
+        <span id="status-url" class="status-url"></span>
+      </div>
+
+      <!-- Inline Toast -->
+      <div id="toast" class="toast" role="alert">
+        <span id="toast-icon"></span>
+        <span id="toast-message"></span>
+      </div>
+
+      <!-- Primary CTA -->
+      <div style="padding-top: 12px">
+        <button id="btn-new-chat" class="primary-action">
+          <span class="action-icon">+</span> New Chat
+        </button>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <button id="btn-save-page" class="action-btn">
+          <span class="action-icon">💾</span>
+          <span class="action-label">Save this page</span>
+          <span class="action-shortcut">Right-click</span>
+        </button>
+        <button id="btn-ask-selection" class="action-btn">
+          <span class="action-icon">💬</span>
+          <span class="action-label">Ask about selection</span>
+          <span class="action-shortcut" title="Ctrl+Shift+A">Ctrl+Shift+A</span>
+        </button>
+        <button id="btn-summarize" class="action-btn">
+          <span class="action-icon">📝</span>
+          <span class="action-label">Summarize page</span>
+          <span class="action-shortcut">Right-click</span>
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Settings Toggles -->
+      <div class="settings">
+        <label class="setting-row">
+          <span>Side Panel</span>
+          <span class="toggle">
+            <input type="checkbox" id="toggle-sidepanel" />
+            <span class="slider"></span>
+          </span>
+        </label>
+        <label class="setting-row">
+          <span>Auto-save pages</span>
+          <span class="toggle">
+            <input type="checkbox" id="toggle-autosave" />
+            <span class="slider"></span>
+          </span>
+        </label>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <button id="btn-open-app" class="footer-link">
+          <span>Open Full App</span>
+          <span style="font-size: 10px">&#x2197;</span>
+        </button>
+        <button id="btn-settings" class="footer-link">Settings</button>
+        <span class="version" id="version-label">v1.0.0</span>
+      </div>
     </div>
 
-    <!-- Inline Toast -->
-    <div id="toast" class="toast" role="alert">
-      <span id="toast-icon"></span>
-      <span id="toast-message"></span>
-    </div>
-
-    <!-- Primary CTA -->
-    <div style="padding-top: 12px;">
-      <button id="btn-new-chat" class="primary-action">
-        <span class="action-icon">+</span> New Chat
-      </button>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="quick-actions">
-      <button id="btn-save-page" class="action-btn">
-        <span class="action-icon">💾</span>
-        <span class="action-label">Save this page</span>
-        <span class="action-shortcut">Right-click</span>
-      </button>
-      <button id="btn-ask-selection" class="action-btn">
-        <span class="action-icon">💬</span>
-        <span class="action-label">Ask about selection</span>
-        <span class="action-shortcut" title="Ctrl+Shift+A">Ctrl+Shift+A</span>
-      </button>
-      <button id="btn-summarize" class="action-btn">
-        <span class="action-icon">📝</span>
-        <span class="action-label">Summarize page</span>
-        <span class="action-shortcut">Right-click</span>
-      </button>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- Settings Toggles -->
-    <div class="settings">
-      <label class="setting-row">
-        <span>Side Panel</span>
-        <span class="toggle">
-          <input type="checkbox" id="toggle-sidepanel">
-          <span class="slider"></span>
-        </span>
-      </label>
-      <label class="setting-row">
-        <span>Auto-save pages</span>
-        <span class="toggle">
-          <input type="checkbox" id="toggle-autosave">
-          <span class="slider"></span>
-        </span>
-      </label>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- Footer -->
-    <div class="footer">
-      <button id="btn-open-app" class="footer-link">
-        <span>Open Full App</span>
-        <span style="font-size:10px;">&#x2197;</span>
-      </button>
-      <button id="btn-settings" class="footer-link">Settings</button>
-      <span class="version" id="version-label">v1.0.0</span>
-    </div>
-  </div>
-
-  <script src="popup.js"></script>
-</body>
+    <script src="popup.js"></script>
+  </body>
 </html>

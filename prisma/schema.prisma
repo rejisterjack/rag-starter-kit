@@ -61,6 +61,7 @@ model User {
   chats             Chat[]
   consents          Consent[]
   documents         Document[]
+  documentChunks    DocumentChunk[]
   feedback          MessageFeedback[]
   rateLimits        RateLimit[]
   sessions          Session[]
@@ -106,6 +107,7 @@ model Workspace {
   collections    DocumentCollection[]
   tags           DocumentTag[]
   documents      Document[]
+  documentChunks DocumentChunk[]
   samlConnection SamlConnection?
   invitations    WorkspaceInvitation[]
   members        WorkspaceMember[]
@@ -191,7 +193,9 @@ model Document {
   storageKey          String?
   storageUrl          String?
   collections         DocumentCollectionsOnDocuments[]
+  chunks              DocumentChunk[]
   images              DocumentImage[]
+  imageEmbeddings     ImageEmbedding[]
   tags                DocumentTagsOnDocuments[]
   user                User                             @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace           Workspace?                       @relation(fields: [workspaceId], references: [id])
@@ -251,12 +255,66 @@ model DocumentImage {
   status              ImageStatus    @default(PENDING)
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
+  chunk               DocumentChunk? @relation(fields: [chunkId], references: [id], onDelete: SetNull)
   document            Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
+  @@index([chunkId])
   @@index([status])
   @@index([ocrConfidence])
   @@map("document_images")
+}
+
+model DocumentChunk {
+  id           String          @id @default(cuid())
+  documentId   String
+  userId       String
+  workspaceId  String?
+  content      String
+  embedding    Unsupported("vector")?
+  index        Int
+  start        Int             @default(0)
+  end          Int             @default(0)
+  page         Int?
+  section      String?
+  documentName String          @default("")
+  documentType String          @default("")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  document     Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace    Workspace?      @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  images       DocumentImage[]
+
+  @@index([documentId])
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([userId, workspaceId])
+  @@index([documentType])
+  @@index([documentId, index])
+  @@map("document_chunks")
+}
+
+model ImageEmbedding {
+  id          String    @id @default(cuid())
+  documentId  String?
+  imageId     String?
+  userId      String?
+  imageUrl    String?
+  storageUrl  String?
+  contentHash String?   @unique
+  caption     String?
+  pageNumber  Int?
+  embedding   Unsupported("vector")
+  model       String    @default("Xenova/clip-vit-base-patch32")
+  dimensions  Int       @default(512)
+  createdAt   DateTime  @default(now())
+  document    Document? @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([userId])
+  @@index([imageId])
+  @@map("image_embeddings")
 }
 
 model Chat {

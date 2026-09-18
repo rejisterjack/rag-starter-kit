@@ -126,8 +126,7 @@ export class VoiceActivityDetector {
     if (!isClient()) return false;
     return !!(
       getNavigator()?.mediaDevices?.getUserMedia &&
-      (window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)
+      (window.AudioContext || window.webkitAudioContext)
     );
   }
 
@@ -155,9 +154,7 @@ export class VoiceActivityDetector {
       });
 
       // Create audio context
-      const AudioContextClass =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 
       this.audioContext = new AudioContextClass({
         sampleRate: this.options.sampleRate,
@@ -536,9 +533,7 @@ export function detectAudioActivity(
 ): { isActive: boolean; volume: number; stop: () => void } {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
-  const AudioContextClass =
-    window.AudioContext ||
-    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 
   const audioContext = new AudioContextClass();
   const analyser = audioContext.createAnalyser();

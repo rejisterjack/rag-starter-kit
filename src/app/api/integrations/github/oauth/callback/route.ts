@@ -10,6 +10,7 @@
 import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { APP_URL } from '@/lib/constants';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
@@ -23,7 +24,7 @@ const GITHUB_SCOPES = ['repo', 'user:email', 'read:org'];
 function getGitHubOAuthConfig() {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392';
+  const appUrl = APP_URL;
 
   if (!clientId || !clientSecret) {
     return null;
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
     const state = searchParams.get('state');
     const error = searchParams.get('error');
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392';
+    const appUrl = APP_URL;
 
     // Handle OAuth errors from GitHub
     if (error) {
@@ -193,7 +194,7 @@ export async function GET(req: NextRequest) {
       `${appUrl}/settings/integrations?success=github_connected&username=${encodeURIComponent(ghUsername)}`
     );
   } catch (error) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392';
+    const appUrl = APP_URL;
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
 
     logger.error('Failed to complete GitHub OAuth flow', { error: errorMessage });

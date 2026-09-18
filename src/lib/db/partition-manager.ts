@@ -7,7 +7,6 @@
  *
  * Supported tables:
  *   - audit_logs        (partitioned by createdAt, monthly)
- *   - document_chunks   (partitioned by createdAt, monthly)
  *
  * Note: Call `runPartitionMigration()` once during deployment to convert
  * existing tables to partitioned tables. This is a one-time operation.
@@ -16,7 +15,22 @@
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
-const PARTITION_TABLES = ['audit_logs', 'document_chunks'] as const;
+const PARTITION_TABLES = ['audit_logs'] as const;
+
+/**
+ * Validate that a table or partition name contains only safe characters.
+ * Permitted patterns:
+ *   - Simple table names: lowercase letters, digits, underscores (e.g. `audit_logs`)
+ *   - Partition names: table_YYYY_YY or table_YYYY_YYYYMM (e.g. `audit_logs_2025_01`, `document_chunks_2025_202501`)
+ *
+ * Rejects any name containing special characters, spaces, or SQL injection payloads.
+ */
+function assertValidIdentifier(name: string, label = 'identifier'): void {
+  // Allow: lowercase letters, digits, underscores — at least one char, must start with a letter or underscore
+  if (!/^[a-z_][a-z0-9_]*$/.test(name)) {
+    throw new Error(`Invalid ${label}: "${name}"`);
+  }
+}
 
 /** Size thresholds for partition health checks */
 const SIZE_THRESHOLDS = {
@@ -48,11 +62,13 @@ export async function ensurePartitions(monthsAhead = 3): Promise<void> {
       const endDate = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-01`;
 
       try {
-        await prisma.$executeRawUnsafe(`
-          CREATE TABLE IF NOT EXISTS ${partitionName}
-          PARTITION OF ${table}
-          FOR VALUES FROM ('${startDate}') TO ('${endDate}')
-        `);
+        assertValidIdentifier(partitionName, 'partition name');
+        assertValidIdentifier(table, 'table name');
+        // Date strings are safe: they are computed from Date objects, not user input.
+        // Table/partition names are validated above.
+        await prisma.$executeRawUnsafe(
+          `CREATE TABLE IF NOT EXISTS ${partitionName} PARTITION OF ${table} FOR VALUES FROM ('${startDate}') TO ('${endDate}')`
+        );
         logger.debug('Partition ensured', { table, partition: partitionName });
       } catch (error) {
         logger.error('Failed to create partition', {
@@ -86,14 +102,16 @@ export async function detachOldPartitions(retentionMonths: number): Promise<numb
       for (const row of result) {
         const name = row.tablename;
         const match = name.match(/(\d{4})_(\d{2})$/);
-        if (!match) continue;
+        if (!match?.[1] || !match?.[2]) continue;
 
-        const year = Number.parseInt(match[1] as string, 10);
-        const month = Number.parseInt(match[2] as string, 10);
+        const year = Number.parseInt(match[1], 10);
+        const month = Number.parseInt(match[2], 10);
         const partitionDate = new Date(year, month - 1, 1);
 
         if (partitionDate < cutoff) {
           try {
+            assertValidIdentifier(table, 'table name');
+            assertValidIdentifier(name, 'partition name');
             await prisma.$executeRawUnsafe(`ALTER TABLE ${table} DETACH PARTITION ${name}`);
             await prisma.$executeRawUnsafe(`DROP TABLE ${name}`);
             detached++;
@@ -123,125 +141,42 @@ export async function detachOldPartitions(retentionMonths: number): Promise<numb
 // ---------------------------------------------------------------------------
 
 /**
- * Archive document_chunks partitions that belong to a specific workspace and
- * are older than the supplied date.
- *
- * Steps for each qualifying partition:
- *  1. Detach the partition from the parent `document_chunks` table.
- *  2. Create (if necessary) and populate `document_chunks_archive` with the
- *     workspace's rows from that partition.
- *  3. Drop the detached partition.
- *
- * The corresponding Document rows in the main `Document` table are **not**
- * touched so that metadata remains available for reference.
+ * Archive document_chunks older than the supplied date for a workspace.
+ * Copies matching rows into `document_chunks_archive`, then deletes them.
  */
 export async function archiveWorkspaceDocuments(
   workspaceId: string,
   olderThan: Date
 ): Promise<{ archivedPartitions: number; archivedRows: number }> {
-  let archivedPartitions = 0;
-  let archivedRows = 0;
-
-  // Ensure the archive table exists. We use a plain (non-partitioned) table
-  // so that it works regardless of whether the main table is partitioned.
-  await prisma.$executeRawUnsafe(`
+  await prisma.$executeRaw`
     CREATE TABLE IF NOT EXISTS document_chunks_archive (
       LIKE document_chunks INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES
     )
-  `);
-
-  // List all document_chunks partitions.
-  const partitions = await prisma.$queryRaw<Array<{ tablename: string }>>`
-    SELECT tablename FROM pg_tables
-    WHERE tablename LIKE 'document_chunks_%'
-    AND schemaname = 'public'
   `;
 
-  for (const row of partitions) {
-    const name = row.tablename;
-    const match = name.match(/(\d{4})_(\d{2})$/);
-    if (!match) continue;
+  const inserted = await prisma.$executeRaw`
+    INSERT INTO document_chunks_archive
+    SELECT dc.*
+    FROM document_chunks dc
+    WHERE dc."workspaceId" = ${workspaceId}
+      AND dc."createdAt" < ${olderThan}
+    ON CONFLICT (id) DO NOTHING
+  `;
 
-    const year = Number.parseInt(match[1] as string, 10);
-    const month = Number.parseInt(match[2] as string, 10);
-    const partitionDate = new Date(year, month - 1, 1);
+  const deleted = await prisma.$executeRaw`
+    DELETE FROM document_chunks
+    WHERE "workspaceId" = ${workspaceId}
+      AND "createdAt" < ${olderThan}
+  `;
 
-    if (partitionDate >= olderThan) continue;
+  const archivedRows = Number(deleted);
+  logger.info('Archived workspace document chunks', {
+    workspaceId,
+    archivedRows,
+    copied: Number(inserted),
+  });
 
-    // Check whether this partition actually contains rows for the workspace.
-    const countResult = await prisma.$queryRawUnsafe<Array<{ cnt: bigint }>>(`
-      SELECT COUNT(*) AS cnt FROM ${name} dc
-      INNER JOIN "Document" d ON d.id = dc."documentId"
-      WHERE d."workspaceId" = '${workspaceId}'
-    `);
-    const count = Number(countResult[0]?.cnt ?? 0);
-    if (count === 0) continue;
-
-    try {
-      // Copy workspace rows into the archive table.
-      await prisma.$executeRawUnsafe(`
-        INSERT INTO document_chunks_archive (
-          id, "documentId", content, index, start, end, page, section,
-          embedding, "createdAt"
-        )
-        SELECT dc.id, dc."documentId", dc.content, dc.index, dc.start,
-               dc.end, dc.page, dc.section, dc.embedding, dc."createdAt"
-        FROM ${name} dc
-        INNER JOIN "Document" d ON d.id = dc."documentId"
-        WHERE d."workspaceId" = '${workspaceId}'
-      `);
-
-      // Detach the partition from the parent table so we can safely mutate it.
-      await prisma.$executeRawUnsafe(`ALTER TABLE document_chunks DETACH PARTITION ${name}`);
-
-      // Delete the archived workspace rows from the now-detached partition so
-      // they only exist in the archive table (prevents duplication on re-attach).
-      await prisma.$executeRawUnsafe(`
-        DELETE FROM ${name} dc
-        USING "Document" d
-        WHERE dc."documentId" = d.id
-        AND d."workspaceId" = '${workspaceId}'
-      `);
-
-      // If the partition is now empty we can drop it outright.  Otherwise
-      // re-attach it so the remaining rows stay queryable.
-      const totalResult = await prisma.$queryRawUnsafe<Array<{ cnt: bigint }>>(
-        `SELECT COUNT(*) AS cnt FROM ${name}`
-      );
-      const totalInPartition = Number(totalResult[0]?.cnt ?? 0);
-
-      if (totalInPartition === 0) {
-        await prisma.$executeRawUnsafe(`DROP TABLE ${name}`);
-      } else {
-        const yearStr = match[1];
-        const monthStr = match[2];
-        const startDate = `${yearStr}-${monthStr}-01`;
-        const nextMonth = new Date(year, month, 1);
-        const endDate = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-01`;
-
-        await prisma.$executeRawUnsafe(`
-          ALTER TABLE document_chunks ATTACH PARTITION ${name}
-          FOR VALUES FROM ('${startDate}') TO ('${endDate}')
-        `);
-      }
-
-      archivedPartitions++;
-      archivedRows += count;
-      logger.info('Archived workspace document_chunks partition', {
-        workspaceId,
-        partition: name,
-        rowsArchived: count,
-      });
-    } catch (error) {
-      logger.error('Failed to archive workspace partition', {
-        workspaceId,
-        partition: name,
-        error: error instanceof Error ? error.message : 'Unknown',
-      });
-    }
-  }
-
-  return { archivedPartitions, archivedRows };
+  return { archivedPartitions: archivedRows > 0 ? 1 : 0, archivedRows };
 }
 
 // ---------------------------------------------------------------------------
@@ -272,25 +207,25 @@ export interface PartitionDetail {
  */
 export async function getPartitionStats(): Promise<PartitionStats> {
   // Total table size (including all partitions and TOAST data).
-  const totalResult = await prisma.$queryRawUnsafe<
-    Array<{ pg_size_pretty: string; size_bytes: bigint }>
-  >(`
+  // Fully static query — no dynamic values.
+  const totalResult = await prisma.$queryRaw<Array<{ pg_size_pretty: string; size_bytes: bigint }>>`
     SELECT pg_size_pretty(pg_total_relation_size('document_chunks')) AS pg_size_pretty,
            pg_total_relation_size('document_chunks') AS size_bytes
-  `);
+  `;
 
   const totalSizeBytes = Number(totalResult[0]?.size_bytes ?? 0);
   const totalSizePretty = String(totalResult[0]?.pg_size_pretty ?? '0 bytes');
 
   // Per-partition size + row count.
-  const partitionRows = await prisma.$queryRawUnsafe<
+  // Fully static query — no dynamic values.
+  const partitionRows = await prisma.$queryRaw<
     Array<{
       tablename: string;
       size_bytes: bigint;
       pg_size_pretty: string;
       row_count: bigint;
     }>
-  >(`
+  >`
     SELECT
       c.relname          AS tablename,
       pg_total_relation_size(c.oid) AS size_bytes,
@@ -307,7 +242,7 @@ export async function getPartitionStats(): Promise<PartitionStats> {
     WHERE p.relname = 'document_chunks'
     AND n.nspname = 'public'
     ORDER BY c.relname
-  `);
+  `;
 
   const partitions: PartitionDetail[] = partitionRows.map((r) => ({
     name: r.tablename,

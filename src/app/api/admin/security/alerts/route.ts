@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * Admin Security Alerts API
  *
@@ -10,10 +11,7 @@ import { prismaRead } from '@/lib/db';
 
 export const GET = withApiAuth(async (req: NextRequest, session) => {
   if (session.user.role !== 'ADMIN') {
-    return NextResponse.json(
-      { error: { code: 'FORBIDDEN', message: 'Admin access required' } },
-      { status: 403 }
-    );
+    return apiError('FORBIDDEN', 'Admin access required', 403);
   }
 
   const { searchParams } = new URL(req.url);

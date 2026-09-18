@@ -42,13 +42,7 @@ export type SubtaskType =
   | 'execute'; // Execute a tool
 
 export type SubtaskStatus =
-  | 'pending'
-  | 'blocked'
-  | 'ready'
-  | 'in_progress'
-  | 'completed'
-  | 'failed'
-  | 'skipped';
+  'pending' | 'blocked' | 'ready' | 'in_progress' | 'completed' | 'failed' | 'skipped';
 
 export interface SubtaskResult {
   success: boolean;

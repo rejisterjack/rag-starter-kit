@@ -427,22 +427,21 @@ export class WakeWordDetector {
     };
 
     this.recognition.onresult = (event: SpeechRecognitionEvent) => {
-      this.handleRecognitionResult(event as unknown as globalThis.SpeechRecognitionEvent);
+      this.handleRecognitionResult(event);
     };
 
     this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      const errorEvent = event as unknown as { error: string };
       // Don't treat 'no-speech' as error in continuous mode
-      if (errorEvent.error === 'no-speech' && this.options.continuous) {
+      if (event.error === 'no-speech' && this.options.continuous) {
         return;
       }
 
       // Handle 'aborted' error when stopping
-      if (errorEvent.error === 'aborted' && !this.state.isListening) {
+      if (event.error === 'aborted' && !this.state.isListening) {
         return;
       }
 
-      this.emitError(`Recognition error: ${errorEvent.error}`);
+      this.emitError(`Recognition error: ${event.error}`);
     };
 
     this.recognition.onend = () => {
@@ -465,24 +464,7 @@ export class WakeWordDetector {
   private setupGrammar(): void {
     if (!this.recognition) return;
 
-    const GrammarList =
-      (
-        window as unknown as {
-          SpeechGrammarList?: new () => {
-            addFromString: (grammar: string, weight: number) => void;
-          };
-          webkitSpeechGrammarList?: new () => {
-            addFromString: (grammar: string, weight: number) => void;
-          };
-        }
-      ).SpeechGrammarList ||
-      (
-        window as unknown as {
-          webkitSpeechGrammarList?: new () => {
-            addFromString: (grammar: string, weight: number) => void;
-          };
-        }
-      ).webkitSpeechGrammarList;
+    const GrammarList = window.SpeechGrammarList || window.webkitSpeechGrammarList;
     if (!GrammarList) return;
 
     try {
@@ -496,12 +478,12 @@ export class WakeWordDetector {
       const grammarString = `#JSGF V1.0; grammar wake; public <wake> = ${allPhrases.join(' | ')};`;
 
       grammar.addFromString(grammarString, 1.0);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (this.recognition as unknown as { grammars: unknown }).grammars = grammar;
+      // grammars is a browser-vendor property not on our SpeechRecognitionInstance type
+      (this.recognition as { grammars?: unknown }).grammars = grammar;
     } catch (_error: unknown) {}
   }
 
-  private handleRecognitionResult(event: globalThis.SpeechRecognitionEvent): void {
+  private handleRecognitionResult(event: SpeechRecognitionEvent): void {
     const results = event.results;
     if (!results || results.length === 0) return;
 
@@ -513,7 +495,7 @@ export class WakeWordDetector {
       if (!result) continue;
 
       // Check all alternatives
-      for (let j = 0; j < (result as unknown as { length: number }).length; j++) {
+      for (let j = 0; j < result.alternatives.length; j++) {
         const alternative = result[j];
         if (!alternative) continue;
 
@@ -706,18 +688,7 @@ export function checkWakeWordSupport(): {
 
   let grammarSupport = false;
   if (hasRecognition) {
-    const GrammarList =
-      (
-        window as unknown as {
-          SpeechGrammarList?: unknown;
-          webkitSpeechGrammarList?: unknown;
-        }
-      ).SpeechGrammarList ||
-      (
-        window as unknown as {
-          webkitSpeechGrammarList?: unknown;
-        }
-      ).webkitSpeechGrammarList;
+    const GrammarList = window.SpeechGrammarList || window.webkitSpeechGrammarList;
     grammarSupport = !!GrammarList;
   }
 

@@ -27,7 +27,6 @@ export default function ShareLoading() {
       {/* Messages area skeleton */}
       <div className="max-w-4xl mx-auto p-6 space-y-6">
         {Array.from({ length: 4 }).map((_, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: Static skeleton items
           <div key={i} className="border rounded-lg p-4 space-y-2">
             <div className="flex items-center gap-2">
               <Skeleton className="h-6 w-6 rounded-full" />

@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
+import { apiFetch } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
 interface RAGSettings {
@@ -48,42 +49,71 @@ export default function RAGSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+
+  // Resolve the user's current workspace — the old code PUT to
+  // /api/workspaces/current/rag-settings, a route that does not exist
+  // (it matched the [workspaceId] route with id 'current' → 403)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await apiFetch<{
+          currentWorkspaceId?: string;
+          workspaces?: Array<{ id: string }>;
+        }>('/api/workspaces');
+        const id: string | undefined = data?.currentWorkspaceId ?? data?.workspaces?.[0]?.id;
+        if (!id) throw new Error('No workspace available');
+        if (!cancelled) setWorkspaceId(id);
+      } catch (err) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Failed to load RAG settings';
+          setError(message);
+          toast.error(message);
+          setLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const fetchSettings = useCallback(async () => {
+    if (!workspaceId) return;
     try {
-      const response = await fetch('/api/workspaces/current/rag-settings');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.settings) {
-          setSettings({ ...defaultSettings, ...data.settings });
-        }
+      const data = await apiFetch<{ settings?: Partial<RAGSettings> }>(
+        `/api/workspaces/${workspaceId}/rag-settings`
+      );
+      if (data.settings) {
+        setSettings({ ...defaultSettings, ...data.settings });
       }
     } catch (_err) {
       toast.error('Failed to load RAG settings');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [workspaceId]);
 
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
 
   const handleSave = async () => {
+    if (!workspaceId) {
+      setError('No workspace available');
+      return;
+    }
     setSaving(true);
     setError(null);
     setSaved(false);
 
     try {
-      const response = await fetch('/api/workspaces/current/rag-settings', {
+      await apiFetch(`/api/workspaces/${workspaceId}/rag-settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to save settings');
-      }
 
       setSaved(true);
       toast.success('RAG settings saved');

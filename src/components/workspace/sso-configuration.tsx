@@ -37,6 +37,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { apiFetch } from '@/lib/api-client';
 
 // =============================================================================
 // Types
@@ -129,7 +130,7 @@ export function SSOConfiguration({
       const payload =
         activeTab === 'metadata' ? (metadataUrl ? { metadataUrl } : { metadataXml }) : manualConfig;
 
-      const response = await fetch(`/api/workspaces/${workspaceId}/saml`, {
+      await apiFetch(`/api/workspaces/${workspaceId}/saml`, {
         method: config ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -138,13 +139,9 @@ export function SSOConfiguration({
         }),
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to save configuration');
-      }
-
-      const data = await response.json();
-      setConfig(data.config);
+      // Re-fetch the full configuration after saving
+      const saved = await apiFetch<{ config: SamlConfig }>(`/api/workspaces/${workspaceId}/saml`);
+      setConfig(saved.config);
       setSuccess('SAML configuration saved successfully');
       router.refresh();
     } catch (err) {
@@ -188,13 +185,9 @@ export function SSOConfiguration({
     setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/workspaces/${workspaceId}/saml`, {
+      await apiFetch(`/api/workspaces/${workspaceId}/saml`, {
         method: 'DELETE',
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete configuration');
-      }
 
       setConfig(null);
       setShowDeleteDialog(false);
