@@ -3,6 +3,9 @@ import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTypeScript from 'eslint-config-next/typescript';
 
 export default [
+  {
+    ignores: ['**/dist/**', '**/.next/**', '**/coverage/**', '**/src/generated/**'],
+  },
   ...nextVitals,
   ...nextTypeScript,
   eslintConfigPrettier,
@@ -39,6 +42,12 @@ export default [
   },
   {
     files: ['prisma/seed.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
+    files: ['extensions/chrome/**/*.{js,jsx}'],
     rules: {
       'no-console': 'off',
     },

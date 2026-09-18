@@ -5,13 +5,15 @@
  * 1. Checking that the database is reachable
  * 2. Validating schema integrity (all expected tables exist)
  * 3. Checking row counts for critical tables
- * 4. Verifying Qdrant vector store is operational
+ * 4. Verifying the pgvector extension is operational
  *
- * Run: npx tsx scripts/backup-verify.ts
+ * Run: bun run db:verify-backup
  *
  * For automated verification, set BACKUP_VERIFY_DB_URL to a test restore target.
  */
 
+import { PrismaNeon } from '@prisma/adapter-neon';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
 
 const databaseUrl = process.env.BACKUP_VERIFY_DB_URL || process.env.DATABASE_URL;
@@ -40,7 +42,10 @@ async function main() {
   console.log('🔍 Starting backup verification...\n');
   console.log(`   Database: ${safeUrl}\n`);
 
-  const prisma = new PrismaClient({ accelerateUrl: databaseUrl! });
+  const adapter = databaseUrl.includes('neon.tech')
+    ? new PrismaNeon({ connectionString: databaseUrl })
+    : new PrismaPg({ connectionString: databaseUrl });
+  const prisma = new PrismaClient({ adapter });
 
   let hasErrors = false;
 

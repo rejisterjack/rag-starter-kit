@@ -1,3 +1,4 @@
+import { publicChatStreamEventSchema } from '@rag-starter-kit/api-schemas';
 import type { ChatApiResponse, Citation, WidgetConfig } from './types';
 
 /**
@@ -154,15 +155,12 @@ export class ApiClient {
           if (!line) continue;
 
           try {
-            const data = JSON.parse(line.slice(6)) as {
-              type?: string;
-              content?: string;
-              citations?: Citation[];
-              message?: string;
-            };
+            const parsed = publicChatStreamEventSchema.safeParse(JSON.parse(line.slice(6)));
+            if (!parsed.success) continue;
+            const data = parsed.data;
 
             if (data.type === 'sources' && data.citations) {
-              callbacks.onSources(data.citations);
+              callbacks.onSources(data.citations as Citation[]);
             } else if (data.type === 'content' && data.content) {
               callbacks.onToken(data.content);
               fullText += data.content;

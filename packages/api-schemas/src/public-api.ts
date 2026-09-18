@@ -26,11 +26,25 @@ export const publicIngestRequestSchema = z.object({
   metadata: z.record(z.unknown()).optional(),
 });
 
+export const publicChatStreamEventSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('sources'),
+    citations: z.array(z.record(z.unknown())),
+  }),
+  z.object({
+    type: z.literal('content'),
+    content: z.string(),
+  }),
+  z.object({
+    type: z.literal('done'),
+    metadata: z.record(z.unknown()).optional(),
+  }),
+  z.object({
+    type: z.literal('error'),
+    message: z.string(),
+  }),
+]);
+
 export type PublicChatRequest = z.infer<typeof publicChatRequestSchema>;
 export type PublicIngestRequest = z.infer<typeof publicIngestRequestSchema>;
-
-export type PublicChatStreamEvent =
-  | { type: 'sources'; citations: Array<Record<string, unknown>> }
-  | { type: 'content'; content: string }
-  | { type: 'done'; metadata?: Record<string, unknown> }
-  | { type: 'error'; message: string };
+export type PublicChatStreamEvent = z.infer<typeof publicChatStreamEventSchema>;

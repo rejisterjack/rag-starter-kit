@@ -20,6 +20,8 @@ export default defineConfig({
     ],
     exclude: [
       'node_modules',
+      '**/node_modules/**',
+      '**/.bun/**',
       'dist',
       '.next',
       'tests/e2e/**/*', // E2E tests run separately with Playwright
@@ -35,24 +37,30 @@ export default defineConfig({
       reporter: ['text', 'json', 'html', 'lcov', 'json-summary'],
       exclude: [
         'node_modules/',
+        '**/dist/**',
         'tests/',
         '**/*.d.ts',
         '**/*.config.*',
         '**/types/**',
         'src/lib/db/', // Generated Prisma client
         'src/lib/inngest/', // Background job functions
+        'src/generated/',
         '.next/',
         '**/mock*.ts',
         '**/fixtures/**',
       ],
       include: [
         'src/**/*.{js,ts,jsx,tsx}',
+        'packages/**/*.{js,ts,jsx,tsx}',
       ],
-      // No global thresholds: unit + integration tests only cover a slice of
-      // the app (e2e and live-key eval suites run elsewhere), so a global
-      // percentage gate would fail every run. Coverage is reported for
-      // information and trend-tracking instead.
-      // Enable reporting even if thresholds aren't met (for CI)
+      // This is the measured baseline as of 2026-09-05. Raise each floor in
+      // small increments as critical-path coverage is added.
+      thresholds: {
+        statements: 8,
+        branches: 6,
+        functions: 7,
+        lines: 8,
+      },
       reportOnFailure: true,
     },
     

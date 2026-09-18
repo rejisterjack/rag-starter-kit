@@ -87,6 +87,7 @@ vercel env add DATABASE_URL
 vercel env add OPENROUTER_API_KEY
 vercel env add GOOGLE_GENERATIVE_AI_API_KEY
 vercel env add NEXTAUTH_SECRET
+vercel env add CSRF_SECRET
 vercel env add UPSTASH_REDIS_REST_URL
 vercel env add UPSTASH_REDIS_REST_TOKEN
 vercel env add INNGEST_SIGNING_KEY
@@ -136,6 +137,7 @@ bun db:migrate:prod
 | `OPENROUTER_API_KEY` | OpenRouter | Free models |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Google AI Studio | 1,500 req/day |
 | `NEXTAUTH_SECRET` | Generate: `openssl rand -base64 32` | - |
+| `CSRF_SECRET` | Generate: `openssl rand -base64 32` | - |
 
 ### Strongly Recommended
 

@@ -21,6 +21,9 @@ jobs:
       - run: bun run db:generate
       - run: bun run lint
       - run: bun run type-check
+      - run: cd packages/chat-widget && bun run typecheck && bun run build
+      - run: bunx eslint extensions/chrome
+      - run: bunx prettier --check extensions/chrome
 
   unit:
     runs-on: ubuntu-latest
@@ -90,6 +93,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rag_test
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/rag_test
       AUTH_SECRET: ci-test-auth-secret-with-32-characters-min
+      CSRF_SECRET: ci-test-csrf-secret-with-32-characters-min
       NEXTAUTH_URL: http://localhost:7392
       OPENROUTER_API_KEY: ci-openrouter-key
       GOOGLE_GENERATIVE_AI_API_KEY: ci-google-key
@@ -143,6 +147,7 @@ jobs:
         env:
           NODE_ENV: test
           AUTH_SECRET: ci-e2e-auth-secret-with-32-characters-min
+          CSRF_SECRET: ci-e2e-csrf-secret-with-32-characters-min
           NEXTAUTH_URL: http://localhost:7392
           AUTH_CREDENTIALS_ONLY: 'true'
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rag_test
@@ -151,6 +156,7 @@ jobs:
           GOOGLE_GENERATIVE_AI_API_KEY: ci-google-key
           CRON_SECRET: ci-cron-secret-0123456789ab
           SEED_TEST_DATA: 'true'
+          - run: bun run test:e2e --project=smoke
 
   build:
     runs-on: ubuntu-latest
@@ -165,8 +171,13 @@ jobs:
       - run: bun run db:generate
       - run: bun run build
         env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rag_build
+          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/rag_build
           AUTH_SECRET: ci-build-auth-secret-with-32-characters-minimum
+          CSRF_SECRET: ci-build-csrf-secret-with-32-characters-minimum
           NEXTAUTH_URL: http://localhost:7392
+          AUTH_CREDENTIALS_ONLY: 'true'
           OPENROUTER_API_KEY: ci-openrouter-key
           GOOGLE_GENERATIVE_AI_API_KEY: ci-google-key
 

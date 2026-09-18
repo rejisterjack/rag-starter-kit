@@ -89,7 +89,7 @@ The single most requested feature in the TypeScript AI ecosystem. Developers wan
 | 2.1.3 | Anthropic provider (Claude Sonnet, Claude Haiku) | ✅ Done | Via Vercel AI SDK |
 | 2.1.4 | Ollama provider (Llama 3, Mistral, Phi-3, etc.) | ✅ Done | Local inference, no API key required |
 | 2.1.5 | Google provider (Gemini 1.5 Flash, Pro) | ✅ Done | Via `@ai-sdk/google` |
-| 2.1.6 | Provider switching via single `LLM_PROVIDER` env var | ✅ Done | Change one line, switch providers |
+| 2.1.6 | OpenRouter model selection via supported configuration | ✅ Done | Chat currently standardizes on OpenRouter; provider switching is outside the supported release contract |
 | 2.1.7 | Model selection UI in chat interface | ✅ Done | User can pick model from dropdown in the chat |
 
 ### 2.2 Admin Dashboard

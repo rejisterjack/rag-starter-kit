@@ -45,10 +45,10 @@ The core stays open source forever. Developers who want to self-host own it comp
 This is the combination no other open-source RAG project currently offers:
 
 **1. TypeScript all the way down.**
-Most RAG tools are Python. This is one of the very few production-grade RAG systems built entirely in the TypeScript/Node.js ecosystem. Next.js 15, React 19, LangChain.js, Prisma, Inngest — no context switching, no Python services, no mixed-language complexity.
+Most RAG tools are Python. This is one of the very few production-grade RAG systems built entirely in the TypeScript/Node.js ecosystem. Next.js 16, React 19, LangChain.js, Prisma, Inngest — no context switching, no Python services, no mixed-language complexity.
 
 **2. Zero-cost AI stack by default.**
-- Chat/LLM: OpenRouter free models (DeepSeek, Mistral, Llama, Gemma)
+- Chat/LLM: OpenRouter free models
 - Embeddings: Google Gemini free tier (1,500 requests/day)
 - Cost to run in development and light production: $0
 
@@ -103,7 +103,7 @@ A company has years of knowledge scattered across Google Drive, Confluence, and 
 
 ### The learning scenario
 
-A developer wants to break into AI engineering but finds most resources are Python-based or too shallow. They clone this project and spend a couple of weekends reading the code — understanding how Inngest queues document ingestion jobs, how pgvector stores and retrieves embeddings, how SSE streams tokens to the UI in real time. They understand production RAG from a real codebase, not a tutorial. And they ran all of it for free, with `pnpm dev` and two API keys.
+A developer wants to break into AI engineering but finds most resources are Python-based or too shallow. They clone this project and spend a couple of weekends reading the code — understanding how Inngest queues document ingestion jobs, how pgvector stores and retrieves embeddings, how SSE streams tokens to the UI in real time. They understand production RAG from a real codebase, not a tutorial. And they ran all of it for free, with `bun dev` and two API keys.
 
 ---
 

@@ -6,7 +6,6 @@
 graph TB
     subgraph Client["Client Layer"]
         Browser["Web Browser"]
-        Mobile["Mobile App"]
         API["API Clients"]
     end
 
@@ -43,7 +42,6 @@ graph TB
     end
 
     Browser --> CDN
-    Mobile --> CDN
     API --> Middleware
     CDN --> Middleware
     Middleware --> NextApp

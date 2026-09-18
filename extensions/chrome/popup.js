@@ -27,11 +27,7 @@
   // --- Init ---
   async function init() {
     // Load saved settings
-    const data = await chrome.storage.local.get([
-      'apiUrl',
-      'sidepanelEnabled',
-      'autosaveEnabled',
-    ]);
+    const data = await chrome.storage.local.get(['apiUrl', 'sidepanelEnabled', 'autosaveEnabled']);
 
     apiUrl = data.apiUrl || DEFAULT_API_URL;
     toggleSidepanel.checked = !!data.sidepanelEnabled;

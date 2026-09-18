@@ -4,7 +4,7 @@
 
 **Ship a production-grade AI document chatbot this weekend — TypeScript-native RAG with streaming, auth, background jobs, and pgvector. Zero Python required.**
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-4169E1?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
@@ -16,7 +16,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/ci.yml?label=CI&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![E2E Tests](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/e2e.yml?label=E2E&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![Lighthouse](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/lighthouse.yml?label=Lighthouse&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
-[![Coverage](https://img.shields.io/badge/coverage-90%25+-brightgreen?style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
+[![Coverage](https://img.shields.io/badge/coverage-baseline%208.7%25-yellow?style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![All Contributors](https://img.shields.io/github/all-contributors/rejisterjack/rag-starter-kit?color=ee8449&style=flat-square)](#contributors)
 
 [🚀 Live Demo](https://rag-starter-kit.vercel.app/) · [📖 API Docs](https://rag-starter-kit.vercel.app/api/docs) · [🐛 Report Bug](../../issues) · [✨ Request Feature](../../issues) · [🔖 Changelog](CHANGELOG.md) · [🧩 Chrome Extension](extensions/chrome/README.md)
@@ -42,7 +42,7 @@
 | 🤖 **Agent Mode** | Tool-using AI agent (search, calculator, code) |
 | 🌙 **Dark/Light Mode** | Beautiful themes |
 | 📱 **PWA Support** | Install as native app |
-| 🆓 **100% Free AI** | OpenRouter + Google Gemini (or Anthropic/Ollama) |
+| 🆓 **100% Free AI** | OpenRouter + Google Gemini |
 
 </div>
 
@@ -52,7 +52,7 @@
 
 ### 🆓 100% FREE AI Setup
 Unlike other RAG solutions that require paid OpenAI API keys, this starter kit uses:
-- **🤖 Chat**: OpenRouter free models (DeepSeek, Mistral, Llama, Gemma) — or bring your own Anthropic/OpenAI/Ollama key
+- **🤖 Chat**: OpenRouter free models
 - **🔤 Embeddings**: Google Gemini free tier (1,500 req/day)
 - **💰 Cost**: $0 forever for development and light usage
 

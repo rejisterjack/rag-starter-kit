@@ -66,7 +66,7 @@ Passwords are hashed with bcrypt using 12 salt rounds before storage.
 ### Authentication Flow
 
 1. User submits credentials via the login form or OAuth redirect.
-2. The middleware (`src/middleware.ts`) intercepts the request and validates the JWT token.
+2. The proxy (`src/proxy.ts`) intercepts the request and validates the JWT token.
 3. If no valid session exists, unauthenticated users are redirected to `/login` for page routes or receive a `401 Unauthorized` JSON response for API routes.
 4. Admin routes additionally check for the `ADMIN` role before allowing access.
 
@@ -328,7 +328,7 @@ CSRF tokens are required for all state-changing requests to:
 csrf_token=<nonce>; HttpOnly; SameSite=Strict; Path=/; Secure; Max-Age=86400
 ```
 
-Implementation: `src/lib/security/csrf.tsx`, `src/middleware.ts`
+Implementation: `src/lib/security/csrf.tsx`, `src/proxy.ts`
 
 ---
 
@@ -380,7 +380,7 @@ Violations are reported to `/api/csp-report` and the `Report-To` API endpoint wi
 
 Cross-origin requests are validated against the `ALLOWED_ORIGINS` environment variable. Origins are matched dynamically per request. CORS headers include `Access-Control-Allow-Credentials: true` with a 24-hour preflight cache.
 
-Implementation: `src/middleware.ts` (see `addSecurityHeaders` and `getCorsHeaders`)
+Implementation: `src/proxy.ts` (see `addSecurityHeaders` and `getCorsHeaders`)
 
 ---
 
