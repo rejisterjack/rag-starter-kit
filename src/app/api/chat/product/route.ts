@@ -87,7 +87,7 @@ USE CASES:
 1. Freelancer/agency: Client asks for AI chatbot trained on company docs. Clone, upload docs, configure two free API keys, deploy to Vercel. Done in a weekend instead of three weeks.
 2. SaaS founder: Drowning in support tickets. Index docs and help articles. Support load drops automatically.
 3. Internal tool: Years of knowledge scattered across Google Drive, Confluence. Index everything. New employees find answers instantly.
-4. Learning: Developer wants to understand production RAG. Read the codebase to see how Inngest queues jobs, Qdrant stores embeddings, SSE streams tokens.
+4. Learning: Developer wants to understand production RAG. Read the codebase to see how Inngest queues jobs, pgvector stores embeddings, SSE streams tokens.
 
 PRICING:
 - Open source (MIT License)
