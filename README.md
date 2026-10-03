@@ -2,7 +2,13 @@
 
 # 🧠 RAG Starter Kit
 
-**Ship a production-grade AI document chatbot this weekend — TypeScript-native RAG with streaming, auth, background jobs, and pgvector. Zero Python required.**
+**Clone. Upload your documents. Deploy. Your team or customers get a production AI chatbot — this weekend.**
+
+> **Two ways to use this:**
+> - **Deploy as-is** — Clone, set env vars, upload your docs, deploy to Vercel. No code changes needed. Your users chat at `/chat`. You manage the knowledge base from `/admin`.
+> - **Fork and customise** — Use it as your foundation. Modify the UI, the RAG pipeline, the models. Build something bespoke.
+>
+> **Either way: TypeScript-native, free AI tier by default, production infrastructure already wired in.**
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev/)
@@ -161,6 +167,8 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 
 ## 🚀 Quick Start
 
+> **New here?** When you deploy this, your *end users* (team, customers) will chat at `/chat`. You (the builder) upload documents and manage the knowledge base from `/admin`. Think of it like a CMS — you configure it, your users consume it.
+
 ### Prerequisites
 
 - **Bun runtime
@@ -194,24 +202,16 @@ bun dev
 | Next.js app | http://localhost:7392 | Main application |
 | Inngest Dashboard | http://localhost:8288 | Background jobs |
 
-### Docker (Self-Hosted)
+### Production Build (Self-Hosted Node.js / VPS)
 
-Requires **Node.js 24+**. The app listens on port **7392**.
+The app runs on standard Node.js (20+) or Bun and listens on port **7392**. No Docker or container setup required:
 
 ```bash
-# Start PostgreSQL and Redis
-docker compose up -d
+# Build the application
+bun run build
 
-# Copy .env.example → .env and set API keys, then migrate + seed
-bun db:migrate
-bun db:seed
-
-# Development
-bun dev   # http://localhost:7392
-
-# Production container
-docker build -t rag-starter-kit .
-docker run -p 7392:7392 --env-file .env rag-starter-kit
+# Start production server
+bun run start   # http://localhost:7392
 ```
 
 ### One-Click Deploy

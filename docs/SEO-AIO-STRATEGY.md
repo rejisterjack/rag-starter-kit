@@ -181,7 +181,7 @@ flowchart TD
 2. How to evaluate RAG quality (golden datasets, faithfulness/recall metrics)
 3. LangChain vs Vercel AI SDK for TypeScript RAG
 4. Hybrid search: BM25 + pgvector in one SQL query
-5. Self-hosting RAG on Railway/Docker for $5/month
+5. Self-hosting RAG on Railway / VPS for $5/month
 6. Multi-tenant RAG: workspace-scoped retrieval and permissions
 7. Streaming SSE from Next.js route handlers (deep dive)
 8. OCR ingestion pipeline: scanned PDFs to searchable chunks

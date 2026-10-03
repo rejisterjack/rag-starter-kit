@@ -21,6 +21,7 @@ export function GET() {
   lines.push(`- License: ${SITE.license} (free, open-source)`);
   lines.push(`- Repository: ${SITE.github}`);
   lines.push('- Category: Developer tools / AI boilerplate / RAG (Retrieval-Augmented Generation)');
+  lines.push(`- Identity: ${SITE.identity}`);
   lines.push('');
   lines.push('## Tech Stack');
   lines.push('');

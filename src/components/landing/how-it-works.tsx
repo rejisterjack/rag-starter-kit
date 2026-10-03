@@ -30,7 +30,7 @@ const steps = [
     icon: Zap,
     title: 'Stream. Deploy. Own It.',
     description:
-      'Responses stream token-by-token via SSE. Deploy to Vercel in one click. Your documents stay in your own database — nothing touches a third-party server.',
+      'Responses stream token-by-token via SSE. Deploy to Vercel in one click. Your users chat at /chat. You manage the knowledge base from /admin. Your documents stay in your own database.',
     detail: 'SSE Streaming · Vercel · Self-Hosted',
     color: 'from-green-500/20 to-green-500/5',
     iconColor: 'text-green-400',

@@ -25,9 +25,9 @@ const guides = [
   },
   {
     title: 'Deployment',
-    description: 'Deploy to Vercel, Railway, or Docker with production best practices.',
+    description: 'Deploy to Vercel, Railway, or any Node host with production best practices.',
     href: '/docs/guides/deployment',
-    tags: ['Vercel', 'Railway', 'Docker'],
+    tags: ['Vercel', 'Railway', 'Node.js'],
   },
   {
     title: 'Authentication',

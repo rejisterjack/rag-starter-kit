@@ -26,6 +26,25 @@ export default function GettingStartedPage() {
           documents, so it can answer questions grounded in your data rather than hallucinating.
         </p>
 
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-5 mb-8">
+          <h2 className="text-base font-semibold text-foreground mb-3">Two ways to use this</h2>
+          <div className="grid gap-4 sm:grid-cols-2 text-sm text-muted-foreground">
+            <div>
+              <strong className="text-foreground block mb-1">Deploy as-is</strong>
+              Clone → set env vars → upload your docs → deploy to Vercel. No code changes required.
+              Your users chat at <code className="text-xs bg-muted px-1 rounded">/chat</code>.
+              You manage the knowledge base from{' '}
+              <code className="text-xs bg-muted px-1 rounded">/admin</code>.
+            </div>
+            <div>
+              <strong className="text-foreground block mb-1">Fork and customise</strong>
+              Use it as your foundation. Modify the RAG pipeline, the UI, the models. Build
+              something tailored to your specific use case. The production infrastructure is already
+              wired in.
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-8">
           <section>
             <h2 className="text-2xl font-semibold mb-3">What is RAG?</h2>

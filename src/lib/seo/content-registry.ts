@@ -8,9 +8,11 @@
 export const SITE = {
   name: 'RAG Starter Kit',
   url: process.env.NEXT_PUBLIC_APP_URL || 'https://rag.rejisterjack.com',
-  tagline: 'Ship a production-grade AI document chatbot this weekend',
+  tagline: 'From documents to production chatbot — in one weekend, at zero cost',
   description:
-    'Open-source Next.js starter kit for RAG chatbots. TypeScript-first, streaming SSE, pgvector, background jobs, and 2-minute deploy. No Python required.',
+    'Open-source TypeScript RAG platform. Clone, upload your documents, deploy to Vercel — your team or customers get a production AI chatbot this weekend. No Python, no paid API keys required.',
+  identity:
+    'Developer tool for TypeScript developers. The builder (developer) clones it and deploys it; their end users (team/customers) chat with the result. Not an end-user consumer product.',
   github: 'https://github.com/rejisterjack/rag-starter-kit',
   twitter: '@ragstarterkit',
   license: 'MIT',
@@ -217,7 +219,7 @@ export const DOCS_PAGES: RegistryEntry[] = [
   {
     path: '/docs/guides/deployment',
     title: 'Deployment',
-    description: 'Deploy the RAG Starter Kit to Vercel, Railway, Docker, or any Node host.',
+    description: 'Deploy the RAG Starter Kit to Vercel, Railway, Render, or any Node host.',
     lastModified: '2026-08-25',
     section: 'docs',
     changeFrequency: 'monthly',

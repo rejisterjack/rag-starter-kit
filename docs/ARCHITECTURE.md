@@ -1,5 +1,12 @@
 # Architecture Documentation
 
+> **Who are the actors in these diagrams?**
+> - **User** = the *end user* of the deployed chatbot (a team member, customer, or external visitor)
+> - **Admin** = the *builder* who deployed this — manages documents, workspaces, and settings from `/admin`
+> - **Developer** = you, studying or customising this codebase
+>
+> The builder clones and deploys this; their team or customers are the end users who chat via `/chat`. This distinction matters for understanding the auth flows and data isolation model.
+
 ## System Architecture
 
 ```mermaid

@@ -10,7 +10,7 @@ const personas = [
     title: 'The TypeScript Dev',
     subtitle: 'Building a product in Next.js',
     description:
-      "You need RAG, but you don't want to learn Python infrastructure or stitch together 5 different tutorials. You want a codebase that feels native to your stack.",
+      "You've been asked to add an AI chatbot to a product, an internal tool, or a client site. Clone this, set env vars, upload the docs — done by Monday. Or fork it and customise the whole pipeline. Either way: no Python, no paid keys to start.",
     warning: 'Not for you if: You prefer Python or LangChain.',
     iconColor: 'text-sky-400',
     iconBg: 'bg-sky-500/10',
@@ -22,7 +22,7 @@ const personas = [
     title: 'The Learner',
     subtitle: 'Breaking into AI engineering',
     description:
-      "You're tired of 'hello world' tutorials. You want to see how real streaming, vector databases, and background jobs work together in a real app, without spending a dime on API credits.",
+      "Run it locally with `bun dev` and two free API keys. Then read the code — see exactly how Inngest queues document processing, how pgvector stores embeddings, how SSE streams tokens. A real production codebase to learn from, at zero cost.",
     warning: 'Not for you if: You want a no-code chatbot builder.',
     iconColor: 'text-purple-400',
     iconBg: 'bg-purple-500/10',

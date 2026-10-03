@@ -58,8 +58,8 @@ export function UseCases(): React.ReactElement {
             Real <span className="text-gradient">Use Cases</span>
           </h2>
           <p className="mt-4 text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-            From agency deliverables to internal tools, here is how developers are using the starter
-            kit today.
+            Clone it, upload your documents, deploy. Here are four real problems it solves this
+            weekend.
           </p>
         </div>
 

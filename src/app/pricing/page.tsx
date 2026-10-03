@@ -48,7 +48,7 @@ const freeFeatures = [
   'OAuth (GitHub, Google) + credentials auth',
   'PWA support (offline, installable)',
   'Multi-source ingestion (GitHub, Google Drive, Notion)',
-  'One-click deploy to Vercel / Railway / Docker',
+  'One-click deploy to Vercel / Railway / Render',
   'MIT License — own it completely',
 ];
 
@@ -294,9 +294,9 @@ export default function PricingPage() {
               href: 'https://railway.app',
             },
             {
-              name: 'Docker',
-              description: 'Self-contained deployment with docker-compose for full control.',
-              href: 'https://github.com/rejisterjack/rag-starter-kit',
+              name: 'Render / VPS',
+              description: 'Deploy to Render or any standard Node.js server or VPS.',
+              href: 'https://render.com',
             },
           ].map((option) => (
             <div

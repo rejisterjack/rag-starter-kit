@@ -18,7 +18,7 @@ A TypeScript-native stack collapses this:
 
 - **One language and one repo.** Frontend, API routes, ingestion pipeline, and vector search all live in the same Next.js application.
 - **No separate vector database.** pgvector extends the PostgreSQL you already run. Chunks sit next to your relational data, in one transaction boundary.
-- **One deploy target.** Vercel, Railway, or Docker — there is no second service to provision.
+- **One deploy target.** Vercel, Railway, or Render — there is no second service to provision.
 
 ## The pipeline
 
@@ -92,6 +92,12 @@ bun run dev
 ```
 
 Open `http://localhost:7392`, create a workspace, upload a PDF, and ask it a question. You are running the same pipeline described above — streaming, cited, and multi-tenant — on free-tier AI.
+
+From here, two paths:
+
+**Deploy as-is**: Upload your documents, configure your environment, and deploy to Vercel. Your team or users can chat at `/chat`; you manage the knowledge base from `/admin`. No further code changes required.
+
+**Fork and customise**: This is your starting point. Modify the UI, the retrieval logic, the chunking strategy, the prompts. The production infrastructure is already wired in so you can focus on what makes your product unique.
 
 ## Takeaways
 

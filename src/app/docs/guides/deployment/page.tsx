@@ -7,7 +7,7 @@ import { DocsShell } from '@/components/docs/docs-shell';
 export const metadata: Metadata = {
   title: 'Deployment',
   description:
-    'Deploy the RAG Starter Kit to Vercel, Railway, or Docker with production-ready configuration.',
+    'Deploy the RAG Starter Kit to Vercel, Railway, or any Node host with production-ready configuration.',
 };
 
 function Code({ children, title }: { children: string; title?: string }) {
@@ -30,7 +30,7 @@ export default function DeploymentPage() {
     <DocsShell
       path="/docs/guides/deployment"
       title="Deployment"
-      description="Deploy the RAG Starter Kit to Vercel, Railway, Docker, or any Node host."
+      description="Deploy the RAG Starter Kit to Vercel, Railway, or any Node host."
       lastModified="2026-08-25"
     >
       <div>
@@ -106,40 +106,26 @@ export default function DeploymentPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">Docker</h2>
+            <h2 className="text-2xl font-semibold mb-3">Self-Hosted (Node.js / VPS)</h2>
             <p className="text-muted-foreground mb-3">
-              For self-hosted deployment on any server or cloud provider.
+              For hosting on any Linux VPS or server. Still connects to your managed cloud services (Prisma Postgres, Upstash, Cloudinary).
             </p>
-            <Code title="docker-compose.yml">{`version: "3.8"
-services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
-    env_file: .env
-    depends_on:
-      - db
-      - redis
+            <Code title="Build and run">{`# 1. Install dependencies and apply migrations
+bun install
+bun db:migrate:prod
 
-  db:
-    image: pgvector/pgvector:pg16
-    environment:
-      POSTGRES_DB: ragkit
-      POSTGRES_PASSWORD: \${DB_PASSWORD}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+# 2. Build the production application
+bun run build
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
-volumes:
-  pgdata:`}</Code>
-            <Code title="Build and run">{`docker compose up -d
-docker compose exec app npx prisma db push`}</Code>
+# 3. Start the production server
+PORT=7392 bun run start`}</Code>
+            <div className="bg-muted/50 rounded-lg p-4 border border-border text-sm mt-3">
+              <strong>Tip:</strong> For process management and automated SSL reverse proxy setup, see our{' '}
+              <a href="https://github.com/rejisterjack/rag-starter-kit/blob/main/docs/self-hosting.md" className="text-primary hover:underline">
+                VPS Self-Hosting Guide
+              </a>{' '}
+              (using PM2/systemd and Caddy).
+            </div>
           </section>
 
           <section>

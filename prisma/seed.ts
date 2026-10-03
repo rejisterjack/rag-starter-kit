@@ -82,7 +82,7 @@ RAG Starter Kit is a production-ready, TypeScript-native Retrieval-Augmented Gen
 
 ## Deployment
 
-One-click deployment to Vercel, Railway, or Render. Or self-host with Docker on any Node.js platform.
+One-click deployment to Vercel, Railway, or Render. Or run on any standard Node.js server.
 
 ## Pricing
 
@@ -233,7 +233,7 @@ A: Any user with role=ADMIN in the database can access /admin. The seed script c
 A: Click the "Deploy to Vercel" button in the README, or run: vercel --prod. You'll need to set all environment variables in the Vercel dashboard.
 
 **Q: Do I need Docker?**
-A: No. The project uses managed cloud services (Prisma Postgres, Upstash Redis, Cloudinary, Inngest cloud) so you never need to manage containers in production. Docker is available for local development only.
+A: No. Docker is not required. The project uses managed cloud services (Prisma Postgres, Upstash Redis, Cloudinary, Inngest Cloud) so you never need to run or manage containers in local development or production.
 
 **Q: How do I back up my data?**
 A: Your data lives in your own Prisma Postgres database. Use pg_dump or your host's backup facility. Documents are in your Cloudinary account.

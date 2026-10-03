@@ -48,7 +48,7 @@
     {
       "id": "q008",
       "query": "What is the recommended deployment platform?",
-      "expectedAnswer": "Vercel is the recommended deployment platform. The project also supports Docker and other Node.js hosting environments.",
+      "expectedAnswer": "Vercel is the recommended deployment platform. The project also supports Railway, Render, and other standard Node.js hosting environments.",
       "tags": ["deployment", "platform"]
     },
     {
@@ -144,7 +144,7 @@
     {
       "id": "q024",
       "query": "How do I deploy to production?",
-      "expectedAnswer": "Deploy to Vercel with vercel deploy, or use Docker with the included Dockerfile. Set all required environment variables in your deployment platform.",
+      "expectedAnswer": "Deploy to Vercel with vercel deploy, or deploy to Railway, Render, or any Node.js host. Set all required environment variables in your deployment platform.",
       "tags": ["deployment", "production"]
     },
     {

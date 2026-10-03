@@ -166,7 +166,7 @@ bun install`}</Code>
                 <Link href="/docs/guides/deployment" className="text-primary hover:underline">
                   Deploy to production
                 </Link>{' '}
-                — Vercel, Railway, or Docker
+                — Vercel, Railway, or any Node host
               </li>
             </ul>
           </div>

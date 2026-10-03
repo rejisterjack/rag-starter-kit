@@ -75,8 +75,8 @@ CORE FEATURES:
 
 DEPLOYMENT:
 - One-click deploy to Vercel, Railway, or Render
-- Full Docker Compose local stack available
-- Self-hosted — your documents never leave your infrastructure
+- 100% managed cloud services — no Docker or local database setup required
+- Self-hosted option on any standard Node.js server or VPS
 
 WHO IT'S FOR:
 - Primary: TypeScript/Node.js developers building products who need AI chat on their own documents
@@ -96,9 +96,9 @@ PRICING:
 
 GETTING STARTED:
 1. Clone the repository
-2. Copy .env.example to .env and fill in two free API keys (OpenRouter + Google AI Studio)
-3. Run docker-compose up for local PostgreSQL + Redis
-4. bun install && bun dev
+2. Copy .env.example to .env and configure managed service keys (OpenRouter, Gemini, Prisma Postgres)
+3. bun install && bun db:migrate
+4. bun dev
 5. Open http://localhost:7392 and start chatting
 
 RULES FOR ANSWERING:

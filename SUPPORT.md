@@ -8,6 +8,8 @@
 
 ## Where to Get Help
 
+> **Quick clarification**: Are you the *builder* (you cloned this repo and deployed it) or an *end user* (you're using someone's chatbot that was powered by this kit)? This support page is for **builders**. If you're an end user of someone's deployed chatbot, contact the person who deployed it — they configured the knowledge base and own the deployment.
+
 ### 💬 GitHub Discussions (Recommended)
 [github.com/rejisterjack/rag-starter-kit/discussions](https://github.com/rejisterjack/rag-starter-kit/discussions)
 

@@ -73,10 +73,10 @@ The best open-source projects are effortless to start. This phase is entirely ab
 ---
 
 ## Phase 2 — Core Product Features
-**Goal: Turn the starter kit into a real product people run and rely on.**
+**Goal: Mature the product. Serve both usage paths equally.**
 **Timeline: Month 2–4**
 
-This is where the project stops being a "starter kit" and starts being a platform. Every feature here solves a real pain point a developer would hit within a week of using it in production.
+This phase is where the product deepens. Every feature here solves a real pain point that a developer hits within the first week of deploying this for their team or users. These features serve both usage paths equally — whether you deploy as-is or fork and customise.
 
 ### 2.1 Multi-LLM Support
 
@@ -227,11 +227,11 @@ These are explicit non-goals. If a PR or feature request falls into one of these
 
 ## How Decisions Get Made
 
-Before adding a new feature, ask three questions:
+Before adding a new feature, read [VISION.md](./VISION.MD). Then ask three questions:
 
 1. **Does this exist in VISION.md?** If the vision document doesn't support it, the answer is almost certainly no.
-2. **Does this help a developer ship faster or run this more confidently in production?** If it's a nice-to-have that doesn't serve those goals, defer it.
-3. **Is this Python-able?** If the only way to do it is to introduce a non-TypeScript dependency, rethink the approach.
+2. **Does it serve the builder?** Does this help a TypeScript developer deploy faster, run this more confidently in production, or customise it more easily?
+3. **Is it TypeScript-native?** If the only way to do it is to introduce a non-TypeScript dependency, rethink the approach.
 
 ---
 
