@@ -34,7 +34,3 @@ export function buildVectorFilterFromRetrievalOptions(
   });
 }
 
-/** @deprecated Use buildVectorFilter */
-export const buildQdrantFilter = buildVectorFilter;
-/** @deprecated Use buildVectorFilterFromRetrievalOptions */
-export const buildQdrantFilterFromRetrievalOptions = buildVectorFilterFromRetrievalOptions;

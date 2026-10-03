@@ -56,7 +56,7 @@ export async function GET(req: Request) {
   const embedding = await generateEmbedding(query);
   timings.embedding_ms = Date.now() - embedStart;
 
-  // Step 2: Vector similarity search via Qdrant
+  // Step 2: Vector similarity search via pgvector
   const searchStart = Date.now();
   type ChunkRow = {
     id: string;
@@ -68,10 +68,10 @@ export async function GET(req: Request) {
   };
 
   const { searchSimilar } = await import('@/lib/vector');
-  const { buildQdrantFilter } = await import('@/lib/vector/filters');
-  const qdrantFilter = buildQdrantFilter({ workspaceId: workspace.id });
-  const qdrantResults = await searchSimilar(embedding, { filter: qdrantFilter, topK: limitParam });
-  const chunks: ChunkRow[] = qdrantResults.map((point) => {
+  const { buildVectorFilter } = await import('@/lib/vector/filters');
+  const vectorFilter = buildVectorFilter({ workspaceId: workspace.id });
+  const vectorResults = await searchSimilar(embedding, { filter: vectorFilter, topK: limitParam });
+  const chunks: ChunkRow[] = vectorResults.map((point) => {
     const p = point.payload ?? {};
     return {
       id: String(point.id),

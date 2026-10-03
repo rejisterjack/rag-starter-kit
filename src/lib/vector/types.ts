@@ -1,6 +1,6 @@
 /**
  * Shared types for the pgvector store.
- * Search results keep a Qdrant-like { id, score, payload } shape so retrieval
+ * Search results keep a unified { id, score, payload } shape so retrieval
  * mappers do not need a second translation layer.
  */
 

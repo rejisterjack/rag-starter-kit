@@ -308,15 +308,15 @@ Returns semantically similar chunks ranked by relevance.`,
 
       // Perform semantic search using pgvector
       const { searchSimilar } = await import('@/lib/vector');
-      const { buildQdrantFilter } = await import('@/lib/vector/filters');
-      const qdrantFilter = buildQdrantFilter({ workspaceId });
-      const qdrantResults = await searchSimilar(queryEmbedding, {
-        filter: qdrantFilter,
+      const { buildVectorFilter } = await import('@/lib/vector/filters');
+      const vectorFilter = buildVectorFilter({ workspaceId });
+      const vectorResults = await searchSimilar(queryEmbedding, {
+        filter: vectorFilter,
         topK,
         minScore: threshold,
       });
 
-      const results = qdrantResults.map((point) => {
+      const results = vectorResults.map((point) => {
         const p = point.payload as Record<string, unknown>;
         return {
           id: String(point.id),

@@ -38,14 +38,6 @@ vi.mock('@/lib/logger', () => ({
   },
 }));
 
-// Mock LangChain OpenAI for the OpenAI provider
-vi.mock('@langchain/openai', () => ({
-  OpenAIEmbeddings: vi.fn().mockImplementation(() => ({
-    embedQuery: vi.fn().mockResolvedValue(Array(1536).fill(0.1)),
-    embedDocuments: vi.fn().mockResolvedValue([Array(1536).fill(0.1), Array(1536).fill(0.2)]),
-  })),
-}));
-
 // Mock the resilience module
 vi.mock('@/lib/resilience/external-services', () => ({
   embeddingCircuitBreaker: {

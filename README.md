@@ -150,7 +150,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 |----------|------------|
 | **Framework** | [Next.js 16](https://nextjs.org/) (App Router, RSC, Streaming) |
 | **UI** | [React 19](https://react.dev/), [Tailwind CSS 4](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/) |
-| **AI / RAG** | [Vercel AI SDK](https://sdk.vercel.ai/), LangChain.js, OpenRouter, Anthropic Claude |
+| **AI / RAG** | [Vercel AI SDK](https://sdk.vercel.ai/), OpenRouter, Anthropic Claude, Google Gemini |
 | **Embeddings** | [Google Gemini](https://ai.google.dev/) (free tier) |
 | **Database** | [PostgreSQL 16](https://www.postgresql.org/) + [pgvector](https://github.com/pgvector/pgvector) |
 | **ORM** | [Prisma 7](https://www.prisma.io/) + `@prisma/adapter-pg` |
@@ -276,7 +276,7 @@ graph TB
 | **Presentation** | Next.js 16, React 19, Tailwind CSS | UI components, SSR, streaming |
 | **API** | Next.js API Routes | RESTful endpoints, type-safe APIs |
 | **AI/ML** | Vercel AI SDK, OpenRouter, Gemini | LLM inference, embeddings |
-| **RAG** | LangChain, custom pipeline | Document processing, retrieval |
+| **RAG** | Vercel AI SDK, pgvector hybrid pipeline | Document processing, retrieval |
 | **Data** | PostgreSQL + pgvector, Redis | Persistent storage, vector search, caching |
 | **Storage** | Cloudinary | Document files |
 | **Queue** | Inngest | Background job processing |

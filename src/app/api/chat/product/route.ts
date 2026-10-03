@@ -48,11 +48,11 @@ KEY VALUE PROPOSITIONS:
 TECH STACK:
 - Next.js 16 with App Router + React 19
 - Tailwind CSS 4 + shadcn/ui components
-- PostgreSQL 16 + Qdrant for vector storage
+- PostgreSQL with pgvector for vector storage
 - Prisma 7 ORM
-- Vercel AI SDK + LangChain.js
+- Vercel AI SDK
 - OpenRouter (free LLMs: DeepSeek, Mistral, Llama, Gemma)
-- Google Gemini (free embeddings: text-embedding-004)
+- Google Gemini (free embeddings: gemini-embedding-2)
 - Inngest for background job processing
 - Upstash Redis for rate limiting
 - NextAuth.js v5 for authentication

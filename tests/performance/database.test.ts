@@ -118,7 +118,7 @@ describe('Database Query Performance', () => {
 
       const start = performance.now();
 
-      // Note: Vector search is performed in Qdrant (cosine similarity)
+      // Vector similarity search using pgvector (cosine distance)
       const results = await prisma.$queryRaw`
         SELECT id, content, embedding <=> ${queryVector}::vector as distance
         FROM chunks

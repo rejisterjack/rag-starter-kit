@@ -58,5 +58,3 @@ export const vectorSearchCircuitBreaker = new CircuitBreaker({
   },
 });
 
-/** @deprecated Use vectorSearchCircuitBreaker */
-export const qdrantCircuitBreaker = vectorSearchCircuitBreaker;

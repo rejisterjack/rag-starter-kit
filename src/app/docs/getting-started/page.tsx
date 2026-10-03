@@ -82,7 +82,7 @@ export default function GettingStartedPage() {
                   desc: 'Authentication with OAuth, credentials, and SAML SSO',
                 },
                 { name: 'Vercel AI SDK', desc: 'Streaming chat responses and tool calls' },
-                { name: 'LangChain', desc: 'Document parsing, chunking, and retrieval' },
+                { name: 'pgvector', desc: 'Vector similarity search and hybrid RAG retrieval' },
                 { name: 'Tailwind CSS', desc: 'Utility-first styling with dark mode' },
                 { name: 'Upstash Redis', desc: 'Serverless rate limiting and caching' },
                 { name: 'Inngest', desc: 'Reliable background job processing' },

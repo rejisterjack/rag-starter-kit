@@ -87,6 +87,16 @@ const envSchema = z.object({
   RESEND_TO_EMAIL: z.string().optional(),
   RESEND_WEBHOOK_SECRET: z.string().optional(),
 
+  // Real-time (Ably - optional)
+  ABLY_API_KEY: z.string().optional(),
+
+  // Re-ranking (optional)
+  RERANKER_ENABLED: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
+  RERANKER_PROVIDER: z.enum(['cohere', 'flashrank', 'identity']).optional(),
+
 
   // Read replica (optional — falls back to primary DATABASE_URL)
   DATABASE_READ_REPLICA_URL: z.string().optional(),

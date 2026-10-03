@@ -350,8 +350,8 @@ export async function checkRAGHealth(): Promise<{
 
   // Check vector store (pgvector)
   try {
-    const { checkQdrantHealth } = await import('@/lib/vector');
-    vectorStore = await checkQdrantHealth();
+    const { checkVectorStoreHealth } = await import('@/lib/vector');
+    vectorStore = await checkVectorStoreHealth();
     if (!vectorStore) {
       errors.push('Vector store error: pgvector health check failed');
     }

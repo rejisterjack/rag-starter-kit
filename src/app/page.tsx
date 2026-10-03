@@ -197,7 +197,7 @@ export default function HomePage() {
           {/* Bottom bar */}
           <div className="mt-8 pt-6 border-t border-border/30 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-muted-foreground">
-              Powered by Next.js 16, LangChain.js, PostgreSQL, pgvector, and OpenRouter
+              Powered by Next.js 16, Vercel AI SDK, PostgreSQL, pgvector, and OpenRouter
             </p>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span>TypeScript</span>

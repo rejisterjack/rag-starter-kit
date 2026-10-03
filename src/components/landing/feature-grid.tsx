@@ -17,9 +17,9 @@ const features: Feature[] = [
     icon: Bot,
     title: 'Intelligent RAG',
     description:
-      'Context-aware responses using LangChain.js and Qdrant. Hybrid search combines vector similarity with keyword matching for unprecedented accuracy.',
+      'Context-aware responses using Vercel AI SDK and pgvector. Hybrid search combines PostgreSQL vector similarity with full-text keyword matching.',
     highlight: 'Hybrid Search',
-    tags: ['LangChain.js', 'Qdrant', 'OpenRouter'],
+    tags: ['Vercel AI SDK', 'pgvector', 'OpenRouter'],
   },
   {
     icon: Upload,

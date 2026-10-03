@@ -16,7 +16,7 @@ import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import {
   deleteImagePoints,
-  searchSimilarImages as qdrantSearchSimilarImages,
+  searchSimilarImages as vectorSearchSimilarImages,
   upsertImageEmbedding,
 } from '@/lib/vector';
 
@@ -412,7 +412,7 @@ export async function searchSimilarImages(
     const queryEmbedding = await generateImageEmbedding(queryImage);
 
     // Search for similar images using pgvector
-    const results = await qdrantSearchSimilarImages(queryEmbedding, {
+    const results = await vectorSearchSimilarImages(queryEmbedding, {
       userId: workspaceId,
       topK,
     });
@@ -459,7 +459,7 @@ export async function searchImagesByText(
     const textEmbedding = await generateTextEmbeddingForImageSearch(query);
 
     // Search for similar images using pgvector
-    const results = await qdrantSearchSimilarImages(textEmbedding, {
+    const results = await vectorSearchSimilarImages(textEmbedding, {
       userId: workspaceId,
       topK,
     });

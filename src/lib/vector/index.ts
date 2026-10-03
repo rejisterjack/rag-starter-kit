@@ -1,18 +1,14 @@
 export {
   COLLECTION_DOCUMENT_CHUNKS,
   COLLECTION_IMAGE_EMBEDDINGS,
-  checkQdrantHealth,
   checkVectorStoreHealth,
   ensureDocumentChunksCollection,
   ensureImageEmbeddingsCollection,
   getCollectionInfo,
-  initializeQdrantCollections,
   initializeVectorStore,
   resetCollectionCache,
 } from './collections';
 export {
-  buildQdrantFilter,
-  buildQdrantFilterFromRetrievalOptions,
   buildVectorFilter,
   buildVectorFilterFromRetrievalOptions,
 } from './filters';
@@ -40,7 +36,6 @@ export type {
   DocumentChunk,
   ScoredPoint,
   SearchOptions,
-  SearchOptions as QdrantSearchOptions,
   UpsertOptions,
   VectorFilter,
 } from './types';

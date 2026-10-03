@@ -55,9 +55,6 @@ export async function initializeVectorStore(): Promise<void> {
   logger.info('pgvector tables are ready');
 }
 
-/** @deprecated Use initializeVectorStore */
-export const initializeQdrantCollections = initializeVectorStore;
-
 export async function checkVectorStoreHealth(): Promise<boolean> {
   try {
     const rows = await prisma.$queryRaw<Array<{ exists: boolean }>>`
@@ -68,6 +65,3 @@ export async function checkVectorStoreHealth(): Promise<boolean> {
     return false;
   }
 }
-
-/** @deprecated Use checkVectorStoreHealth */
-export const checkQdrantHealth = checkVectorStoreHealth;

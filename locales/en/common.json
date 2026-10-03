@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "RAG Starter Kit - Production-Ready RAG Chatbot",
-    "description": "A production-ready RAG (Retrieval-Augmented Generation) chatbot boilerplate powered by Next.js 16, LangChain, PostgreSQL, and pgvector."
+    "description": "A production-ready RAG (Retrieval-Augmented Generation) chatbot boilerplate powered by Next.js 16, Vercel AI SDK, PostgreSQL, and pgvector."
   },
   "navigation": {
     "home": "Home",
@@ -15,7 +15,7 @@
     "badge": "Open Source on GitHub",
     "title": "Build AI-Powered",
     "titleHighlight": "Document Chatbots",
-    "description": "A production-ready RAG starter kit powered by Next.js, LangChain, and PostgreSQL. Deploy intelligent chatbots that understand your documents in minutes, not months.",
+    "description": "A production-ready RAG starter kit powered by Next.js, Vercel AI SDK, and PostgreSQL. Deploy intelligent chatbots that understand your documents in minutes, not months.",
     "primaryCta": "Start Chatting",
     "secondaryCta": "View on GitHub",
     "stats": {
@@ -29,7 +29,7 @@
     "subtitle": "A complete toolkit for building production-ready RAG applications without the boilerplate.",
     "rag": {
       "title": "Intelligent RAG",
-      "description": "Context-aware responses using LangChain and pgvector for unprecedented accuracy and recall."
+      "description": "Context-aware responses using hybrid retrieval and pgvector for unprecedented accuracy and recall."
     },
     "ingestion": {
       "title": "Seamless Ingestion",
@@ -81,7 +81,7 @@
     "secondary": "Clone Repository"
   },
   "footer": {
-    "builtWith": "Built with ❤️ using Next.js, LangChain, and PostgreSQL"
+    "builtWith": "Built with ❤️ using Next.js, Vercel AI SDK, and PostgreSQL"
   },
   "auth": {
     "signIn": {
