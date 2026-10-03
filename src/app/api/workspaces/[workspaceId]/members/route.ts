@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { withApiAuth } from '@/lib/auth';
 import { prismaRead } from '@/lib/db';
@@ -29,10 +29,7 @@ export const GET = withApiAuth(async (req, session, { params }: RouteParams) => 
     });
 
     if (!membership) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Parse pagination params
@@ -65,18 +62,15 @@ export const GET = withApiAuth(async (req, session, { params }: RouteParams) => 
 
     const totalPages = Math.ceil(total / limit);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        members: members.map((m) => ({
-          id: m.id,
-          userId: m.userId,
-          role: m.role,
-          status: m.status,
-          joinedAt: m.joinedAt.toISOString(),
-          user: m.user,
-        })),
-      },
+    return apiSuccess({
+      members: members.map((m) => ({
+        id: m.id,
+        userId: m.userId,
+        role: m.role,
+        status: m.status,
+        joinedAt: m.joinedAt.toISOString(),
+        user: m.user,
+      })),
       pagination: {
         page,
         limit,
@@ -90,10 +84,7 @@ export const GET = withApiAuth(async (req, session, { params }: RouteParams) => 
     logger.error('Failed to get members', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to get members' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to get members', 500);
   }
 });
 
@@ -108,10 +99,7 @@ export const POST = withApiAuth(async (req, session, { params }: RouteParams) =>
     // Check if user can manage members
     const canManage = await canManageMembers(session.user.id, workspaceId);
     if (!canManage) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Parse and validate body
@@ -122,10 +110,7 @@ export const POST = withApiAuth(async (req, session, { params }: RouteParams) =>
       logger.debug('Failed to parse request body for member invite', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     let validatedInput: ReturnType<typeof validateInviteMemberInput>;
@@ -133,10 +118,7 @@ export const POST = withApiAuth(async (req, session, { params }: RouteParams) =>
       validatedInput = validateInviteMemberInput(body);
     } catch (error) {
       if (error instanceof Error) {
-        return NextResponse.json(
-          { error: { code: 'VALIDATION_ERROR', message: error.message } },
-          { status: 400 }
-        );
+        return apiError('VALIDATION_ERROR', error.message, 400);
       }
       throw error;
     }
@@ -150,27 +132,15 @@ export const POST = withApiAuth(async (req, session, { params }: RouteParams) =>
     );
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: { code: 'INVITE_FAILED', message: result.error } },
-        { status: 400 }
-      );
+      return apiError('INVITE_FAILED', result.error ?? 'Failed to invite member', 400);
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: { message: 'Invitation sent successfully' },
-      },
-      { status: 201 }
-    );
+    return apiSuccess({ message: 'Invitation sent successfully' }, 201);
   } catch (error: unknown) {
     logger.error('Failed to invite member', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to invite member' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to invite member', 500);
   }
 });
 

@@ -7,18 +7,9 @@
 import { z } from 'zod';
 
 // Calculator tool
-export {
-  calculate,
-  calculateBatch,
-  calculatorTool,
-  convert,
-} from './calculator';
+export { calculate, calculateBatch, calculatorTool, convert } from './calculator';
 // Code executor tool
-export {
-  codeExecutorTool,
-  executeCode,
-  executeCodeBatch,
-} from './code-executor';
+export { codeExecutorTool, executeCode, executeCodeBatch } from './code-executor';
 // Document tools
 export {
   compareDocumentsTool,

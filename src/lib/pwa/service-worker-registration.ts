@@ -56,9 +56,7 @@ export async function registerServiceWorker(
 
     // Store registration globally for access
     if (typeof window !== 'undefined') {
-      (
-        window as unknown as { __SW_REGISTRATION__?: ServiceWorkerRegistration }
-      ).__SW_REGISTRATION__ = registration;
+      window.__SW_REGISTRATION__ = registration;
     }
 
     // Handle updates
@@ -275,9 +273,7 @@ export async function requestBackgroundSync(tag: string = 'sync-messages'): Prom
 
   try {
     const registration = await navigator.serviceWorker.ready;
-    await (
-      registration as unknown as { sync: { register: (tag: string) => Promise<void> } }
-    ).sync.register(tag);
+    await registration.sync?.register(tag);
     return true;
   } catch (_error: unknown) {
     return false;

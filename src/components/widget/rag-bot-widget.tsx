@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import {
   AlertCircle,
   Bot,
@@ -237,17 +237,17 @@ function SimpleMarkdown({ text }: { text: string }): React.ReactElement {
 function TypingIndicator(): React.ReactElement {
   return (
     <div className="flex gap-1 items-center py-2 px-1">
-      <motion.div
+      <m.div
         className="w-1.5 h-1.5 rounded-full bg-primary/70"
         animate={{ y: [0, -4, 0] }}
         transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
       />
-      <motion.div
+      <m.div
         className="w-1.5 h-1.5 rounded-full bg-primary/70"
         animate={{ y: [0, -4, 0] }}
         transition={{ duration: 0.6, repeat: Infinity, delay: 0.15 }}
       />
-      <motion.div
+      <m.div
         className="w-1.5 h-1.5 rounded-full bg-primary/70"
         animate={{ y: [0, -4, 0] }}
         transition={{ duration: 0.6, repeat: Infinity, delay: 0.3 }}
@@ -293,8 +293,10 @@ function RAGBotWidgetContent(): React.ReactElement {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on any message/streaming change
   useEffect(() => {
+    // messages and isStreaming trigger re-run for auto-scroll behavior
+    void messages;
+    void isStreaming;
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isStreaming]);
 
@@ -355,7 +357,7 @@ function RAGBotWidgetContent(): React.ReactElement {
           }}
         >
           <AnimatePresence mode="wait">
-            <motion.div
+            <m.div
               key="panel"
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -374,7 +376,7 @@ function RAGBotWidgetContent(): React.ReactElement {
                       <Bot className="h-5 w-5 text-primary" />
                     </div>
                     {isStreaming && (
-                      <motion.div
+                      <m.div
                         className="absolute inset-0 rounded-xl border-2 border-primary"
                         animate={{ scale: [1, 1.15, 1], opacity: [1, 0.5, 1] }}
                         transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
@@ -432,7 +434,7 @@ function RAGBotWidgetContent(): React.ReactElement {
               >
                 {/* Welcome / Empty State */}
                 {showWelcome && (
-                  <motion.div
+                  <m.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="flex gap-3"
@@ -451,12 +453,12 @@ function RAGBotWidgetContent(): React.ReactElement {
                         Ask me about setup, features, deployment, or anything about this product!
                       </p>
                     </div>
-                  </motion.div>
+                  </m.div>
                 )}
 
                 {/* Suggestion Chips */}
                 {showWelcome && (
-                  <motion.div
+                  <m.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.2 }}
@@ -476,12 +478,12 @@ function RAGBotWidgetContent(): React.ReactElement {
                         {chip}
                       </button>
                     ))}
-                  </motion.div>
+                  </m.div>
                 )}
 
                 {/* Unauthenticated State */}
                 {!isAuthenticated && status !== 'loading' && (
-                  <motion.div
+                  <m.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="flex flex-col items-center justify-center py-8 px-4 text-center"
@@ -516,12 +518,12 @@ function RAGBotWidgetContent(): React.ReactElement {
                         Learn More
                       </button>
                     </div>
-                  </motion.div>
+                  </m.div>
                 )}
 
                 {/* Messages */}
                 {messages.map((msg) => (
-                  <motion.div
+                  <m.div
                     key={msg.id}
                     initial={{ opacity: 0, y: 10, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -563,12 +565,12 @@ function RAGBotWidgetContent(): React.ReactElement {
                         <User className="h-4 w-4 text-white/70" />
                       </div>
                     )}
-                  </motion.div>
+                  </m.div>
                 ))}
 
                 {/* Error Display */}
                 {error && (
-                  <motion.div
+                  <m.div
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="flex items-start gap-2 mx-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20"
@@ -585,7 +587,7 @@ function RAGBotWidgetContent(): React.ReactElement {
                         </Link>
                       )}
                     </div>
-                  </motion.div>
+                  </m.div>
                 )}
 
                 <div ref={messagesEndRef} />
@@ -641,7 +643,7 @@ function RAGBotWidgetContent(): React.ReactElement {
                   </p>
                 </div>
               )}
-            </motion.div>
+            </m.div>
           </AnimatePresence>
         </div>
       )}
@@ -650,14 +652,14 @@ function RAGBotWidgetContent(): React.ReactElement {
       {!isOpen && (
         <div className="fixed z-[9999]" style={{ position: 'fixed', bottom: 24, right: 24 }}>
           <AnimatePresence>
-            <motion.div
+            <m.div
               key="fab"
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 400, damping: 20 }}
             >
-              <motion.button
+              <m.button
                 onClick={() => setIsOpen(true)}
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.95 }}
@@ -669,15 +671,15 @@ function RAGBotWidgetContent(): React.ReactElement {
                 aria-label="Open RAG Bot chat"
               >
                 <MessageSquare className="h-6 w-6 text-primary-foreground" />
-                <motion.div
+                <m.div
                   className="absolute inset-0 rounded-full border-2 border-primary/40"
                   animate={{ scale: [1, 1.2, 1], opacity: [0.6, 0, 0.6] }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                 />
-              </motion.button>
+              </m.button>
 
               {/* Tooltip */}
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.5 }}
@@ -689,8 +691,8 @@ function RAGBotWidgetContent(): React.ReactElement {
                   className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 w-2 h-2 rotate-45 border-r border-t"
                   style={{ background: SOLID_BG, borderColor: SOLID_BORDER }}
                 />
-              </motion.div>
-            </motion.div>
+              </m.div>
+            </m.div>
           </AnimatePresence>
         </div>
       )}
@@ -698,7 +700,7 @@ function RAGBotWidgetContent(): React.ReactElement {
       {/* Backdrop (mobile only) */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

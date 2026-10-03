@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { ArrowRight, BarChart3, Briefcase, Building2, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
 import { useTrackEvent } from '@/hooks/use-analytics-event';
@@ -54,31 +53,21 @@ export function UseCases(): React.ReactElement {
   return (
     <section className="py-24 lg:py-32 relative bg-black/40 border-y border-border/50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
+        <div className="text-center mb-16 animate-fade-in-up">
           <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl lg:text-5xl mb-6">
             Real <span className="text-gradient">Use Cases</span>
           </h2>
           <p className="mt-4 text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-            From agency deliverables to internal tools, here is how developers are using the starter
-            kit today.
+            Clone it, upload your documents, deploy. Here are four real problems it solves this
+            weekend.
           </p>
-        </motion.div>
+        </div>
 
         <div className="grid gap-6 sm:grid-cols-2">
-          {useCases.map((useCase, i) => (
-            <motion.div
+          {useCases.map((useCase) => (
+            <div
               key={useCase.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
-              className="glass-light rounded-2xl p-6 sm:p-8 flex flex-col justify-between border border-border/30 hover:border-primary/40 transition-colors group"
+              className="glass-light rounded-2xl p-6 sm:p-8 flex flex-col justify-between border border-border/30 hover:border-primary/40 transition-colors group animate-fade-in-up"
             >
               <div>
                 <div
@@ -105,7 +94,7 @@ export function UseCases(): React.ReactElement {
                 {useCase.cta}
                 <ArrowRight className="h-4 w-4 group-hover/link:translate-x-1 transition-transform" />
               </Link>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

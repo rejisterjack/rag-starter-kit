@@ -3,6 +3,7 @@
 import { Building2, Check, ChevronDown, Loader2, Plus, Settings } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -35,6 +36,7 @@ export function WorkspaceSwitcher({
   currentWorkspaceId,
 }: WorkspaceSwitcherProps): React.ReactElement {
   const router = useRouter();
+  const { update: updateSession } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
 
@@ -45,26 +47,21 @@ export function WorkspaceSwitcher({
     async (workspaceId: string) => {
       setSwitchingId(workspaceId);
       try {
-        const response = await fetch('/api/auth/session', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ workspaceId }),
-        });
+        // The old PATCH /api/auth/session call 405'd — NextAuth exposes no
+        // PATCH. The JWT callback handles trigger:'update' with workspaceId,
+        // which is exactly what session.update() sends.
+        await updateSession({ workspaceId });
 
-        if (response.ok) {
-          toast.success('Workspace switched');
-          router.refresh();
-          setIsOpen(false);
-        } else {
-          toast.error('Failed to switch workspace');
-        }
+        toast.success('Workspace switched');
+        router.refresh();
+        setIsOpen(false);
       } catch (_error: unknown) {
         toast.error('Failed to switch workspace');
       } finally {
         setSwitchingId(null);
       }
     },
-    [router]
+    [router, updateSession]
   );
 
   const handleCreateWorkspace = () => {
@@ -94,7 +91,7 @@ export function WorkspaceSwitcher({
             ) : currentWorkspace?.avatar ? (
               <Image
                 src={currentWorkspace.avatar}
-                alt=""
+                alt={`${currentWorkspace.name} logo`}
                 width={20}
                 height={20}
                 className="h-5 w-5 rounded-md object-cover"
@@ -120,7 +117,7 @@ export function WorkspaceSwitcher({
                   {currentWorkspace.avatar ? (
                     <Image
                       src={currentWorkspace.avatar}
-                      alt=""
+                      alt={`${currentWorkspace.name} logo`}
                       width={20}
                       height={20}
                       className="h-5 w-5 rounded-md object-cover"
@@ -153,7 +150,7 @@ export function WorkspaceSwitcher({
                   ) : workspace.avatar ? (
                     <Image
                       src={workspace.avatar}
-                      alt=""
+                      alt={`${workspace.name} logo`}
                       width={20}
                       height={20}
                       className="h-5 w-5 rounded-md object-cover"

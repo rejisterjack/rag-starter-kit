@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
-
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { requireAdmin } from '@/lib/auth';
+import { APP_URL } from '@/lib/constants';
 import { prisma } from '@/lib/db';
 
 // =============================================================================
@@ -10,7 +10,6 @@ import { prisma } from '@/lib/db';
 
 export async function GET(): Promise<Response> {
   try {
-    // Verify admin access
     await requireAdmin();
 
     const connections = await prisma.samlConnection.findMany({
@@ -27,19 +26,13 @@ export async function GET(): Promise<Response> {
       },
     });
 
-    return NextResponse.json({ connections });
+    return apiSuccess({ connections });
   } catch (error) {
     if (error instanceof Error && error.message === 'Forbidden') {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Admin access required' },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Admin access required', 403);
     }
 
-    return NextResponse.json(
-      { error: 'Internal Server Error', message: 'Failed to fetch SSO connections' },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to fetch SSO connections', 500);
   }
 }
 
@@ -50,7 +43,6 @@ export async function GET(): Promise<Response> {
 
 export async function POST(req: Request): Promise<Response> {
   try {
-    // Verify admin access
     await requireAdmin();
 
     const body = await req.json();
@@ -64,27 +56,18 @@ export async function POST(req: Request): Promise<Response> {
       defaultRole,
     } = body;
 
-    // Validate required fields
     if (!workspaceId) {
-      return NextResponse.json(
-        { error: 'Bad Request', message: 'workspaceId is required' },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'workspaceId is required', 400);
     }
 
-    // Check if workspace already has a SAML connection
     const existing = await prisma.samlConnection.findUnique({
       where: { workspaceId },
     });
 
     if (existing) {
-      return NextResponse.json(
-        { error: 'Conflict', message: 'Workspace already has a SAML connection' },
-        { status: 409 }
-      );
+      return apiError('CONFLICT', 'Workspace already has a SAML connection', 409);
     }
 
-    // Parse IdP metadata if provided
     let parsedMetadata: {
       entityId?: string;
       ssoUrl?: string;
@@ -92,7 +75,6 @@ export async function POST(req: Request): Promise<Response> {
     } = {};
 
     if (idpMetadata) {
-      // Simple metadata parsing - in production, use a proper SAML library
       const entityIdMatch = idpMetadata.match(/entityID="([^"]+)"/);
       const ssoUrlMatch = idpMetadata.match(/Location="([^"]+)"/);
       const certMatch = idpMetadata.match(/<X509Certificate>([^<]+)<\/X509Certificate>/);
@@ -104,11 +86,9 @@ export async function POST(req: Request): Promise<Response> {
       };
     }
 
-    // Build the ACS URL
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:7392';
+    const baseUrl = APP_URL;
     const spAcsUrl = `${baseUrl}/api/auth/saml/${workspaceId}/acs`;
 
-    // Create the connection
     const connection = await prisma.samlConnection.create({
       data: {
         workspaceId,
@@ -123,7 +103,6 @@ export async function POST(req: Request): Promise<Response> {
       },
     });
 
-    // Update workspace SSO settings
     await prisma.workspace.update({
       where: { id: workspaceId },
       data: {
@@ -131,18 +110,12 @@ export async function POST(req: Request): Promise<Response> {
       },
     });
 
-    return NextResponse.json({ connection }, { status: 201 });
+    return apiSuccess({ connection }, 201);
   } catch (error) {
     if (error instanceof Error && error.message === 'Forbidden') {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Admin access required' },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Admin access required', 403);
     }
 
-    return NextResponse.json(
-      { error: 'Internal Server Error', message: 'Failed to create SSO connection' },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to create SSO connection', 500);
   }
 }

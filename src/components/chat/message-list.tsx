@@ -73,7 +73,6 @@ export function MessageList({
 
   // Auto-scroll to bottom on new messages / streaming.
   // Uses instant scroll during streaming to avoid jank from competing smooth animations.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — trigger scroll on message count and streaming content changes
   useEffect(() => {
     const container = getScrollContainer();
     if (!container) return;
@@ -90,7 +89,7 @@ export function MessageList({
         anchor.scrollIntoView({ behavior: isStreaming ? 'instant' : 'smooth' });
       }
     }
-  }, [messages.length, streamingContent.length, isStreaming, getScrollContainer]);
+  }, [isStreaming, getScrollContainer]);
 
   const shouldVirtualize = messages.length > 50;
 

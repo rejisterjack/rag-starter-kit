@@ -1,5 +1,4 @@
-import { NextResponse } from 'next/server';
-
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { requireAdmin } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
@@ -7,14 +6,8 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// =============================================================================
-// PATCH /api/admin/sso/connections/[id]
-// Update a SAML connection
-// =============================================================================
-
 export async function PATCH(req: Request, { params }: RouteParams): Promise<Response> {
   try {
-    // Verify admin access
     await requireAdmin();
 
     const { id } = await params;
@@ -28,7 +21,6 @@ export async function PATCH(req: Request, { params }: RouteParams): Promise<Resp
       },
     });
 
-    // Update workspace SSO settings if connection is disabled
     if (enabled === false) {
       await prisma.workspace.update({
         where: { id: connection.workspaceId },
@@ -45,52 +37,34 @@ export async function PATCH(req: Request, { params }: RouteParams): Promise<Resp
       });
     }
 
-    return NextResponse.json({ connection });
+    return apiSuccess({ connection });
   } catch (error) {
     if (error instanceof Error && error.message === 'Forbidden') {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Admin access required' },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Admin access required', 403);
     }
 
-    return NextResponse.json(
-      { error: 'Internal Server Error', message: 'Failed to update SSO connection' },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to update SSO connection', 500);
   }
 }
 
-// =============================================================================
-// DELETE /api/admin/sso/connections/[id]
-// Delete a SAML connection
-// =============================================================================
-
 export async function DELETE(_req: Request, { params }: RouteParams): Promise<Response> {
   try {
-    // Verify admin access
     await requireAdmin();
 
     const { id } = await params;
 
-    // Get the connection to find the workspace ID
     const connection = await prisma.samlConnection.findUnique({
       where: { id },
     });
 
     if (!connection) {
-      return NextResponse.json(
-        { error: 'Not Found', message: 'SSO connection not found' },
-        { status: 404 }
-      );
+      return apiError('NOT_FOUND', 'SSO connection not found', 404);
     }
 
-    // Delete the connection
     await prisma.samlConnection.delete({
       where: { id },
     });
 
-    // Update workspace SSO settings
     await prisma.workspace.update({
       where: { id: connection.workspaceId },
       data: {
@@ -98,18 +72,12 @@ export async function DELETE(_req: Request, { params }: RouteParams): Promise<Re
       },
     });
 
-    return NextResponse.json({ success: true });
+    return apiSuccess({});
   } catch (error) {
     if (error instanceof Error && error.message === 'Forbidden') {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Admin access required' },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Admin access required', 403);
     }
 
-    return NextResponse.json(
-      { error: 'Internal Server Error', message: 'Failed to delete SSO connection' },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to delete SSO connection', 500);
   }
 }

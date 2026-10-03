@@ -15,11 +15,7 @@ export {
   calculateRecall,
   calculateRetrievalMetrics,
 } from './metrics';
-export {
-  formatReportAsJson,
-  formatReportAsMarkdown,
-  formatReportAsTable,
-} from './reporter';
+export { formatReportAsJson, formatReportAsMarkdown, formatReportAsTable } from './reporter';
 export type { EvalRunnerConfig } from './runner';
 export { EvalRunner } from './runner';
 export type {

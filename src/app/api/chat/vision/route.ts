@@ -7,7 +7,8 @@
 
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { type CoreMessage, generateText, type LanguageModel, streamText } from 'ai';
-import { NextResponse } from 'next/server';
+import { asModel } from '@/lib/ai/types';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -50,10 +51,7 @@ export async function POST(req: Request) {
     // Step 1: Authenticate
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const userId = session.user.id;
@@ -68,22 +66,14 @@ export async function POST(req: Request) {
     });
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'RATE_LIMIT',
-            message: 'Rate limit exceeded',
-            resetAt: new Date(rateLimitResult.reset).toISOString(),
-          },
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
+      const response = apiError('RATE_LIMIT', 'Rate limit exceeded', 429, {
+        resetAt: new Date(rateLimitResult.reset).toISOString(),
+      });
+      response.headers.set(
+        'Retry-After',
+        Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString()
       );
+      return response;
     }
 
     // Step 3: Parse request body
@@ -91,10 +81,7 @@ export async function POST(req: Request) {
     const { messages, chatId, image, imageUrl, stream: shouldStream, config } = body;
 
     if (!messages || messages.length === 0) {
-      return NextResponse.json(
-        { success: false, error: { code: 'VALIDATION_ERROR', message: 'Messages are required' } },
-        { status: 400 }
-      );
+      return apiError('VALIDATION_ERROR', 'Messages are required', 400);
     }
 
     const userMessage = messages[messages.length - 1]?.content || '';
@@ -114,10 +101,7 @@ export async function POST(req: Request) {
           severity: 'WARNING',
         });
 
-        return NextResponse.json(
-          { success: false, error: { code: 'FORBIDDEN', message: 'Access denied to workspace' } },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Access denied to workspace', 403);
       }
     }
 
@@ -243,39 +227,31 @@ export async function POST(req: Request) {
         });
       }
 
-      const jsonResponse = NextResponse.json({
-        success: true,
-        data: {
-          content: result.text,
-          retrievedImages: retrievedImages.map((img) => ({
-            id: img.id,
-            documentName: img.documentName,
-            storageUrl: img.storageUrl,
-            pageNumber: img.pageNumber,
-          })),
-          usage: {
-            promptTokens: result.usage?.promptTokens ?? 0,
-            completionTokens: result.usage?.completionTokens ?? 0,
-            totalTokens: result.usage?.totalTokens ?? 0,
-          },
-          model: 'gemini-1.5-flash',
+      const jsonResponse = apiSuccess({
+        content: result.text,
+        retrievedImages: retrievedImages.map((img) => ({
+          id: img.id,
+          documentName: img.documentName,
+          storageUrl: img.storageUrl,
+          pageNumber: img.pageNumber,
+        })),
+        usage: {
+          promptTokens: result.usage?.promptTokens ?? 0,
+          completionTokens: result.usage?.completionTokens ?? 0,
+          totalTokens: result.usage?.totalTokens ?? 0,
         },
+        model: 'gemini-1.5-flash',
       });
 
       addRateLimitHeaders(jsonResponse.headers, rateLimitResult);
       return jsonResponse;
     }
   } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Failed to process request',
-          details: error instanceof Error ? error.message : 'Unknown error',
-        },
-      },
-      { status: 500 }
+    return apiError(
+      'INTERNAL_ERROR',
+      'Failed to process request',
+      500,
+      error instanceof Error ? error.message : 'Unknown error'
     );
   }
 }
@@ -295,7 +271,7 @@ function getVisionModel(): LanguageModel {
   const googleAI = createGoogleGenerativeAI({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   });
-  return googleAI('gemini-1.5-flash') as unknown as LanguageModel;
+  return asModel<LanguageModel>(googleAI('gemini-1.5-flash'));
 }
 
 /**

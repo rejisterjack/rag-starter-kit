@@ -58,3 +58,43 @@ export const inviteMemberSchema = z.object({
 });
 
 export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
+
+// =============================================================================
+// Server Action Schemas
+// =============================================================================
+
+export const createChatSchema = z.object({
+  title: z.string().max(200).optional(),
+  model: z.string().max(50).optional(),
+});
+
+export type CreateChatInput = z.infer<typeof createChatSchema>;
+
+export const deleteChatSchema = z.object({
+  chatId: z.string().uuid(),
+});
+
+export type DeleteChatInput = z.infer<typeof deleteChatSchema>;
+
+export const updateChatTitleSchema = z.object({
+  chatId: z.string().uuid(),
+  title: z.string().min(1).max(200),
+});
+
+export type UpdateChatTitleInput = z.infer<typeof updateChatTitleSchema>;
+
+export const signInSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+  callbackUrl: z.string().optional(),
+});
+
+export type SignInInput = z.infer<typeof signInSchema>;
+
+export const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(12).max(128),
+  name: z.string().min(1).max(100).optional(),
+});
+
+export type RegisterInput = z.infer<typeof registerSchema>;

@@ -11,7 +11,6 @@ export default function RAGLoading() {
 
       {/* Settings cards */}
       {Array.from({ length: 3 }).map((_, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: Static skeleton items
         <Card key={i}>
           <CardHeader>
             <Skeleton className="h-5 w-32" />

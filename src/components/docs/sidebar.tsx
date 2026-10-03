@@ -37,7 +37,6 @@ const navigation: { title: string; items: NavItem[] }[] = [
       { label: 'LLM Providers', href: '/docs/guides/llm-providers' },
       { label: 'Deployment', href: '/docs/guides/deployment' },
       { label: 'Authentication', href: '/docs/guides/authentication' },
-      { label: 'Chrome Extension', href: '/docs/guides/chrome-extension' },
     ],
   },
   {
@@ -198,12 +197,13 @@ export function DocsSidebar() {
           Back to App
         </Link>
         <a
-          href="https://github.com/nicholasgriffintn/rag-starter-kit"
+          href="https://github.com/rejisterjack/rag-starter-kit"
           target="_blank"
           rel="noopener noreferrer"
           className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           GitHub Repository
+          <span className="sr-only">(opens in new tab)</span>
         </a>
       </div>
     </div>

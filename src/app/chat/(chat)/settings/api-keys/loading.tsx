@@ -20,7 +20,6 @@ export default function ApiKeysLoading() {
           <Skeleton className="h-4 w-16 ml-auto" />
         </div>
         {Array.from({ length: 4 }).map((_, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: Static skeleton items
           <div key={i} className="border-b p-4 flex items-center gap-4">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-4 w-48" />

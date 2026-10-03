@@ -49,7 +49,7 @@ createdb rag_recovery
 gunzip -c backup_YYYYMMDD.sql.gz | psql $DATABASE_URL
 
 # 3. Verify restore
-npx tsx scripts/backup-verify.ts
+bun run db:verify-backup
 
 # 4. Update DATABASE_URL in your deployment environment
 # 5. Redeploy or restart the application
@@ -67,7 +67,7 @@ gunzip -c backup_YYYYMMDD.sql.gz | psql $DIRECT_URL
 # 3. Redeploy or restart the application
 
 # 4. Verify data integrity
-npx tsx scripts/backup-verify.ts
+bun run db:verify-backup
 ```
 
 ### Partial Recovery (Specific Tables)
@@ -83,14 +83,14 @@ psql $TARGET_DB_URL < partial_backup.sql
 Run the backup verification script after any recovery operation:
 
 ```bash
-npx tsx scripts/backup-verify.ts
+bun run db:verify-backup
 ```
 
 This checks:
 1. Database connectivity
 2. Schema integrity (all expected tables exist)
 3. Row counts for critical tables
-4. pgvector extension is operational
+4. pgvector extension and document_chunks table are present
 5. Vector index exists and is functional
 
 ## Scheduled Verification
@@ -99,7 +99,7 @@ Add a weekly Inngest scheduled function or cron job to automate backup verificat
 
 ```bash
 # Cron example (runs every Sunday at 4 AM)
-0 4 * * 0 cd /app && npx tsx scripts/backup-verify.ts >> /var/log/backup-verify.log 2>&1
+0 4 * * 0 cd /app && bun run db:verify-backup >> /var/log/backup-verify.log 2>&1
 ```
 
 ## RTO and RPO Targets

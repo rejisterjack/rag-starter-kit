@@ -204,7 +204,7 @@ export class EvalRunner {
    * Call the search API to retrieve documents.
    */
   private async callSearchApi(query: string): Promise<SearchApiResponse> {
-    const url = `${this.config.apiBaseUrl}/api/v1/search`;
+    const url = `${this.config.apiBaseUrl}/api/search`;
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',

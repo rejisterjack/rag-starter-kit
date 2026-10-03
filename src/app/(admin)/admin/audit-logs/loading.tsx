@@ -38,7 +38,6 @@ export default function AuditLogsLoading() {
             <Skeleton className="h-4 w-32" />
           </div>
           {Array.from({ length: 5 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: Static skeleton items
             <div key={i} className="border-b p-3 flex gap-4">
               <Skeleton className="h-4 w-8" />
               <Skeleton className="h-4 w-32" />

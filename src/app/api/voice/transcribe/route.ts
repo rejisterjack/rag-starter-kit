@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * Voice Transcription API Route
  * Fallback API using OpenAI Whisper for speech-to-text
@@ -92,20 +93,14 @@ export const POST = withApiAuth(async (req: NextRequest, session) => {
       logger.debug('Failed to parse form data for voice transcription', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: 'Invalid form data', code: 'INVALID_BODY' },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid form data', 400);
     }
 
     // Step 4: Validate audio file
     const audioFile = formData.get('audio') as File | null;
 
     if (!audioFile) {
-      return NextResponse.json(
-        { error: 'No audio file provided', code: 'MISSING_AUDIO' },
-        { status: 400 }
-      );
+      return apiError('MISSING_AUDIO', 'No audio file provided', 400);
     }
 
     // Check file size

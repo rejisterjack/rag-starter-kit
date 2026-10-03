@@ -50,14 +50,3 @@ export const PDFDownloadLink = dynamic(
   () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),
   { ssr: false }
 );
-
-// Re-export PDF components for document creation (lightweight)
-export {
-  Document,
-  Image,
-  Link,
-  Page,
-  StyleSheet,
-  Text,
-  View,
-} from '@react-pdf/renderer';

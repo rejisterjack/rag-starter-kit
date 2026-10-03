@@ -3,6 +3,7 @@
 import { ChevronDown } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { apiFetch } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { useChatContext } from './chat-context';
 import type { Source } from './citations';
@@ -32,13 +33,11 @@ interface ChatMessagesProps {
 /** Fetch contextual follow-up questions from the API */
 async function fetchFollowUps(assistantMessage: string, userQuery?: string): Promise<string[]> {
   try {
-    const res = await fetch('/api/chat/follow-up', {
+    const data = await apiFetch<{ questions?: string[] }>('/api/chat/follow-up', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ assistantMessage, userQuery, count: 3 }),
     });
-    if (!res.ok) return [];
-    const data = await res.json();
     return Array.isArray(data.questions) ? data.questions : [];
   } catch {
     return [];

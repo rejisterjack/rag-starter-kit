@@ -13,10 +13,11 @@ Components for managing and displaying documents in the RAG chatbot.
 ## Components
 
 ### `DocumentList`
+
 Main document list with search, filter, and upload functionality.
 
 ```tsx
-import { DocumentList } from "@/components/documents";
+import { DocumentList } from '@/components/documents';
 
 <DocumentList
   documents={documents}
@@ -25,21 +26,22 @@ import { DocumentList } from "@/components/documents";
   onReingest={handleReingest}
   onPreview={handlePreview}
   isLoading={isLoading}
-/>
+/>;
 ```
 
 ### `DocumentCard`
+
 Individual document item with status indicators and actions.
 
 ```tsx
-import { DocumentCard, type Document } from "@/components/documents";
+import { DocumentCard, type Document } from '@/components/documents';
 
 const document: Document = {
-  id: "1",
-  name: "document.pdf",
-  type: "application/pdf",
+  id: '1',
+  name: 'document.pdf',
+  type: 'application/pdf',
   size: 1024000,
-  status: "completed",
+  status: 'completed',
   chunkCount: 42,
   createdAt: new Date(),
 };
@@ -49,14 +51,15 @@ const document: Document = {
   onDelete={handleDelete}
   onReingest={handleReingest}
   isSelected={false}
-/>
+/>;
 ```
 
 ### `DocumentPreview`
+
 Modal/panel for viewing document chunks with highlighting.
 
 ```tsx
-import { DocumentPreview } from "@/components/documents";
+import { DocumentPreview } from '@/components/documents';
 
 <DocumentPreview
   document={document}
@@ -64,16 +67,16 @@ import { DocumentPreview } from "@/components/documents";
   onClose={handleClose}
   chunks={chunks}
   highlightedChunkId="chunk-1"
-/>
+/>;
 ```
 
 ## Types
 
 ```tsx
-import type { Document, DocumentStatus } from "@/components/documents";
+import type { Document, DocumentStatus } from '@/components/documents';
 
 // Document status
- type DocumentStatus = "pending" | "processing" | "completed" | "error";
+type DocumentStatus = 'pending' | 'processing' | 'completed' | 'error';
 
 // Document object
 interface Document {
@@ -92,6 +95,7 @@ interface Document {
 ## File Icons
 
 Documents display icons based on MIME type:
+
 - PDF, TXT, MD → `FileText`
 - XLSX, CSV → `FileSpreadsheet`
 - Images → `FileImage`

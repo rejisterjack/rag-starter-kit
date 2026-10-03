@@ -20,11 +20,21 @@ export function DegradationBanner(): React.ReactElement | null {
     async function checkHealth() {
       try {
         const res = await fetch('/api/health');
-        if (!res.ok || cancelled) return;
+        if (cancelled) return;
+
+        // /api/health is a liveness probe returning a bare {status:"ok"} —
+        // it exposes no per-service checks, so a non-OK response is the only
+        // degradation signal available.
+        if (!res.ok) {
+          if (!cancelled) {
+            setServices([{ name: 'Application', status: res.status >= 500 ? 'down' : 'degraded' }]);
+          }
+          return;
+        }
         const data = await res.json();
 
         const svcs: ServiceStatus[] = [];
-        if (data.checks) {
+        if (Array.isArray(data?.checks) || (data?.checks && typeof data.checks === 'object')) {
           for (const [key, val] of Object.entries(data.checks)) {
             const check = val as { status?: string; healthy?: boolean };
             if (typeof check.status === 'string' || typeof check.healthy === 'boolean') {

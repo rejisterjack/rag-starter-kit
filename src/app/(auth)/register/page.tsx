@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { motion, type Variants } from 'framer-motion';
+import { m, type Variants } from 'framer-motion';
 import { Github, Loader2, Mail, User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { apiFetch } from '@/lib/api-client';
 
 // Validation schema
 const registerSchema = z
@@ -77,7 +78,7 @@ export default function RegisterPage(): React.ReactElement {
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/register', {
+      await apiFetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -86,15 +87,6 @@ export default function RegisterPage(): React.ReactElement {
           password: data.password,
         }),
       });
-
-      const result = await response.json();
-      if (!response.ok) {
-        const msg =
-          typeof result.error?.message === 'string'
-            ? result.error.message
-            : 'Failed to create account';
-        throw new Error(msg);
-      }
 
       const signInResult = await signIn('credentials', {
         email: data.email,
@@ -115,27 +107,27 @@ export default function RegisterPage(): React.ReactElement {
   };
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">
-      <motion.div variants={itemVariants} className="text-center">
+    <m.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">
+      <m.div variants={itemVariants} className="text-center">
         <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent pb-1">
           Create an account
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Get started with your next-gen intelligence suite
         </p>
-      </motion.div>
+      </m.div>
 
       {error && (
-        <motion.div
+        <m.div
           variants={itemVariants}
           className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive backdrop-blur-sm"
         >
           {error}
-        </motion.div>
+        </m.div>
       )}
 
       {/* OAuth buttons */}
-      <motion.div variants={itemVariants} className="space-y-3">
+      <m.div variants={itemVariants} className="space-y-3">
         <Button
           variant="outline"
           className="w-full interactive"
@@ -170,9 +162,9 @@ export default function RegisterPage(): React.ReactElement {
           </svg>
           Sign up with Google
         </Button>
-      </motion.div>
+      </m.div>
 
-      <motion.div variants={itemVariants}>
+      <m.div variants={itemVariants}>
         <div className="relative mb-6 mt-2">
           <div className="absolute inset-0 flex items-center">
             <Separator className="w-full border-border/50" />
@@ -183,9 +175,9 @@ export default function RegisterPage(): React.ReactElement {
             </span>
           </div>
         </div>
-      </motion.div>
+      </m.div>
 
-      <motion.form variants={itemVariants} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <m.form variants={itemVariants} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="name" className="text-muted-foreground">
             Full name
@@ -272,9 +264,9 @@ export default function RegisterPage(): React.ReactElement {
             'Create account'
           )}
         </Button>
-      </motion.form>
+      </m.form>
 
-      <motion.div variants={itemVariants} className="pt-2">
+      <m.div variants={itemVariants} className="pt-2">
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{' '}
           <Link
@@ -284,9 +276,9 @@ export default function RegisterPage(): React.ReactElement {
             Sign in
           </Link>
         </p>
-      </motion.div>
+      </m.div>
 
-      <motion.div variants={itemVariants}>
+      <m.div variants={itemVariants}>
         <p className="text-center text-xs text-muted-foreground/60 leading-relaxed max-w-[80%] mx-auto">
           By creating an account, you agree to our{' '}
           <Link href="/terms" className="hover:text-primary transition-colors">
@@ -298,7 +290,7 @@ export default function RegisterPage(): React.ReactElement {
           </Link>
           .
         </p>
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }

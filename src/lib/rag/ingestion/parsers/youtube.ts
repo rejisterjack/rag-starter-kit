@@ -240,7 +240,6 @@ function parseCaptionXml(xml: string): Array<{ start: number; duration: number; 
   const textRegex = /<text[^>]*start="([^"]*)"[^>]*dur="([^"]*)"[^>]*>([\s\S]*?)<\/text>/g;
   let match: RegExpExecArray | null;
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: intentional regex loop
   while ((match = textRegex.exec(xml)) !== null) {
     const start = Number.parseFloat(match[1]) || 0;
     const duration = Number.parseFloat(match[2]) || 0;
@@ -262,7 +261,6 @@ function parseCaptionXml(xml: string): Array<{ start: number; duration: number; 
   // Fallback: try without duration attribute
   if (results.length === 0) {
     const simpleRegex = /<text[^>]*start="([^"]*)"[^>]*>([\s\S]*?)<\/text>/g;
-    // biome-ignore lint/suspicious/noAssignInExpressions: intentional regex loop
     while ((match = simpleRegex.exec(xml)) !== null) {
       const start = Number.parseFloat(match[1]) || 0;
       const rawText = match[2]

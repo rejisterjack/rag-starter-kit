@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * RAG Bot Product Chat API
  *
@@ -45,13 +46,13 @@ KEY VALUE PROPOSITIONS:
 4. Real-time and collaborative from the start — multi-user workspaces, typing indicators, presence tracking
 
 TECH STACK:
-- Next.js 15 with App Router + React 19
+- Next.js 16 with App Router + React 19
 - Tailwind CSS 4 + shadcn/ui components
-- PostgreSQL 16 + pgvector for vector storage
+- PostgreSQL with pgvector for vector storage
 - Prisma 7 ORM
-- Vercel AI SDK + LangChain.js
+- Vercel AI SDK
 - OpenRouter (free LLMs: DeepSeek, Mistral, Llama, Gemma)
-- Google Gemini (free embeddings: text-embedding-004)
+- Google Gemini (free embeddings: gemini-embedding-2)
 - Inngest for background job processing
 - Upstash Redis for rate limiting
 - NextAuth.js v5 for authentication
@@ -74,8 +75,8 @@ CORE FEATURES:
 
 DEPLOYMENT:
 - One-click deploy to Vercel, Railway, or Render
-- Full Docker Compose local stack available
-- Self-hosted — your documents never leave your infrastructure
+- 100% managed cloud services — no Docker or local database setup required
+- Self-hosted option on any standard Node.js server or VPS
 
 WHO IT'S FOR:
 - Primary: TypeScript/Node.js developers building products who need AI chat on their own documents
@@ -95,9 +96,9 @@ PRICING:
 
 GETTING STARTED:
 1. Clone the repository
-2. Copy .env.example to .env and fill in two free API keys (OpenRouter + Google AI Studio)
-3. Run docker-compose up for local PostgreSQL + Redis
-4. bun install && bun dev
+2. Copy .env.example to .env and configure managed service keys (OpenRouter, Gemini, Prisma Postgres)
+3. bun install && bun db:migrate
+4. bun dev
 5. Open http://localhost:7392 and start chatting
 
 RULES FOR ANSWERING:
@@ -180,10 +181,7 @@ export async function POST(req: Request) {
     try {
       body = await req.json();
     } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON body', code: 'INVALID_BODY' },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     const parseResult = chatRequestSchema.safeParse(body);

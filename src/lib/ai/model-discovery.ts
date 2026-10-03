@@ -8,9 +8,10 @@
  * or getBestAvailableModel() — no frontend involvement.
  */
 
-import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { generateText, type LanguageModel } from 'ai';
+import { asModel } from '@/lib/ai/types';
+import { APP_URL } from '@/lib/constants';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
 import { modelHealthCache } from './model-health-cache';
@@ -47,72 +48,37 @@ interface OpenRouterModel {
 }
 
 // =============================================================================
-// Provider instances (cached at module level)
+// Provider instance (cached at module level) — OpenRouter only
 // =============================================================================
 
 const openrouter = createOpenRouter({
   apiKey: env.OPENROUTER_API_KEY,
   headers: {
-    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392',
+    'HTTP-Referer': APP_URL,
     'X-Title': 'RAG Starter Kit',
   },
 });
 
-const groq = process.env.GROQ_API_KEY
-  ? createOpenAI({ apiKey: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1' })
-  : null;
-
-const nvidia = process.env.NVIDIA_API_KEY
-  ? createOpenAI({
-      apiKey: process.env.NVIDIA_API_KEY,
-      baseURL: 'https://integrate.api.nvidia.com/v1',
-    })
-  : null;
-
-const cerebras = process.env.CEREBRAS_API_KEY
-  ? createOpenAI({ apiKey: process.env.CEREBRAS_API_KEY, baseURL: 'https://api.cerebras.ai/v1' })
-  : null;
-
-const sambanova = process.env.SAMBANOVA_API_KEY
-  ? createOpenAI({ apiKey: process.env.SAMBANOVA_API_KEY, baseURL: 'https://api.sambanova.ai/v1' })
-  : null;
-
-const mistral = process.env.MISTRAL_API_KEY
-  ? createOpenAI({ apiKey: process.env.MISTRAL_API_KEY, baseURL: 'https://api.mistral.ai/v1' })
-  : null;
-
-// =============================================================================
-// Priority provider chain (hardcoded, always preferred when API key exists)
-// =============================================================================
-
-const PROVIDER_PRIORITY_CHAIN: Array<{ id: string; provider: string; task?: AITask }> = [
-  // Groq — ultra-fast LPU inference
-  { id: 'groq/llama-3.3-70b-versatile', provider: 'groq' },
-  { id: 'groq/meta-llama/llama-4-scout-17b-16e-instruct', provider: 'groq' },
-  // SambaNova — DeepSeek V3.1 quality
-  { id: 'sambanova/DeepSeek-V3.1', provider: 'sambanova' },
-  { id: 'sambanova/Meta-Llama-3.3-70B-Instruct', provider: 'sambanova' },
-  // NVIDIA NIM — Nemotron 70B
-  { id: 'nvidia-nim/nvidia/llama-3.1-nemotron-70b-instruct', provider: 'nvidia-nim' },
-  // Mistral — Large
-  { id: 'mistral/mistral-large-latest', provider: 'mistral' },
-  // Cerebras — fastest inference
-  { id: 'cerebras/llama-4-scout-17b-16e-instruct', provider: 'cerebras' },
-  { id: 'cerebras/llama3.1-8b', provider: 'cerebras', task: 'fast' },
+// Task-specific priority chains — OpenRouter free models only (verified live 2026-08-30)
+const FAST_TASK_CHAIN = [
+  'nvidia/nemotron-3.5-lightning:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'google/gemma-4-26b-a4b-it:free',
 ];
 
-const FAST_TASK_CHAIN = ['cerebras/llama3.1-8b', 'groq/llama-3.1-8b-instant'];
-
-const HYDE_TASK_CHAIN = ['sambanova/DeepSeek-V3.1', 'groq/llama-3.3-70b-versatile'];
+const HYDE_TASK_CHAIN = [
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'nvidia/nemotron-3.5-lightning:free',
+  'z-ai/glm-5.2:free',
+];
 
 // Hardcoded fallback — used when OpenRouter API is unreachable
 // Only models verified to return actual text content (not reasoning-only)
 const HARDCODED_FALLBACK = [
-  'liquid/lfm-2.5-1.2b-instruct:free',
-  'baidu/cobuddy:free',
-  'openai/gpt-oss-120b:free',
+  'nvidia/nemotron-3.5-lightning:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'z-ai/glm-5.2:free',
   'google/gemma-4-26b-a4b-it:free',
-  'meta-llama/llama-3.3-70b-instruct:free',
 ];
 
 // Provider reliability bonus for scoring
@@ -146,31 +112,10 @@ let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Resolve a model ID to a LanguageModel instance.
- * Routes by prefix to the correct provider.
+ * All models route through OpenRouter.
  */
 export function resolveModel(modelId: string): LanguageModel | null {
-  if (modelId.startsWith('groq/')) {
-    if (!groq) return null;
-    return groq(modelId.slice(5)) as unknown as LanguageModel;
-  }
-  if (modelId.startsWith('nvidia-nim/')) {
-    if (!nvidia) return null;
-    return nvidia(modelId.slice(11)) as unknown as LanguageModel;
-  }
-  if (modelId.startsWith('cerebras/')) {
-    if (!cerebras) return null;
-    return cerebras(modelId.slice(9)) as unknown as LanguageModel;
-  }
-  if (modelId.startsWith('sambanova/')) {
-    if (!sambanova) return null;
-    return sambanova(modelId.slice(10)) as unknown as LanguageModel;
-  }
-  if (modelId.startsWith('mistral/')) {
-    if (!mistral) return null;
-    return mistral(modelId.slice(8)) as unknown as LanguageModel;
-  }
-  // Default: OpenRouter
-  return openrouter.chat(modelId) as unknown as LanguageModel;
+  return asModel<LanguageModel>(openrouter.chat(modelId));
 }
 
 /**
@@ -283,7 +228,7 @@ async function probeModels(modelIds: string[]): Promise<string[]> {
         if (!model) throw new Error(`No provider for ${id}`);
 
         const result = await generateText({
-          model: model as unknown as LanguageModel,
+          model: asModel<LanguageModel>(model),
           messages: [{ role: 'user', content: 'Say hello in one sentence.' }],
           maxTokens: 20,
           abortSignal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
@@ -346,7 +291,9 @@ export async function refreshDiscovery(): Promise<void> {
   if (!refreshTimer) {
     refreshTimer = setTimeout(() => {
       refreshTimer = null;
-      refreshDiscovery().catch(() => {});
+      refreshDiscovery().catch((error) => {
+        logger.error('Failed to refresh model discovery (scheduled)', { error });
+      });
     }, CACHE_TTL_MS);
     refreshTimer.unref?.();
   }
@@ -358,7 +305,7 @@ export async function refreshDiscovery(): Promise<void> {
 
 /**
  * Build the full model chain for a given task.
- * Merges: provider-priority → discovered OpenRouter → hardcoded fallback.
+ * Merges: task-specific chain → discovered OpenRouter → hardcoded fallback.
  */
 async function buildModelChain(
   task?: AITask
@@ -374,14 +321,7 @@ async function buildModelChain(
   }
 
   // Chat task — full chain
-  // 1. Provider-priority models (only those with API keys)
-  const providerModels = PROVIDER_PRIORITY_CHAIN.filter(
-    (entry) => !entry.task || entry.task === task
-  )
-    .filter((entry) => resolveModel(entry.id) !== null)
-    .map((entry) => entry.id);
-
-  // 2. Discovered OpenRouter models (or trigger background discovery)
+  // 1. Discovered OpenRouter models (or trigger background discovery)
   let source: ModelSelectionResult['source'] = 'cache';
   let discoveredModels: string[];
 
@@ -394,7 +334,9 @@ async function buildModelChain(
       discoveredModels = cachedDiscoveredModels;
       source = 'cache';
       // Trigger background refresh
-      refreshDiscovery().catch(() => {});
+      refreshDiscovery().catch((error) => {
+        logger.error('Failed to refresh model discovery (background)', { error });
+      });
     } else {
       // First run — do a blocking discovery attempt
       try {
@@ -408,8 +350,8 @@ async function buildModelChain(
     }
   }
 
-  // 3. Merge and dedup
-  const allModels = [...new Set([...providerModels, ...discoveredModels, ...HARDCODED_FALLBACK])];
+  // Merge and dedup
+  const allModels = [...new Set([...discoveredModels, ...HARDCODED_FALLBACK])];
 
   return { models: allModels, source };
 }
@@ -450,11 +392,7 @@ export function getDiscoveryStats() {
     isRefreshing,
     healthCache: modelHealthCache.getStats(),
     providers: {
-      groq: groq !== null,
-      nvidia: nvidia !== null,
-      cerebras: cerebras !== null,
-      sambanova: sambanova !== null,
-      mistral: mistral !== null,
+      openrouter: true,
     },
   };
 }

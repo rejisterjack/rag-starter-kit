@@ -68,7 +68,7 @@ The application uses the project's Tailwind CSS theme which provides:
 ### Automated Testing
 
 - **Lighthouse**: Run via Chrome DevTools for accessibility scoring
-- **axe-core**: Available through Storybook a11y addon
+- **axe-core**: Available via automated Playwright accessibility scans
 - **ESLint**: `eslint-plugin-jsx-a11y` for static analysis
 
 ### Manual Testing Checklist

@@ -6,8 +6,8 @@
  */
 
 import { generateEmbedding } from '@/lib/ai';
-import { searchSimilar } from '@/lib/qdrant';
-import { buildQdrantFilter } from '@/lib/qdrant/filters';
+import { searchSimilar } from '@/lib/vector';
+import { buildVectorFilter } from '@/lib/vector/filters';
 import type { RAGConfig, Source } from '@/types';
 
 // Default RAG configuration
@@ -53,10 +53,10 @@ export async function searchSimilarChunks(
   const topK = config.topK ?? defaultRAGConfig.topK;
   const threshold = config.similarityThreshold ?? defaultRAGConfig.similarityThreshold;
 
-  const filter = buildQdrantFilter({ userId });
-  const qdrantResults = await searchSimilar(queryEmbedding, { filter, topK, minScore: threshold });
+  const filter = buildVectorFilter({ userId });
+  const vectorResults = await searchSimilar(queryEmbedding, { filter, topK, minScore: threshold });
 
-  const results = qdrantResults.map((point) => {
+  const results = vectorResults.map((point) => {
     const p = point.payload as Record<string, unknown>;
     return {
       id: String(point.id),

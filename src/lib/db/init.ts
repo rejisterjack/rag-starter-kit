@@ -1,5 +1,5 @@
+import { initializeVectorStore } from '@/lib/vector';
 import { logger } from '../logger';
-import { initializeQdrantCollections } from '@/lib/qdrant';
 
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
@@ -19,9 +19,9 @@ export async function initializeDatabase(): Promise<void> {
 
   initializationPromise = (async () => {
     try {
-      await initializeQdrantCollections();
+      await initializeVectorStore();
       isInitialized = true;
-      logger.info('Database initialized (Qdrant collections ready)');
+      logger.info('Database initialized (pgvector tables ready)');
     } catch (error) {
       logger.error('Database initialization failed', { error: String(error) });
       throw error;
@@ -34,5 +34,5 @@ export async function initializeDatabase(): Promise<void> {
 }
 
 export async function ensureVectorIndex(): Promise<void> {
-  // No-op: Qdrant manages its own indexes
+  await initializeVectorStore();
 }

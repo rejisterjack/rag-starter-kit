@@ -5,19 +5,13 @@
  */
 
 import { prisma } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import {
   checkPartitionHealth,
   detachOldPartitions,
   ensurePartitions,
 } from '@/lib/db/partition-manager';
 import { logger } from '@/lib/logger';
-import {
-  COLLECTION_DOCUMENT_CHUNKS,
-  type ChunkPointData,
-  deleteByDocumentId,
-  qdrant,
-  upsertChunks,
-} from '@/lib/qdrant';
 import { dispatchAlert } from '@/lib/monitoring/alerting';
 import { detectAnomalies } from '@/lib/monitoring/anomaly-detector';
 import { ChunkingEngine } from '@/lib/rag/chunking';
@@ -34,7 +28,14 @@ import {
 } from '@/lib/rag/ingestion';
 import { scrapeURL } from '@/lib/rag/ingestion/parsers/url';
 import { isYouTubeUrl, parseYouTube } from '@/lib/rag/ingestion/parsers/youtube';
-import { deleteDocumentFiles, getFile } from '@/lib/storage/cloudinary-storage';
+import { getFile } from '@/lib/storage/cloudinary-storage';
+import {
+  type ChunkPointData,
+  deleteByDocumentId,
+  listChunksByDocumentId,
+  updateChunkEmbeddings,
+  upsertChunks,
+} from '@/lib/vector';
 import { checkDocumentLimit } from '@/lib/workspace/resource-limits';
 import { inngest } from './client';
 
@@ -134,8 +135,9 @@ export const processDocumentJob = inngest.createFunction(
 
     // Step 2b: Re-check workspace document limit (guard against race conditions)
     if (document.workspaceId) {
+      const workspaceId = document.workspaceId;
       const docLimit = await step.run('check-doc-limit', async () => {
-        return checkDocumentLimit(document.workspaceId as string);
+        return checkDocumentLimit(workspaceId);
       });
 
       if (!docLimit.allowed) {
@@ -169,12 +171,11 @@ export const processDocumentJob = inngest.createFunction(
 
     // Parse document based on type
     const parsedContent = await step.run('parse-document', async () => {
-      const metadata = (document.metadata as Record<string, unknown>) || {};
+      const metadata = fromJson<Record<string, unknown>>(document.metadata, {});
 
       // Case 1: File uploaded to Cloudinary — download and parse
       if (!document.content && document.storageUrl) {
-        const storageKey = document.storageKey || `documents/${documentId}`;
-        const buffer = await getFile(storageKey);
+        const buffer = await getFile(document.storageUrl);
 
         const parsed = await parseBuffer(buffer, document.contentType);
         await prisma.document.update({
@@ -257,7 +258,7 @@ export const processDocumentJob = inngest.createFunction(
           });
 
           if (workspace?.settings) {
-            const settings = workspace.settings as Record<string, unknown>;
+            const settings = fromJson<Record<string, unknown>>(workspace.settings, {});
             const ragSettings = settings.rag as Record<string, unknown> | undefined;
             const workspaceStrategy = ragSettings?.chunkingStrategy;
 
@@ -442,7 +443,7 @@ export const retryIngestionJob = inngest.createFunction(
         data: {
           status: 'PENDING',
           metadata: {
-            ...((existingDoc?.metadata as Record<string, unknown>) ?? {}),
+            ...fromJson<Record<string, unknown>>(existingDoc?.metadata ?? null, {}),
             retriedAt: new Date().toISOString(),
           },
         },
@@ -579,7 +580,7 @@ export const cleanupStaleJobs = inngest.createFunction(
           },
         });
 
-        const doc = await prisma.document.update({
+        await prisma.document.update({
           where: { id: job.documentId },
           data: {
             status: 'FAILED',
@@ -587,15 +588,15 @@ export const cleanupStaleJobs = inngest.createFunction(
               error: 'Processing timeout',
             },
           },
-          select: { storageKey: true },
         });
 
-        // Clean up Cloudinary files for failed documents
-        if (doc.storageKey) {
-          await deleteDocumentFiles(job.documentId).catch(() => {});
-        }
-
-        await deleteByDocumentId(job.documentId).catch(() => {});
+        // Remove vector chunks but keep the Cloudinary file so the user can retry
+        await deleteByDocumentId(job.documentId).catch((error) => {
+          logger.error('Failed to delete vectors for stale job', {
+            documentId: job.documentId,
+            error,
+          });
+        });
       });
     }
 
@@ -828,17 +829,7 @@ export const reEmbedWorkspaceJob = inngest.createFunction(
     for (const doc of documents) {
       const result = await step.run(`re-embed-doc-${doc.id}`, async () => {
         try {
-          const scrollResult = await qdrant.scroll(COLLECTION_DOCUMENT_CHUNKS, {
-            filter: { must: [{ key: 'documentId', match: { value: doc.id } }] },
-            limit: 100,
-            with_payload: true,
-            with_vector: false,
-          });
-          const chunks = scrollResult.points.map((p) => ({
-            id: String(p.id),
-            content: ((p.payload as Record<string, unknown>)?.content as string) ?? '',
-            index: ((p.payload as Record<string, unknown>)?.index as number) ?? 0,
-          }));
+          const chunks = await listChunksByDocumentId(doc.id, { limit: 500 });
 
           if (chunks.length === 0) {
             return { documentId: doc.id, chunksProcessed: 0 };
@@ -852,31 +843,13 @@ export const reEmbedWorkspaceJob = inngest.createFunction(
             const batch = chunks.slice(i, i + BATCH_SIZE);
             const texts = batch.map((c) => c.content);
             const vectors = await embeddingEngine.embedDocuments(texts);
-
-            for (let j = 0; j < batch.length; j++) {
+            const updates = batch.flatMap((chunk, j) => {
               const vector = vectors[j];
-              if (vector) {
-                const existingPoints = await qdrant.retrieve(COLLECTION_DOCUMENT_CHUNKS, {
-                  ids: [batch[j].id],
-                  with_payload: true,
-                  with_vector: false,
-                });
-                const existing = existingPoints[0];
-                if (existing) {
-                  await qdrant.upsert(COLLECTION_DOCUMENT_CHUNKS, {
-                    wait: true,
-                    points: [
-                      {
-                        id: existing.id,
-                        vector: vector,
-                        payload: existing.payload ?? {},
-                      },
-                    ],
-                  });
-                }
-              }
+              return vector ? [{ chunkId: chunk.id, embedding: vector }] : [];
+            });
+            if (updates.length > 0) {
+              await updateChunkEmbeddings(updates);
             }
-
             processed += batch.length;
           }
 

@@ -4,6 +4,8 @@
  * Handles pending messages, cached chats, and documents
  */
 
+import { clientLogger } from '@/lib/client-logger';
+
 // ============================================================================
 // Database Configuration
 // ============================================================================
@@ -347,9 +349,10 @@ export const cachedChats = {
       request.onsuccess = () => {
         const result = request.result as CachedChat | undefined;
         if (result) {
-          // Update last accessed
-          // biome-ignore lint/suspicious/noConsole: Error handling for background touch
-          cachedChats.touch(id).catch(console.error);
+          // Update last accessed (fire-and-forget; failure is non-critical)
+          cachedChats.touch(id).catch((error) => {
+            clientLogger.error('Failed to touch cached chat', { id, error });
+          });
         }
         resolve(result || null);
       };
@@ -468,8 +471,9 @@ export const cachedDocuments = {
       request.onsuccess = () => {
         const result = request.result as CachedDocument | undefined;
         if (result) {
-          // biome-ignore lint/suspicious/noConsole: Error handling for background touch
-          cachedDocuments.touch(id).catch(console.error);
+          cachedDocuments.touch(id).catch((error) => {
+            clientLogger.error('Failed to touch cached document', { id, error });
+          });
         }
         resolve(result || null);
       };

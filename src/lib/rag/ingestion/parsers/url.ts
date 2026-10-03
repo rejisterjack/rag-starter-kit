@@ -47,33 +47,7 @@ export interface RobotsTxt {
 // Install with: npm install playwright
 // And install browsers: npx playwright install
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PlaywrightPage = {
-  goto: (url: string, options: { waitUntil: string }) => Promise<PlaywrightResponse | null>;
-  url: () => string;
-  content: () => Promise<string>;
-  setDefaultTimeout: (timeout: number) => void;
-  setDefaultNavigationTimeout: (timeout: number) => void;
-  waitForSelector: (selector: string, options: { timeout: number }) => Promise<void>;
-  evaluate: <T>(fn: () => T) => Promise<T>;
-  close: () => Promise<void>;
-};
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PlaywrightResponse = {
-  status: () => number;
-  headers: () => Record<string, string>;
-};
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PlaywrightBrowserContext = {
-  newPage: () => Promise<PlaywrightPage>;
-  close: () => Promise<void>;
-};
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PlaywrightModule = {
-  chromium: {
-    launch: (options: { headless: boolean }) => Promise<PlaywrightBrowserContext>;
-  };
-};
+type PlaywrightModule = typeof import('playwright');
 
 let playwrightInstance: PlaywrightModule | null = null;
 
@@ -81,9 +55,9 @@ async function loadPlaywright(): Promise<PlaywrightModule | null> {
   if (playwrightInstance) return playwrightInstance;
   try {
     // Dynamic import for optional dependency
-    // @ts-expect-error - playwright is an optional dependency
-    const pw = (await import('playwright')) as PlaywrightModule;
-    playwrightInstance = pw as unknown as PlaywrightModule;
+    const pw = await import('playwright');
+    // The local PlaywrightModule type captures only the subset we use
+    playwrightInstance = pw as PlaywrightModule;
     return playwrightInstance;
   } catch (error: unknown) {
     logger.warn('Playwright not installed. URL scraping will use fetch fallback.', {
@@ -163,16 +137,16 @@ export async function scrapeURL(url: string, options: URLScrapeOptions = {}): Pr
 async function scrapeWithPlaywright(
   url: string,
   options: URLScrapeOptions,
-  playwright: PlaywrightModule
+  pw: PlaywrightModule
 ): Promise<ScrapedPage> {
-  const context = await playwright.chromium.launch({
+  const browser = await pw.chromium.launch({
     headless: true,
   });
 
-  let page: PlaywrightPage | null = null;
+  let page: Awaited<ReturnType<typeof browser.newPage>> | null = null;
 
   try {
-    page = await context.newPage();
+    page = await browser.newPage();
 
     // Set timeout
     const timeout = options.timeout || 30000;
@@ -217,7 +191,7 @@ async function scrapeWithPlaywright(
     };
   } finally {
     await page?.close?.();
-    await context.close();
+    await browser.close();
   }
 }
 
@@ -277,7 +251,10 @@ async function scrapeWithFetch(
 /**
  * Scroll page to bottom for lazy-loaded content
  */
-async function scrollPageToBottom(page: PlaywrightPage, maxScrolls: number): Promise<void> {
+async function scrollPageToBottom(
+  page: import('playwright').Page,
+  maxScrolls: number
+): Promise<void> {
   let previousHeight = 0;
   let scrollCount = 0;
 

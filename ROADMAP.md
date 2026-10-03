@@ -73,10 +73,10 @@ The best open-source projects are effortless to start. This phase is entirely ab
 ---
 
 ## Phase 2 — Core Product Features
-**Goal: Turn the starter kit into a real product people run and rely on.**
+**Goal: Mature the product. Serve both usage paths equally.**
 **Timeline: Month 2–4**
 
-This is where the project stops being a "starter kit" and starts being a platform. Every feature here solves a real pain point a developer would hit within a week of using it in production.
+This phase is where the product deepens. Every feature here solves a real pain point that a developer hits within the first week of deploying this for their team or users. These features serve both usage paths equally — whether you deploy as-is or fork and customise.
 
 ### 2.1 Multi-LLM Support
 
@@ -89,7 +89,7 @@ The single most requested feature in the TypeScript AI ecosystem. Developers wan
 | 2.1.3 | Anthropic provider (Claude Sonnet, Claude Haiku) | ✅ Done | Via Vercel AI SDK |
 | 2.1.4 | Ollama provider (Llama 3, Mistral, Phi-3, etc.) | ✅ Done | Local inference, no API key required |
 | 2.1.5 | Google provider (Gemini 1.5 Flash, Pro) | ✅ Done | Via `@ai-sdk/google` |
-| 2.1.6 | Provider switching via single `LLM_PROVIDER` env var | ✅ Done | Change one line, switch providers |
+| 2.1.6 | OpenRouter model selection via supported configuration | ✅ Done | Chat currently standardizes on OpenRouter; provider switching is outside the supported release contract |
 | 2.1.7 | Model selection UI in chat interface | ✅ Done | User can pick model from dropdown in the chat |
 
 ### 2.2 Admin Dashboard
@@ -201,7 +201,7 @@ This phase is not code. It's the work that turns a good repo into a project peop
 | 4.1 | Deep-dive article: "Building a production RAG system in TypeScript" | 📋 Planned | The flagship piece of content. Target dev.to, Hashnode, and a Reddit post to r/LocalLLM |
 | 4.2 | Post to r/LocalLLM | 📋 Planned | "I built a TypeScript RAG chatbot — Next.js, pgvector, voice I/O, one-click Vercel" |
 | 4.3 | Post to r/selfhosted | 📋 Planned | Same project, different framing — focus on data privacy and cloud-native deployment |
-| 4.4 | Post to r/nextjs | 📋 Planned | Focus on the Next.js 15 + App Router + streaming implementation |
+| 4.4 | Post to r/nextjs | 📋 Planned | Focus on the Next.js 16 + App Router + streaming implementation |
 | 4.5 | Submit to "awesome-selfhosted" list | 📋 Planned | High-traffic GitHub list, permanent inbound traffic |
 | 4.6 | Submit to "awesome-langchain" or "awesome-llm" list | 📋 Planned | Developer discoverability |
 | 4.7 | GitHub Discussions enabled for Q&A | 📋 Planned | Let users ask questions publicly, builds a searchable knowledge base |
@@ -227,11 +227,11 @@ These are explicit non-goals. If a PR or feature request falls into one of these
 
 ## How Decisions Get Made
 
-Before adding a new feature, ask three questions:
+Before adding a new feature, read [VISION.md](./VISION.MD). Then ask three questions:
 
 1. **Does this exist in VISION.md?** If the vision document doesn't support it, the answer is almost certainly no.
-2. **Does this help a developer ship faster or run this more confidently in production?** If it's a nice-to-have that doesn't serve those goals, defer it.
-3. **Is this Python-able?** If the only way to do it is to introduce a non-TypeScript dependency, rethink the approach.
+2. **Does it serve the builder?** Does this help a TypeScript developer deploy faster, run this more confidently in production, or customise it more easily?
+3. **Is it TypeScript-native?** If the only way to do it is to introduce a non-TypeScript dependency, rethink the approach.
 
 ---
 

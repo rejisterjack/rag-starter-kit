@@ -76,13 +76,13 @@ All protected endpoints require one of:
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/api/webhook/ingest` | API Key | Ingest document via webhook |
+| POST | `/api/public/ingest` | API Key | Ingest a URL into the workspace knowledge base |
 
 **Webhook Request:**
 ```json
 {
   "url": "https://example.com/docs/page.html",
-  "workspaceId": "ws_abc123"
+  "metadata": { "title": "Example document" }
 }
 ```
 
@@ -101,13 +101,27 @@ Rate limit headers are included in responses:
 
 ## Error Responses
 
-All errors follow a consistent format:
+All JSON API errors follow a consistent envelope:
 
 ```json
 {
-  "error": "Human-readable error message",
-  "code": "MACHINE_READABLE_CODE",
-  "details": {}
+  "success": false,
+  "error": {
+    "code": "MACHINE_READABLE_CODE",
+    "message": "Human-readable error message",
+    "details": {}
+  }
+}
+```
+
+The `details` field is optional and may contain validation errors or other structured context.
+
+Successful responses use:
+
+```json
+{
+  "success": true,
+  "data": {}
 }
 ```
 

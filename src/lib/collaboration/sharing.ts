@@ -430,7 +430,6 @@ export async function processMentions(
   const commentUrl = `${appUrl}/chat/${message.chatId}`;
 
   let matchResult: RegExpExecArray | null = null;
-  // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex iteration pattern
   while ((matchResult = mentionRegex.exec(content)) !== null) {
     const username = matchResult[1];
     if (mentionedUsernames.has(username)) continue;

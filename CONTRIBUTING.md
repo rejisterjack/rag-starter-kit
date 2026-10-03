@@ -4,7 +4,7 @@ First — thank you. Every bug report, typo fix, and feature contribution makes 
 
 This guide covers everything you need to go from "I want to contribute" to "my PR is merged."
 
----
+> **Before you start**: Read [VISION.MD](./VISION.MD). It defines what we are building, who it's for (TypeScript developers who deploy this for their users), and what we explicitly will not build. Every PR should serve that vision. If in doubt, check there first.
 
 ## Table of Contents
 
@@ -77,7 +77,7 @@ If either of these fails on a clean clone, that's a bug — please open an issue
 ```
 rag-starter-kit/
 ├── src/
-│   ├── app/                 # Next.js 15 App Router pages and layouts
+│   ├── app/                 # Next.js 16 App Router pages and layouts
 │   ├── components/          # Reusable React components (shadcn/ui based)
 │   ├── lib/
 │   │   ├── ai/             # LLM provider config (OpenRouter + Gemini)
@@ -223,7 +223,7 @@ Update your .env file before upgrading.
 
 ## Code Style
 
-We use [Biome](https://biomejs.dev/) for formatting and linting. It runs automatically on commit via a pre-commit hook.
+We use ESLint for linting and Prettier for formatting. Both run automatically on commit via the pre-commit hook.
 
 ```bash
 bun lint          # Check for issues
@@ -286,7 +286,7 @@ For features marked `💡 Idea` in the roadmap — open an issue first to discus
 
 ## What We Won't Accept
 
-To keep the project focused, these types of contributions will be declined:
+To keep the project focused on serving TypeScript developers who deploy this for their teams or customers, these types of contributions will be declined:
 
 - **Python code of any kind** — this is a TypeScript project
 - **No-code or visual builder UI** — always code-first

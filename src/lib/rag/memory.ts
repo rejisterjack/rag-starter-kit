@@ -6,17 +6,13 @@
 import type { PrismaClient, Message as PrismaMessage } from '@/generated/prisma/client';
 import { createProviderFromEnv } from '@/lib/ai/llm';
 import { buildConversationSummarizationPrompt } from '@/lib/ai/prompts/templates';
+import { fromJsonOptional, toJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 import type { Source } from '@/types';
 
 // =============================================================================
 // Types
 // =============================================================================
-
-// Type for Prisma JSON fields - use Prisma's JsonValue
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-// biome-ignore lint/suspicious/noExplicitAny: Prisma JSON types are complex
-type PrismaJsonInput = any;
 
 export interface Message {
   id: string;
@@ -174,10 +170,8 @@ export class ConversationMemory {
         chatId: conversationId,
         content: message.content,
         role: message.role.toUpperCase() as 'USER' | 'ASSISTANT' | 'SYSTEM',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        sources: message.sources as unknown as PrismaJsonInput,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tokensUsed: message.tokensUsed as unknown as PrismaJsonInput,
+        sources: toJson(message.sources),
+        tokensUsed: toJson(message.tokensUsed),
       },
     });
 
@@ -207,10 +201,8 @@ export class ConversationMemory {
             chatId: conversationId,
             content: msg.content,
             role: msg.role.toUpperCase() as 'USER' | 'ASSISTANT' | 'SYSTEM',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            sources: msg.sources as unknown as PrismaJsonInput,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            tokensUsed: msg.tokensUsed as unknown as PrismaJsonInput,
+            sources: toJson(msg.sources),
+            tokensUsed: toJson(msg.tokensUsed),
           },
         })
       )
@@ -383,9 +375,10 @@ export class ConversationMemory {
       role: m.role.toLowerCase() as 'user' | 'assistant' | 'system',
       content: m.content,
       createdAt: m.createdAt,
-      sources: m.sources ? (m.sources as unknown as Source[]) : undefined,
-      tokensUsed:
-        (m.tokensUsed as { prompt: number; completion: number; total: number }) ?? undefined,
+      sources: fromJsonOptional<Source[]>(m.sources),
+      tokensUsed: fromJsonOptional<{ prompt: number; completion: number; total: number }>(
+        m.tokensUsed
+      ),
     };
   }
 

@@ -128,7 +128,7 @@ export function isStandalone(): boolean {
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
     // iOS Safari
-    (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
+    window.navigator.standalone === true ||
     // Android Trusted Web Activity
     document.referrer.includes('android-app://')
   );

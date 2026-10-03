@@ -1,6 +1,7 @@
 import { hash } from 'bcryptjs';
-import { type NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { prisma } from '@/lib/db';
@@ -26,16 +27,13 @@ async function handler(req: NextRequest) {
     try {
       body = await req.json();
     } catch {
-      return NextResponse.json(
-        { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     const parsed = resetPasswordSchema.safeParse(body);
     if (!parsed.success) {
       const message = parsed.error.issues.map((i) => i.message).join(' ');
-      return NextResponse.json({ error: { code: 'VALIDATION_ERROR', message } }, { status: 400 });
+      return apiError('VALIDATION_ERROR', message, 400);
     }
 
     const { token, password } = parsed.data;
@@ -46,10 +44,7 @@ async function handler(req: NextRequest) {
     });
 
     if (!resetToken || resetToken.expires < new Date()) {
-      return NextResponse.json(
-        { error: { code: 'INVALID_TOKEN', message: 'Invalid or expired reset token.' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_TOKEN', 'Invalid or expired reset token.', 400);
     }
 
     // Find user by email (stored as identifier)
@@ -58,10 +53,7 @@ async function handler(req: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: { code: 'USER_NOT_FOUND', message: 'User not found.' } },
-        { status: 400 }
-      );
+      return apiError('USER_NOT_FOUND', 'User not found.', 400);
     }
 
     // Hash new password
@@ -103,15 +95,12 @@ async function handler(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true, message: 'Password reset successfully.' });
+    return apiSuccess({ message: 'Password reset successfully.' });
   } catch (error) {
     logger.error('Reset password error', {
       error: error instanceof Error ? error.message : 'Unknown',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'An unexpected error occurred', 500);
   }
 }
 

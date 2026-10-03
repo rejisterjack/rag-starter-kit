@@ -12,10 +12,11 @@
 
 import { createOpenAI, openai } from '@ai-sdk/openai';
 import { type LanguageModel, streamText } from 'ai';
-import { NextResponse } from 'next/server';
 import { createOllama } from 'ollama-ai-provider';
+import { asModel } from '@/lib/ai/types';
 import { checkBodySize } from '@/lib/api/middleware';
 import { wrapStreamWithErrorFrame } from '@/lib/api/stream-error-wrapper';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 const fireworks = createOpenAI({
   baseURL: 'https://api.fireworks.ai/inference/v1',
@@ -118,7 +119,7 @@ async function getModel(modelName: string): Promise<LanguageModel> {
 
   // Fireworks models (accounts/fireworks/models/...)
   if (modelName.startsWith('accounts/fireworks/')) {
-    return fireworks(modelName) as unknown as LanguageModel;
+    return asModel<LanguageModel>(fireworks(modelName));
   }
 
   // Ollama models
@@ -127,15 +128,15 @@ async function getModel(modelName: string): Promise<LanguageModel> {
     const ollama = createOllama({
       baseURL: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434/api',
     });
-    return ollama(modelName) as unknown as LanguageModel;
+    return asModel<LanguageModel>(ollama(modelName));
   }
 
   // OpenAI models
   if (modelName.startsWith('gpt-') || modelName.startsWith('text-')) {
-    return openai(modelName) as unknown as LanguageModel;
+    return asModel<LanguageModel>(openai(modelName));
   }
 
-  // Use centralized dynamic resolver for everything else (Groq, OpenRouter, etc.)
+  // Use centralized dynamic resolver for everything else (OpenRouter)
   const resolved = resolveDynamicModel(modelName);
   if (resolved) return resolved;
 
@@ -180,7 +181,7 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const userId = session.user.id;
@@ -194,19 +195,14 @@ export async function POST(req: Request) {
     });
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        {
-          error: 'Rate limit exceeded',
-          code: 'RATE_LIMIT',
-          resetAt: new Date(rateLimitResult.reset).toISOString(),
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
+      const errRes = apiError('RATE_LIMIT', 'Rate limit exceeded', 429, {
+        resetAt: new Date(rateLimitResult.reset).toISOString(),
+      });
+      errRes.headers.set(
+        'Retry-After',
+        Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString()
       );
+      return errRes;
     }
 
     if (workspaceId) {
@@ -219,10 +215,7 @@ export async function POST(req: Request) {
           metadata: { action: 'agent_chat', requiredPermission: Permission.READ_DOCUMENTS },
           severity: 'WARNING',
         });
-        return NextResponse.json(
-          { error: 'Access denied to workspace', code: 'FORBIDDEN' },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Access denied to workspace', 403);
       }
     }
 
@@ -236,10 +229,7 @@ export async function POST(req: Request) {
       logger.debug('Invalid JSON body in agent chat request', {
         error: error instanceof Error ? error.message : 'Unknown',
       });
-      return NextResponse.json(
-        { error: 'Invalid JSON body', code: 'INVALID_BODY' },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     let validatedInput: ReturnType<typeof validateChatInput>;
@@ -247,10 +237,7 @@ export async function POST(req: Request) {
       validatedInput = validateChatInput(body);
     } catch (error) {
       if (error instanceof Error) {
-        return NextResponse.json(
-          { error: 'Validation failed', code: 'VALIDATION_ERROR', details: error.message },
-          { status: 400 }
-        );
+        return apiError('VALIDATION_ERROR', 'Validation failed', 400, error.message);
       }
       throw error;
     }
@@ -307,7 +294,7 @@ export async function POST(req: Request) {
       });
 
       if (!chat) {
-        return NextResponse.json({ error: 'Chat not found', code: 'NOT_FOUND' }, { status: 404 });
+        return apiError('NOT_FOUND', 'Chat not found', 404);
       }
 
       const recentMessages = await memory.getRecentMessages(effectiveConversationId, 10);
@@ -514,15 +501,10 @@ export async function POST(req: Request) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    return NextResponse.json(
-      {
-        error: 'Failed to process agentic chat request',
-        code: 'INTERNAL_ERROR',
-        details: errorMessage,
-        requestId,
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to process agentic chat request', 500, {
+      message: errorMessage,
+      requestId,
+    });
   }
 }
 
@@ -673,13 +655,10 @@ ${memoryContext ? `\nContext:\n${memoryContext}` : ''}`,
       timestamp: new Date(),
     });
 
-    const jsonResponse = NextResponse.json({
-      success: true,
-      data: {
-        content: response.content,
-        strategy: 'direct_answer',
-        usage: response.usage,
-      },
+    const jsonResponse = apiSuccess({
+      content: response.content,
+      strategy: 'direct_answer',
+      usage: response.usage,
     });
     addRateLimitHeaders(jsonResponse.headers, rateLimitResult);
     return jsonResponse;
@@ -832,13 +811,10 @@ ${memoryContext ? `User Context:\n${memoryContext}` : ''}`;
       timestamp: new Date(),
     });
 
-    const jsonResponse = NextResponse.json({
-      success: true,
-      data: {
-        content: llmResponse.content,
-        strategy: 'calculate',
-        usage: llmResponse.usage,
-      },
+    const jsonResponse = apiSuccess({
+      content: llmResponse.content,
+      strategy: 'calculate',
+      usage: llmResponse.usage,
     });
     addRateLimitHeaders(jsonResponse.headers, rateLimitResult);
     return jsonResponse;
@@ -1078,26 +1054,23 @@ ${memoryContext ? `\nUser Context:\n${memoryContext}` : ''}`;
       timestamp: new Date(),
     });
 
-    const jsonResponse = NextResponse.json({
-      success: true,
-      data: {
-        content: llmResponse.content,
-        strategy: 'web_search',
-        sources: searchResults.map((r, i) => ({
-          id: `web-${i}`,
-          content: `${r.title}\n${r.snippet}`,
-          metadata: {
-            documentId: r.url,
-            documentName: r.title,
-            source: r.source || 'web',
-            url: r.url,
-            chunkIndex: i,
-            totalChunks: searchResults.length,
-          },
-          similarity: 1 - i * 0.1,
-        })),
-        usage: llmResponse.usage,
-      },
+    const jsonResponse = apiSuccess({
+      content: llmResponse.content,
+      strategy: 'web_search',
+      sources: searchResults.map((r, i) => ({
+        id: `web-${i}`,
+        content: `${r.title}\n${r.snippet}`,
+        metadata: {
+          documentId: r.url,
+          documentName: r.title,
+          source: r.source || 'web',
+          url: r.url,
+          chunkIndex: i,
+          totalChunks: searchResults.length,
+        },
+        similarity: 1 - i * 0.1,
+      })),
+      usage: llmResponse.usage,
     });
     addRateLimitHeaders(jsonResponse.headers, rateLimitResult);
     return jsonResponse;
@@ -1277,14 +1250,11 @@ async function handleDirectRetrieval(params: HandlerParams): Promise<Response> {
       timestamp: new Date(),
     });
 
-    const jsonResponse = NextResponse.json({
-      success: true,
-      data: {
-        content: response.content,
-        strategy: 'direct_retrieval',
-        sources: citations,
-        usage: response.usage,
-      },
+    const jsonResponse = apiSuccess({
+      content: response.content,
+      strategy: 'direct_retrieval',
+      sources: citations,
+      usage: response.usage,
     });
     addRateLimitHeaders(jsonResponse.headers, rateLimitResult);
     return jsonResponse;
@@ -1296,7 +1266,6 @@ async function handleReAct(
 ): Promise<Response> {
   const {
     userMessage,
-    history: _history,
     userId,
     workspaceId,
     effectiveConversationId,
@@ -1445,25 +1414,16 @@ async function handleReAct(
       });
     }
 
-    return NextResponse.json(
-      {
-        success: false,
-        data: {
-          content: partialAnswer,
-          strategy: 'react',
-          error: errorMessage,
-          iterations: 0,
-          terminated: true,
-          terminationReason: `Agent execution error: ${errorMessage}`,
-        },
-      },
-      {
-        headers: {
-          'X-Agent-Tools-Used': '0',
-          'X-Agent-Iterations': '0',
-        },
-      }
-    );
+    const errRes = apiError('AGENT_ERROR', errorMessage, 500, {
+      content: partialAnswer,
+      strategy: 'react',
+      iterations: 0,
+      terminated: true,
+      terminationReason: `Agent execution error: ${errorMessage}`,
+    });
+    errRes.headers.set('X-Agent-Tools-Used', '0');
+    errRes.headers.set('X-Agent-Iterations', '0');
+    return errRes;
   }
 
   const memory = new ConversationMemory(prisma);
@@ -1533,20 +1493,17 @@ async function handleReAct(
     return response;
   }
 
-  const jsonResponse = NextResponse.json({
-    success: true,
-    data: {
-      content: result.answer,
-      strategy: 'react',
-      steps: agentConfig.showReasoning ? result.steps : undefined,
-      sources: result.sources,
-      toolCalls: result.steps.filter((s: ReActStep) => s.action !== 'final_answer').length,
-      iterations: result.iterations,
-      terminated: result.terminated,
-      terminationReason: result.terminationReason,
-      latency: result.latency,
-      usage: { totalTokens: result.tokensUsed },
-    },
+  const jsonResponse = apiSuccess({
+    content: result.answer,
+    strategy: 'react',
+    steps: agentConfig.showReasoning ? result.steps : undefined,
+    sources: result.sources,
+    toolCalls: result.steps.filter((s: ReActStep) => s.action !== 'final_answer').length,
+    iterations: result.iterations,
+    terminated: result.terminated,
+    terminationReason: result.terminationReason,
+    latency: result.latency,
+    usage: { totalTokens: result.tokensUsed },
   });
 
   // Include agent execution metadata in response headers
@@ -1618,14 +1575,11 @@ async function handleClarification(
     return response;
   }
 
-  const jsonResponse = NextResponse.json({
-    success: true,
-    data: {
-      content: clarifyContent,
-      strategy: 'clarify',
-      needsClarification: true,
-      suggestedQuestions: classification.suggestedTools ?? [],
-    },
+  const jsonResponse = apiSuccess({
+    content: clarifyContent,
+    strategy: 'clarify',
+    needsClarification: true,
+    suggestedQuestions: classification.suggestedTools ?? [],
   });
   addRateLimitHeaders(jsonResponse.headers, rateLimitResult);
   return jsonResponse;
@@ -1639,7 +1593,7 @@ export async function GET(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const { searchParams } = new URL(req.url);
@@ -1652,7 +1606,7 @@ export async function GET(req: Request) {
         session.user.workspaceId ?? undefined,
         days
       );
-      return NextResponse.json({ success: true, data: stats });
+      return apiSuccess(stats);
     }
 
     if (action === 'quality') {
@@ -1662,7 +1616,7 @@ export async function GET(req: Request) {
         session.user.workspaceId ?? undefined,
         days
       );
-      return NextResponse.json({ success: true, data: quality });
+      return apiSuccess(quality);
     }
 
     if (action === 'realtime') {
@@ -1670,17 +1624,16 @@ export async function GET(req: Request) {
         session.user.id,
         session.user.workspaceId ?? undefined
       );
-      return NextResponse.json({ success: true, data: realtime });
+      return apiSuccess(realtime);
     }
 
-    return NextResponse.json(
-      { error: 'Invalid action', validActions: ['stats', 'quality', 'realtime'] },
-      { status: 400 }
-    );
+    return apiError('BAD_REQUEST', 'Invalid action', 400, {
+      validActions: ['stats', 'quality', 'realtime'],
+    });
   } catch (error: unknown) {
     logger.error('Failed to retrieve agent analytics', {
       error: error instanceof Error ? error.message : 'Unknown',
     });
-    return NextResponse.json({ error: 'Failed to retrieve analytics' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to retrieve analytics', 500);
   }
 }

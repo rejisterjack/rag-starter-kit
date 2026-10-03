@@ -142,7 +142,11 @@ export function weightedScoreFusion(
   // Sort by weighted score
   return Array.from(chunkMap.values())
     .sort((a, b) => b.weightedScore - a.weightedScore)
-    .map(({ weightedScore, ...chunk }) => chunk);
+    .map((chunk) => {
+      const { weightedScore, ...result } = chunk;
+      void weightedScore;
+      return result;
+    });
 }
 
 /**

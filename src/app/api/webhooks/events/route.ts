@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
@@ -11,27 +11,16 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const events = getAvailableWebhookEvents();
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        events,
-      },
-    });
+    return apiSuccess({ events });
   } catch (error: unknown) {
     logger.error('Failed to get webhook events', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to get webhook events' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to get webhook events', 500);
   }
 }

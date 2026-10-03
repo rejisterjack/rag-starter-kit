@@ -1,22 +1,13 @@
 /**
- * Vector Similarity Search using Qdrant
+ * Vector Similarity Search using pgvector
  *
- * Implements vector similarity search via the Qdrant client, with
+ * Implements vector similarity search via PostgreSQL pgvector, with
  * pre-filtering by metadata and score threshold.
  */
 
-import {
-  searchSimilar,
-  batchSearch,
-} from '@/lib/qdrant/points';
-import {
-  buildQdrantFilterFromRetrievalOptions,
-} from '@/lib/qdrant/filters';
-import type {
-  RetrievalOptions,
-  RetrievedChunk,
-  VectorSearchConfig,
-} from './types';
+import { buildVectorFilterFromRetrievalOptions } from '@/lib/vector/filters';
+import { batchSearch, searchSimilar } from '@/lib/vector/points';
+import type { RetrievalOptions, RetrievedChunk, VectorSearchConfig } from './types';
 
 /**
  * Default configuration for vector search
@@ -26,13 +17,13 @@ export const defaultVectorSearchConfig: VectorSearchConfig = {
 };
 
 /**
- * Map a Qdrant ScoredPoint payload to a RetrievedChunk
+ * Map a vector store ScoredPoint payload to a RetrievedChunk
  */
 function mapScoredPointToChunk(
   point: { id: string | number; score: number; payload?: Record<string, unknown> | null },
-  distanceMetric: string,
+  distanceMetric: string
 ): RetrievedChunk {
-  const p = (point.payload ?? {}) as Record<string, unknown>;
+  const p = point.payload ?? {};
   const getString = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v : fallback);
   const getNumber = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined);
 
@@ -55,7 +46,7 @@ function mapScoredPointToChunk(
 }
 
 /**
- * Vector Retriever class for similarity search via Qdrant
+ * Vector Retriever class for similarity search via pgvector
  */
 export class VectorRetriever {
   private config: VectorSearchConfig;
@@ -72,7 +63,7 @@ export class VectorRetriever {
     const minScore = options.minScore ?? 0.7;
 
     try {
-      const filter = buildQdrantFilterFromRetrievalOptions(options);
+      const filter = buildVectorFilterFromRetrievalOptions(options);
 
       const results = await searchSimilar(queryEmbedding, {
         filter,
@@ -104,7 +95,7 @@ export class VectorRetriever {
     const minScore = options.minScore ?? 0.7;
 
     try {
-      const filter = buildQdrantFilterFromRetrievalOptions(options);
+      const filter = buildVectorFilterFromRetrievalOptions(options);
 
       const batchResults = await batchSearch(queryEmbeddings, {
         filter,

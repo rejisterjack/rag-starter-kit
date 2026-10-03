@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -207,7 +207,7 @@ export function IngestionProgress({
 
   return (
     <AnimatePresence mode="wait">
-      <motion.div
+      <m.div
         initial={{ opacity: 0, height: 0 }}
         animate={{ opacity: 1, height: 'auto' }}
         exit={{ opacity: 0, height: 0 }}
@@ -217,19 +217,19 @@ export function IngestionProgress({
         <div className="mt-2 space-y-1.5">
           {/* Completed state */}
           {state === 'completed' && (
-            <motion.div
+            <m.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
               <span className="font-medium">Ready</span>
-            </motion.div>
+            </m.div>
           )}
 
           {/* Failed state */}
           {state === 'failed' && (
-            <motion.div
+            <m.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               className="space-y-1"
@@ -241,12 +241,12 @@ export function IngestionProgress({
               {errorMessage && (
                 <p className="text-xs text-destructive/80 line-clamp-2">{errorMessage}</p>
               )}
-            </motion.div>
+            </m.div>
           )}
 
           {/* Processing state */}
           {state === 'processing' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1.5">
+            <m.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -273,10 +273,10 @@ export function IngestionProgress({
               {message && (
                 <p className="text-[11px] text-muted-foreground/70 truncate">{message}</p>
               )}
-            </motion.div>
+            </m.div>
           )}
         </div>
-      </motion.div>
+      </m.div>
     </AnimatePresence>
   );
 }

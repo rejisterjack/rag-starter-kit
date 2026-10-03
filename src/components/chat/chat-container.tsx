@@ -93,8 +93,10 @@ export const ChatContainer = memo(function ChatContainer({
   );
 });
 
-interface ChatInnerProps
-  extends Omit<ChatContainerProps, 'hasMore' | 'isLoading' | 'isNewChatLoading'> {
+interface ChatInnerProps extends Omit<
+  ChatContainerProps,
+  'hasMore' | 'isLoading' | 'isNewChatLoading'
+> {
   hasMore: boolean;
   isLoading: boolean;
   isNewChatLoading: boolean;

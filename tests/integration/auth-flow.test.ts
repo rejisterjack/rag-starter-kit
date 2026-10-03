@@ -148,7 +148,7 @@ describe('Authentication Flow Integration', () => {
       expect(response.status).toBe(201);
       const body = await response.json();
       expect(body.success).toBe(true);
-      expect(body.data.userId).toBe('user-123');
+      expect(body.data.message).toBe('Account created successfully');
     });
 
     it('should reject registration with weak password', async () => {
@@ -205,9 +205,8 @@ describe('Authentication Flow Integration', () => {
     });
 
     it('should track failed login attempts', async () => {
-      const { recordFailedAttempt, getLockoutStatus } = await import(
-        '@/lib/security/account-lockout'
-      );
+      const { recordFailedAttempt, getLockoutStatus } =
+        await import('@/lib/security/account-lockout');
 
       // Use a unique identifier for this test to avoid state leakage
       const testId = `track-attempts-test-${Math.random().toString(36).slice(2)}@example.com`;
@@ -222,9 +221,8 @@ describe('Authentication Flow Integration', () => {
     });
 
     it('should lock account after 5 failed attempts', async () => {
-      const { recordFailedAttempt, getLockoutStatus } = await import(
-        '@/lib/security/account-lockout'
-      );
+      const { recordFailedAttempt, getLockoutStatus } =
+        await import('@/lib/security/account-lockout');
 
       // Use a unique identifier for this test to avoid state leakage
       const testId = `lockout-5-attempts-${Math.random().toString(36).slice(2)}@example.com`;

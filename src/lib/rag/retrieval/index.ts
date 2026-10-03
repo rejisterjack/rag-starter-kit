@@ -39,7 +39,6 @@
  *
  * @module rag/retrieval
  * @see {@link module:db/vector-store} for vector store implementation
- * @see {@link https://github.com/pgvector/pgvector|pgvector Documentation}
  */
 
 import { createEmbeddingProviderFromEnv } from '@/lib/ai/embeddings';
@@ -418,11 +417,11 @@ export async function hybridSearch(
     topK: (config.topK ?? 5) * 2, // Get more for fusion
   });
 
-  // Get full-text search results using Qdrant keyword search
-  const { searchKeyword: qdrantKeywordSearch } = await import('@/lib/qdrant');
-  const { buildQdrantFilter: buildFilter } = await import('@/lib/qdrant/filters');
+  // Get full-text search results using PostgreSQL keyword search
+  const { searchKeyword } = await import('@/lib/vector');
+  const { buildVectorFilter: buildFilter } = await import('@/lib/vector/filters');
   const keywordFilter = buildFilter({ userId });
-  const keywordResults = await qdrantKeywordSearch(query, {
+  const keywordResults = await searchKeyword(query, {
     filter: keywordFilter,
     topK: (config.topK ?? 5) * 2,
   });

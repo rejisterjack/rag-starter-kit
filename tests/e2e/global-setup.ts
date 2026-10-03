@@ -60,8 +60,8 @@ async function globalSetup(config: FullConfig) {
     );
     await page.click('[data-testid="login-button"]');
 
-    // Wait for navigation to dashboard
-    await page.waitForURL(/\/dashboard/);
+    // Wait for navigation to the authenticated app (login lands on /chat)
+    await page.waitForURL(/\/(chat|dashboard)/);
 
     // Save storage state
     await page.context().storageState({ path: storageState as string });

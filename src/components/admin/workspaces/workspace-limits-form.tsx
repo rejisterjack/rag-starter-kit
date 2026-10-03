@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { apiFetch } from '@/lib/api-client';
 
 interface WorkspaceData {
   maxDocuments: number;
@@ -50,7 +51,7 @@ export function WorkspaceLimitsForm({ workspaceId, workspace }: WorkspaceLimitsF
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/admin/workspaces/${workspaceId}/limits`, {
+      await apiFetch(`/api/admin/workspaces/${workspaceId}/limits`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -62,11 +63,6 @@ export function WorkspaceLimitsForm({ workspaceId, workspace }: WorkspaceLimitsF
           llmModel: form.llmModel || null,
         }),
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to update limits');
-      }
 
       setMessage({ type: 'success', text: 'Limits updated successfully' });
       toast.success('Limits updated');

@@ -11,9 +11,9 @@ import {
   generateImageEmbedding,
   generateTextEmbeddingForImageSearch,
 } from '@/lib/ai/embeddings/image';
-import { searchSimilar, searchSimilarImages } from '@/lib/qdrant';
-import { buildQdrantFilter } from '@/lib/qdrant/filters';
 import { prisma } from '@/lib/db';
+import { searchSimilar, searchSimilarImages } from '@/lib/vector';
+import { buildVectorFilter } from '@/lib/vector/filters';
 import type { RetrievalOptions, RetrievedChunk } from './types';
 
 /**
@@ -84,13 +84,13 @@ export async function searchByImage(
     // Generate query embedding
     const queryEmbedding = await generateImageEmbedding(queryImage);
 
-    // Search for similar images using Qdrant
-    const qdrantResults = await searchSimilarImages(queryEmbedding, {
+    // Search for similar images using pgvector
+    const imageResults = await searchSimilarImages(queryEmbedding, {
       userId: workspaceId,
       topK,
     });
 
-    const images: ImageSearchResult[] = qdrantResults
+    const images: ImageSearchResult[] = imageResults
       .filter((point) => (point.score ?? 0) >= minScore)
       .map((point) => {
         const p = point.payload as Record<string, unknown>;
@@ -114,8 +114,8 @@ export async function searchByImage(
     if (includeChunks && images.length > 0) {
       const documentIds = [...new Set(images.map((img) => img.documentId))];
 
-      // Get chunks from related documents via Qdrant
-      const chunkFilter = buildQdrantFilter({
+      // Get chunks from related documents via pgvector
+      const chunkFilter = buildVectorFilter({
         userId: workspaceId,
         filters: { documentIds },
       });
@@ -180,13 +180,13 @@ export async function searchImagesByText(
     // Generate text embedding for image search
     const textEmbedding = await generateTextEmbeddingForImageSearch(query);
 
-    // Search for matching images using Qdrant
-    const qdrantResults = await searchSimilarImages(textEmbedding, {
+    // Search for matching images using pgvector
+    const imageResults = await searchSimilarImages(textEmbedding, {
       userId: workspaceId,
       topK,
     });
 
-    const images: ImageSearchResult[] = qdrantResults
+    const images: ImageSearchResult[] = imageResults
       .filter((point) => (point.score ?? 0) >= minScore)
       .map((point) => {
         const p = point.payload as Record<string, unknown>;
@@ -210,7 +210,7 @@ export async function searchImagesByText(
     if (includeChunks && images.length > 0) {
       const documentIds = [...new Set(images.map((img) => img.documentId))];
 
-      const chunkFilter = buildQdrantFilter({
+      const chunkFilter = buildVectorFilter({
         userId: workspaceId,
         filters: { documentIds },
       });
@@ -296,7 +296,7 @@ export async function searchMultiModal(
     if (options.includeChunks && mergedImages.length > 0) {
       const documentIds = [...new Set(mergedImages.map((img) => img.documentId))];
 
-      const chunkFilter = buildQdrantFilter({
+      const chunkFilter = buildVectorFilter({
         userId: workspaceId,
         filters: { documentIds },
       });

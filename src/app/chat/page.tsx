@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChatContainer } from '@/components/chat/chat-container';
 import { ChatSidebar } from '@/components/chat/chat-sidebar';
 import type { Source } from '@/components/chat/citations';
@@ -59,7 +59,7 @@ export default function ChatPage(): React.ReactElement {
     },
   });
 
-  const documents = documentsQuery.data || [];
+  const documents = useMemo(() => documentsQuery.data || [], [documentsQuery.data]);
 
   const {
     messages,
@@ -82,14 +82,13 @@ export default function ChatPage(): React.ReactElement {
   });
 
   // On mount: load chat if we have a chatId from URL
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional mount-only effect
   useEffect(() => {
     const chatId = getUrlChatId();
     if (chatId) {
       setCurrentChatId(chatId);
       loadMessages(chatId);
     }
-  }, []);
+  }, [loadMessages]);
 
   const effectiveSources = chatSources.length > 0 ? chatSources : sources;
 
@@ -118,6 +117,16 @@ export default function ChatPage(): React.ReactElement {
     }
     return undefined;
   }, [uploadState.files, uploadState]);
+
+  // Reset previewDocumentId if the document is deleted or no longer exists in documents list
+  useEffect(() => {
+    if (previewDocumentId && documentsQuery.isSuccess) {
+      const exists = documents.some((d) => d.id === previewDocumentId);
+      if (!exists) {
+        setPreviewDocumentId(null);
+      }
+    }
+  }, [previewDocumentId, documents, documentsQuery.isSuccess]);
 
   const handleNewChat = useCallback(async () => {
     const newChatId = await createChatMutation.mutateAsync({
@@ -206,10 +215,14 @@ export default function ChatPage(): React.ReactElement {
       documentListProps={{
         documents,
         isLoading: documentsQuery.isLoading,
-        mutatingDocumentId:
-          (deleteMutation.variables as string) || (reingestMutation.variables as string),
+        mutatingDocumentId: deleteMutation.variables || reingestMutation.variables,
         onUpload: () => setIsUploadOpen(true),
-        onDelete: (id: string) => deleteMutation.mutate(id),
+        onDelete: (id: string) => {
+          if (previewDocumentId === id) {
+            setPreviewDocumentId(null);
+          }
+          deleteMutation.mutate(id);
+        },
         onReingest: (id: string) => reingestMutation.mutate(id),
         onPreview: handlePreview,
         selectedDocumentId: previewDocumentId ?? undefined,
@@ -272,13 +285,8 @@ export default function ChatPage(): React.ReactElement {
         }
         isOpen={!!previewDocumentId}
         onClose={() => setPreviewDocumentId(null)}
-        chunks={
-          previewQuery.data?.map((chunk) => ({
-            id: chunk.id,
-            index: chunk.index,
-            text: chunk.text,
-          })) || []
-        }
+        content={previewQuery.data?.content}
+        chunks={previewQuery.data?.chunks || []}
       />
     </div>
   );

@@ -20,17 +20,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { apiFetch } from '@/lib/api-client';
 import type { AuditLogResult } from '@/lib/audit/audit-logger';
 import { AuditEvent, AuditSeverity } from '@/types/audit';
-
-// =============================================================================
-// Types
-// =============================================================================
-
-interface AuditLogsResponse {
-  logs: AuditLogResult[];
-  total: number;
-}
 
 // =============================================================================
 // Helper Functions
@@ -108,15 +100,12 @@ export default function AuditLogsPage(): React.ReactElement {
         params.append('severity', severityFilter);
       }
 
-      const response = await fetch(`/api/admin/audit-logs?${params}`);
+      const data = await apiFetch<{ logs: AuditLogResult[]; total: number }>(
+        `/api/admin/audit-logs?${params}`
+      );
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch audit logs');
-      }
-
-      const data: AuditLogsResponse = await response.json();
-      setLogs(data.logs);
-      setTotal(data.total);
+      setLogs(data.logs ?? []);
+      setTotal(data.total ?? 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -138,7 +127,7 @@ export default function AuditLogsPage(): React.ReactElement {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

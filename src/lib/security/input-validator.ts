@@ -7,7 +7,7 @@ import type { DocumentType } from '@/types';
 
 // Initialize DOMPurify for server-side sanitization
 const window = new JSDOM('').window;
-const purify = DOMPurify(window as unknown as Parameters<typeof DOMPurify>[0]);
+const purify = DOMPurify(window);
 
 // =============================================================================
 // Sanitization Helpers

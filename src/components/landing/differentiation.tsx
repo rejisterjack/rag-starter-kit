@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { AlertCircle, Check, X } from 'lucide-react';
 
 const comparisonData = [
@@ -41,7 +41,7 @@ export function Differentiation(): React.ReactElement {
   return (
     <section className="pt-24 lg:pt-32 pb-8 lg:pb-12 relative">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -59,9 +59,9 @@ export function Differentiation(): React.ReactElement {
             LangChain is great — if you work in Python. If you build your product in TypeScript, you
             shouldn't need a separate Python service just to add AI.
           </p>
-        </motion.div>
+        </m.div>
 
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -121,7 +121,7 @@ export function Differentiation(): React.ReactElement {
           </div>
 
           {/* CTA after table */}
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -131,8 +131,7 @@ export function Differentiation(): React.ReactElement {
             <a
               href="/demo"
               onClick={() => {
-                const w = window as unknown as { plausible?: (e: string, o?: object) => void };
-                w.plausible?.('differentiation_cta_click', {
+                window.plausible?.('differentiation_cta_click', {
                   props: { cta: 'try_demo', location: 'differentiation' },
                 });
               }}
@@ -159,8 +158,7 @@ export function Differentiation(): React.ReactElement {
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => {
-                const w = window as unknown as { plausible?: (e: string, o?: object) => void };
-                w.plausible?.('differentiation_cta_click', {
+                window.plausible?.('differentiation_cta_click', {
                   props: { cta: 'clone_github', location: 'differentiation' },
                 });
               }}
@@ -168,8 +166,8 @@ export function Differentiation(): React.ReactElement {
             >
               Clone on GitHub — it&apos;s free
             </a>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       </div>
     </section>
   );

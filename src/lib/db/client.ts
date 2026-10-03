@@ -1,17 +1,37 @@
 /**
- * Prisma Client Singleton (Prisma 7 + Accelerate)
+ * Prisma Client Singleton (Prisma 7 + Neon)
  *
- * Uses Prisma Accelerate for connection pooling, edge compatibility,
- * and query caching. The DATABASE_URL points to Prisma's accelerate endpoint.
+ * Connects to Neon PostgreSQL using @prisma/adapter-neon with the
+ * Neon serverless driver — supports edge/serverless runtimes.
  *
  * Pattern:
  * - In development, store client on globalThis to prevent hot-reload exhaustion.
  * - In production, module-level singleton (one per process).
  */
 
+import { PrismaNeon } from '@prisma/adapter-neon';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@/generated/prisma/client';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
+
+function resolveConnectionString(): string {
+  const databaseUrl = env.DATABASE_URL;
+  if (databaseUrl.startsWith('prisma+') && env.DIRECT_URL) {
+    return env.DIRECT_URL;
+  }
+  return databaseUrl;
+}
+
+function createAdapter(connectionString: string) {
+  if (connectionString.includes('neon.tech')) {
+    return new PrismaNeon({ connectionString });
+  }
+  return new PrismaPg({
+    connectionString,
+    max: env.DB_POOL_MAX ?? 10,
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -27,8 +47,10 @@ type GlobalWithPrisma = typeof globalThis & {
 // ---------------------------------------------------------------------------
 
 function createPrismaClient(url?: string): PrismaClient {
+  const connectionString = url ?? resolveConnectionString();
+  const adapter = createAdapter(connectionString);
   return new PrismaClient({
-    accelerateUrl: url ?? env.DATABASE_URL,
+    adapter,
     log: env.NODE_ENV === 'development' ? ['query', 'warn', 'error'] : ['warn', 'error'],
   });
 }
@@ -62,7 +84,7 @@ function extendWithSlowQueryMiddleware<T extends PrismaClient>(client: T): T {
         },
       },
     },
-  }) as unknown as T;
+  }) as T;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,8 +126,12 @@ export async function disconnectDatabase(): Promise<void> {
 const READ_REPLICA_URL = env.DATABASE_READ_REPLICA_URL;
 
 function createReadClient(): PrismaClient {
+  if (!READ_REPLICA_URL) {
+    throw new Error('DATABASE_READ_REPLICA_URL is required for read replica client');
+  }
+  const adapter = createAdapter(READ_REPLICA_URL);
   return new PrismaClient({
-    accelerateUrl: READ_REPLICA_URL as string,
+    adapter,
     log: ['warn', 'error'],
   });
 }

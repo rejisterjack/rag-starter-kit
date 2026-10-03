@@ -218,7 +218,6 @@ export class PluginManager {
   async executeHook<T>(name: string, data: T): Promise<T | undefined | ComponentType> {
     const handlers = this.hooks.get(name) ?? [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let result: unknown = data;
 
     for (const handler of handlers) {

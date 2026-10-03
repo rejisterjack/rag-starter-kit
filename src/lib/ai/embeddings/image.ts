@@ -39,14 +39,8 @@ async function loadCLIPModel() {
     // Dynamic import to avoid loading on server start
     const { AutoModel, AutoProcessor } = await import('@xenova/transformers');
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    clipModel = await (
-      AutoModel as unknown as { from_pretrained: (model: string) => Promise<unknown> }
-    ).from_pretrained(CLIP_MODEL);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    clipProcessor = await (
-      AutoProcessor as unknown as { from_pretrained: (model: string) => Promise<unknown> }
-    ).from_pretrained(CLIP_MODEL);
+    clipModel = await AutoModel.from_pretrained(CLIP_MODEL);
+    clipProcessor = await AutoProcessor.from_pretrained(CLIP_MODEL);
     return { model: clipModel, processor: clipProcessor };
   } catch (error: unknown) {
     logger.error('Failed to load CLIP model for image embeddings', {
@@ -83,7 +77,7 @@ async function getCachedEmbedding(cacheKey: string): Promise<number[] | null> {
     const result = await prisma.$queryRaw<{ embedding: number[] }[]>`
       SELECT embedding::float[] as embedding
       FROM image_embeddings
-      WHERE content_hash = ${cacheKey}
+      WHERE "contentHash" = ${cacheKey}
       AND "createdAt" > NOW() - INTERVAL '7 days'
       LIMIT 1
     `;
@@ -143,7 +137,7 @@ async function preprocessImage(imageData: Buffer | string): Promise<unknown> {
   }
 
   // Process image with CLIP processor
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const processed = await (processor as (data: Buffer) => Promise<unknown>)(imageData);
   return processed;
 }
@@ -168,7 +162,7 @@ export async function generateImageEmbedding(imageBuffer: Buffer | string): Prom
     const processed = await preprocessImage(imageBuffer);
 
     // Generate embedding
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const output = await (
       model as (input: unknown) => Promise<{ image_embeds: { data: Float32Array } }>
     )(processed);
@@ -246,11 +240,11 @@ export async function generateTextEmbeddingForImageSearch(text: string): Promise
     const { model, processor } = await loadCLIPModel();
 
     // Process text
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const processed = await (processor as (text: string) => Promise<unknown>)(text);
 
     // Generate embedding
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const output = await (
       model as (input: unknown) => Promise<{ text_embeds: { data: Float32Array } }>
     )(processed);

@@ -246,7 +246,9 @@ export class ExportStorage {
 
     try {
       await unlink(filePath);
-      await unlink(metadataPath).catch(() => {}); // Ignore metadata delete errors
+      await unlink(metadataPath).catch((error) => {
+        logger.error('Failed to delete metadata file', { key: metadataPath, error });
+      });
       return true;
     } catch (error: unknown) {
       logger.error('Failed to delete local file', {
@@ -376,8 +378,11 @@ export class ExportStorage {
     }, CLEANUP_INTERVAL_MS);
 
     // Initial cleanup
-    // biome-ignore lint/suspicious/noConsole: Error handling for background cleanup
-    this.cleanupExpired().catch(console.error);
+    this.cleanupExpired().catch((error: unknown) => {
+      logger.error('Export storage cleanup failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    });
   }
 }
 

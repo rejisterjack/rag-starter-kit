@@ -27,11 +27,7 @@
  */
 
 // Error Boundary
-export {
-  APIErrorBoundary,
-  ErrorBoundary,
-  useErrorHandler,
-} from './error-boundary';
+export { APIErrorBoundary, ErrorBoundary, useErrorHandler } from './error-boundary';
 export type { ErrorCode } from './error-codes';
 // Error Codes
 export {
@@ -50,8 +46,4 @@ export {
 // Types
 export type { ErrorMessage } from './error-messages';
 // Error Messages
-export {
-  createErrorResponse,
-  getErrorMessage,
-  getErrorStatusCode,
-} from './error-messages';
+export { createErrorResponse, getErrorMessage, getErrorStatusCode } from './error-messages';

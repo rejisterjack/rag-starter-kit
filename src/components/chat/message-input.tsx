@@ -98,8 +98,9 @@ export const MessageInput = memo(function MessageInput({
   }, [message, files, conversationId]);
 
   // Resize on message change
-  // biome-ignore lint/correctness/useExhaustiveDependencies: message triggers resize
   useEffect(() => {
+    // message triggers this effect when content changes
+    void message;
     adjustHeight();
   }, [adjustHeight, message]);
 

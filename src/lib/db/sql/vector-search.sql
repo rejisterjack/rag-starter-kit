@@ -1,6 +1,8 @@
 -- ============================================================================
--- Vector Search SQL Templates
+-- Vector Search SQL Templates (PostgreSQL + pgvector)
 --
+-- Used as reference for cosine similarity, hybrid search, and index maintenance.
+-- Runtime search lives in src/lib/vector/points.ts.
 -- Raw SQL templates for complex vector operations that can't be expressed
 -- easily through Prisma's query builder.
 --

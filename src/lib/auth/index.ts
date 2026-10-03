@@ -49,6 +49,7 @@ import GitHub from 'next-auth/providers/github';
 import Google from 'next-auth/providers/google';
 import { cache } from 'react';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
+import { consumeMfaCompletionToken, createMfaChallengeToken } from '@/lib/auth/mfa-challenge';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { emailService } from '@/lib/notifications/email';
@@ -60,6 +61,16 @@ import {
 import { isSessionRevoked, trackSession } from '@/lib/security/session-store';
 import { createDefaultWorkspace, getAppUrl, getUserWorkspaces } from '@/lib/workspace/workspace';
 import { authConfig } from './auth.config';
+
+// =============================================================================
+// Env Validation
+// =============================================================================
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required env var: ${name}`);
+  return value;
+}
 
 // =============================================================================
 // Type Extensions
@@ -136,64 +147,91 @@ const {
     maxAge: 7 * 24 * 60 * 60, // 7 days - reduced from 30 for security
     updateAge: 24 * 60 * 60, // 24 hours
   },
+  cookies: {
+    sessionToken: {
+      name:
+        process.env.NODE_ENV === 'production'
+          ? '__Secure-next-auth.session-token'
+          : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+  },
   providers: [
-    // GitHub OAuth Provider
-    GitHub({
-      clientId: process.env.AUTH_GITHUB_ID as string,
-      clientSecret: process.env.AUTH_GITHUB_SECRET as string,
-      authorization: {
-        params: {
-          scope: 'read:user user:email',
-        },
-      },
-      userinfo: {
-        url: 'https://api.github.com/user',
-        async request({ tokens }: { tokens: { access_token: string } }) {
-          const headers = { Authorization: `Bearer ${tokens.access_token}` };
+    // OAuth providers are only registered when credentials are configured.
+    // This keeps AUTH_CREDENTIALS_ONLY=true environments (CI, credentials-only
+    // deployments) bootable instead of crashing on missing env vars at import.
+    ...(process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET
+      ? [
+          // GitHub OAuth Provider
+          GitHub({
+            clientId: requireEnv('AUTH_GITHUB_ID'),
+            clientSecret: requireEnv('AUTH_GITHUB_SECRET'),
+            allowDangerousEmailAccountLinking: true,
+            authorization: {
+              params: {
+                scope: 'read:user user:email',
+              },
+            },
+            userinfo: {
+              url: 'https://api.github.com/user',
+              async request({ tokens }: { tokens: { access_token: string } }) {
+                const headers = { Authorization: `Bearer ${tokens.access_token}` };
 
-          const profileRes = await fetch('https://api.github.com/user', { headers });
-          const profile = await profileRes.json();
+                const profileRes = await fetch('https://api.github.com/user', { headers });
+                const profile = await profileRes.json();
 
-          // Fetch emails if profile doesn't have a public one
-          if (!profile.email) {
-            try {
-              const emailsRes = await fetch('https://api.github.com/user/emails', { headers });
-              const emails = await emailsRes.json();
-              if (Array.isArray(emails)) {
-                const primary = emails.find(
-                  (e: { primary: boolean; verified: boolean }) => e.primary && e.verified
-                );
-                if (primary) profile.email = primary.email;
-              }
-            } catch {
-              // Email endpoint unavailable — will be caught by missing email check below
-            }
-          }
+                // Fetch emails if profile doesn't have a public one
+                if (!profile.email) {
+                  try {
+                    const emailsRes = await fetch('https://api.github.com/user/emails', {
+                      headers,
+                    });
+                    const emails = await emailsRes.json();
+                    if (Array.isArray(emails)) {
+                      const primary = emails.find(
+                        (e: { primary: boolean; verified: boolean }) => e.primary && e.verified
+                      );
+                      if (primary) profile.email = primary.email;
+                    }
+                  } catch {
+                    // Email endpoint unavailable — will be caught by missing email check below
+                  }
+                }
 
-          // Last resort: use login@users.noreply.github.com if email still missing
-          if (!profile.email && profile.login) {
-            profile.email = `${profile.login}@users.noreply.github.com`;
-          }
+                // Last resort: use login@users.noreply.github.com if email still missing
+                if (!profile.email && profile.login) {
+                  profile.email = `${profile.login}@users.noreply.github.com`;
+                }
 
-          return profile;
-        },
-      },
-    }),
+                return profile;
+              },
+            },
+          }),
+        ]
+      : []),
 
-    // Google OAuth Provider
-    Google({
-      clientId: process.env.AUTH_GOOGLE_ID as string,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET as string,
-      // allowDangerousEmailAccountLinking is intentionally NOT enabled
-      // to prevent OAuth account takeover attacks
-      authorization: {
-        params: {
-          prompt: 'consent',
-          access_type: 'offline',
-          response_type: 'code',
-        },
-      },
-    }),
+    ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
+      ? [
+          // Google OAuth Provider
+          Google({
+            clientId: requireEnv('AUTH_GOOGLE_ID'),
+            clientSecret: requireEnv('AUTH_GOOGLE_SECRET'),
+            allowDangerousEmailAccountLinking: true,
+            authorization: {
+              params: {
+                prompt: 'consent',
+                access_type: 'offline',
+                response_type: 'code',
+              },
+            },
+          }),
+        ]
+      : []),
 
     // Email/Password Credentials Provider with Account Lockout
     Credentials({
@@ -201,8 +239,42 @@ const {
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
+        mfaCompletionToken: { label: 'MFA Completion Token', type: 'text' },
       },
       async authorize(credentials, req) {
+        // Complete MFA login with one-time completion token (after TOTP verified)
+        if (credentials?.mfaCompletionToken) {
+          const userId = consumeMfaCompletionToken(credentials.mfaCompletionToken as string);
+          if (!userId) return null;
+
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+              workspaceMembers: {
+                include: { workspace: true },
+                take: 1,
+                orderBy: { joinedAt: 'asc' },
+              },
+            },
+          });
+
+          if (!user) return null;
+
+          await logAuditEvent({
+            event: AuditEvent.USER_LOGIN,
+            userId: user.id,
+            metadata: { method: 'credentials', mfa: true },
+          });
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            role: user.role,
+          };
+        }
+
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
@@ -248,7 +320,7 @@ const {
           },
         });
 
-        if (!user || !user.password) {
+        if (!user?.password) {
           // Record failed attempt
           // FIXED: Use Headers.get() instead of bracket notation
           const ipAddress = req?.headers?.get('x-forwarded-for') ?? undefined;
@@ -276,9 +348,10 @@ const {
         // Record successful login (resets failed attempts)
         await recordSuccessfulLogin(email);
 
-        // Check if MFA is required
+        // Check if MFA is required — block session until TOTP verified
         if (user.mfaEnabled) {
-          throw new Error(`MFA_REQUIRED:${user.id}`);
+          const challengeToken = createMfaChallengeToken(user.id);
+          throw new Error(`MFA_REQUIRED:${challengeToken}`);
         }
 
         // Log successful login

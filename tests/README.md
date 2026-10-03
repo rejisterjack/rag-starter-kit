@@ -263,21 +263,25 @@ npx playwright test --debug
 ### Common Issues
 
 **Tests failing in CI but passing locally**
+
 - Check for race conditions
 - Ensure tests are independent
 - Increase timeouts if needed
 
 **Playwright browser installation issues**
+
 ```bash
 npx playwright install
 ```
 
 **Prisma client not found**
+
 ```bash
 bun db:generate
 ```
 
 **Coverage not generating**
+
 ```bash
 # Ensure coverage directory exists
 mkdir -p coverage

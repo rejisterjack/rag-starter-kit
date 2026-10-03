@@ -6,6 +6,7 @@
  */
 
 import { createHmac, randomBytes } from 'node:crypto';
+import { toJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 import { RetryableError, withRetry } from '@/lib/utils/retry';
 
@@ -256,6 +257,52 @@ export async function testWebhook(
 }
 
 // ============================================================================
+// Delivery Persistence
+// ============================================================================
+
+/**
+ * Persist a delivery attempt as a WebhookDelivery row.
+ *
+ * Without this, delivery results lived only in memory and the deliveries
+ * page/API always reported 0 records (D-13).
+ */
+export async function recordDelivery(
+  webhookId: string,
+  payload: WebhookPayload,
+  result: DeliveryResult
+): Promise<void> {
+  const status = result.success ? 'DELIVERED' : result.attemptCount > 1 ? 'RETRYING' : 'FAILED';
+
+  try {
+    const { prisma } = await import('@/lib/db/client');
+    const completedAt = new Date();
+
+    await prisma.webhookDelivery.create({
+      data: {
+        webhookId,
+        event: payload.event,
+        payload: toJson(payload),
+        statusCode: result.statusCode ?? null,
+        response: result.responseBody ? result.responseBody.slice(0, 2000) : null,
+        error: result.error ?? null,
+        startedAt: new Date(completedAt.getTime() - result.durationMs),
+        completedAt,
+        durationMs: result.durationMs,
+        status,
+        retryCount: Math.max(0, result.attemptCount - 1),
+      },
+    });
+  } catch (error) {
+    // Persistence is best-effort — a logging failure must not break delivery
+    logger.error('Failed to record webhook delivery', {
+      webhookId,
+      event: payload.event,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+// ============================================================================
 // Batch Delivery
 // ============================================================================
 
@@ -295,116 +342,9 @@ export async function deliverToMultiple(
 }
 
 // ============================================================================
-// Event Types
+// Event Types (canonical definitions live in ./events so client components
+// can import them without pulling in server-only modules)
 // ============================================================================
 
-/**
- * Standard webhook event types
- */
-export const WebhookEvents = {
-  // Document events
-  DOCUMENT_CREATED: 'document.created',
-  DOCUMENT_UPDATED: 'document.updated',
-  DOCUMENT_DELETED: 'document.deleted',
-  DOCUMENT_PROCESSED: 'document.processed',
-  DOCUMENT_PROCESSING_FAILED: 'document.processing_failed',
-
-  // Chat events
-  CHAT_CREATED: 'chat.created',
-  CHAT_MESSAGE_SENT: 'chat.message_sent',
-  CHAT_DELETED: 'chat.deleted',
-
-  // Workspace events
-  WORKSPACE_UPDATED: 'workspace.updated',
-  MEMBER_JOINED: 'member.joined',
-  MEMBER_LEFT: 'member.left',
-
-  // API events
-  API_KEY_CREATED: 'api_key.created',
-  API_KEY_REVOKED: 'api_key.revoked',
-
-  // Webhook events
-  WEBHOOK_TEST: 'webhook.test',
-
-  // Wildcard for all events
-  ALL: '*',
-} as const;
-
-export type WebhookEventType = (typeof WebhookEvents)[keyof typeof WebhookEvents];
-
-/**
- * Get all available webhook event types
- */
-export function getAvailableWebhookEvents(): Array<{
-  value: string;
-  label: string;
-  description: string;
-}> {
-  return [
-    {
-      value: WebhookEvents.DOCUMENT_CREATED,
-      label: 'Document Created',
-      description: 'Triggered when a new document is uploaded',
-    },
-    {
-      value: WebhookEvents.DOCUMENT_UPDATED,
-      label: 'Document Updated',
-      description: 'Triggered when a document is updated',
-    },
-    {
-      value: WebhookEvents.DOCUMENT_DELETED,
-      label: 'Document Deleted',
-      description: 'Triggered when a document is deleted',
-    },
-    {
-      value: WebhookEvents.DOCUMENT_PROCESSED,
-      label: 'Document Processed',
-      description: 'Triggered when document processing completes',
-    },
-    {
-      value: WebhookEvents.DOCUMENT_PROCESSING_FAILED,
-      label: 'Document Processing Failed',
-      description: 'Triggered when document processing fails',
-    },
-    {
-      value: WebhookEvents.CHAT_CREATED,
-      label: 'Chat Created',
-      description: 'Triggered when a new chat is created',
-    },
-    {
-      value: WebhookEvents.CHAT_MESSAGE_SENT,
-      label: 'Message Sent',
-      description: 'Triggered when a message is sent in a chat',
-    },
-    {
-      value: WebhookEvents.CHAT_DELETED,
-      label: 'Chat Deleted',
-      description: 'Triggered when a chat is deleted',
-    },
-    {
-      value: WebhookEvents.WORKSPACE_UPDATED,
-      label: 'Workspace Updated',
-      description: 'Triggered when workspace settings change',
-    },
-    {
-      value: WebhookEvents.MEMBER_JOINED,
-      label: 'Member Joined',
-      description: 'Triggered when a member joins the workspace',
-    },
-    {
-      value: WebhookEvents.MEMBER_LEFT,
-      label: 'Member Left',
-      description: 'Triggered when a member leaves the workspace',
-    },
-    {
-      value: WebhookEvents.API_KEY_CREATED,
-      label: 'API Key Created',
-      description: 'Triggered when an API key is created',
-    },
-    {
-      value: WebhookEvents.API_KEY_REVOKED,
-      label: 'API Key Revoked',
-      description: 'Triggered when an API key is revoked',
-    },
-  ];
-}
+export type { WebhookEventType } from './events';
+export { getAvailableWebhookEvents, WebhookEvents } from './events';

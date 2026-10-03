@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * SAML Single Logout (SLO) Endpoint
  *
@@ -36,7 +37,7 @@ export async function POST(
     const config = await getWorkspaceSamlConfig(workspaceId);
 
     if (!config) {
-      return NextResponse.json({ error: 'SAML configuration not found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'SAML configuration not found', 404);
     }
 
     // Handle LogoutRequest from IdP (IdP-initiated logout)
@@ -49,16 +50,13 @@ export async function POST(
       return await handleLogoutResponse(config, baseUrl, samlResponse);
     }
 
-    return NextResponse.json({ error: 'No SAMLRequest or SAMLResponse found' }, { status: 400 });
+    return apiError('BAD_REQUEST', 'No SAMLRequest or SAMLResponse found', 400);
   } catch (error) {
     if (error instanceof SamlError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.statusCode }
-      );
+      return apiError(error.code, error.message, error.statusCode);
     }
 
-    return NextResponse.json({ error: 'Single logout failed' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Single logout failed', 500);
   }
 }
 
@@ -79,7 +77,7 @@ export async function GET(
     const config = await getWorkspaceSamlConfig(workspaceId);
 
     if (!config) {
-      return NextResponse.json({ error: 'SAML configuration not found' }, { status: 404 });
+      return apiError('NOT_FOUND', 'SAML configuration not found', 404);
     }
 
     if (samlRequest) {
@@ -90,12 +88,12 @@ export async function GET(
       return await handleLogoutResponse(config, getBaseUrl(request), samlResponse);
     }
 
-    return NextResponse.json({ error: 'No SAMLRequest or SAMLResponse found' }, { status: 400 });
+    return apiError('BAD_REQUEST', 'No SAMLRequest or SAMLResponse found', 400);
   } catch (error: unknown) {
     logger.error('SAML SLO GET handler failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json({ error: 'Single logout failed' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Single logout failed', 500);
   }
 }
 
@@ -109,7 +107,7 @@ async function handleLogoutRequest(
   relayState?: string
 ): Promise<Response> {
   if (!config) {
-    return NextResponse.json({ error: 'Configuration error' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Configuration error', 500);
   }
 
   // Parse and validate the logout request
@@ -189,7 +187,7 @@ async function handleLogoutResponse(
   samlResponse: string
 ): Promise<Response> {
   if (!config) {
-    return NextResponse.json({ error: 'Configuration error' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Configuration error', 500);
   }
 
   // Process the logout response

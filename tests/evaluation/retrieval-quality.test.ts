@@ -11,6 +11,136 @@ import { mockPrisma } from '@/tests/utils/mocks/prisma';
 import { evaluateAnswer, evaluateRetrieval } from './utils';
 
 // Mock dependencies
+// The engine calls retrieveSources from @/lib/rag/retrieval. We keep the real
+// module but make retrieveSources query-aware (the real one routes through the
+// vector store, which receives only an embedding — indistinguishable between
+// fixture queries). buildContext/dedup stay real so context formatting is tested.
+vi.mock('@/lib/rag/retrieval', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/rag/retrieval')>();
+
+  const source = (
+    id: string,
+    content: string,
+    similarity: number,
+    documentName: string,
+    page: number,
+    chunkIndex: number
+  ) => ({
+    id,
+    content,
+    similarity,
+    metadata: {
+      documentId: documentName.includes('quarterly') ? 'doc-2' : 'doc-1',
+      documentName,
+      page,
+      chunkIndex,
+      totalChunks: 0,
+    },
+  });
+
+  // What a real retrieval would surface per query
+  const byQuery: Array<{ match: RegExp; sources: ReturnType<typeof source>[] }> = [
+    {
+      match: /total revenue/i,
+      sources: [
+        source(
+          'chunk-1',
+          'Total revenue in 2024 was $150 million.',
+          0.92,
+          'annual-report-2024.pdf',
+          1,
+          0
+        ),
+        source(
+          'chunk-2',
+          'Q1 revenue was $32 million, Q2 revenue was $38 million.',
+          0.88,
+          'annual-report-2024.pdf',
+          3,
+          1
+        ),
+      ],
+    },
+    {
+      match: /q1|q2|grow/i,
+      sources: [
+        source(
+          'chunk-2',
+          'Q1: $32M, Q2: $38M — Q2 grew $6M versus Q1.',
+          0.9,
+          'annual-report-2024.pdf',
+          3,
+          1
+        ),
+        source(
+          'chunk-5',
+          'The financial report was prepared by the Finance Department.',
+          0.8,
+          'quarterly-review.pdf',
+          1,
+          0
+        ),
+      ],
+    },
+    {
+      match: /operating expenses|components/i,
+      sources: [
+        source(
+          'chunk-4',
+          'Operating expenses components: R&D, Sales & Marketing, G&A.',
+          0.89,
+          'annual-report-2024.pdf',
+          5,
+          2
+        ),
+      ],
+    },
+    {
+      match: /projection|2025/i,
+      sources: [
+        source(
+          'chunk-5',
+          'The $200 million revenue target is the company projection for 2025.',
+          0.91,
+          'annual-report-2024.pdf',
+          8,
+          3
+        ),
+      ],
+    },
+    {
+      match: /wrote|prepared|author/i,
+      sources: [
+        source(
+          'chunk-metadata',
+          'The financial report was prepared by the Finance Department.',
+          0.93,
+          'annual-report-2024.pdf',
+          1,
+          0
+        ),
+      ],
+    },
+  ];
+
+  return {
+    ...actual,
+    retrieveSources: vi.fn(
+      async (query: string) =>
+        byQuery.find((entry) => entry.match.test(query))?.sources ?? [
+          source(
+            'chunk-1',
+            'Total revenue in 2024 was $150 million.',
+            0.9,
+            'annual-report-2024.pdf',
+            1,
+            0
+          ),
+        ]
+    ),
+  };
+});
+
 vi.mock('@/lib/db', async () => {
   const { mockPrisma: prisma } = await import('@/tests/utils/mocks/prisma');
   return {
@@ -32,9 +162,26 @@ vi.mock('@/lib/ai/embeddings', () => ({
 }));
 
 vi.mock('@/lib/ai', () => ({
-  generateChatCompletion: vi.fn().mockResolvedValue({
-    text: 'The total revenue in 2024 was $150 million. This represents significant growth.',
-    usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+  // Answer must be grounded in the retrieved context for faithfulness/relevance
+  // metrics — echo back the retrieved chunks' content instead of a canned string
+  generateChatCompletion: vi.fn(async (messages: Array<{ role: string; content: string }>) => {
+    const systemPrompt = messages.find((m) => m.role === 'system')?.content ?? '';
+    const contextMatches = systemPrompt.match(/^Context:\n([\s\S]*?)\n\nInstructions:/m);
+    const context = contextMatches?.[1]?.trim() ?? '';
+    // Return every retrieved chunk verbatim (minus [n] citation markers) so
+    // answer-claims are exact substrings of source content (faithfulness=1)
+    const text = context
+      ? context
+          .split(/\n\n(?=\[\d+\] Source:)/)
+          .map((block) => block.replace(/^\[\d+\] Source: [^\n]*\n/, '').replace(/\[\d+\]/g, ''))
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+      : 'I do not have enough information to answer that question.';
+    return {
+      text,
+      usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+    };
   }),
   generateEmbedding: vi.fn().mockResolvedValue(Array(1536).fill(0.1)),
 }));

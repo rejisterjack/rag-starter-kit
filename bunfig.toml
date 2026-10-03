@@ -11,7 +11,7 @@ preload = ["./tests/setup.ts"]
 
 # Coverage
 coverage = true
-coverageReporter = ["text", "json", "lcov"]
+coverageReporter = ["text", "lcov"]
 coverageDir = "coverage"
 
 # Test timeout (milliseconds)

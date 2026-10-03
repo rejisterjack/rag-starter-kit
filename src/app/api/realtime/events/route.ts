@@ -6,6 +6,7 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { AuditEvent, logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
@@ -295,16 +296,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     // Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'UNAUTHORIZED',
-            message: 'Authentication required',
-          },
-        },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     // Check rate limit
@@ -326,21 +318,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         severity: 'WARNING',
       });
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'RATE_LIMITED',
-            message: 'Too many SSE connections',
-            retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000),
-          },
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
+      const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
+      return apiError(
+        'RATE_LIMITED',
+        'Too many SSE connections',
+        429,
+        { retryAfter },
+        { 'Retry-After': retryAfter.toString() }
       );
     }
 
@@ -540,16 +524,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     logger.error('Failed to establish SSE connection', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'SSE_ERROR',
-          message: 'Failed to establish SSE connection',
-        },
-      },
-      { status: 500 }
-    );
+    return apiError('SSE_ERROR', 'Failed to establish SSE connection', 500);
   }
 }
 
@@ -567,32 +542,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       apiKey === process.env.INTERNAL_API_KEY || internalSecret === process.env.INTERNAL_SECRET;
 
     if (!isAuthorized) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'UNAUTHORIZED',
-            message: 'Invalid API key or internal secret',
-          },
-        },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Invalid API key or internal secret', 401);
     }
 
     const body = await req.json();
     const { action, target, targetId, eventType, data, excludeUserId } = body;
 
     if (action !== 'broadcast' || !target || !targetId || !eventType) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'INVALID_REQUEST',
-            message: 'Missing required fields',
-          },
-        },
-        { status: 400 }
-      );
+      return apiError('INVALID_REQUEST', 'Missing required fields', 400);
     }
 
     let clientCount = 0;
@@ -666,41 +623,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
 
       default:
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: 'INVALID_TARGET',
-              message: `Unknown target: ${target}`,
-            },
-          },
-          { status: 400 }
-        );
+        return apiError('INVALID_TARGET', `Unknown target: ${target}`, 400);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        sent: true,
-        target,
-        targetId,
-        eventType,
-        clientCount,
-      },
+    return apiSuccess({
+      sent: true,
+      target,
+      targetId,
+      eventType,
+      clientCount,
     });
   } catch (error: unknown) {
     logger.error('Failed to broadcast event', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'BROADCAST_ERROR',
-          message: 'Failed to broadcast event',
-        },
-      },
-      { status: 500 }
-    );
+    return apiError('BROADCAST_ERROR', 'Failed to broadcast event', 500);
   }
 }

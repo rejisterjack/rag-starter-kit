@@ -131,8 +131,9 @@ export default function AdminJobsPage(): React.ReactElement {
       // /api/ingest status-checking pattern indirectly via an admin API.
       const res = await fetch(`/api/admin/jobs?${params.toString()}`);
       if (res.ok) {
-        const data = await res.json();
-        setJobs(data.jobs || []);
+        const json = await res.json();
+        const payload = json?.data?.jobs;
+        setJobs(Array.isArray(payload) ? payload : []);
       }
     } catch (_error: unknown) {
       toast.error('Failed to load jobs');

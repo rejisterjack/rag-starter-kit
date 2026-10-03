@@ -1,77 +1,50 @@
 /**
  * Vector Store
  *
- * Core vector operations using Qdrant vector database.
+ * Core vector operations using PostgreSQL + pgvector.
  * Provides document chunk storage, similarity search, and metadata filtering.
- *
- * The Qdrant client is a singleton — no constructor arguments are needed.
- * Prisma is used only for fetching document metadata (name, type) during upserts.
  */
 
-import type { ChunkPointData } from '@/lib/qdrant';
+import type { ChunkPointData } from '@/lib/vector';
 import {
-  buildQdrantFilter,
-  COLLECTION_DOCUMENT_CHUNKS,
-  qdrant,
-  deleteByDocumentId as qdrantDeleteByDocumentId,
-  getDocumentStats as qdrantGetDocumentStats,
+  buildVectorFilter,
+  deleteByDocumentId,
+  getChunksByIds,
+  getDocumentStats,
   searchSimilar,
+  updateChunkEmbeddings,
   upsertChunks,
-} from '@/lib/qdrant';
+} from '@/lib/vector';
 
 import { prisma } from './client';
 
-/**
- * Derive the Qdrant scored-point type from the searchSimilar return value
- * rather than importing ScoredPoint directly (v1.17.x does not re-export it).
- */
-type QdrantScoredPoint = Awaited<ReturnType<typeof searchSimilar>>[number];
-
-// ============================================================================
-// Types
-// ============================================================================
+type ScoredPoint = Awaited<ReturnType<typeof searchSimilar>>[number];
 
 export interface SearchOptions {
-  /** User ID for isolation */
   userId: string;
-  /** Workspace ID — search documents in this workspace in addition to user's own */
   workspaceId?: string;
-  /** Number of results to return (default: 5) */
   topK?: number;
-  /** Minimum similarity score threshold (default: 0.7) */
   minScore?: number;
-  /** Optional filters */
   filter?: SearchFilter;
-  /** Search type: 'cosine' | 'euclidean' | 'inner_product' (default: 'cosine')
-   *  NOTE: Qdrant always uses cosine similarity; this field is kept for API
-   *  compatibility but currently ignored. */
   searchType?: DistanceMetric;
 }
 
 export interface SearchFilter {
-  /** Filter by specific document IDs */
   documentIds?: string[];
-  /** Filter by document types */
   documentTypes?: string[];
-  /** Filter by date range */
   dateRange?: {
     from: Date;
     to: Date;
   };
-  /** Additional metadata filters */
   metadata?: Record<string, unknown>;
 }
 
 export type DistanceMetric = 'cosine' | 'euclidean' | 'inner_product';
 
 export interface SearchResult {
-  /** Chunk ID */
   chunkId: string;
-  /** Chunk content */
   content: string;
-  /** Similarity score (0-1 for cosine) */
   score: number;
-  /** Result metadata */
   metadata: {
     documentId: string;
     documentName: string;
@@ -83,33 +56,18 @@ export interface SearchResult {
 }
 
 export interface ChunkInsertData {
-  /** Chunk content */
   content: string;
-  /** Embedding vector */
   embedding: number[];
-  /** Document ID */
   documentId: string;
-  /** Chunk position in document */
   index: number;
-  /** Character start position */
   start?: number;
-  /** Character end position */
   end?: number;
-  /** Page number (for PDFs) */
   page?: number;
-  /** Section identifier */
   section?: string;
 }
 
-// ============================================================================
-// Helpers
-// ============================================================================
-
-/**
- * Convert a Qdrant ScoredPoint into our public SearchResult shape.
- */
-function scoredPointToResult(point: QdrantScoredPoint): SearchResult {
-  const p = point.payload ?? ({} as Record<string, unknown>);
+function scoredPointToResult(point: ScoredPoint): SearchResult {
+  const p = point.payload ?? {};
   return {
     chunkId: String(point.id),
     content: String(p.content ?? ''),
@@ -125,31 +83,10 @@ function scoredPointToResult(point: QdrantScoredPoint): SearchResult {
   };
 }
 
-// ============================================================================
-// Vector Store Class
-// ============================================================================
-
 export class VectorStore {
-  /**
-   * No constructor arguments — the Qdrant client is a singleton imported from
-   * @/lib/qdrant and Prisma is only used for auxiliary document lookups.
-   */
-  constructor() {}
-
-  // ============================================================================
-  // Core Operations
-  // ============================================================================
-
-  /**
-   * Add document chunks with embeddings to Qdrant.
-   *
-   * Fetches document metadata (name, contentType) from Prisma so that every
-   * Qdrant point carries enough payload for later search results.
-   */
   async addVectors(chunks: ChunkInsertData[], documentId: string, userId: string): Promise<void> {
     if (chunks.length === 0) return;
 
-    // Verify document exists and belongs to user
     const document = await prisma.document.findFirst({
       where: { id: documentId, userId },
     });
@@ -158,7 +95,7 @@ export class VectorStore {
       throw new Error(`Document ${documentId} not found or access denied`);
     }
 
-    const qdrantChunks: ChunkPointData[] = chunks.map((chunk) => ({
+    const pointData: ChunkPointData[] = chunks.map((chunk) => ({
       documentId: chunk.documentId,
       content: chunk.content,
       embedding: chunk.embedding,
@@ -169,19 +106,14 @@ export class VectorStore {
       section: chunk.section,
     }));
 
-    await upsertChunks(qdrantChunks, {
+    await upsertChunks(pointData, {
       userId,
+      workspaceId: document.workspaceId ?? undefined,
       documentName: document.name,
       documentType: document.contentType,
     });
   }
 
-  /**
-   * Similarity search with filters.
-   *
-   * Delegates to Qdrant's search endpoint and maps the scored points back to
-   * the public SearchResult shape.
-   */
   async similaritySearch(
     _query: string,
     queryEmbedding: number[],
@@ -189,8 +121,7 @@ export class VectorStore {
   ): Promise<SearchResult[]> {
     const { userId, workspaceId, topK = 5, minScore = 0.5, filter } = options;
 
-    // Build a Qdrant-compatible filter from the SearchOptions
-    const qdrantFilter = buildQdrantFilter({
+    const vectorFilter = buildVectorFilter({
       userId,
       workspaceId,
       filters: filter
@@ -204,7 +135,7 @@ export class VectorStore {
     });
 
     const scoredPoints = await searchSimilar(queryEmbedding, {
-      filter: qdrantFilter,
+      filter: vectorFilter,
       topK,
       minScore,
       withPayload: true,
@@ -213,84 +144,25 @@ export class VectorStore {
     return scoredPoints.map(scoredPointToResult);
   }
 
-  /**
-   * Delete all vectors for a document.
-   *
-   * Returns the number of points removed.
-   */
   async deleteDocumentVectors(documentId: string): Promise<number> {
-    return qdrantDeleteByDocumentId(documentId);
+    return deleteByDocumentId(documentId);
   }
 
-  /**
-   * Update a single chunk's embedding.
-   *
-   * Qdrant upserts are idempotent — we look up the existing point by filtering
-   * on documentId + index, then re-upsert with the new vector.
-   */
   async updateVectors(chunkId: string, embedding: number[]): Promise<void> {
-    const existing = await qdrant.retrieve(COLLECTION_DOCUMENT_CHUNKS, {
-      ids: [chunkId],
-      with_payload: true,
-      with_vector: false,
-    });
-
+    const existing = await getChunksByIds([chunkId]);
     if (existing.length === 0) {
-      throw new Error(`Chunk ${chunkId} not found in Qdrant`);
+      throw new Error(`Chunk ${chunkId} not found`);
     }
-
-    const payload = existing[0]!.payload ?? {};
-    await qdrant.upsert(COLLECTION_DOCUMENT_CHUNKS, {
-      wait: true,
-      points: [
-        {
-          id: chunkId,
-          vector: embedding,
-          payload,
-        },
-      ],
-    });
+    await updateChunkEmbeddings([{ chunkId, embedding }]);
   }
 
-  /**
-   * Update multiple chunks' embeddings.
-   */
   async updateMultipleVectors(
     updates: Array<{ chunkId: string; embedding: number[] }>
   ): Promise<void> {
     if (updates.length === 0) return;
-
-    const ids = updates.map((u) => u.chunkId);
-    const existing = await qdrant.retrieve(COLLECTION_DOCUMENT_CHUNKS, {
-      ids,
-      with_payload: true,
-      with_vector: false,
-    });
-
-    const embeddingMap = new Map(updates.map((u) => [u.chunkId, u.embedding]));
-    const points = existing.map((point) => ({
-      id: point.id,
-      vector: embeddingMap.get(String(point.id)) ?? [],
-      payload: point.payload ?? {},
-    }));
-
-    if (points.length > 0) {
-      await qdrant.upsert(COLLECTION_DOCUMENT_CHUNKS, {
-        wait: true,
-        points,
-      });
-    }
+    await updateChunkEmbeddings(updates);
   }
 
-  // ============================================================================
-  // Batch Operations
-  // ============================================================================
-
-  /**
-   * Add chunks in batches for better performance.
-   *
-   * Delegates to upsertChunks which handles batching internally.
-   */
   async addVectorsBatched(
     chunks: ChunkInsertData[],
     documentId: string,
@@ -299,7 +171,6 @@ export class VectorStore {
   ): Promise<void> {
     if (chunks.length === 0) return;
 
-    // Verify document exists and belongs to user
     const document = await prisma.document.findFirst({
       where: { id: documentId, userId },
     });
@@ -308,7 +179,7 @@ export class VectorStore {
       throw new Error(`Document ${documentId} not found or access denied`);
     }
 
-    const qdrantChunks: ChunkPointData[] = chunks.map((chunk) => ({
+    const pointData: ChunkPointData[] = chunks.map((chunk) => ({
       documentId: chunk.documentId,
       content: chunk.content,
       embedding: chunk.embedding,
@@ -319,82 +190,64 @@ export class VectorStore {
       section: chunk.section,
     }));
 
-    await upsertChunks(qdrantChunks, {
+    await upsertChunks(pointData, {
       userId,
+      workspaceId: document.workspaceId ?? undefined,
       documentName: document.name,
       documentType: document.contentType,
       batchSize,
     });
   }
 
-  /**
-   * Get chunks without embeddings (for backfill).
-   *
-   * In Qdrant all upserted points already have embeddings, so this returns
-   * an empty array. Kept for API compatibility.
-   */
   async getChunksWithoutEmbeddings(
-    _documentId: string,
-    _limit = 100
+    documentId: string,
+    limit = 100
   ): Promise<Array<{ id: string; content: string; index: number }>> {
-    // Qdrant points always have embeddings after upsert — no backfill needed.
-    return [];
+    return prisma.$queryRaw<Array<{ id: string; content: string; index: number }>>`
+      SELECT id, content, index
+      FROM document_chunks
+      WHERE "documentId" = ${documentId} AND embedding IS NULL
+      LIMIT ${limit}
+    `;
   }
 
-  /**
-   * Count chunks without embeddings.
-   *
-   * In Qdrant all upserted points have embeddings, so this is always 0.
-   */
-  async countChunksWithoutEmbeddings(_documentId: string): Promise<number> {
-    return 0;
+  async countChunksWithoutEmbeddings(documentId: string): Promise<number> {
+    const rows = await prisma.$queryRaw<Array<{ count: number }>>`
+      SELECT COUNT(*)::int AS count
+      FROM document_chunks
+      WHERE "documentId" = ${documentId} AND embedding IS NULL
+    `;
+    return rows[0]?.count ?? 0;
   }
 
-  // ============================================================================
-  // Utility Methods
-  // ============================================================================
-
-  /**
-   * Get document statistics.
-   *
-   * Returns chunk counts from Qdrant plus an average content-length estimate.
-   */
   async getDocumentStats(documentId: string): Promise<{
     totalChunks: number;
     chunksWithEmbeddings: number;
     chunksWithoutEmbeddings: number;
     avgContentLength: number;
   }> {
-    const stats = await qdrantGetDocumentStats(documentId);
+    const stats = await getDocumentStats(documentId);
+    const avgRows = await prisma.$queryRaw<Array<{ avg: number | null }>>`
+      SELECT AVG(length(content))::float AS avg
+      FROM document_chunks
+      WHERE "documentId" = ${documentId}
+    `;
     return {
       totalChunks: stats.totalChunks,
       chunksWithEmbeddings: stats.chunksWithEmbeddings,
-      chunksWithoutEmbeddings: 0, // Qdrant points always carry embeddings
-      avgContentLength: 0, // Not tracked in Qdrant payload
+      chunksWithoutEmbeddings: stats.totalChunks - stats.chunksWithEmbeddings,
+      avgContentLength: avgRows[0]?.avg ?? 0,
     };
   }
 
-  /**
-   * Check if document has been vectorized.
-   */
   async isDocumentVectorized(documentId: string): Promise<boolean> {
-    const stats = await qdrantGetDocumentStats(documentId);
-    return stats.totalChunks > 0;
+    const stats = await getDocumentStats(documentId);
+    return stats.chunksWithEmbeddings > 0;
   }
 }
 
-// ============================================================================
-// Factory Functions
-// ============================================================================
-
 let vectorStoreInstance: VectorStore | null = null;
 
-/**
- * Get or create singleton VectorStore instance.
- *
- * The `prisma` parameter is accepted for backward compatibility but is no
- * longer required — the VectorStore constructor is parameterless.
- */
 export function getVectorStore(_prisma?: unknown): VectorStore {
   if (!vectorStoreInstance) {
     vectorStoreInstance = new VectorStore();
@@ -402,12 +255,6 @@ export function getVectorStore(_prisma?: unknown): VectorStore {
   return vectorStoreInstance;
 }
 
-/**
- * Create a new VectorStore instance.
- *
- * The `prisma` parameter is accepted for backward compatibility but is no
- * longer required — the VectorStore constructor is parameterless.
- */
 export function createVectorStore(_prisma?: unknown): VectorStore {
   return new VectorStore();
 }

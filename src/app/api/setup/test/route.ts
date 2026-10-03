@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-
 import { createEmbeddingProviderFromEnv, validateEmbeddingDimensions } from '@/lib/ai/embeddings';
 import { createProviderFromEnv } from '@/lib/ai/llm/factory';
+import { apiError } from '@/lib/api-response';
+import { requireAuth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 
 export const maxDuration = 30;
@@ -14,6 +15,16 @@ interface TestResult {
 }
 
 export async function GET() {
+  if (process.env.NODE_ENV === 'production') {
+    return apiError('NOT_FOUND', 'Not found', 404);
+  }
+
+  try {
+    await requireAuth();
+  } catch {
+    return apiError('UNAUTHORIZED', 'Unauthorized', 401);
+  }
+
   const results: TestResult[] = [];
 
   // 1. Test embedding provider

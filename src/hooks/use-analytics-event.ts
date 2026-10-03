@@ -15,10 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 function callPlausible(event: string, props?: Record<string, string | number | boolean>): void {
   if (typeof window === 'undefined') return;
-  const w = window as unknown as {
-    plausible?: (event: string, opts?: { props?: Record<string, unknown> }) => void;
-  };
-  w.plausible?.(event, { props });
+  window.plausible?.(event, { props });
 }
 
 // ---------------------------------------------------------------------------

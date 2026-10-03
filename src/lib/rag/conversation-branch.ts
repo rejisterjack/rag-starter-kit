@@ -6,7 +6,28 @@
  */
 
 import { prisma } from '@/lib/db';
-import type { Message } from '@/types';
+import { fromJsonOptional } from '@/lib/db/json';
+import type { Message, Source } from '@/types';
+
+/**
+ * Prisma returns messages with uppercase enum roles (USER / ASSISTANT / SYSTEM),
+ * but the application `Message` type expects lowercase (user / assistant / system).
+ * This helper maps a batch of Prisma message objects to the app-level `Message` type.
+ */
+type PrismaMessage = Awaited<ReturnType<typeof prisma.message.findMany>>[number];
+
+function mapPrismaMessages(messages: PrismaMessage[]): Message[] {
+  return messages.map((m) => ({
+    id: m.id,
+    content: m.content,
+    role: m.role.toLowerCase() as Message['role'],
+    createdAt: m.createdAt,
+    chatId: m.chatId,
+    // Prisma stores sources as JsonValue; use the centralized JSON helper
+    // which encapsulates the necessary cast internally.
+    sources: fromJsonOptional<Source[]>(m.sources),
+  }));
+}
 
 // ============================================================================
 // Types
@@ -357,11 +378,11 @@ export async function compareBranches(
   return {
     branchA: {
       id: branchAId,
-      messages: branchA.messages as unknown as Message[],
+      messages: mapPrismaMessages(branchA.messages),
     },
     branchB: {
       id: branchBId,
-      messages: branchB.messages as unknown as Message[],
+      messages: mapPrismaMessages(branchB.messages),
     },
     divergencePoint,
     differences,

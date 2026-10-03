@@ -49,8 +49,8 @@ export function CreateKeyDialog({ open, onOpenChange, onCreate }: CreateKeyDialo
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
-    'chat:read',
-    'chat:write',
+    'read:chats',
+    'write:chats',
   ]);
   const [expiration, setExpiration] = useState('never');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,7 +96,7 @@ export function CreateKeyDialog({ open, onOpenChange, onCreate }: CreateKeyDialo
       setStep('form');
       setName('');
       setDescription('');
-      setSelectedPermissions(['chat:read', 'chat:write']);
+      setSelectedPermissions(['read:chats', 'write:chats']);
       setExpiration('never');
       setCreatedKey(null);
       setCopied(false);

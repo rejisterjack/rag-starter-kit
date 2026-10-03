@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * /api/chat/debug — Retrieval Debug Mode
  *
@@ -37,19 +38,19 @@ const debugQuerySchema = z.object({
   topK: z.number().int().min(1).max(50).optional().default(5),
   similarityThreshold: z.number().min(0).max(1).optional().default(0.7),
   searchMode: z.enum(['vector', 'hybrid', 'keyword']).optional().default('hybrid'),
-  workspaceId: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function isDebugEnabled(req: Request): boolean {
-  // 1. Global env var
-  if (process.env.RETRIEVAL_DEBUG === 'true') return true;
-  // 2. Request header
+function isDebugEnabled(req: Request, isAdmin: boolean): boolean {
+  // Global env var — still requires admin unless explicitly set for ops
+  if (process.env.RETRIEVAL_DEBUG === 'true' && isAdmin) return true;
+  if (!isAdmin) return false;
+  // Request header (admin only)
   if (req.headers.get('x-retrieval-debug') === 'true') return true;
-  // 3. Query param
+  // Query param (admin only)
   const url = new URL(req.url);
   if (url.searchParams.get('debug') === 'true') return true;
   return false;
@@ -60,14 +61,20 @@ function isDebugEnabled(req: Request): boolean {
 // ---------------------------------------------------------------------------
 
 export async function POST(req: Request) {
+  if (process.env.NODE_ENV === 'production') {
+    return apiError('NOT_FOUND', 'Not found', 404);
+  }
+
   // --- Auth ---
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return apiError('UNAUTHORIZED', 'Unauthorized', 401);
   }
 
+  const isAdmin = session.user.role === 'ADMIN';
+
   // --- Debug gate ---
-  const debugEnabled = isDebugEnabled(req);
+  const debugEnabled = isDebugEnabled(req, isAdmin);
   if (!debugEnabled) {
     return NextResponse.json(
       {
@@ -87,7 +94,7 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return apiError('BAD_REQUEST', 'Invalid JSON body', 400);
   }
 
   const parsed = debugQuerySchema.safeParse(body);

@@ -430,7 +430,7 @@ export const CitationFormatters = {
   InlineNumbered: InlineNumberedFormatter,
 };
 
-export default {
+const citationFormatter = {
   getCitationFormatter,
   formatCitation,
   formatReferenceList,
@@ -443,3 +443,5 @@ export default {
   processCitations,
   CitationFormatters,
 };
+
+export default citationFormatter;

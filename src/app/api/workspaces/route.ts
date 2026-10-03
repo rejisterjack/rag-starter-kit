@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api-response';
 
 import { withApiAuth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
@@ -27,24 +27,21 @@ export const GET = withApiAuth(async (req, session) => {
     const endIndex = Math.min(startIndex + limit, total);
     const workspaces = allWorkspaces.slice(startIndex, endIndex);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        workspaces: workspaces.map((w) => ({
-          id: w.id,
-          name: w.name,
-          slug: w.slug,
-          description: w.description,
-          avatar: w.avatar,
-          plan: w.plan,
-          role: w.members.find((m) => m.userId === session.user.id)?.role || 'MEMBER',
-          memberCount: w.members.length,
-          documentCount: w._count.documents,
-          chatCount: w._count.chats,
-          createdAt: w.createdAt.toISOString(),
-        })),
-        currentWorkspaceId: session.user.workspaceId,
-      },
+    return apiSuccess({
+      workspaces: workspaces.map((w) => ({
+        id: w.id,
+        name: w.name,
+        slug: w.slug,
+        description: w.description,
+        avatar: w.avatar,
+        plan: w.plan,
+        role: w.members.find((m) => m.userId === session.user.id)?.role || 'MEMBER',
+        memberCount: w.members.length,
+        documentCount: w._count.documents,
+        chatCount: w._count.chats,
+        createdAt: w.createdAt.toISOString(),
+      })),
+      currentWorkspaceId: session.user.workspaceId,
       pagination: {
         page,
         limit,
@@ -58,10 +55,7 @@ export const GET = withApiAuth(async (req, session) => {
     logger.error('Failed to get workspaces', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Failed to get workspaces' } },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to get workspaces', 500);
   }
 });
 
@@ -79,10 +73,7 @@ export const POST = withApiAuth(async (req, session) => {
     });
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { error: { code: 'RATE_LIMIT', message: 'Rate limit exceeded' } },
-        { status: 429 }
-      );
+      return apiError('RATE_LIMIT', 'Rate limit exceeded', 429);
     }
 
     // Parse and validate body
@@ -93,10 +84,7 @@ export const POST = withApiAuth(async (req, session) => {
       logger.debug('Invalid JSON body in workspace creation', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid JSON body', 400);
     }
 
     let validatedInput: ReturnType<typeof validateCreateWorkspaceInput>;
@@ -105,15 +93,7 @@ export const POST = withApiAuth(async (req, session) => {
       validatedInput = validateCreateWorkspaceInput(body);
     } catch (error) {
       if (error instanceof Error) {
-        return NextResponse.json(
-          {
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: isDev ? error.message : 'Validation failed',
-            },
-          },
-          { status: 400 }
-        );
+        return apiError('VALIDATION_ERROR', isDev ? error.message : 'Validation failed', 400);
       }
       throw error;
     }
@@ -121,28 +101,22 @@ export const POST = withApiAuth(async (req, session) => {
     // Create workspace
     const workspace = await createWorkspace(session.user.id, validatedInput);
 
-    return NextResponse.json(
+    return apiSuccess(
       {
-        success: true,
-        data: {
-          workspace: {
-            id: workspace.id,
-            name: workspace.name,
-            slug: workspace.slug,
-            description: workspace.description,
-            plan: workspace.plan,
-            createdAt: workspace.createdAt.toISOString(),
-          },
+        workspace: {
+          id: workspace.id,
+          name: workspace.name,
+          slug: workspace.slug,
+          description: workspace.description,
+          plan: workspace.plan,
+          createdAt: workspace.createdAt.toISOString(),
         },
       },
-      { status: 201 }
+      201
     );
   } catch (error) {
     if (error instanceof Error && error.message === 'Workspace slug already taken') {
-      return NextResponse.json(
-        { error: { code: 'SLUG_TAKEN', message: 'Workspace slug is already taken' } },
-        { status: 409 }
-      );
+      return apiError('SLUG_TAKEN', 'Workspace slug is already taken', 409);
     }
 
     const isDev = process.env.NODE_ENV === 'development';
@@ -150,18 +124,14 @@ export const POST = withApiAuth(async (req, session) => {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
 
-    return NextResponse.json(
-      {
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: isDev
-            ? error instanceof Error
-              ? error.message
-              : 'Internal server error'
-            : 'Failed to create workspace',
-        },
-      },
-      { status: 500 }
+    return apiError(
+      'INTERNAL_ERROR',
+      isDev
+        ? error instanceof Error
+          ? error.message
+          : 'Internal server error'
+        : 'Failed to create workspace',
+      500
     );
   }
 });

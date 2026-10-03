@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { apiFetch } from '@/lib/api-client';
 
 interface InviteMemberDialogProps {
   workspaceId: string;
@@ -46,17 +47,11 @@ export function InviteMemberDialog({
     setSuccess(false);
 
     try {
-      const response = await fetch(`/api/workspaces/${workspaceId}/members`, {
+      await apiFetch(`/api/workspaces/${workspaceId}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, role }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Failed to invite member');
-      }
 
       setSuccess(true);
       setEmail('');

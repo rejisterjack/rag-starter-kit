@@ -135,7 +135,6 @@ function parsePresentation(zipData: Record<string, Uint8Array>): { slideIds: str
   const sldIdRegex = /<p:sldId\s+[^>]*id="(\d+)"/g;
   let match: RegExpExecArray | null;
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: intentional regex loop
   while ((match = sldIdRegex.exec(xml)) !== null) {
     slideIds.push(match[1]);
   }
@@ -159,7 +158,6 @@ function parseSlideLayouts(zipData: Record<string, Uint8Array>): Map<string, Map
       const placeholderRegex = /<p:ph\s+[^>]*type="([^"]+)"[^>]*>/g;
       let match: RegExpExecArray | null;
 
-      // biome-ignore lint/suspicious/noAssignInExpressions: intentional regex loop
       while ((match = placeholderRegex.exec(xml)) !== null) {
         const type = match[1];
         // Map placeholder types to expected content types
@@ -189,7 +187,6 @@ function parseSlide(
   const spRegex = /<p:sp>(.*?)<\/p:sp>/gs;
   let match: RegExpExecArray | null;
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: intentional regex loop
   while ((match = spRegex.exec(xml)) !== null) {
     const spXml = match[1];
     const shape = parseShape(spXml);
@@ -259,7 +256,6 @@ function parseShape(spXml: string): PPTXShape {
     const pRegex = /<a:p(?:\s+[^>]*)?>(.*?)<\/a:p>/gs;
     let pMatch: RegExpExecArray | null;
 
-    // biome-ignore lint/suspicious/noAssignInExpressions: intentional regex loop
     while ((pMatch = pRegex.exec(txBody)) !== null) {
       const paragraph = parseParagraph(pMatch[1]);
       if (paragraph.text.length > 0) {
@@ -289,7 +285,6 @@ function parseParagraph(pXml: string): PPTXParagraph {
   const rRegex = /<a:r(?:\s+[^>]*)?>(.*?)<\/a:r>/gs;
   let match: RegExpExecArray | null;
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: intentional regex loop
   while ((match = rRegex.exec(pXml)) !== null) {
     const run = parseTextRun(match[1]);
     if (run.text.length > 0) {
@@ -299,7 +294,6 @@ function parseParagraph(pXml: string): PPTXParagraph {
 
   // Also handle line breaks
   const brRegex = /<a:br\s*\/?>/g;
-  // biome-ignore lint/suspicious/noAssignInExpressions: intentional regex loop
   while ((match = brRegex.exec(pXml)) !== null) {
     if (runs.length > 0) {
       runs[runs.length - 1].text += '\n';

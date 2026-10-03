@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { getCostAnalysis } from '@/lib/analytics/dashboard-service';
+import { apiError, apiSuccess } from '@/lib/api-response';
 import { logAuditEvent } from '@/lib/audit/audit-logger';
 import { auth } from '@/lib/auth';
 import {
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
     // Step 1: Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+      return apiError('UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const userId = session.user.id;
@@ -41,19 +42,14 @@ export async function GET(req: Request) {
     });
 
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        {
-          error: 'Rate limit exceeded',
-          code: 'RATE_LIMIT',
-          resetAt: new Date(rateLimitResult.reset).toISOString(),
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
+      const errRes = apiError('RATE_LIMIT', 'Rate limit exceeded', 429, {
+        resetAt: new Date(rateLimitResult.reset).toISOString(),
+      });
+      errRes.headers.set(
+        'Retry-After',
+        Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString()
       );
+      return errRes;
     }
 
     // Step 3: Parse query parameters
@@ -70,40 +66,25 @@ export async function GET(req: Request) {
     if (fromParam) {
       fromDate = new Date(fromParam);
       if (Number.isNaN(fromDate.getTime())) {
-        return NextResponse.json(
-          {
-            error: 'Invalid from date format',
-            code: 'INVALID_DATE',
-            details: { format: 'ISO 8601 (YYYY-MM-DD or full ISO string)' },
-          },
-          { status: 400 }
-        );
+        return apiError('INVALID_DATE', 'Invalid from date format', 400, {
+          format: 'ISO 8601 (YYYY-MM-DD or full ISO string)',
+        });
       }
     }
 
     if (toParam) {
       toDate = new Date(toParam);
       if (Number.isNaN(toDate.getTime())) {
-        return NextResponse.json(
-          {
-            error: 'Invalid to date format',
-            code: 'INVALID_DATE',
-            details: { format: 'ISO 8601 (YYYY-MM-DD or full ISO string)' },
-          },
-          { status: 400 }
-        );
+        return apiError('INVALID_DATE', 'Invalid to date format', 400, {
+          format: 'ISO 8601 (YYYY-MM-DD or full ISO string)',
+        });
       }
     }
 
     if (fromDate && toDate && fromDate > toDate) {
-      return NextResponse.json(
-        {
-          error: 'Invalid date range',
-          code: 'INVALID_DATE_RANGE',
-          details: { message: 'from date must be before to date' },
-        },
-        { status: 400 }
-      );
+      return apiError('INVALID_DATE_RANGE', 'Invalid date range', 400, {
+        message: 'from date must be before to date',
+      });
     }
 
     // Step 4: Determine workspace access
@@ -129,10 +110,7 @@ export async function GET(req: Request) {
           severity: 'WARNING',
         });
 
-        return NextResponse.json(
-          { error: 'Access denied to workspace analytics', code: 'FORBIDDEN' },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Access denied to workspace analytics', 403);
       }
 
       effectiveWorkspaceId = requestedWorkspaceId;
@@ -148,10 +126,7 @@ export async function GET(req: Request) {
     // Admins can view all workspaces (no workspaceId filter)
     const isAdmin = session.user.role === 'ADMIN';
     if (!effectiveWorkspaceId && !isAdmin) {
-      return NextResponse.json(
-        { error: 'Workspace access required', code: 'WORKSPACE_REQUIRED' },
-        { status: 403 }
-      );
+      return apiError('WORKSPACE_REQUIRED', 'Workspace access required', 403);
     }
 
     // Step 5: Fetch cost analysis
@@ -170,9 +145,8 @@ export async function GET(req: Request) {
     });
 
     // Step 7: Build response
-    const response = NextResponse.json({
-      success: true,
-      data: costAnalysis,
+    const response = apiSuccess({
+      ...costAnalysis,
       meta: {
         requestDuration: Date.now() - startTime,
         workspaceId: effectiveWorkspaceId ?? 'all',
@@ -190,14 +164,7 @@ export async function GET(req: Request) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    return NextResponse.json(
-      {
-        error: 'Failed to fetch cost analysis',
-        code: 'INTERNAL_ERROR',
-        details: errorMessage,
-      },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', 'Failed to fetch cost analysis', 500, errorMessage);
   }
 }
 

@@ -43,6 +43,7 @@ import {
 import {
   addRateLimitHeaders,
   checkApiRateLimit,
+  checkMemoryRateLimit,
   checkRateLimit,
   getRateLimiter,
   getRateLimitIdentifier,
@@ -50,37 +51,33 @@ import {
 } from '@/lib/security/rate-limiter';
 
 // Mock Redis
-const mockRedis = {
-  get: vi.fn(),
-  set: vi.fn(),
-  del: vi.fn(),
-  keys: vi.fn(),
-  pipeline: vi.fn().mockReturnThis(),
-  zremrangebyscore: vi.fn().mockReturnThis(),
-  zcard: vi.fn().mockReturnThis(),
-  zadd: vi.fn().mockReturnThis(),
-  pexpire: vi.fn().mockReturnThis(),
-  exec: vi.fn().mockResolvedValue([]),
-  ttl: vi.fn().mockResolvedValue(-2),
-};
+const { mockRedis } = vi.hoisted(() => ({
+  mockRedis: {
+    get: vi.fn(),
+    set: vi.fn().mockResolvedValue('OK'),
+    del: vi.fn().mockResolvedValue(1),
+    keys: vi.fn(),
+    ttl: vi.fn().mockResolvedValue(3600),
+    pipeline: vi.fn().mockReturnThis(),
+    zremrangebyscore: vi.fn().mockReturnThis(),
+    zcard: vi.fn().mockReturnThis(),
+    zadd: vi.fn().mockReturnThis(),
+    pexpire: vi.fn().mockReturnThis(),
+    exec: vi.fn().mockResolvedValue([]),
+  },
+}));
+
+vi.mock('@/lib/redis', () => ({
+  redis: mockRedis,
+  getRedis: vi.fn(() => mockRedis),
+  isRedisConfigured: vi.fn().mockReturnValue(true),
+}));
 
 vi.mock('@/lib/security/rate-limiter', async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
-    redis: {
-      get: vi.fn(),
-      set: vi.fn(),
-      del: vi.fn(),
-      keys: vi.fn(),
-      pipeline: vi.fn().mockReturnThis(),
-      zremrangebyscore: vi.fn().mockReturnThis(),
-      zcard: vi.fn().mockReturnThis(),
-      zadd: vi.fn().mockReturnThis(),
-      pexpire: vi.fn().mockReturnThis(),
-      exec: vi.fn().mockResolvedValue([]),
-      ttl: vi.fn().mockResolvedValue(-2),
-    },
+    redis: mockRedis,
   };
 });
 
@@ -233,36 +230,40 @@ describe('Security Utilities', () => {
   });
 
   describe('Encryption', () => {
+    const masterKey = 'test-encryption-key-for-vitest-32c';
+
+    beforeEach(() => {
+      process.env.ENCRYPTION_MASTER_KEY = masterKey;
+    });
+
     it('should encrypt and decrypt text', () => {
-      const secret = 'my-secret-key-32chars-long!!';
       const text = 'Sensitive data';
 
-      const encrypted = encrypt(text, secret);
+      const encrypted = encrypt(text);
       expect(encrypted).not.toBe(text);
       expect(encrypted).toBeDefined();
+      expect(encrypted.startsWith('enc:v1:')).toBe(true);
 
-      const decrypted = decrypt(encrypted, secret);
+      const decrypted = decrypt(encrypted);
       expect(decrypted).toBe(text);
     });
 
     it('should produce different ciphertexts for same plaintext', () => {
-      const secret = 'my-secret-key-32chars-long!!';
       const text = 'Test';
 
-      const encrypted1 = encrypt(text, secret);
-      const encrypted2 = encrypt(text, secret);
+      const encrypted1 = encrypt(text);
+      const encrypted2 = encrypt(text);
 
       expect(encrypted1).not.toBe(encrypted2);
     });
 
     it('should fail with wrong key', () => {
-      const secret = 'my-secret-key-32chars-long!!';
-      const wrongSecret = 'wrong-key-32chars-long!!!!!';
       const text = 'Sensitive data';
+      const encrypted = encrypt(text);
 
-      const encrypted = encrypt(text, secret);
+      process.env.ENCRYPTION_MASTER_KEY = 'wrong-encryption-key-vitest-32c';
 
-      expect(() => decrypt(encrypted, wrongSecret)).toThrow();
+      expect(() => decrypt(encrypted)).toThrow();
     });
   });
 
@@ -410,15 +411,38 @@ describe('Security Utilities', () => {
       vi.clearAllMocks();
     });
 
+    function buildCsrfRequest(sessionId = 'user-1') {
+      const { token, cookieHeader } = generateCsrfTokenForAppRouter(sessionId);
+      const cookieValue = cookieHeader.match(/csrf_token=([^;]+)/)?.[1] ?? '';
+
+      return {
+        method: 'POST',
+        headers: {
+          get: vi.fn((name: string) => {
+            if (name === 'x-csrf-token') return token;
+            if (name === 'x-user-id') return sessionId;
+            return null;
+          }),
+        },
+        cookies: {
+          get: vi.fn((name: string) =>
+            name === 'csrf_token' ? { value: cookieValue } : undefined
+          ),
+        },
+      } as unknown as import('next/server').NextRequest;
+    }
+
     it('should generate CSRF token', () => {
-      const mockReq = { headers: {} } as unknown as Request;
-      const mockRes = { setHeader: vi.fn() } as unknown as Response;
+      const mockReq = { headers: new Headers() } as unknown as Request;
+      const headers = new Headers();
+      const mockRes = { headers } as unknown as Response;
 
       const token = generateCsrfToken(mockReq, mockRes);
 
       expect(token).toBeDefined();
       expect(typeof token).toBe('string');
       expect(token.length).toBeGreaterThan(0);
+      expect(headers.get('Set-Cookie')).toContain('csrf_token=');
     });
 
     it('should generate CSRF token for App Router', () => {
@@ -426,19 +450,11 @@ describe('Security Utilities', () => {
 
       expect(result).toHaveProperty('token');
       expect(result).toHaveProperty('cookieHeader');
-      expect(result.token.length).toBe(64); // 32 bytes hex encoded
+      expect(result.token.length).toBe(69); // v2:nonce:hash format
     });
 
     it('should validate CSRF token from header', async () => {
-      const mockReq = {
-        method: 'POST',
-        headers: {
-          get: vi.fn().mockReturnValue('valid-token'),
-        },
-        cookies: {
-          get: vi.fn().mockReturnValue({ value: 'valid-token' }),
-        },
-      } as unknown as import('next/server').NextRequest;
+      const mockReq = buildCsrfRequest();
 
       const isValid = await validateCsrfToken(mockReq);
 
@@ -510,17 +526,7 @@ describe('Security Utilities', () => {
       const handler = vi.fn().mockResolvedValue(new Response('OK'));
       const protectedHandler = withCsrfProtection(handler);
 
-      const mockReq = {
-        method: 'POST',
-        headers: {
-          get: vi.fn().mockReturnValue('valid-token'),
-        },
-        cookies: {
-          get: vi.fn().mockReturnValue({ value: 'valid-token' }),
-        },
-      } as unknown as import('next/server').NextRequest;
-
-      await protectedHandler(mockReq);
+      await protectedHandler(buildCsrfRequest());
 
       expect(handler).toHaveBeenCalled();
     });
@@ -554,7 +560,7 @@ describe('Security Utilities', () => {
     });
 
     it('should render CSRF token script component', () => {
-      const element = CsrfTokenScript();
+      const element = CsrfTokenScript({});
 
       expect(element.type).toBe('script');
       expect(element.props.dangerouslySetInnerHTML).toBeDefined();
@@ -604,14 +610,10 @@ describe('Security Utilities', () => {
 
       await fetchWithCsrf('/api/test', { method: 'POST' });
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/test',
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            'x-csrf-token': 'test-token',
-          }),
-        })
-      );
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      const [, options] = vi.mocked(global.fetch).mock.calls[0] as [string, RequestInit];
+      const headers = options.headers as Headers;
+      expect(headers.get('x-csrf-token')).toBe('test-token');
     });
   });
 
@@ -641,18 +643,16 @@ describe('Security Utilities', () => {
       expect(result).toHaveProperty('reset');
     });
 
-    it('should deny when limit exceeded', async () => {
-      // Mock that we already have 50 requests (at limit)
-      mockRedis.exec.mockResolvedValueOnce([
-        [null, 0],
-        [null, 50],
-        [null, 1],
-        [null, 1],
-      ]);
+    it('should deny when limit exceeded', () => {
+      const key = `rate-limit-deny-${Date.now()}`;
 
-      const result = await checkRateLimit('user-123', 'chat');
+      for (let i = 0; i < 10; i++) {
+        checkMemoryRateLimit(key, 10, 60_000);
+      }
 
-      expect(result.success).toBe(false);
+      const result = checkMemoryRateLimit(key, 10, 60_000);
+
+      expect(result.allowed).toBe(false);
       expect(result.remaining).toBe(0);
     });
 
@@ -692,8 +692,8 @@ describe('Security Utilities', () => {
 
     it('should have predefined rate limits', () => {
       expect(rateLimits.chat).toBeDefined();
-      expect(rateLimits.chat.limit).toBe(50);
-      expect(rateLimits.chat.windowMs).toBe(60 * 60 * 1000);
+      expect(rateLimits.chat.limit).toBe(10);
+      expect(rateLimits.chat.windowMs).toBe(5 * 60 * 1000);
 
       expect(rateLimits.login).toBeDefined();
       expect(rateLimits.login.limit).toBe(5);

@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * Domain Lookup API
  *
@@ -15,13 +16,13 @@ export async function GET(request: NextRequest): Promise<Response> {
     const email = searchParams.get('email');
 
     if (!email) {
-      return NextResponse.json({ error: 'Email parameter is required' }, { status: 400 });
+      return apiError('BAD_REQUEST', 'Email parameter is required', 400);
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
+      return apiError('BAD_REQUEST', 'Invalid email format', 400);
     }
 
     // Lookup domain
@@ -32,6 +33,6 @@ export async function GET(request: NextRequest): Promise<Response> {
     logger.error('Failed to lookup domain', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    return NextResponse.json({ error: 'Failed to lookup domain' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Failed to lookup domain', 500);
   }
 }

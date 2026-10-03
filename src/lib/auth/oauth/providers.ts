@@ -52,12 +52,7 @@ export interface OAuthProviderConfig {
  * Supported OAuth provider types
  */
 export type OAuthProviderType =
-  | 'google_workspace'
-  | 'azure_ad'
-  | 'okta'
-  | 'onelogin'
-  | 'auth0'
-  | 'generic_oidc';
+  'google_workspace' | 'azure_ad' | 'okta' | 'onelogin' | 'auth0' | 'generic_oidc';
 
 /**
  * OAuth attribute mapping

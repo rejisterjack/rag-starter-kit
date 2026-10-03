@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * Notion OAuth Start Endpoint
  *
@@ -10,6 +11,7 @@
 import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { APP_URL } from '@/lib/constants';
 import { getAuthorizationUrl, type NotionOAuthConfig } from '@/lib/integrations/notion-oauth';
 import { logger } from '@/lib/logger';
 import { checkPermission, Permission } from '@/lib/workspace/permissions';
@@ -21,7 +23,7 @@ import { checkPermission, Permission } from '@/lib/workspace/permissions';
 function getOAuthConfig(): NotionOAuthConfig | null {
   const clientId = process.env.NOTION_CLIENT_ID;
   const clientSecret = process.env.NOTION_CLIENT_SECRET;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:7392';
+  const appUrl = APP_URL;
 
   if (!clientId || !clientSecret) {
     return null;
@@ -42,10 +44,7 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return apiError('UNAUTHORIZED', 'Authentication required', 401);
     }
 
     // Get workspace ID from query params
@@ -53,10 +52,7 @@ export async function GET(req: NextRequest) {
     const workspaceId = searchParams.get('workspaceId') || session.user.workspaceId;
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Workspace ID is required' } },
-        { status: 400 }
-      );
+      return apiError('BAD_REQUEST', 'Workspace ID is required', 400);
     }
 
     // Check workspace permission
@@ -66,10 +62,7 @@ export async function GET(req: NextRequest) {
       Permission.MANAGE_WORKSPACE
     );
     if (!hasAccess) {
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } },
-        { status: 403 }
-      );
+      return apiError('FORBIDDEN', 'Access denied', 403);
     }
 
     // Check if OAuth is configured

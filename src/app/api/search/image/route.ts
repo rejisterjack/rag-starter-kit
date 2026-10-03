@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-response';
 /**
  * Image Search API
  *
@@ -69,10 +70,7 @@ export const POST = withApiAuth(async (req, session) => {
       logger.debug('Failed to parse form data for image search', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return NextResponse.json(
-        { error: 'Invalid form data', code: 'INVALID_BODY' },
-        { status: 400 }
-      );
+      return apiError('INVALID_BODY', 'Invalid form data', 400);
     }
 
     // Get search parameters
@@ -98,10 +96,7 @@ export const POST = withApiAuth(async (req, session) => {
           severity: 'WARNING',
         });
 
-        return NextResponse.json(
-          { error: 'Access denied to workspace', code: 'FORBIDDEN' },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Access denied to workspace', 403);
       }
     }
 
@@ -119,10 +114,7 @@ export const POST = withApiAuth(async (req, session) => {
       if (imageFile) {
         // Validate file size
         if (imageFile.size > MAX_IMAGE_SIZE) {
-          return NextResponse.json(
-            { error: 'Image too large. Max size: 10MB', code: 'FILE_TOO_LARGE' },
-            { status: 413 }
-          );
+          return apiError('FILE_TOO_LARGE', 'Image too large. Max size: 10MB', 413);
         }
 
         const arrayBuffer = await imageFile.arrayBuffer();
@@ -135,17 +127,11 @@ export const POST = withApiAuth(async (req, session) => {
           logger.debug('Invalid image URL provided for image search', {
             error: error instanceof Error ? error.message : 'Unknown error',
           });
-          return NextResponse.json(
-            { error: 'Invalid image URL', code: 'INVALID_URL' },
-            { status: 400 }
-          );
+          return apiError('INVALID_URL', 'Invalid image URL', 400);
         }
         imageBuffer = imageUrl;
       } else {
-        return NextResponse.json(
-          { error: 'No image provided', code: 'MISSING_IMAGE' },
-          { status: 400 }
-        );
+        return apiError('MISSING_IMAGE', 'No image provided', 400);
       }
 
       results = await searchMultiModal(textQuery, imageBuffer, workspaceId || userId, {
@@ -174,10 +160,7 @@ export const POST = withApiAuth(async (req, session) => {
       if (imageFile) {
         // Validate file size
         if (imageFile.size > MAX_IMAGE_SIZE) {
-          return NextResponse.json(
-            { error: 'Image too large. Max size: 10MB', code: 'FILE_TOO_LARGE' },
-            { status: 413 }
-          );
+          return apiError('FILE_TOO_LARGE', 'Image too large. Max size: 10MB', 413);
         }
 
         const arrayBuffer = await imageFile.arrayBuffer();
@@ -185,10 +168,7 @@ export const POST = withApiAuth(async (req, session) => {
       } else if (imageUrl) {
         imageBuffer = imageUrl;
       } else {
-        return NextResponse.json(
-          { error: 'No image provided', code: 'MISSING_IMAGE' },
-          { status: 400 }
-        );
+        return apiError('MISSING_IMAGE', 'No image provided', 400);
       }
 
       results = await searchByImage(imageBuffer, workspaceId || userId, {
@@ -320,10 +300,7 @@ export const GET = withApiAuth(async (req, session) => {
     const includeChunks = searchParams.get('includeChunks') === 'true';
 
     if (!query) {
-      return NextResponse.json(
-        { error: 'Text query is required', code: 'MISSING_QUERY' },
-        { status: 400 }
-      );
+      return apiError('MISSING_QUERY', 'Text query is required', 400);
     }
 
     // Validate workspace access
@@ -341,10 +318,7 @@ export const GET = withApiAuth(async (req, session) => {
           severity: 'WARNING',
         });
 
-        return NextResponse.json(
-          { error: 'Access denied to workspace', code: 'FORBIDDEN' },
-          { status: 403 }
-        );
+        return apiError('FORBIDDEN', 'Access denied to workspace', 403);
       }
     }
 

@@ -585,8 +585,6 @@ export function useDataFreshness(key: string): DataFreshness {
   });
 
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-
     const check = async () => {
       const cached = await apiCache.get(key);
       if (cached) {
@@ -613,8 +611,7 @@ export function useDataFreshness(key: string): DataFreshness {
     };
 
     void check();
-    interval = setInterval(check, 10000); // Update every 10s
-
+    const interval = setInterval(check, 10000);
     return () => clearInterval(interval);
   }, [key]);
 

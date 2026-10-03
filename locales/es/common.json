@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "RAG Starter Kit - Chatbot RAG Listo para Producción",
-    "description": "Una plantilla de chatbot RAG (Generación Aumentada por Recuperación) lista para producción, impulsada por Next.js 15, LangChain y PostgreSQL pgvector."
+    "description": "Una plantilla de chatbot RAG (Generación Aumentada por Recuperación) lista para producción, impulsada por Next.js 16, Vercel AI SDK, PostgreSQL y pgvector."
   },
   "navigation": {
     "home": "Inicio",
@@ -15,7 +15,7 @@
     "badge": "Código Abierto en GitHub",
     "title": "Construye Chatbots de IA",
     "titleHighlight": "para Documentos",
-    "description": "Un kit de inicio RAG listo para producción impulsado por Next.js, LangChain y PostgreSQL. Despliega chatbots inteligentes que entienden tus documentos en minutos, no meses.",
+    "description": "Un kit de inicio RAG listo para producción impulsado por Next.js, Vercel AI SDK y PostgreSQL. Despliega chatbots inteligentes que entienden tus documentos en minutos, no meses.",
     "primaryCta": "Comenzar Chat",
     "secondaryCta": "Ver en GitHub",
     "stats": {
@@ -29,7 +29,7 @@
     "subtitle": "Un kit de herramientas completo para construir aplicaciones RAG listas para producción sin el código repetitivo.",
     "rag": {
       "title": "RAG Inteligente",
-      "description": "Respuestas contextuales usando LangChain y pgvector para una precisión y recuperación sin precedentes."
+      "description": "Respuestas contextuales usando recuperación híbrida y pgvector para una precisión y recuperación sin precedentes."
     },
     "ingestion": {
       "title": "Ingesta Perfecta",
@@ -41,7 +41,7 @@
     },
     "memory": {
       "title": "Memoria Persistente",
-      "description": "Memoria semántica de última generación impulsada por PostgreSQL con extensión pgvector."
+      "description": "Memoria semántica de última generación impulsada por PostgreSQL con la extensión pgvector."
     },
     "enterprise": {
       "title": "Listo para Empresas",
@@ -81,7 +81,7 @@
     "secondary": "Clonar Repositorio"
   },
   "footer": {
-    "builtWith": "Construido con ❤️ usando Next.js, LangChain y PostgreSQL"
+    "builtWith": "Construido con ❤️ usando Next.js, Vercel AI SDK y PostgreSQL"
   },
   "auth": {
     "signIn": {

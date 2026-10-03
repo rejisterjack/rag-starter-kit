@@ -1,17 +1,13 @@
 /**
- * Keyword/Full-Text Search using Qdrant
+ * Keyword / Full-Text Search using PostgreSQL Full-Text Search
  *
- * Implements keyword search using Qdrant's text matching capabilities.
+ * Implements keyword search using PostgreSQL tsvector matching capabilities.
  * Supports multiple query parsing methods and filtering.
  */
 
-import { searchKeyword as qdrantKeywordSearch } from '@/lib/qdrant';
-import { buildQdrantFilter } from '@/lib/qdrant/filters';
-import type {
-  KeywordSearchConfig,
-  RetrievalOptions,
-  RetrievedChunk,
-} from './types';
+import { searchKeyword as vectorSearchKeyword } from '@/lib/vector';
+import { buildVectorFilter } from '@/lib/vector/filters';
+import type { KeywordSearchConfig, RetrievalOptions, RetrievedChunk } from './types';
 
 /**
  * Default configuration for keyword search
@@ -53,7 +49,7 @@ function validateIdentifier(value: string, name: string): void {
 }
 
 /**
- * Keyword Retriever class for keyword search using Qdrant
+ * Keyword Retriever class for full-text search via PostgreSQL
  */
 export class KeywordRetriever {
   private config: KeywordSearchConfig;
@@ -63,20 +59,20 @@ export class KeywordRetriever {
   }
 
   /**
-   * Perform keyword/full-text search using Qdrant
+   * Perform keyword/full-text search using PostgreSQL tsvector
    */
   async retrieve(query: string, options: RetrievalOptions): Promise<RetrievedChunk[]> {
     const topK = options.topK ?? 5;
     const minScore = options.minScore ?? 0.01;
 
     try {
-      const filter = buildQdrantFilter({
+      const filter = buildVectorFilter({
         userId: options.userId,
         workspaceId: options.workspaceId,
         filters: options.filters,
       });
 
-      const results = await qdrantKeywordSearch(query, { filter, topK: topK * 2 });
+      const results = await vectorSearchKeyword(query, { filter, topK: topK * 2 });
 
       // Transform to RetrievedChunk format
       const chunks: RetrievedChunk[] = results
@@ -110,13 +106,12 @@ export class KeywordRetriever {
 
   /**
    * Get search suggestions based on partial query
-   * Note: With Qdrant, suggestions are approximated from keyword search results
    */
   async getSuggestions(partialQuery: string, workspaceId: string, limit = 5): Promise<string[]> {
     validateIdentifier(workspaceId, 'workspaceId');
 
-    const filter = buildQdrantFilter({ workspaceId });
-    const results = await qdrantKeywordSearch(partialQuery, { filter, topK: limit * 2 });
+    const filter = buildVectorFilter({ workspaceId });
+    const results = await vectorSearchKeyword(partialQuery, { filter, topK: limit * 2 });
 
     // Extract unique words from matching content
     const words = new Set<string>();
@@ -139,7 +134,6 @@ export class KeywordRetriever {
 
   /**
    * Get term frequency statistics for a workspace
-   * Note: With Qdrant, term stats are approximated from search results
    */
   async getTermStats(
     workspaceId: string,
@@ -147,8 +141,7 @@ export class KeywordRetriever {
   ): Promise<Array<{ term: string; frequency: number }>> {
     validateIdentifier(workspaceId, 'workspaceId');
 
-    // Qdrant does not provide global term statistics like PostgreSQL ts_stat.
-    // Return empty results — callers should use a dedicated analytics pipeline.
+    // Global term statistics are not computed on-the-fly; callers should use dedicated analytics.
     return [];
   }
 
@@ -181,23 +174,22 @@ export async function searchKeyword(
 
 /**
  * SQL to create tsvector search index
- * @deprecated No longer needed with Qdrant — keyword search uses Qdrant text matching.
+ * Note: Handled automatically by Prisma migrations on document_chunks.content_tsv
  */
 export function createSearchIndexSQL(): string {
-  return '-- Keyword search is now handled by Qdrant. No SQL index needed.';
+  return '-- Managed by Prisma schema and migrations (document_chunks.content_tsv).';
 }
 
 /**
  * SQL to drop search index and related objects
- * @deprecated No longer needed with Qdrant.
+ * Note: Handled automatically by Prisma migrations
  */
 export function dropSearchIndexSQL(): string {
-  return '-- Keyword search is now handled by Qdrant. No SQL index to drop.';
+  return '-- Managed by Prisma schema and migrations.';
 }
 
 /**
  * Check if search index exists
- * @deprecated With Qdrant, text matching is always available.
  */
 export async function searchIndexExists(): Promise<boolean> {
   return true;

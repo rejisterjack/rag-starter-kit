@@ -159,11 +159,10 @@ export function InstallPrompt({
             </CardHeader>
             <CardContent>
               <ol className="space-y-3">
-                {getInstallInstructions().map((step, index) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: Static instruction steps
-                  <li key={`step-${index}`} className="flex items-start gap-3">
+                {getInstallInstructions().map((step, stepIdx) => (
+                  <li key={`step-${step.slice(0, 20)}`} className="flex items-start gap-3">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-                      {index + 1}
+                      {stepIdx + 1}
                     </span>
                     <span className="text-sm">{step}</span>
                   </li>

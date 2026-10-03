@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface TypewriterOptions {
   text: string | string[];
@@ -31,9 +31,9 @@ export function useTypewriter({
   const [displayText, setDisplayText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
-  const [_shouldRestart, setShouldRestart] = useState(0);
+  const [, setShouldRestart] = useState(0);
 
-  const texts = Array.isArray(text) ? text : [text];
+  const texts = useMemo(() => (Array.isArray(text) ? text : [text]), [text]);
 
   const restart = useCallback(() => {
     setDisplayText('');

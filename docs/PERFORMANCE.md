@@ -129,7 +129,7 @@ The project uses HNSW indexes for vector similarity search via pgvector.
 
 Pool size is environment-aware:
 - **Serverless** (Vercel/Lambda): 5 connections
-- **Production** (Docker/VM): 15 connections
+- **Production** (Long-running server / VM): 15 connections
 - **Development**: 3 connections
 
 Override with `DB_POOL_MAX` env var. Use `DATABASE_READ_REPLICA_URL` for read replicas.

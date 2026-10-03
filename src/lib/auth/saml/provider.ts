@@ -9,6 +9,7 @@
 import * as saml from 'samlify';
 import type { Prisma } from '@/generated/prisma/client';
 import { prisma } from '@/lib/db';
+import { fromJson } from '@/lib/db/json';
 import { logger } from '@/lib/logger';
 import {
   getSamlUrls,
@@ -436,10 +437,13 @@ export async function getWorkspaceSamlConfig(workspaceId: string): Promise<SamlC
     },
   });
 
-  if (!connection || !connection.enabled) return null;
+  if (!connection?.enabled) return null;
 
   // Safely extract attribute mapping from JSON
-  const attrMappingJson = connection.attributeMapping as Record<string, string> | undefined;
+  const attrMappingJson = fromJson<Record<string, string> | undefined>(
+    connection.attributeMapping,
+    undefined
+  );
 
   return {
     id: connection.id,
@@ -523,13 +527,19 @@ export async function upsertSamlConfig(
     signatureAlgorithm: 'rsa-sha256',
     digestAlgorithm: 'sha256',
     nameIdFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
-    attributeMapping: {
-      email: (connection.attributeMapping as Record<string, string> | undefined)?.email ?? 'email',
-      name: (connection.attributeMapping as Record<string, string> | undefined)?.name,
-      firstName: (connection.attributeMapping as Record<string, string> | undefined)?.firstName,
-      lastName: (connection.attributeMapping as Record<string, string> | undefined)?.lastName,
-      groups: (connection.attributeMapping as Record<string, string> | undefined)?.groups,
-    },
+    attributeMapping: (() => {
+      const mapping = fromJson<Record<string, string> | undefined>(
+        connection.attributeMapping,
+        undefined
+      );
+      return {
+        email: mapping?.email ?? 'email',
+        name: mapping?.name,
+        firstName: mapping?.firstName,
+        lastName: mapping?.lastName,
+        groups: mapping?.groups,
+      };
+    })(),
     active: connection.enabled,
     certRotatedAt: undefined,
     previousCertificate: undefined,

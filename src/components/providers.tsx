@@ -1,10 +1,13 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { domAnimation, LazyMotion } from 'framer-motion';
+import type { Session } from 'next-auth';
 import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider } from 'next-themes';
 import { type ReactNode, useState } from 'react';
 import { Toaster } from 'sonner';
+import { PostHogProvider } from '@/components/analytics/posthog-provider';
 import { PWAProvider } from '@/components/pwa';
 import { PlausibleProvider } from './providers/plausible-provider';
 
@@ -13,13 +16,15 @@ import { PlausibleProvider } from './providers/plausible-provider';
  */
 interface ProvidersProps {
   children: ReactNode;
+  /** Server-fetched session used to seed SessionProvider (prevents hydration mismatch) */
+  session?: Session | null;
 }
 
 /**
  * Root providers component that wraps the application with all necessary context providers
  * Includes: React Query, Theme Provider, PWA/Offline Provider, Plausible Analytics
  */
-export function Providers({ children }: ProvidersProps): React.ReactElement {
+export function Providers({ children, session }: ProvidersProps): React.ReactElement {
   // Ensure QueryClient is only created once per component lifecycle
   const [queryClient] = useState(
     () =>
@@ -38,12 +43,12 @@ export function Providers({ children }: ProvidersProps): React.ReactElement {
   );
 
   return (
-    <SessionProvider>
+    <SessionProvider session={session} refetchOnWindowFocus={false} refetchWhenOffline={false}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
-          forcedTheme="dark"
+          enableSystem={true}
           disableTransitionOnChange={false}
         >
           <PWAProvider
@@ -54,7 +59,11 @@ export function Providers({ children }: ProvidersProps): React.ReactElement {
             connectivityPosition="top"
             installPromptDelay={10000}
           >
-            <PlausibleProvider>{children}</PlausibleProvider>
+            <LazyMotion features={domAnimation} strict>
+              <PostHogProvider>
+                <PlausibleProvider>{children}</PlausibleProvider>
+              </PostHogProvider>
+            </LazyMotion>
           </PWAProvider>
           <Toaster richColors closeButton />
         </ThemeProvider>

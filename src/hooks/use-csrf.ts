@@ -40,10 +40,13 @@ export function useCsrf(): UseCsrfReturn {
 
       const data = await response.json();
 
-      if (data.token) {
-        setToken(data.token);
+      // Endpoint returns { success, data: { token } } — unwrap the envelope
+      const token = data?.data?.token ?? data?.token;
+
+      if (token) {
+        setToken(token);
         // Also store in meta tag for global access
-        updateMetaTag(data.token);
+        updateMetaTag(token);
       }
     } catch {
       // CSRF token endpoint not available — not blocking

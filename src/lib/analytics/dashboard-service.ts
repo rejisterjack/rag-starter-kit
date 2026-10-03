@@ -5,6 +5,8 @@
  * Provides methods for time-series data, usage stats, quality metrics, and cost analysis.
  */
 
+import { unstable_cache } from 'next/cache';
+import { Prisma } from '@/generated/prisma/client';
 import { prisma } from '@/lib/db';
 import type { DateRange } from './rag-metrics';
 import {
@@ -161,57 +163,68 @@ export class DashboardService {
     const cached = this.getFromCache<TimeSeriesData>(cacheKey);
     if (cached) return cached;
 
-    // Build where clause
-    const where: {
-      createdAt: { gte: Date; lte: Date };
-      workspaceId?: string;
-    } = {
-      createdAt: { gte: from, lte: to },
-    };
+    const truncUnit =
+      granularity === 'hour'
+        ? 'hour'
+        : granularity === 'week'
+          ? 'week'
+          : granularity === 'month'
+            ? 'month'
+            : 'day';
 
-    if (workspaceId) {
-      where.workspaceId = workspaceId;
-    }
+    const workspaceFilter = workspaceId
+      ? Prisma.sql`AND "workspaceId" = ${workspaceId}`
+      : Prisma.empty;
 
-    // Get all events in the range
-    const events = await prisma.rAGEvent.findMany({
-      where,
-      orderBy: { createdAt: 'asc' },
-    });
+    const [eventBuckets, errorBuckets] = await Promise.all([
+      prisma.$queryRaw<
+        Array<{
+          bucket: Date;
+          chat_count: number;
+          token_usage: number;
+          avg_latency: number;
+        }>
+      >`
+        SELECT date_trunc(${truncUnit}, "createdAt") AS bucket,
+               count(*)::int AS chat_count,
+               coalesce(sum("totalTokens"), 0)::int AS token_usage,
+               coalesce(avg("latencyMs"), 0)::float AS avg_latency
+        FROM rag_events
+        WHERE "createdAt" >= ${from} AND "createdAt" <= ${to}
+        ${workspaceFilter}
+        GROUP BY bucket
+        ORDER BY bucket ASC
+      `,
+      prisma.$queryRaw<Array<{ bucket: Date; error_count: number }>>`
+        SELECT date_trunc(${truncUnit}, "createdAt") AS bucket,
+               count(*)::int AS error_count
+        FROM audit_logs
+        WHERE severity = 'ERROR'
+          AND "createdAt" >= ${from}
+          AND "createdAt" <= ${to}
+        ${workspaceFilter}
+        GROUP BY bucket
+        ORDER BY bucket ASC
+      `,
+    ]);
 
-    // Get errors from audit logs (filter by severity instead of event type)
-    const errors = await prisma.auditLog.findMany({
-      where: {
-        severity: 'ERROR',
-        createdAt: { gte: from, lte: to },
-        ...(workspaceId && { workspaceId }),
-      },
-      select: { createdAt: true },
-    });
+    const eventMap = new Map(eventBuckets.map((row) => [row.bucket.toISOString(), row]));
+    const errorMap = new Map(
+      errorBuckets.map((row) => [row.bucket.toISOString(), row.error_count])
+    );
 
     // Group by time buckets
     const buckets = this.createTimeBuckets(from, to, granularity);
     const points: TimeSeriesPoint[] = [];
 
     for (const bucket of buckets) {
-      const bucketEvents = events.filter(
-        (e: { createdAt: Date }) => e.createdAt >= bucket.start && e.createdAt < bucket.end
-      );
-      const bucketErrors = errors.filter(
-        (e: { createdAt: Date }) => e.createdAt >= bucket.start && e.createdAt < bucket.end
-      );
-
-      const chatCount = bucketEvents.length;
-      const tokenUsage = bucketEvents.reduce(
-        (sum: number, e: { totalTokens: number }) => sum + e.totalTokens,
-        0
-      );
-      const avgLatency =
-        chatCount > 0
-          ? bucketEvents.reduce((sum: number, e: { latencyMs: number }) => sum + e.latencyMs, 0) /
-            chatCount
-          : 0;
-      const errorRate = chatCount > 0 ? (bucketErrors.length / chatCount) * 100 : 0;
+      const bucketKey = bucket.start.toISOString();
+      const aggregated = eventMap.get(bucketKey);
+      const chatCount = aggregated?.chat_count ?? 0;
+      const tokenUsage = aggregated?.token_usage ?? 0;
+      const avgLatency = aggregated?.avg_latency ?? 0;
+      const errorCount = errorMap.get(bucketKey) ?? 0;
+      const errorRate = chatCount > 0 ? (errorCount / chatCount) * 100 : 0;
 
       points.push({
         timestamp: bucket.start.toISOString(),
@@ -490,37 +503,23 @@ export class DashboardService {
     if (workspaceId) {
       modelUsage = await getModelUsage(workspaceId, from, to);
     } else {
-      // Aggregate across all workspaces
-      // Note: tokenUsage model not in schema - using apiUsage instead
-      const usage = await prisma.apiUsage.findMany({
+      // Aggregate across all workspaces using groupBy (avoid N+1 full table scans)
+      const grouped = await prisma.apiUsage.groupBy({
+        by: ['endpoint'],
         where: {
           ...(from && { createdAt: { gte: from } }),
           ...(to && { createdAt: { lte: to } }),
         },
-        select: { tokensTotal: true },
+        _sum: { tokensTotal: true },
+        _count: { _all: true },
       });
 
-      const modelMap = new Map<string, { tokens: number; cost: number; requests: number }>();
-      for (const u of usage) {
-        const model = 'default';
-        const existing = modelMap.get(model) ?? { tokens: 0, cost: 0, requests: 0 };
-        existing.tokens += u.tokensTotal;
-        existing.cost += u.tokensTotal * 0.000001;
-        existing.requests++;
-        modelMap.set(model, existing);
-      }
-
-      modelUsage = Array.from(modelMap.entries()).map(([model, data]) => ({
-        model,
-        totalTokens: data.tokens,
-        estimatedCost: Math.round(data.cost * 100) / 100,
-        requestCount: data.requests,
-      })) as Array<{
-        model: string;
-        totalTokens: number;
-        estimatedCost: number;
-        requestCount: number;
-      }>;
+      modelUsage = grouped.map((row) => ({
+        model: row.endpoint || 'default',
+        totalTokens: row._sum.tokensTotal ?? 0,
+        estimatedCost: Math.round((row._sum.tokensTotal ?? 0) * 0.000001 * 100) / 100,
+        requestCount: row._count._all,
+      }));
     }
 
     const totalCost = modelUsage.reduce((sum, m) => sum + m.estimatedCost, 0);
@@ -537,28 +536,21 @@ export class DashboardService {
     if (workspaceId) {
       userUsages = await getUserTokenUsages(workspaceId, from, to);
     } else {
-      // Note: tokenUsage model not in schema - using apiUsage instead
-      const usage = await prisma.apiUsage.findMany({
+      const groupedUsers = await prisma.apiUsage.groupBy({
+        by: ['userId'],
         where: {
           ...(from && { createdAt: { gte: from } }),
           ...(to && { createdAt: { lte: to } }),
         },
+        _sum: { tokensTotal: true },
+        _count: { _all: true },
       });
 
-      const userMap = new Map<string, { tokens: number; cost: number; queries: number }>();
-      for (const u of usage) {
-        const userId = u.userId ?? 'unknown';
-        const existing = userMap.get(userId) ?? { tokens: 0, cost: 0, queries: 0 };
-        existing.tokens += u.tokensTotal;
-        existing.queries++;
-        userMap.set(userId, existing);
-      }
-
-      userUsages = Array.from(userMap.entries()).map(([userId, data]) => ({
-        userId,
-        totalTokens: data.tokens,
-        estimatedCost: Math.round(data.cost * 100) / 100,
-        queryCount: data.queries,
+      userUsages = groupedUsers.map((row) => ({
+        userId: row.userId ?? 'unknown',
+        totalTokens: row._sum.tokensTotal ?? 0,
+        estimatedCost: Math.round((row._sum.tokensTotal ?? 0) * 0.000001 * 100) / 100,
+        queryCount: row._count._all,
       }));
     }
 
@@ -737,6 +729,7 @@ export class DashboardService {
         currentRate,
       },
     };
+    this.setCache(cacheKey, result, 30 * 1000);
     return result;
   }
 
@@ -830,83 +823,56 @@ export class DashboardService {
     from?: Date,
     to?: Date
   ): Promise<UsageStats['topUsers']> {
-    const where: {
-      workspaceId?: string;
-      createdAt?: { gte?: Date; lte?: Date };
-    } = {};
+    const messageFilter = {
+      role: 'USER' as const,
+      ...(from && { createdAt: { gte: from } }),
+      ...(to && { createdAt: { lte: to } }),
+    };
 
-    if (workspaceId) where.workspaceId = workspaceId;
-    if (from || to) {
-      where.createdAt = {};
-      if (from) where.createdAt.gte = from;
-      if (to) where.createdAt.lte = to;
-    }
+    const [perUserMessages, tokenByUser] = await Promise.all([
+      prisma.chat.groupBy({
+        by: ['userId'],
+        where: {
+          ...(workspaceId ? { workspaceId } : {}),
+          messages: { some: messageFilter },
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+      prisma.apiUsage.groupBy({
+        by: ['userId'],
+        where: {
+          ...(workspaceId ? { workspaceId } : {}),
+          userId: { not: null },
+          ...(from && { createdAt: { gte: from } }),
+          ...(to && { createdAt: { lte: to } }),
+        },
+        _sum: { tokensTotal: true },
+      }),
+    ]);
 
-    // Get message counts by user
-    const userMessages = await prisma.message.groupBy({
-      by: ['chatId'],
-      where: {
-        role: 'USER',
-        chat: workspaceId ? { workspaceId } : undefined,
-        ...(from && { createdAt: { gte: from } }),
-        ...(to && { createdAt: { lte: to } }),
-      },
-      _count: { id: true },
-    });
+    const tokenMap = new Map(
+      tokenByUser
+        .filter((row): row is typeof row & { userId: string } => row.userId !== null)
+        .map((row) => [row.userId, row._sum.tokensTotal ?? 0])
+    );
 
-    // Get chat to user mapping
-    const chatIds = userMessages.map((um) => um.chatId);
-    const chats = await prisma.chat.findMany({
-      where: { id: { in: chatIds } },
-      select: { id: true, userId: true },
-    });
-
-    // Aggregate by user
-    const userMap = new Map<string, { messageCount: number; tokenUsage: number }>();
-    for (const um of userMessages) {
-      const chat = chats.find((c) => c.id === um.chatId);
-      if (!chat) continue;
-
-      const existing = userMap.get(chat.userId) ?? { messageCount: 0, tokenUsage: 0 };
-      existing.messageCount += um._count.id;
-      userMap.set(chat.userId, existing);
-    }
-
-    // Get token usage by user (using apiUsage instead of tokenUsage)
-    const tokenUsages = await prisma.apiUsage.findMany({
-      where: {
-        workspaceId: workspaceId ?? undefined,
-        ...(from && { createdAt: { gte: from } }),
-        ...(to && { createdAt: { lte: to } }),
-      },
-      select: { userId: true, tokensTotal: true },
-    });
-
-    for (const tu of tokenUsages) {
-      if (tu.userId) {
-        const existing = userMap.get(tu.userId);
-        if (existing) {
-          existing.tokenUsage += tu.tokensTotal;
-        }
-      }
-    }
-
-    // Get user details
-    const userIds = Array.from(userMap.keys());
+    const userIds = perUserMessages.map((row) => row.userId);
     const users = await prisma.user.findMany({
       where: { id: { in: userIds } },
       select: { id: true, name: true, email: true },
     });
 
-    return Array.from(userMap.entries())
-      .map(([userId, data]) => {
-        const user = users.find((u) => u.id === userId);
+    return perUserMessages
+      .map((row) => {
+        const user = users.find((u) => u.id === row.userId);
         return {
-          userId,
+          userId: row.userId,
           name: user?.name ?? null,
           email: user?.email ?? 'Unknown',
-          messageCount: data.messageCount,
-          tokenUsage: data.tokenUsage,
+          messageCount: row._count._all ?? 0,
+          tokenUsage: tokenMap.get(row.userId) ?? 0,
         };
       })
       .sort((a, b) => b.messageCount - a.messageCount)
@@ -996,7 +962,17 @@ export async function getTimeSeriesData(
   to: Date,
   granularity?: Granularity
 ): Promise<TimeSeriesData> {
-  return getDashboardService().getTimeSeriesData(workspaceId, from, to, granularity);
+  return unstable_cache(
+    () => getDashboardService().getTimeSeriesData(workspaceId, from, to, granularity),
+    [
+      'timeseries-data',
+      workspaceId ?? 'all',
+      from.toISOString(),
+      to.toISOString(),
+      granularity ?? 'day',
+    ],
+    { revalidate: 300, tags: [`analytics-${workspaceId ?? 'global'}`] }
+  )();
 }
 
 export async function getUsageStats(
@@ -1004,7 +980,11 @@ export async function getUsageStats(
   from?: Date,
   to?: Date
 ): Promise<UsageStats> {
-  return getDashboardService().getUsageStats(workspaceId, from, to);
+  return unstable_cache(
+    () => getDashboardService().getUsageStats(workspaceId, from, to),
+    ['usage-stats', workspaceId ?? 'all', from?.toISOString() ?? '', to?.toISOString() ?? ''],
+    { revalidate: 300, tags: [`analytics-${workspaceId ?? 'global'}`] }
+  )();
 }
 
 export async function getQualityMetrics(
@@ -1012,7 +992,11 @@ export async function getQualityMetrics(
   from?: Date,
   to?: Date
 ): Promise<QualityMetrics> {
-  return getDashboardService().getQualityMetrics(workspaceId, from, to);
+  return unstable_cache(
+    () => getDashboardService().getQualityMetrics(workspaceId, from, to),
+    ['quality-metrics', workspaceId ?? 'all', from?.toISOString() ?? '', to?.toISOString() ?? ''],
+    { revalidate: 300, tags: [`analytics-${workspaceId ?? 'global'}`] }
+  )();
 }
 
 export async function getCostAnalysis(
@@ -1020,7 +1004,11 @@ export async function getCostAnalysis(
   from?: Date,
   to?: Date
 ): Promise<CostBreakdown> {
-  return getDashboardService().getCostAnalysis(workspaceId, from, to);
+  return unstable_cache(
+    () => getDashboardService().getCostAnalysis(workspaceId, from, to),
+    ['cost-analysis', workspaceId ?? 'all', from?.toISOString() ?? '', to?.toISOString() ?? ''],
+    { revalidate: 300, tags: [`analytics-${workspaceId ?? 'global'}`] }
+  )();
 }
 
 export async function getRealtimeMetrics(

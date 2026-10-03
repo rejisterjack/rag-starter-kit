@@ -2,9 +2,15 @@
 
 # 🧠 RAG Starter Kit
 
-**Ship a production-grade AI document chatbot this weekend — TypeScript-native RAG with streaming, auth, background jobs, and pgvector. Zero Python required.**
+**Clone. Upload your documents. Deploy. Your team or customers get a production AI chatbot — this weekend.**
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+> **Two ways to use this:**
+> - **Deploy as-is** — Clone, set env vars, upload your docs, deploy to Vercel. No code changes needed. Your users chat at `/chat`. You manage the knowledge base from `/admin`.
+> - **Fork and customise** — Use it as your foundation. Modify the UI, the RAG pipeline, the models. Build something bespoke.
+>
+> **Either way: TypeScript-native, free AI tier by default, production infrastructure already wired in.**
+
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-4169E1?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
@@ -16,10 +22,10 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/ci.yml?label=CI&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![E2E Tests](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/e2e.yml?label=E2E&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![Lighthouse](https://img.shields.io/github/actions/workflow/status/rejisterjack/rag-starter-kit/lighthouse.yml?label=Lighthouse&style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
-[![Coverage](https://img.shields.io/badge/coverage-90%25+-brightgreen?style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
+[![Coverage](https://img.shields.io/badge/coverage-baseline%208.7%25-yellow?style=flat-square)](https://github.com/rejisterjack/rag-starter-kit/actions)
 [![All Contributors](https://img.shields.io/github/all-contributors/rejisterjack/rag-starter-kit?color=ee8449&style=flat-square)](#contributors)
 
-[🚀 Live Demo](https://rag-starter-kit.vercel.app/) · [📖 API Docs](https://rag-starter-kit.vercel.app/api/docs) · [🐛 Report Bug](../../issues) · [✨ Request Feature](../../issues) · [🔖 Changelog](CHANGELOG.md) · [🧩 Chrome Extension](extensions/chrome/README.md)
+[🚀 Live Demo](https://rag-starter-kit.vercel.app/) · [📖 API Docs](https://rag-starter-kit.vercel.app/api/docs) · [🐛 Report Bug](../../issues) · [✨ Request Feature](../../issues) · [🔖 Changelog](CHANGELOG.md)
 
 > **GitHub Topics** (add these in the repo Settings → About → Topics):
 > `rag` `nextjs` `typescript` `langchain` `pgvector` `openai` `chatbot` `ai` `llm` `retrieval-augmented-generation` `starter-kit` `boilerplate` `inngest` `vercel` `postgresql`
@@ -42,7 +48,7 @@
 | 🤖 **Agent Mode** | Tool-using AI agent (search, calculator, code) |
 | 🌙 **Dark/Light Mode** | Beautiful themes |
 | 📱 **PWA Support** | Install as native app |
-| 🆓 **100% Free AI** | OpenRouter + Google Gemini (or Anthropic/Ollama) |
+| 🆓 **100% Free AI** | OpenRouter + Google Gemini |
 
 </div>
 
@@ -52,7 +58,7 @@
 
 ### 🆓 100% FREE AI Setup
 Unlike other RAG solutions that require paid OpenAI API keys, this starter kit uses:
-- **🤖 Chat**: OpenRouter free models (DeepSeek, Mistral, Llama, Gemma) — or bring your own Anthropic/OpenAI/Ollama key
+- **🤖 Chat**: OpenRouter free models
 - **🔤 Embeddings**: Google Gemini free tier (1,500 req/day)
 - **💰 Cost**: $0 forever for development and light usage
 
@@ -61,7 +67,7 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 <details open>
 <summary><b>🎨 Modern UI/UX</b></summary>
 
-- Next.js 15 App Router with React 19
+- Next.js 16 App Router with React 19
 - Tailwind CSS 4 with beautiful dark mode
 - shadcn/ui component library
 - Responsive design (mobile, tablet, desktop)
@@ -142,9 +148,9 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 
 | Category | Technology |
 |----------|------------|
-| **Framework** | [Next.js 15](https://nextjs.org/) (App Router, RSC, Streaming) |
+| **Framework** | [Next.js 16](https://nextjs.org/) (App Router, RSC, Streaming) |
 | **UI** | [React 19](https://react.dev/), [Tailwind CSS 4](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/) |
-| **AI / RAG** | [Vercel AI SDK](https://sdk.vercel.ai/), LangChain.js, OpenRouter, Anthropic Claude |
+| **AI / RAG** | [Vercel AI SDK](https://sdk.vercel.ai/), OpenRouter, Anthropic Claude, Google Gemini |
 | **Embeddings** | [Google Gemini](https://ai.google.dev/) (free tier) |
 | **Database** | [PostgreSQL 16](https://www.postgresql.org/) + [pgvector](https://github.com/pgvector/pgvector) |
 | **ORM** | [Prisma 7](https://www.prisma.io/) + `@prisma/adapter-pg` |
@@ -155,11 +161,13 @@ Unlike other RAG solutions that require paid OpenAI API keys, this starter kit u
 | **Testing** | [Vitest](https://vitest.dev/) + [Playwright](https://playwright.dev/) |
 | **Analytics** | [Plausible](https://plausible.io/) + [PostHog](https://posthog.com/) (optional) |
 | **DevOps** | [Vercel](https://vercel.com/) |
-| **Linting** | [Biome](https://biomejs.dev/) |
+| **Linting** | ESLint + Prettier |
 
 ---
 
 ## 🚀 Quick Start
+
+> **New here?** When you deploy this, your *end users* (team, customers) will chat at `/chat`. You (the builder) upload documents and manage the knowledge base from `/admin`. Think of it like a CMS — you configure it, your users consume it.
 
 ### Prerequisites
 
@@ -194,22 +202,16 @@ bun dev
 | Next.js app | http://localhost:7392 | Main application |
 | Inngest Dashboard | http://localhost:8288 | Background jobs |
 
-### Docker (Self-Hosted)
+### Production Build (Self-Hosted Node.js / VPS)
+
+The app runs on standard Node.js (20+) or Bun and listens on port **7392**. No Docker or container setup required:
 
 ```bash
-# Start PostgreSQL + Redis locally
-docker compose up -d
+# Build the application
+bun run build
 
-# Update .env with local database URL:
-# DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ragdb
-
-# Run migrations and seed
-bun db:migrate
-bun db:seed
-
-# Build and run production container
-docker build -t rag-starter-kit .
-docker run -p 3000:3000 --env-file .env --network host rag-starter-kit
+# Start production server
+bun run start   # http://localhost:7392
 ```
 
 ### One-Click Deploy
@@ -243,7 +245,7 @@ docker run -p 3000:3000 --env-file .env --network host rag-starter-kit
 ```mermaid
 graph TB
     User([User]) -->|Upload Document| Cloudinary[Cloudinary]
-    User -->|Chat Query| Next[Next.js 15 App]
+    User -->|Chat Query| Next[Next.js 16 App]
 
     subgraph "Background Processing"
         Cloudinary -->|Trigger| Inngest[Inngest Jobs]
@@ -271,11 +273,11 @@ graph TB
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| **Presentation** | Next.js 15, React 19, Tailwind CSS | UI components, SSR, streaming |
+| **Presentation** | Next.js 16, React 19, Tailwind CSS | UI components, SSR, streaming |
 | **API** | Next.js API Routes | RESTful endpoints, type-safe APIs |
 | **AI/ML** | Vercel AI SDK, OpenRouter, Gemini | LLM inference, embeddings |
-| **RAG** | LangChain, custom pipeline | Document processing, retrieval |
-| **Data** | PostgreSQL, pgvector, Redis | Persistent storage, caching |
+| **RAG** | Vercel AI SDK, pgvector hybrid pipeline | Document processing, retrieval |
+| **Data** | PostgreSQL + pgvector, Redis | Persistent storage, vector search, caching |
 | **Storage** | Cloudinary | Document files |
 | **Queue** | Inngest | Background job processing |
 | **Real-time** | Ably | WebSocket connections |
@@ -332,7 +334,7 @@ bun test:integration  # Integration tests
 ```
 rag-starter-kit/
 ├── src/
-│   ├── app/                 # Next.js 15 App Router
+│   ├── app/                 # Next.js 16 App Router
 │   ├── components/          # React components (shadcn/ui)
 │   ├── lib/
 │   │   ├── ai/             # AI SDK config (OpenRouter + Google)

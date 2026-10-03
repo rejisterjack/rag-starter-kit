@@ -13,7 +13,7 @@ import {
   Webhook,
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -85,7 +85,7 @@ export default function WebhookDeliveriesPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
 
-  const fetchDeliveries = async () => {
+  const fetchDeliveries = useCallback(async () => {
     try {
       const url = new URL(`/api/webhooks/${webhookId}/deliveries`, window.location.origin);
       url.searchParams.set('limit', '50');
@@ -110,12 +110,11 @@ export default function WebhookDeliveriesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [webhookId, offset, statusFilter]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: run once on mount
   useEffect(() => {
     fetchDeliveries();
-  }, []);
+  }, [fetchDeliveries]);
 
   const loadMore = () => {
     if (data?.pagination.hasMore) {

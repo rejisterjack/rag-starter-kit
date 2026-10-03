@@ -32,9 +32,7 @@ function splitIntoSentences(text: string): string[] {
 export class SemanticChunker implements Chunker {
   private embeddingFunction?: (text: string) => Promise<number[]> | number[];
 
-  constructor(options?: {
-    embeddingFunction?: (text: string) => Promise<number[]> | number[];
-  }) {
+  constructor(options?: { embeddingFunction?: (text: string) => Promise<number[]> | number[] }) {
     this.embeddingFunction = options?.embeddingFunction;
   }
 
@@ -128,7 +126,7 @@ export class SemanticChunker implements Chunker {
   /**
    * Generate embeddings for sentences
    */
-  private async generateEmbeddings(
+  async generateEmbeddings(
     sentences: string[],
     embedFn: (text: string) => Promise<number[]> | number[]
   ): Promise<number[][]> {
@@ -376,11 +374,7 @@ export async function analyzeSemanticStructure(
   }
 
   const chunker = new SemanticChunker({ embeddingFunction });
-  const embeddings = await (
-    chunker as unknown as {
-      generateEmbeddings: (s: string[], fn: typeof embeddingFunction) => Promise<number[][]>;
-    }
-  ).generateEmbeddings(sentences, embeddingFunction);
+  const embeddings = await chunker.generateEmbeddings(sentences, embeddingFunction);
 
   const similarities: number[] = [];
   for (let i = 0; i < embeddings.length - 1; i++) {

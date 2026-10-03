@@ -24,9 +24,7 @@ type TokenEmbeddingFunction = (text: string) => Promise<number[][]>;
 export class LateChunker implements Chunker {
   private tokenEmbeddingFunction?: TokenEmbeddingFunction;
 
-  constructor(options?: {
-    tokenEmbeddingFunction?: TokenEmbeddingFunction;
-  }) {
+  constructor(options?: { tokenEmbeddingFunction?: TokenEmbeddingFunction }) {
     this.tokenEmbeddingFunction = options?.tokenEmbeddingFunction;
   }
 

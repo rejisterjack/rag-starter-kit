@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, useScroll, useSpring } from 'framer-motion';
+import { m, useScroll, useSpring } from 'framer-motion';
 
 export function ScrollProgress(): React.ReactElement {
   const { scrollYProgress } = useScroll();
@@ -11,7 +11,7 @@ export function ScrollProgress(): React.ReactElement {
   });
 
   return (
-    <motion.div
+    <m.div
       className="fixed top-0 left-0 right-0 h-[3px] z-[100] origin-left"
       style={{
         scaleX,

@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, type Variants } from 'framer-motion';
+import { m, type Variants } from 'framer-motion';
 import { Building2, FileText, MessageSquare, TrendingUp, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -43,7 +43,7 @@ const itemVariants: Variants = {
 
 function StatCard({ title, value, icon, trend }: StatCardProps): React.ReactElement {
   return (
-    <motion.div variants={itemVariants}>
+    <m.div variants={itemVariants}>
       <Card className="glass backdrop-blur-xl border-white/5 shadow-xl hover:shadow-primary/5 transition-all duration-300">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-semibold tracking-tight text-muted-foreground/90">
@@ -65,7 +65,7 @@ function StatCard({ title, value, icon, trend }: StatCardProps): React.ReactElem
           )}
         </CardContent>
       </Card>
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -78,7 +78,7 @@ export function AdminDashboardStats({
   workspacesThisWeek,
 }: AdminDashboardStatsProps): React.ReactElement {
   return (
-    <motion.div
+    <m.div
       variants={containerVariants}
       initial="hidden"
       animate="show"
@@ -106,6 +106,6 @@ export function AdminDashboardStats({
         value={totalChats}
         icon={<MessageSquare className="h-5 w-5" />}
       />
-    </motion.div>
+    </m.div>
   );
 }

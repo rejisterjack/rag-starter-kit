@@ -59,6 +59,12 @@ vi.mock('@/lib/redis', () => ({
     del: vi.fn().mockResolvedValue(1),
     ping: vi.fn().mockResolvedValue('PONG'),
   },
+  getRedis: vi.fn(() => ({
+    get: vi.fn().mockResolvedValue(null),
+    set: vi.fn().mockResolvedValue('OK'),
+    del: vi.fn().mockResolvedValue(1),
+    ping: vi.fn().mockResolvedValue('PONG'),
+  })),
   isRedisConfigured: vi.fn().mockReturnValue(false),
 }));
 
