@@ -37,7 +37,6 @@ const navigation: { title: string; items: NavItem[] }[] = [
       { label: 'LLM Providers', href: '/docs/guides/llm-providers' },
       { label: 'Deployment', href: '/docs/guides/deployment' },
       { label: 'Authentication', href: '/docs/guides/authentication' },
-      { label: 'Chrome Extension', href: '/docs/guides/chrome-extension' },
     ],
   },
   {

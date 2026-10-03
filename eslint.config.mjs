@@ -46,10 +46,5 @@ export default [
       'no-console': 'off',
     },
   },
-  {
-    files: ['extensions/chrome/**/*.{js,jsx}'],
-    rules: {
-      'no-console': 'off',
-    },
-  },
 ];
+

@@ -236,16 +236,6 @@ export const DOCS_PAGES: RegistryEntry[] = [
     priority: 0.7,
     parent: '/docs/guides',
   },
-  {
-    path: '/docs/guides/chrome-extension',
-    title: 'Chrome Extension',
-    description: 'Install and use the bundled Chrome extension for inline RAG chat.',
-    lastModified: '2026-08-25',
-    section: 'docs',
-    changeFrequency: 'monthly',
-    priority: 0.7,
-    parent: '/docs/guides',
-  },
   // Reference
   {
     path: '/docs/reference',

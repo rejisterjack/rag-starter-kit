@@ -1,7 +1,7 @@
 'use client';
 
 import { m, useMotionTemplate, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { Bot, Chrome, Code2, Globe, Mic, Radio, Shield, Upload, Users, Zap } from 'lucide-react';
+import { Bot, Code2, Globe, Layers, Mic, Radio, Shield, Upload, Users, Zap } from 'lucide-react';
 import { useRef } from 'react';
 
 interface Feature {
@@ -86,12 +86,12 @@ const features: Feature[] = [
     tags: ['Plausible', 'OpenTelemetry', 'Pino'],
   },
   {
-    icon: Chrome,
-    title: 'Chrome Extension',
+    icon: Layers,
+    title: 'Multi-Modal RAG',
     description:
-      'Save any web page to your knowledge base with one click. Ask questions about selected text, summarize pages, and search your docs — all from the browser.',
-    highlight: 'Browser Native',
-    tags: ['Chrome', 'Web Store', 'Manifest V3'],
+      'Extract, index, and query images, figures, and charts embedded inside PDFs and documents alongside text chunks for comprehensive retrieval.',
+    highlight: 'Images & OCR',
+    tags: ['CLIP', 'Vision', 'OCR'],
   },
   {
     icon: Globe,

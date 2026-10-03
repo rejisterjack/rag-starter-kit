@@ -161,10 +161,10 @@ AUTH_GOOGLE_SECRET=your-google-client-secret`}</Code>
               &larr; Deployment
             </Link>
             <Link
-              href="/docs/guides/chrome-extension"
+              href="/docs/reference"
               className="text-sm text-primary hover:underline"
             >
-              Chrome Extension &rarr;
+              Reference &rarr;
             </Link>
           </div>
         </div>

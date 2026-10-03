@@ -35,13 +35,6 @@ const guides = [
     href: '/docs/guides/authentication',
     tags: ['OAuth', 'SAML', 'API Keys'],
   },
-  {
-    title: 'Chrome Extension',
-    description:
-      'Install and use the Chrome extension to save web pages and ask about selected text.',
-    href: '/docs/guides/chrome-extension',
-    tags: ['Chrome', 'Web Store', 'Manifest V3'],
-  },
 ];
 
 export default function GuidesPage() {
