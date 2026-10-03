@@ -36,7 +36,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       });
     }
 
-    // In production, forward to your monitoring service (e.g., Sentry, Datadog)
+    // In production, forward to your monitoring service if configured
     // Example: await fetch(process.env.CSP_REPORT_ENDPOINT, { method: 'POST', body: JSON.stringify(report) });
 
     return NextResponse.json({ received: true }, { status: 204 });

@@ -11,8 +11,7 @@ Vercel Hobby (Serverless Functions, 10s timeout)
 ├── Cloudinary (free tier, file storage)
 ├── Inngest Cloud (free tier, background jobs)
 ├── Google Gemini (free tier, embeddings)
-├── OpenRouter (free models, LLM)
-└── Sentry (free tier, error tracking)
+└── OpenRouter (free models, LLM)
 ```
 
 All components are managed services with free tiers. No Docker, containers, or self-hosted infrastructure required.
@@ -155,7 +154,6 @@ bun db:migrate:prod
 
 | Variable | Source | Purpose |
 |----------|--------|---------|
-| `SENTRY_DSN` | Sentry | Error tracking |
 | `CRON_SECRET` | Generate: `openssl rand -base64 32` | Secures cleanup cron |
 
 ## Hobby Plan Limits

@@ -30,7 +30,7 @@ export const STACK_FACTS = [
   'Inngest background jobs (document processing pipelines)',
   'NextAuth v5 (credentials, OAuth, MFA, SAML SSO)',
   'Tailwind CSS 4 + shadcn/ui',
-  'PostHog analytics, Sentry error tracking',
+  'PostHog analytics',
 ] as const;
 
 export interface RegistryEntry {

@@ -1,6 +1,5 @@
 'use client';
 
-import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 import { clientLogger } from '@/lib/client-logger';
 
@@ -10,12 +9,10 @@ interface GlobalErrorProps {
 }
 
 function reportError(error: Error & { digest?: string }): void {
-  if (process.env.SENTRY_DSN) {
-    Sentry.captureException(error, {
-      tags: { digest: error.digest },
-      level: 'fatal',
-    });
-  }
+  clientLogger.error('Global fatal error', {
+    message: error.message,
+    digest: error.digest,
+  });
 
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
     try {

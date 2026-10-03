@@ -7,8 +7,8 @@ import { checkMemoryRateLimit } from '@/lib/security/rate-limiter';
  * POST /api/error-report
  *
  * Receives client-side error reports from global-error.tsx.
- * Logs them server-side where they can be picked up by log drains,
- * Sentry, or any observability pipeline.
+ * Logs them server-side where they can be picked up by log drains
+ * or any observability pipeline.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // In-memory rate limit (30/min per IP) — client error reports are
@@ -56,13 +56,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       requestId: req.headers.get('x-request-id') ?? undefined,
     });
 
-    // ─── Sentry Integration ───
-    // import * as Sentry from '@sentry/nextjs';
-    // Sentry.captureMessage(`Client Error: ${message}`, {
-    //   level: 'error',
-    //   tags: { digest, source: 'client-error-report' },
-    //   extra: { stack, url: errorUrl, userAgent },
-    // });
 
     return NextResponse.json({ received: true }, { status: 200 });
   } catch {

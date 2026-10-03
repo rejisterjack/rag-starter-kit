@@ -133,16 +133,6 @@ function isWebSearchQuery(query: string): boolean {
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
 
-  // Cold-start monitoring: track time from module load to first response
-  if (process.env.SENTRY_DSN) {
-    try {
-      const Sentry = await import('@sentry/nextjs');
-      Sentry.setTag('route', '/api/chat');
-      Sentry.setTag('method', 'POST');
-    } catch {
-      // Sentry not available
-    }
-  }
 
   try {
     // Phase 1: Auth + heavy module loading in parallel

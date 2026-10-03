@@ -1,6 +1,5 @@
 'use client';
 
-import * as Sentry from '@sentry/nextjs';
 import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
@@ -16,7 +15,7 @@ interface ErrorBoundaryProps {
   homeHref?: string;
   homeLabel?: string;
   showDevError?: boolean;
-  sentryTag?: string;
+  section?: string;
 }
 
 export function ErrorBoundary({
@@ -28,20 +27,22 @@ export function ErrorBoundary({
   homeHref = '/',
   homeLabel = 'Go Home',
   showDevError = false,
-  sentryTag,
+  section,
 }: ErrorBoundaryProps) {
+
   useEffect(() => {
-    if (process.env.SENTRY_DSN) {
-      Sentry.captureException(error, {
-        tags: { digest: error.digest, ...(sentryTag ? { section: sentryTag } : {}) },
-      });
-    }
+    clientLogger.error('ErrorBoundary caught error', {
+      error: error.message,
+      digest: error.digest,
+      section,
+    });
 
     if (process.env.NODE_ENV === 'production') {
       try {
         const payload = {
           message: error.message,
           digest: error.digest,
+          section,
           url: window.location.href,
           timestamp: new Date().toISOString(),
         };
@@ -51,11 +52,11 @@ export function ErrorBoundary({
             new Blob([JSON.stringify(payload)], { type: 'application/json' })
           );
         }
-      } catch (error) {
-        clientLogger.error('Failed to report error via beacon', { error });
+      } catch (err) {
+        clientLogger.error('Failed to report error via beacon', { error: err });
       }
     }
-  }, [error, sentryTag]);
+  }, [error, section]);
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-4">

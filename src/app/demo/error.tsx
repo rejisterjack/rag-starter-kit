@@ -14,7 +14,7 @@ export default function DemoError({ error, reset }: ErrorProps) {
       reset={reset}
       title="Demo Error"
       description="The live demo encountered an error. Please try again."
-      sentryTag="demo"
+      section="demo"
     />
   );
 }

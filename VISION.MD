@@ -213,7 +213,6 @@ This project includes everything a production system needs — already wired in,
 | pgvector on PostgreSQL | Vector search in the same Postgres database — no separate vector DB service |
 | PostHog + Plausible analytics | You know how people use your chatbot |
 | Playwright E2E tests | You can change the code and know things still work |
-| Sentry error monitoring | You know when production breaks |
 
 The work that would take three weeks to build from scratch is already done.
 

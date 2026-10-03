@@ -3,7 +3,6 @@ import type { webpack } from "next/dist/compiled/webpack/webpack";
 import type { Header } from "next/dist/lib/load-custom-routes";
 import bundleAnalyzer from "@next/bundle-analyzer";
 import createMDX from "@next/mdx";
-import { withSentryConfig } from "@sentry/nextjs";
 
 const withBundleAnalyzer = bundleAnalyzer({
 	enabled: process.env.ANALYZE === "true",
@@ -67,7 +66,6 @@ const nextConfig: NextConfig = {
 			'@hookform/resolvers',
 			'react-hook-form',
 			'react-day-picker',
-			'@sentry/nextjs',
 			'zod',
 		],
 	},
@@ -237,16 +235,4 @@ const nextConfig: NextConfig = {
 	},
 };
 
-const isDev = process.env.NODE_ENV === 'development';
-const baseConfig = withBundleAnalyzer(withMDX(nextConfig));
-
-if (!isDev && !process.env.SENTRY_DSN) {
-	console.warn(
-		'[next.config] SENTRY_DSN is not set — error tracking is disabled in production. ' +
-		'Set the SENTRY_DSN environment variable to enable Sentry.'
-	);
-}
-
-export default !isDev && process.env.SENTRY_DSN
-  ? withSentryConfig(baseConfig, { silent: true })
-  : baseConfig;
+export default withBundleAnalyzer(withMDX(nextConfig));

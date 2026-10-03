@@ -30,7 +30,6 @@ The dev server runs on port 7392. Enable the pgvector extension in your database
 - OPENROUTER_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY — free-tier LLM access
 - GEMINI_API_KEY or OPENAI_API_KEY — embeddings (Gemini free tier: 1,500 req/day)
 - NEXT_PUBLIC_APP_URL — canonical site URL used for metadata and sitemap
-- SENTRY_DSN — optional error tracking
 - NEXT_PUBLIC_POSTHOG_KEY — optional product analytics
 
 Embedding and chat providers are swappable per workspace via the RAG settings UI.`,
@@ -63,7 +62,7 @@ Default provider: Google Gemini text-embedding (free tier, 1,500 requests/day). 
     '/docs/guides/deployment': `Targets: Vercel (recommended; standalone output, 2-minute deploy), Railway, Render, and any Node 20+ host. Run \`bun run build\` then \`bun run start\`, or use the standalone output in ./next. Apply migrations with \`bun run db:migrate:prod\`. Set NEXT_PUBLIC_APP_URL to the production origin so canonical URLs, sitemap, and OG tags resolve correctly.`,
     '/docs/guides/authentication': `NextAuth v5 with credentials, GitHub and Google OAuth, TOTP MFA, and SAML SSO (workspace-scoped). Roles: USER, MEMBER, ADMIN, OWNER with workspace-scoped RBAC. Session cookies are httpOnly; API routes also accept X-API-Key with workspace-scoped permissions.`,
     '/docs/guides/chrome-extension': `A bundled Manifest V3 Chrome extension provides inline RAG chat on any webpage. Load extensions/chrome as an unpacked extension, configure the server URL and API key in options, and use the side panel to chat with your workspace documents while browsing.`,
-    '/docs/reference/environment-variables': `Full variable list with defaults is maintained in .env.example. Critical ones: DATABASE_URL, AUTH_SECRET, NEXT_PUBLIC_APP_URL, provider keys, and optional integrations (Cloudinary, Ably, Inngest, Sentry, PostHog).`,
+    '/docs/reference/environment-variables': `Full variable list with defaults is maintained in .env.example. Critical ones: DATABASE_URL, AUTH_SECRET, NEXT_PUBLIC_APP_URL, provider keys, and optional integrations (Cloudinary, Ably, Inngest, PostHog).`,
     '/docs/reference/database-schema': `Prisma 7 models include User, Workspace, Membership, Document, Chunk (with pgvector embedding column), Conversation, Message, Feedback, ApiKey, AuditLog, Webhook, and IngestJob. Vector search uses a raw SQL function (src/lib/db/sql/vector-search.sql) for ANN queries with HNSW indexing.`,
     '/docs/reference/rbac-permissions': `Roles per workspace: OWNER (all), ADMIN (manage members, settings, keys), MEMBER (chat, upload, read docs), USER (chat only). Permissions are enforced in middleware and per-route; audit logs record all admin actions.`,
   };

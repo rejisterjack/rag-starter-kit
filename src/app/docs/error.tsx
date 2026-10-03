@@ -16,7 +16,7 @@ export default function DocsError({ error, reset }: ErrorProps) {
       description="Failed to load documentation. Please try again."
       homeHref="/docs"
       homeLabel="Back to Docs"
-      sentryTag="docs"
+      section="docs"
     />
   );
 }

@@ -12,15 +12,6 @@ export async function register() {
 
     await import('@/lib/shutdown');
 
-    if (process.env.SENTRY_DSN) {
-      try {
-        await import('../sentry.server.config');
-      } catch (error) {
-        logger.error('Sentry initialization failed', {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
 
     if (process.env.NODE_ENV === 'production') {
       try {

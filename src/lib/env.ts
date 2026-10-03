@@ -87,8 +87,6 @@ const envSchema = z.object({
   RESEND_TO_EMAIL: z.string().optional(),
   RESEND_WEBHOOK_SECRET: z.string().optional(),
 
-  // Error tracking (optional — Sentry free tier: 5K events/month)
-  SENTRY_DSN: z.string().optional(),
 
   // Read replica (optional — falls back to primary DATABASE_URL)
   DATABASE_READ_REPLICA_URL: z.string().optional(),
